@@ -8,8 +8,9 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
-    # Anthropic API
-    anthropic_api_key: str = ""
+    # DeepSeek API（OpenAI 兼容协议）
+    deepseek_api_key: str = ""
+    deepseek_base_url: str = "https://api.deepseek.com"
 
     # 数据库连接（默认本地 SQLite）
     database_url: str = "sqlite:///./data/english_coach.db"

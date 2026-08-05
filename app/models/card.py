@@ -20,5 +20,3 @@ class Card(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.now()
     )
-
-

@@ -9,8 +9,8 @@ alembic>=1.13
 # 配置
 pydantic-settings>=2.0
 
-# AI
-anthropic>=0.40
+# AI（OpenAI 兼容协议，接 DeepSeek 等国内模型）
+openai>=1.50
 
 # 复习调度（FSRS 官方移植）
 fsrs>=4.5
