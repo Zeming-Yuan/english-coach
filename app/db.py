@@ -24,7 +24,9 @@ def _make_engine():
             db_path.parent.mkdir(parents=True, exist_ok=True)
     return create_engine(
         settings.database_url,
-        connect_args={"check_same_thread": False} if settings.database_url.startswith("sqlite") else {},
+        connect_args={"check_same_thread": False}
+        if settings.database_url.startswith("sqlite")
+        else {},
     )
 
 
