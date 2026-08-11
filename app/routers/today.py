@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import select
@@ -38,7 +38,7 @@ def get_today(new_limit: int = 10, due_limit: int = 20, db: Session = Depends(ge
     stmt = (
         select(Card)
         .join(Review, Review.card_id == Card.id)
-        .where(Review.due <= datetime.now())  # noqa: DTZ005
+        .where(Review.due <= datetime.now(timezone.utc).replace(tzinfo=timezone.utc))
         .order_by(Review.due)
         .limit(due_limit)
     )
