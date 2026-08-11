@@ -13,6 +13,7 @@ class Review(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     card_id: Mapped[int] = mapped_column(ForeignKey("cards.id"), index=True)
     state: Mapped[int] = mapped_column(nullable=False)
+    step: Mapped[int | None] = mapped_column(Integer, nullable=True)
     due: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     stability: Mapped[float] = mapped_column(Float)
     difficulty: Mapped[float] = mapped_column(Float, nullable=False)
