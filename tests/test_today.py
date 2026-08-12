@@ -65,3 +65,9 @@ def test_limit_cards(client, db_session):
     assert resp.status_code == 200
     data = resp.json()
     assert len(data["new_cards"]) == 2
+
+def test_old_card_without_contexts(client,db_session):
+    make_card(db_session,"apple")
+    resp = client.get("/api/today")
+    data = resp.json()
+    assert data["new_cards"][0]["contexts"] is None
