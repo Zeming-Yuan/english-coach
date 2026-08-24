@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "../lib/api.js";
 import { storageGet } from "../lib/utils.js";
 
@@ -11,6 +11,15 @@ export default function StatsPage({ onBack }) {
   const [weekly, setWeekly] = useState(null);
   const [loading, setLoading] = useState(true);
   const canvasRef = useRef(null);
+  const [tooltip, setTooltip] = useState(null);
+
+  const showTooltip = useCallback((e, date, reviews) => {
+    setTooltip({ x: e.clientX + 12, y: e.clientY + 14, text: `${date} · ${reviews} 次复习` });
+  }, []);
+  const moveTooltip = useCallback((e) => {
+    setTooltip((t) => t ? { ...t, x: Math.min(e.clientX + 12, window.innerWidth - 160), y: e.clientY + 14 } : null);
+  }, []);
+  const hideTooltip = useCallback(() => setTooltip(null), []);
 
   useEffect(() => {
     Promise.all([
@@ -146,12 +155,15 @@ export default function StatsPage({ onBack }) {
           {cells.map((d, i) => {
             const col = Math.floor(i / 7);
             const row = i % 7;
+            if (!d) return <div key={i} className="cal-cell cal-empty" style={{ gridRow: row + 2, gridColumn: col + 2 }} />;
             return (
               <div
                 key={i}
-                className={`cal-cell ${d ? `cal-l${getLevel(d.reviews)}` : "cal-empty"}`}
+                className={`cal-cell cal-l${getLevel(d.reviews)}`}
                 style={{ gridRow: row + 2, gridColumn: col + 2 }}
-                title={d ? `${d.date}：${d.reviews} 次复习` : ""}
+                onMouseEnter={(e) => showTooltip(e, d.date, d.reviews)}
+                onMouseMove={moveTooltip}
+                onMouseLeave={hideTooltip}
               />
             );
           })}
@@ -206,6 +218,13 @@ export default function StatsPage({ onBack }) {
       {renderHeatmap()}
 
       <canvas ref={canvasRef} width={340} height={420} style={{ display: "none" }} />
+
+      {/* 热力图 tooltip */}
+      {tooltip && (
+        <div className="cal-tooltip" style={{ left: tooltip.x, top: tooltip.y }}>
+          {tooltip.text}
+        </div>
+      )}
     </section>
   );
 }

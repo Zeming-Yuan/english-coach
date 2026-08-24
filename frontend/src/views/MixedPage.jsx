@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { api } from "../lib/api.js";
 import { speak } from "../lib/tts.js";
 import { sfxSuccess, sfxFail } from "../lib/sfx.js";
@@ -63,8 +63,11 @@ export default function MixedPage({ onExit }) {
 
   const typeName = (t) => t === "listen" ? "听写" : t === "choice" ? "选择" : "拼写";
 
+  const submittedRef = useRef(false);
+
   const handleAnswer = useCallback(async (isCorrect, expected, userVal) => {
-    if (feedback) return;
+    if (feedback || submittedRef.current) return;
+    submittedRef.current = true;
     if (isCorrect) sfxSuccess(); else sfxFail();
     if (isCorrect) setCorrect((c) => c + 1);
     if (!isCorrect) setWrongList((w) => [...w, { q, expected }]);
@@ -89,6 +92,7 @@ export default function MixedPage({ onExit }) {
   }, [feedback, item, q]);
 
   const nextItem = useCallback(() => {
+    submittedRef.current = false;
     setFeedback(null);
     setInput("");
     setSelected(null);

@@ -102,7 +102,7 @@ export default function ListeningPage({ onExit }) {
         <div className="listening-prompt">
           <button className="btn-speak-large" title="播放发音" onClick={() => speak(q.word)}>🔊</button>
           <div className="listening-meaning">{escapeHtml(q.meaning)}</div>
-          <div className="listening-hint" style={{ fontSize: 12 }}>点喇叭听发音</div>
+          <div className="listening-hint">点喇叭听发音</div>
         </div>
         <div className="listening-options">
           {q.options?.map((opt, i) => {

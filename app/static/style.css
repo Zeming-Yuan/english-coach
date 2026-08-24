@@ -40,6 +40,7 @@ body.dark {
   background: none; border: none;
   font-size: 20px; cursor: pointer;
   opacity: 0.7;
+  flex-shrink: 0;
 }
 .settings-btn:hover { opacity: 1; }
 .settings-panel {
@@ -117,7 +118,7 @@ body {
 .view-center {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  min-height: 70vh; gap: 18px; text-align: center;
+  min-height: 55vh; gap: 18px; text-align: center;
 }
 [hidden] { display: none !important; }
 
@@ -356,6 +357,7 @@ body {
   color: var(--ink);
   cursor: pointer;
   transition: border-color 0.12s ease, background 0.12s ease, transform 0.1s ease;
+  position: relative;
 }
 .quiz-option:hover { border-color: var(--mint); }
 .quiz-option.selected {
@@ -486,6 +488,8 @@ body {
   padding: 12px 14px;
   box-shadow: var(--shadow-sm);
   transition: transform 0.12s ease;
+  overflow: hidden;
+  min-width: 0;
 }
 .word-item:hover { transform: translateY(-1px); }
 .word-main { min-width: 0; }
@@ -633,9 +637,6 @@ body {
 .story-word-row b { font-size: 16px; }
 .story-word-row span { color: var(--muted); }
 .story-tap-tip { font-size: 12px; color: var(--muted); margin-top: 10px; }
-
-/* 加词/故事 空态提升 */
-.view-center { min-height: 55vh; }
 
 /* ============================================================
    课程（lesson 入口卡 + 课程学习页）
@@ -923,6 +924,11 @@ body {
   gap: 10px;
   margin-top: 16px;
 }
+@media (max-width: 380px) {
+  .word-detail-status {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
 .status-item {
   background: var(--card);
   border: 1px solid var(--line);
@@ -1011,9 +1017,9 @@ body {
   margin-bottom: 20px;
 }
 .listening-hint {
-  font-size: 14px;
+  font-size: 12px;
   color: var(--muted);
-  margin-bottom: 12px;
+  margin-top: 4px;
 }
 .btn-speak-large {
   width: 80px;
@@ -1622,9 +1628,10 @@ body {
   display: flex;
   position: relative;
 }
-#word-list {
+.word-list {
   flex: 1;
   min-width: 0;
+  overflow: hidden;
 }
 
 /* 字母分组头 */
