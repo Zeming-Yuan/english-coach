@@ -1076,6 +1076,270 @@ $("#btn-listening-back").addEventListener("click", async () => {
   await loadToday();
 });
 
+/* ============ 混合练习（交错 Interleaving） ============ */
+let mixedQueue = [];
+let mixedIdx = 0;
+let mixedCorrect = 0;
+
+async function startMixed() {
+  try {
+    // 并发拉三份数据：听写题 / 测验选择题 / 队列词卡
+    const [listeningData, quizData, todayData] = await Promise.all([
+      api("/api/listening?limit=2"),
+      api("/api/quiz?limit=6"),
+      api("/api/today"),
+    ]);
+
+    const items = [];
+    // 听写题 ×2
+    (listeningData.questions || []).slice(0, 2).forEach((q) => {
+      items.push({ type: "listen", q });
+    });
+    // 选择题 ×2（从测验里抽 choice 类型）
+    (quizData.questions || []).filter((q) => q.type === "choice").slice(0, 2).forEach((q) => {
+      items.push({ type: "choice", q });
+    });
+    // 拼写 ×2（今日队列词，取 word 类型）
+    const spellPool = [...(todayData.error_cards || []), ...todayData.new_cards, ...todayData.due_cards]
+      .filter((c) => c.kind === "word");
+    spellPool.slice(0, 2).forEach((c) => {
+      items.push({ type: "spell", q: { card_id: c.id, word: c.word, meaning: c.meaning } });
+    });
+
+    if (items.length < 3) {
+      toast("题目不够，先去加几个词吧");
+      return;
+    }
+
+    // 随机交错（Fisher-Yates）
+    for (let i = items.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [items[i], items[j]] = [items[j], items[i]];
+    }
+
+    mixedQueue = items;
+    mixedIdx = 0;
+    mixedCorrect = 0;
+    show("view-mixed");
+    renderMixedQuestion();
+  } catch (e) {
+    toast("加载混合练习失败：" + e.message);
+  }
+}
+
+function renderMixedQuestion() {
+  const item = mixedQueue[mixedIdx];
+  const total = mixedQueue.length;
+  $("#mixed-count").textContent = `${mixedIdx + 1} / ${total} · ${typeName(item.type)}`;
+  $("#mixed-progress").style.width = `${(mixedIdx / total) * 100}%`;
+
+  const body = $("#mixed-body");
+  body.innerHTML = "";
+
+  if (item.type === "listen") {
+    renderMixedListen(item, body);
+  } else if (item.type === "choice") {
+    renderMixedChoice(item, body);
+  } else {
+    renderMixedSpell(item, body);
+  }
+}
+
+function typeName(t) {
+  return t === "listen" ? "听写" : t === "choice" ? "选择" : "拼写";
+}
+
+/* --- 混合-听写（播放发音 → 4 选 1） --- */
+function renderMixedListen(item, body) {
+  const q = item.q;
+  body.innerHTML = `
+    <div class="mixed-type-label">🎧 听发音选单词</div>
+    <div class="listening-prompt">
+      <button id="mixed-listen-speak" class="btn-speak-large" title="播放发音">🔊</button>
+      <div class="listening-meaning" style="color:var(--muted);font-size:14px;font-weight:600">点上面喇叭听发音</div>
+    </div>
+    <div class="listening-options" id="mixed-listen-options"></div>
+  `;
+  const optEl = $in(body, "#mixed-listen-options");
+  q.options.forEach((opt, i) => {
+    const btn = document.createElement("button");
+    btn.className = "btn btn-ghost listening-option";
+    btn.textContent = opt;
+    btn.addEventListener("click", async () => {
+      const correct = i === q.correct_index;
+      if (correct) { sfxSuccess(); } else { sfxFail(); }
+      mixedCorrect += correct ? 1 : 0;
+      mixedFeedback(item, body, correct, q.word, i);
+      try {
+        await api("/api/listening/score", {
+          method: "POST",
+          body: JSON.stringify({
+            card_id: q.card_id, selected_index: i,
+            correct_index: q.correct_index, rating: correct ? 3 : 1,
+          }),
+        });
+      } catch {}
+      setTimeout(() => mixedNext(item), 1400);
+    });
+    optEl.appendChild(btn);
+  });
+  // 自动播放
+  speak(q.word, null);
+  $("#mixed-listen-speak").addEventListener("click", () => speak(q.word, $("#mixed-listen-speak")));
+}
+
+/* --- 混合-选择（中文释义 → 选英文单词） --- */
+function renderMixedChoice(item, body) {
+  const q = item.q;
+  body.innerHTML = `
+    <div class="mixed-type-label">🤔 选意思</div>
+    <div class="quiz-prompt">「${escapeHtml(q.prompt)}」是哪个单词？</div>
+    <div class="quiz-options" id="mixed-choice-options"></div>
+  `;
+  const optEl = $in(body, "#mixed-choice-options");
+  q.options.forEach((opt) => {
+    const btn = document.createElement("button");
+    btn.className = "quiz-option";
+    btn.textContent = opt;
+    btn.addEventListener("click", async () => {
+      // 走服务端判分（choice 题正确答案在服务端）
+      let result = null;
+      try {
+        result = await api("/api/quiz/score", {
+          method: "POST",
+          body: JSON.stringify({ answers: [{ card_id: q.card_id, user_input: opt }] }),
+        });
+      } catch {}
+      const isCorrect = result?.details?.[0]?.correct || false;
+      const expected = result?.details?.[0]?.expected || opt;
+      if (isCorrect) { sfxSuccess(); } else { sfxFail(); }
+      mixedCorrect += isCorrect ? 1 : 0;
+      mixedFeedback(item, body, isCorrect, expected, null);
+      setTimeout(() => mixedNext(item), 1400);
+    });
+    optEl.appendChild(btn);
+  });
+}
+
+/* --- 混合-拼写（释义 → 输入） --- */
+function renderMixedSpell(item, body) {
+  const q = item.q;
+  body.innerHTML = `
+    <div class="mixed-type-label">⌨️ 拼写</div>
+    <div class="spelling-meaning">${escapeHtml(q.meaning || "")}</div>
+    <div class="spelling-word-display" id="mixed-spell-display"></div>
+    <input id="mixed-spell-input" class="spelling-input" type="text" placeholder="输入英文单词…"
+      autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+  `;
+  const input = $in(body, "#mixed-spell-input");
+  const display = $in(body, "#mixed-spell-display");
+  const target = q.word;
+  for (let i = 0; i < target.length; i++) {
+    const box = document.createElement("span");
+    box.className = "spelling-box box-pending";
+    display.appendChild(box);
+  }
+  input.oninput = () => {
+    const typed = input.value.toLowerCase().slice(0, target.length);
+    const boxes = display.querySelectorAll(".spelling-box");
+    for (let i = 0; i < boxes.length; i++) {
+      boxes[i].className = "spelling-box";
+      if (i < typed.length) {
+        boxes[i].textContent = target[i];
+        boxes[i].classList.add(typed[i] === target[i].toLowerCase() ? "box-correct" : "box-wrong");
+      } else {
+        boxes[i].classList.add("box-pending");
+        boxes[i].textContent = "";
+      }
+    }
+    if (typed.length === target.length) {
+      setTimeout(() => submitMixedSpell(item), 300);
+    }
+  };
+  setTimeout(() => input.focus(), 100);
+}
+
+async function submitMixedSpell(item) {
+  const input = $in(document, "#mixed-spell-input");
+  const q = item.q;
+  const typed = input.value.trim();
+  input.oninput = null;
+  let resp;
+  try {
+    resp = await api("/api/typing/check", {
+      method: "POST",
+      body: JSON.stringify({ card_id: q.card_id, user_input: typed }),
+    });
+  } catch {
+    return;
+  }
+  const correct = resp.correct;
+  if (correct) { sfxSuccess(); } else { sfxFail(); }
+  mixedCorrect += correct ? 1 : 0;
+  mixedFeedback(item, document.body, correct, q.word, typed);
+}
+
+/* --- 混合-统一反馈 --- */
+function mixedFeedback(item, container, correct, expectedText, userText) {
+  const body = $("#mixed-body");
+  const fb = document.createElement("div");
+  fb.className = `quiz-feedback ${correct ? "ok" : "err"}`;
+  if (correct) {
+    fb.textContent = "✅ 正确！";
+  } else {
+    fb.innerHTML = `❌ 正确答案：<b class="right">${escapeHtml(expectedText)}</b>`;
+  }
+  body.appendChild(fb);
+  // 正确答案高亮显示
+  const options = body.querySelectorAll(".listening-option, .quiz-option");
+  options.forEach((b) => {
+    b.disabled = true;
+    if (b.textContent === expectedText) b.classList.add("correct");
+  });
+}
+
+function mixedNext(item) {
+  mixedIdx++;
+  if (mixedIdx >= mixedQueue.length) {
+    showMixedDone();
+  } else {
+    renderMixedQuestion();
+  }
+}
+
+function showMixedDone() {
+  $("#mixed-body").innerHTML = "";
+  $("#mixed-done").hidden = false;
+  $("#mixed-progress").style.width = "100%";
+  const total = mixedQueue.length;
+  const pct = Math.round((mixedCorrect / total) * 100);
+  $("#mixed-result").textContent = `答对 ${mixedCorrect}/${total} 题（${pct} 分）· 混合题型记忆更牢 🚀`;
+}
+
+// 入口
+$("#btn-start-mixed").addEventListener("click", startMixed);
+
+// 再来一轮
+$("#btn-mixed-again").addEventListener("click", () => {
+  $("#mixed-done").hidden = true;
+  startMixed();
+});
+
+// 返回
+$("#btn-back-mixed").addEventListener("click", async () => {
+  show("view-queue");
+  await loadToday();
+});
+$("#btn-mixed-back").addEventListener("click", async () => {
+  show("view-queue");
+  await loadToday();
+});
+
+// 辅助：在容器内查找（避免 body 级 ID 冲突）
+function $in(container, sel) {
+  return container.querySelector(sel);
+}
+
 /* ============ 拼写练习（Qwerty 风格 + 渐褪提示） ============ */
 let spellingQueue = [];
 let spellingIdx = 0;

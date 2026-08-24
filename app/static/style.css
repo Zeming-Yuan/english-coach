@@ -1093,6 +1093,19 @@ body {
   text-align: center;
 }
 
+/* 混合练习 */
+.mixed-body { margin-top: 10px; }
+.mixed-type-label {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--mint);
+  background: var(--mint-soft);
+  padding: 4px 12px;
+  border-radius: 999px;
+  margin-bottom: 12px;
+}
+
 /* ============================================================
    学习统计页
    ============================================================ */

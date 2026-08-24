@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=21">
+  <link rel="stylesheet" href="/static/style.css?v=22">
 </head>
 <body>
   <div class="app">
@@ -77,6 +77,7 @@
         <button id="btn-start-quiz" class="btn btn-ghost">直接做测验</button>
         <button id="btn-start-listening" class="btn btn-ghost">🎧 听写练习</button>
         <button id="btn-start-spelling" class="btn btn-ghost">⌨️ 拼写练习</button>
+        <button id="btn-start-mixed" class="btn btn-ghost">🎲 混合练习</button>
       </section>
 
       <!-- ===== 视图：单词本 ===== -->
@@ -269,6 +270,27 @@
         </div>
       </section>
 
+      <!-- ===== 视图：混合练习（交错 Interleaving） ===== -->
+      <section id="view-mixed" class="view view-center" hidden>
+        <div class="page-head">
+          <button id="btn-back-mixed" class="btn btn-ghost btn-small">← 返回</button>
+        </div>
+        <div class="spelling-head">
+          <span id="mixed-count" class="study-count"></span>
+        </div>
+        <div class="progress-track"><div id="mixed-progress" class="progress-fill"></div></div>
+
+        <div id="mixed-body" class="mixed-body"></div>
+
+        <div id="mixed-done" class="study-done" hidden>
+          <div class="done-emoji">🎲</div>
+          <h2>混合练习完成！</h2>
+          <p id="mixed-result" class="done-detail"></p>
+          <button id="btn-mixed-again" class="btn btn-primary">再来一轮</button>
+          <button id="btn-mixed-back" class="btn btn-ghost">回到队列</button>
+        </div>
+      </section>
+
       <!-- ===== 视图：学习统计 ===== -->
       <section id="view-stats" class="view" hidden>
         <div class="page-head">
@@ -422,6 +444,6 @@
     </nav>
   </div>
 
-  <script src="/static/app.js?v=22"></script>
+  <script src="/static/app.js?v=23"></script>
 </body>
 </html>

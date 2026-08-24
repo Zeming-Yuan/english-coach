@@ -103,7 +103,10 @@ def score_quiz(payload: QuizScoreIn, db: Session = Depends(get_db)):
             continue
         ok = normalize(a.user_input) == normalize(card.word)
         correct += ok
+        # 错词追踪：答错加权，答对减权
+        record_error(db, a.card_id, is_correct=ok)
         details.append({"card_id": a.card_id, "correct": ok, "expected": card.word})
+    db.commit()
     total = len(payload.answers)
     score = round(correct / total * 100) if total > 0 else 0
     return {"total": total, "correct": correct, "score": score, "details": details}
