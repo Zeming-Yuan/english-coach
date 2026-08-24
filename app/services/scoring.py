@@ -12,4 +12,4 @@ def make_fill_prompt(example: str | None, word: str) -> str:
     idx = example.lower().find(word.lower())
     if idx == -1:
         return example
-    return example[:idx] + "___" + example[idx + len(word) :]
+    return example[:idx] + "_" * len(word) + example[idx + len(word) :]

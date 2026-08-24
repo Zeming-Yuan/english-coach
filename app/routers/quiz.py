@@ -44,6 +44,7 @@ def get_quiz(limit: int = 5, db: Session = Depends(get_db)):
                 "type": "cn2en",
                 "prompt": card.meaning,
                 "card_id": card.id,
+                "word_length": len(card.word),
             }
         )
 
@@ -72,6 +73,7 @@ def get_quiz(limit: int = 5, db: Session = Depends(get_db)):
                     "type": "fill",
                     "prompt": make_fill_prompt(card.example, card.word),
                     "card_id": card.id,
+                    "word_length": len(card.word),
                 }
             )
     return {"questions": questions}

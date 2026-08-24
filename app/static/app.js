@@ -373,6 +373,33 @@ $("#btn-to-quiz").addEventListener("click", async () => {
 });
 
 /* ============ 测验 ============ */
+// 测验格子实时反馈（复用拼写练习逻辑，但不自动提交）
+function renderQuizBoxes(input, display) {
+  // 从 prompt 里推断目标词长度（格子数 = 已有格子数）
+  const boxes = display.querySelectorAll(".spelling-box");
+  if (boxes.length === 0) return; // 还没初始化
+  const targetLen = boxes.length;
+  const typed = input.value.toLowerCase().slice(0, targetLen);
+
+  for (let i = 0; i < boxes.length; i++) {
+    const box = boxes[i];
+    box.className = "spelling-box";
+    if (i < typed.length) {
+      box.textContent = typed[i];
+      box.classList.add("box-pending");
+      box.style.color = "var(--ink)";
+    } else {
+      box.textContent = "";
+      box.classList.add("box-pending");
+      box.style.color = "";
+    }
+  }
+  // 截断多余字符
+  if (input.value.length > targetLen) {
+    input.value = input.value.slice(0, targetLen);
+  }
+}
+
 async function startQuiz() {
   const data = await api("/api/quiz?limit=5");
   if (data.questions.length === 0) {
@@ -403,14 +430,22 @@ function renderQuestion() {
   if (q.type === "cn2en") {
     prompt.textContent = `「${q.prompt}」用英语怎么说？`;
     card.appendChild(prompt);
+    // 格子显示区
+    const display = document.createElement("div");
+    display.className = "spelling-word-display";
+    for (let i = 0; i < (q.word_length || 5); i++) {
+      const box = document.createElement("span");
+      box.className = "spelling-box box-pending";
+      display.appendChild(box);
+    }
+    card.appendChild(display);
+    // 可见输入框
     const input = document.createElement("input");
-    input.className = "quiz-input";
-    input.placeholder = "输入英文单词";
+    input.className = "spelling-input";
+    input.placeholder = `输入英文单词（${q.word_length || "?"} 个字母）`;
     input.autocomplete = "off";
     input.spellcheck = false;
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") e.target.blur();
-    });
+    input.addEventListener("input", () => renderQuizBoxes(input, display));
     card.appendChild(input);
     body.appendChild(card);
     setTimeout(() => input.focus(), 50);
@@ -437,14 +472,22 @@ function renderQuestion() {
   } else if (q.type === "fill") {
     prompt.textContent = `填空：${q.prompt}`;
     card.appendChild(prompt);
+    // 格子显示区
+    const display = document.createElement("div");
+    display.className = "spelling-word-display";
+    for (let i = 0; i < (q.word_length || 5); i++) {
+      const box = document.createElement("span");
+      box.className = "spelling-box box-pending";
+      display.appendChild(box);
+    }
+    card.appendChild(display);
+    // 可见输入框
     const input = document.createElement("input");
-    input.className = "quiz-input";
-    input.placeholder = "填缺的词";
+    input.className = "spelling-input";
+    input.placeholder = `填缺的词（${q.word_length || "?"} 个字母）`;
     input.autocomplete = "off";
     input.spellcheck = false;
-    input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") e.target.blur();
-    });
+    input.addEventListener("input", () => renderQuizBoxes(input, display));
     card.appendChild(input);
     body.appendChild(card);
     setTimeout(() => input.focus(), 50);
