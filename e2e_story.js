@@ -10,7 +10,7 @@ const BASE = "http://127.0.0.1:8001";
   const step = (name, ok) => console.log((ok ? "✅" : "❌") + " " + name);
 
   try {
-    await page.goto(BASE, { waitUntil: "networkidle" });
+    await page.goto(BASE, { waitUntil: "domcontentloaded" });
     // 加词（等完成标志出现再继续）
     await page.locator('.nav-item[data-nav="add"]').click();
     await page.locator("#add-input").fill("sun, moon, star, sky, rain, snow, wind, cloud");

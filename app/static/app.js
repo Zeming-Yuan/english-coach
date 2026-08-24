@@ -560,8 +560,9 @@ async function openStory(id) {
   const s = await api(`/api/stories/${id}`);
   show("view-story-read");
   $("#story-read-title").textContent = s.title;
+  // 原文分词（先不转义，HTML 转义放在每个 token 输出时做一次）
   $("#story-read-content").innerHTML =
-    escapeHtml(s.content).split(/\s+/).map((tok) => {
+    s.content.split(/\s+/).map((tok) => {
       const clean = tok.replace(/[^a-zA-Z'-]/g, "").toLowerCase();
       const isTarget = s.words.some((w) => w.word.toLowerCase() === clean);
       if (isTarget) {

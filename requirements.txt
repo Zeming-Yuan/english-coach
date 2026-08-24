@@ -15,6 +15,9 @@ openai>=1.50
 # 复习调度（FSRS 官方移植）
 fsrs>=4.5
 
+# 发音合成（微软 Edge 在线语音，免 API key）
+edge-tts>=7.0
+
 # 代码质量（开发规范：提交前 ruff check + format 必须通过）
 ruff>=0.8
 

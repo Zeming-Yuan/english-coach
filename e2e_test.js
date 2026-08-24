@@ -16,7 +16,7 @@ const BASE = "http://127.0.0.1:8001";
 
   try {
     // 1. 首页 + 队列
-    await page.goto(BASE, { waitUntil: "networkidle" });
+    await page.goto(BASE, { waitUntil: "domcontentloaded" });
     step("首页加载", (await page.title()).includes("EnglishCoach"));
     step("队列页可见", await page.locator("#view-queue").isVisible());
     step("底部导航4个tab", (await page.locator(".nav-item").count()) === 4);
