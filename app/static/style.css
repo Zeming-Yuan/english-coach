@@ -727,11 +727,20 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+}
+.word-detail-header .speak-btn {
+  position: static;
+  flex-shrink: 0;
 }
 .word-detail-word {
   font-size: 32px;
   font-weight: 900;
   color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 .word-detail-phonetic {
   color: var(--muted);
