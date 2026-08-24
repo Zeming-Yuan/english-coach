@@ -113,6 +113,8 @@ export default function LessonsPage({ onExit }) {
 /* ============ 课程学习详情 ============ */
 function LessonDetail({ lesson, onBack, onNext }) {
   const [mastered, setMastered] = useState(new Set());
+  const [revealed, setRevealed] = useState(new Set());
+  const [guesses, setGuesses] = useState({});
   const L = lesson;
   const words = L.content.words || [];
   const dialogue = L.content.dialogue || [];
@@ -129,6 +131,10 @@ function LessonDetail({ lesson, onBack, onNext }) {
     } catch {}
   };
 
+  const revealWord = (word) => {
+    setRevealed((s) => new Set(s).add(word));
+  };
+
   return (
     <section className="view">
       <div className="page-head">
@@ -141,23 +147,51 @@ function LessonDetail({ lesson, onBack, onNext }) {
         <div className="lesson-tips">{tips.join("；")}</div>
       )}
 
-      <h3 className="lesson-section">本课单词 · 点 ✓ 标记已掌握</h3>
+      <h3 className="lesson-section">本课单词 · 先猜意思，再揭晓</h3>
       <div className="word-list">
-        {words.map((w, i) => (
-          <div key={i} className={`word-item lesson-word ${mastered.has(w.word) ? "word-mastered" : ""}`}>
-            <div className="word-main">
-              <div className="word-item-word">{escapeHtml(w.word)}</div>
-              <div className="word-item-phonetic">{escapeHtml(w.phonetic || "")}</div>
-              <div className="word-item-meaning">{escapeHtml(w.meaning || "")}</div>
+        {words.map((w, i) => {
+          const isRevealed = revealed.has(w.word);
+          const isMastered = mastered.has(w.word);
+          return (
+            <div key={i} className={`word-item lesson-word ${isMastered ? "word-mastered" : ""}`}>
+              <div className="word-main" style={{ flex: 1 }}>
+                <div className="word-item-word">{escapeHtml(w.word)}</div>
+                <div className="word-item-phonetic">{escapeHtml(w.phonetic || "")}</div>
+                {!isRevealed ? (
+                  /* 预测试：先猜 */
+                  <div className="pretest-row">
+                    <input
+                      className="pretest-input"
+                      placeholder="猜一下这个词的意思…"
+                      value={guesses[w.word] || ""}
+                      onChange={(e) => setGuesses((g) => ({ ...g, [w.word]: e.target.value }))}
+                      onKeyDown={(e) => { if (e.key === "Enter") revealWord(w.word); }}
+                    />
+                    <button className="btn btn-ghost btn-small pretest-btn" onClick={() => revealWord(w.word)}>
+                      {guesses[w.word] ? "揭晓" : "猜不到"}
+                    </button>
+                  </div>
+                ) : (
+                  /* 揭晓后 */
+                  <>
+                    <div className="word-item-meaning">{escapeHtml(w.meaning || "")}</div>
+                    {guesses[w.word] && guesses[w.word] !== w.meaning && (
+                      <div className="pretest-guess">你的猜测：{escapeHtml(guesses[w.word])}</div>
+                    )}
+                  </>
+                )}
+              </div>
+              <button className="speak-mini" title="朗读" onClick={(e) => { e.stopPropagation(); speak(w.word); }}>🔊</button>
+              {isRevealed && (
+                <button
+                  className="lesson-master-btn"
+                  title="记住了"
+                  onClick={(e) => { e.stopPropagation(); markMastered(w.word, L.card_ids?.[w.word]); }}
+                >✓</button>
+              )}
             </div>
-            <button className="speak-mini" title="朗读" onClick={(e) => { e.stopPropagation(); speak(w.word); }}>🔊</button>
-            <button
-              className="lesson-master-btn"
-              title="记住了"
-              onClick={(e) => { e.stopPropagation(); markMastered(w.word, L.card_ids?.[w.word]); }}
-            >✓</button>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <h3 className="lesson-section">对话 · 点句子听发音</h3>
