@@ -699,7 +699,20 @@ $("#btn-quiz-submit").addEventListener("click", async () => {
   btn.textContent = isLast ? "查看结果" : "下一题 →";
   btn.disabled = false;
   btn.dataset.phase = "next";
+  // 判分后输入已被禁用、焦点丢失——挂一个文档级 Enter：再按回车 = 下一题
+  document.removeEventListener("keydown", quizEnterNext);
+  document.addEventListener("keydown", quizEnterNext);
 });
+
+// 文档级回车：判分后（phase=next）再按回车进下一题
+function quizEnterNext(e) {
+  const btn = $("#btn-quiz-submit");
+  if (e.key === "Enter" && btn && btn.dataset.phase === "next" && !$("#view-quiz").hidden) {
+    e.preventDefault();
+    document.removeEventListener("keydown", quizEnterNext);
+    btn.click();
+  }
+}
 
 // 测验结果（汇总错题）
 function showQuizResult() {
