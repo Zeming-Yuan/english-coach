@@ -961,14 +961,18 @@ body {
   color: var(--coral);
 }
 
-/* 隐藏输入框（键盘捕获用） */
+/* 输入框：覆盖在格子上方，点击即可打字 */
+.spelling-word-display {
+  position: relative;
+}
 .spelling-input {
   position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   opacity: 0;
-  width: 1px;
-  height: 1px;
-  top: 50%;
-  left: 50%;
+  cursor: text;
+  font-size: 24px; /* 防止 iOS 缩放 */
 }
 
 .spelling-hint {

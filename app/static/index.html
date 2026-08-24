@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=15">
+  <link rel="stylesheet" href="/static/style.css?v=16">
 </head>
 <body>
   <div class="app">
@@ -235,11 +235,10 @@
           <div class="spelling-meaning" id="spelling-meaning"></div>
           <div class="spelling-phonetic" id="spelling-phonetic"></div>
 
-          <!-- 逐字显示区 -->
-          <div class="spelling-word-display" id="spelling-word-display"></div>
-
-          <!-- 隐藏的真实输入 -->
-          <input id="spelling-input" class="spelling-input" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+          <!-- 逐字显示区 + 输入框覆盖 -->
+          <div class="spelling-word-display" id="spelling-word-display">
+            <input id="spelling-input" class="spelling-input" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+          </div>
 
           <div id="spelling-hint" class="spelling-hint">输入上面的英文单词</div>
           <div id="spelling-feedback" class="spelling-feedback"></div>
@@ -407,6 +406,6 @@
     </nav>
   </div>
 
-  <script src="/static/app.js?v=14"></script>
+  <script src="/static/app.js?v=15"></script>
 </body>
 </html>
