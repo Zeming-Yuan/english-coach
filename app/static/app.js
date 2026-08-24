@@ -1284,9 +1284,13 @@ async function startMixed() {
     (quizData.questions || []).filter((q) => q.type === "choice").slice(0, 2).forEach((q) => {
       items.push({ type: "choice", q });
     });
-    // 拼写 ×2（今日队列词，取 word 类型）
-    const spellPool = [...(todayData.error_cards || []), ...todayData.new_cards, ...todayData.due_cards]
+    // 拼写 ×2（今日队列词，队列空时降级全库——与拼写练习一致）
+    let spellPool = [...(todayData.error_cards || []), ...todayData.new_cards, ...todayData.due_cards]
       .filter((c) => c.kind === "word");
+    if (spellPool.length === 0) {
+      const allData = await api("/api/cards");
+      spellPool = allData.cards.filter((c) => c.kind === "word");
+    }
     spellPool.slice(0, 2).forEach((c) => {
       items.push({ type: "spell", q: { card_id: c.id, word: c.word, meaning: c.meaning } });
     });
