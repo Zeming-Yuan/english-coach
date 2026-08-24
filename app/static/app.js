@@ -1492,15 +1492,14 @@ function renderMixedSpell(item, body) {
       }
     }
     if (typed.length === target.length) {
-      setTimeout(() => submitMixedSpell(item), 300);
+      setTimeout(() => { if (!item.submitted) submitMixedSpell(item); }, 300);
     }
   };
   // 回车提交
   input.onkeydown = (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      if (input.value.trim().length > 0) {
-        input.oninput = null;
+      if (input.value.trim().length > 0 && !item.submitted) {
         submitMixedSpell(item);
       }
     }
@@ -1509,10 +1508,13 @@ function renderMixedSpell(item, body) {
 }
 
 async function submitMixedSpell(item) {
+  if (item.submitted) return; // 防重入（回车+自动双触发、连按回车）
+  item.submitted = true;
   const input = $in(document, "#mixed-spell-input");
   const q = item.q;
   const typed = input.value.trim();
   input.oninput = null;
+  input.onkeydown = null;
   let resp;
   try {
     resp = await api("/api/typing/check", {
@@ -1526,6 +1528,7 @@ async function submitMixedSpell(item) {
   if (correct) { sfxSuccess(); } else { sfxFail(); }
   mixedCorrect += correct ? 1 : 0;
   mixedFeedback(item, document.body, correct, q.word, typed);
+  setTimeout(() => mixedNext(item), 1400);
 }
 
 /* --- 混合-统一反馈 --- */
