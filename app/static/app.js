@@ -31,6 +31,42 @@ async function api(path, opts = {}) {
   return resp.json();
 }
 
+/* ============ 音效（Web Audio API，零延迟） ============ */
+let audioCtx = null;
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function playTone(freq, duration, startTime, type = "sine") {
+  const ctx = getAudioCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0.15, startTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start(startTime);
+  osc.stop(startTime + duration);
+}
+
+function sfxSuccess() {
+  const ctx = getAudioCtx();
+  const now = ctx.currentTime;
+  playTone(523, 0.12, now);        // C5
+  playTone(659, 0.15, now + 0.1);  // E5
+  playTone(784, 0.2, now + 0.18);  // G5
+}
+
+function sfxFail() {
+  const ctx = getAudioCtx();
+  const now = ctx.currentTime;
+  playTone(330, 0.15, now, "triangle");        // E4
+  playTone(262, 0.25, now + 0.12, "triangle"); // C4
+}
+
 /* ============ TTS 朗读（本地语音优先，在线兜底） ============ */
 let ttsVoice = null;
 let hasEnVoice = false;
@@ -786,11 +822,13 @@ async function handleListeningAnswer(selected, btn) {
   });
 
   if (correct) {
+    sfxSuccess();
     listeningCorrect++;
     btn.classList.add("correct");
     $("#listening-feedback").textContent = "✅ 正确！";
     $("#listening-feedback").className = "listening-feedback ok";
   } else {
+    sfxFail();
     btn.classList.add("wrong");
     $("#listening-feedback").textContent = `❌ 正确答案是：${q.word}`;
     $("#listening-feedback").className = "listening-feedback err";
@@ -957,10 +995,12 @@ async function checkSpelling(card) {
   // 反馈
   const fb = $("#spelling-feedback");
   if (correct) {
+    sfxSuccess();
     fb.textContent = "✅ 正确！";
     fb.className = "spelling-feedback ok";
     speak(card.word, null);
   } else {
+    sfxFail();
     fb.textContent = `❌ 正确拼写：${card.word}`;
     fb.className = "spelling-feedback err";
     // 显示全部正确字母
