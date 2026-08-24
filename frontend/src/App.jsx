@@ -12,6 +12,7 @@ import StoriesPage from "./views/StoriesPage.jsx";
 import AddPage from "./views/AddPage.jsx";
 import StatsPage from "./views/StatsPage.jsx";
 import SettingsPage from "./views/SettingsPage.jsx";
+import LessonsPage from "./views/LessonsPage.jsx";
 
 /* ============ 视图路由 ============ */
 const NAV_TABS = { queue: "队列", words: "单词本", stories: "故事", add: "加词" };
@@ -83,6 +84,7 @@ export default function App() {
         {view === "add" && <AddPage onStartStudy={(cards) => { setStudyQueue(cards); setView("study"); }} />}
         {view === "stats" && <StatsPage onBack={() => setView("queue")} />}
         {view === "settings" && <SettingsPage darkMode={darkMode} setDarkMode={setDarkMode} />}
+        {view === "lessons" && <LessonsPage onExit={() => setView("queue")} />}
         {view === "study" && <StudyPage queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} />}
         {view === "quiz" && <QuizPage onExit={() => setView("queue")} />}
         {view === "spelling" && <SpellingPage onExit={() => setView("queue")} />}
@@ -113,6 +115,7 @@ export default function App() {
 function QueueView({ setView, setStudyQueue }) {
   const [data, setData] = useState(null);
   const [stats, setStats] = useState(null);
+  const [lessonData, setLessonData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -124,6 +127,11 @@ function QueueView({ setView, setStudyQueue }) {
         ]);
         setData(todayData);
         setStats(statsData);
+        // 课程入口
+        try {
+          const ld = await api("/api/lessons");
+          setLessonData(ld);
+        } catch {}
       } catch (e) {
         console.error("加载队列失败", e);
       } finally {
@@ -183,6 +191,51 @@ function QueueView({ setView, setStudyQueue }) {
           <h2>欢迎来到 EnglishCoach</h2>
           <p>AI 会根据你的记忆安排每天学什么。<br />先加几个想学的词，马上开始！</p>
           <button className="btn btn-primary" onClick={() => setView("add")}>先加几个词</button>
+        </div>
+      )}
+
+      {/* 错词复习入口 */}
+      {errorCount > 0 && (
+        <div className="lesson-entry error-entry">
+          <div className="lesson-entry-body">
+            <div className="lesson-entry-label">⚠️ 错词复习</div>
+            <div className="lesson-entry-sub">上次答错的 <b>{errorCount}</b> 个词 · 优先重现效果最好</div>
+          </div>
+          <button className="btn btn-primary btn-small" onClick={() => {
+            setStudyQueue(data.error_cards || []);
+            setView("study");
+          }}>复习 →</button>
+        </div>
+      )}
+
+      {/* 课程入口 */}
+      {lessonData && (
+        <div className="lesson-entry">
+          <div className="lesson-entry-body">
+            <div className="lesson-entry-label">
+              {lessonData.is_done ? "全部完成 🎓" : "继续课程"}
+            </div>
+            <div className="lesson-entry-title">
+              {lessonData.is_done
+                ? "20 级课程全部完成！"
+                : lessonData.lessons.length > 0
+                  ? `第 ${lessonData.lessons[lessonData.lessons.length - 1].level} 课 · ${lessonData.lessons[lessonData.lessons.length - 1].title}`
+                  : "开始零基础课程"}
+            </div>
+            <div className="lesson-entry-sub">
+              {lessonData.is_done
+                ? "继续用队列/故事巩固吧"
+                : `已完成 ${lessonData.lessons.length}/20 课 · 下一课：${lessonData.next_level}`}
+            </div>
+          </div>
+          {!lessonData.is_done && (
+            <button className="btn btn-primary btn-small" onClick={() => setView("lessons")}>
+              {lessonData.lessons.length === 0 ? "开始" : "继续 →"}
+            </button>
+          )}
+          {lessonData.is_done && (
+            <button className="btn btn-ghost btn-small" onClick={() => setView("lessons")}>回顾</button>
+          )}
         </div>
       )}
 

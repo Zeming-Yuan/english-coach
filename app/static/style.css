@@ -636,6 +636,56 @@ body {
 }
 .story-word-row b { font-size: 16px; }
 .story-word-row span { color: var(--muted); }
+
+/* 故事内联词面板（替代模态弹窗，不打断阅读流） */
+.story-word-panel {
+  background: var(--sun-soft);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin: 6px 0 10px;
+  animation: fade-in 0.15s ease;
+}
+.story-word-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.story-word-panel-word {
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--ink);
+  flex: 1;
+}
+.story-word-panel-close {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: var(--muted);
+  opacity: 0.7;
+}
+.story-word-panel-close:hover { opacity: 1; }
+.story-word-panel-phonetic {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.story-word-panel-meaning {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-top: 6px;
+}
+.story-word-panel-rating {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-top: 10px;
+}
+.story-word-panel-rating .btn-rating {
+  padding: 8px 4px;
+  font-size: 14px;
+}
 .story-tap-tip { font-size: 12px; color: var(--muted); margin-top: 10px; }
 
 /* ============================================================

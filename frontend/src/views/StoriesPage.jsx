@@ -62,20 +62,35 @@ export default function StoriesPage() {
 }
 
 function StoryRead({ story, onBack }) {
-  const [modalWord, setModalWord] = useState(null);
+  const [activeWord, setActiveWord] = useState(null);
+  const [activeSentence, setActiveSentence] = useState(null);
 
   // 按句拆分
   const sentences = story.content.match(/[^.!?]+[.!?]*\s*/g) || [story.content];
 
-  const renderTokens = (text) => {
+  const handleWordClick = (e, word, sentenceIdx) => {
+    e.stopPropagation();
+    setActiveWord(word);
+    setActiveSentence(sentenceIdx);
+  };
+
+  const renderTokens = (text, sentenceIdx) => {
     return text.split(/\s+/).map((tok, i) => {
       const clean = tok.replace(/[^a-zA-Z'-]/g, "").toLowerCase();
       const target = story.words.find((w) => w.word.toLowerCase() === clean);
       if (target) {
-        return <span key={i} className="sw" onClick={(e) => { e.stopPropagation(); setModalWord(target); }}>{tok} </span>;
+        return <span key={i} className="sw" onClick={(e) => handleWordClick(e, target, sentenceIdx)}>{tok} </span>;
       }
       return <span key={i}>{tok} </span>;
     });
+  };
+
+  const rateWord = async (rating) => {
+    if (!activeWord) return;
+    try {
+      await api("/api/reviews", { method: "POST", body: JSON.stringify({ card_id: activeWord.id, rating }) });
+      setActiveWord(null);
+    } catch {}
   };
 
   return (
@@ -86,9 +101,30 @@ function StoryRead({ story, onBack }) {
       <h2 className="story-read-title">{story.title}</h2>
       <div className="story-read-content">
         {sentences.map((sent, i) => (
-          <span key={i} className="story-sentence" onClick={() => speak(sent.trim())}>
-            {renderTokens(sent)}
-          </span>
+          <React.Fragment key={i}>
+            <span className="story-sentence" onClick={() => speak(sent.trim())}>
+              {renderTokens(sent, i)}
+            </span>
+            {/* 内联词面板：在点击词的句子下方展开 */}
+            {activeWord && activeSentence === i && (
+              <div className="story-word-panel">
+                <div className="story-word-panel-head">
+                  <span className="story-word-panel-word">{activeWord.word}</span>
+                  <button className="speak-mini" onClick={() => speak(activeWord.word)}>🔊</button>
+                  <button className="story-word-panel-close" onClick={() => setActiveWord(null)}>✕</button>
+                </div>
+                {activeWord.phonetic && <div className="story-word-panel-phonetic">{activeWord.phonetic}</div>}
+                <div className="story-word-panel-meaning">{activeWord.meaning}</div>
+                <div className="story-word-panel-rating">
+                  {[1, 2, 3, 4].map((r) => (
+                    <button key={r} className={`btn-rating rating-${r}`} onClick={() => rateWord(r)}>
+                      {r}<span className="rating-label">{r === 1 ? "忘了" : r === 2 ? "模糊" : r === 3 ? "记得" : "太简单"}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </React.Fragment>
         ))}
         <div className="story-tap-tip">👆 点击句子整句朗读 · 点击绿词查看释义</div>
       </div>
@@ -99,33 +135,6 @@ function StoryRead({ story, onBack }) {
           </div>
         ))}
       </div>
-
-      {/* 词卡弹窗 */}
-      {modalWord && (
-        <div className="modal" onClick={() => setModalWord(null)}>
-          <div className="modal-mask" />
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-head">
-              <div className="modal-word">{modalWord.word}</div>
-              <button className="speak-mini" onClick={() => speak(modalWord.word)}>🔊</button>
-            </div>
-            {modalWord.phonetic && <div className="modal-phonetic">{modalWord.phonetic}</div>}
-            <div className="modal-meaning">{modalWord.meaning}</div>
-            <div className="modal-rating">
-              {[1, 2, 3, 4].map((r) => (
-                <button key={r} className={`btn-rating rating-${r}`} onClick={async () => {
-                  try {
-                    await api("/api/reviews", { method: "POST", body: JSON.stringify({ card_id: modalWord.id, rating: r }) });
-                    setModalWord(null);
-                  } catch {}
-                }}>
-                  {r}<span className="rating-label">{r === 1 ? "忘了" : r === 2 ? "模糊" : r === 3 ? "记得" : "太简单"}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </section>
   );
 }
