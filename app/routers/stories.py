@@ -1,7 +1,7 @@
 """故事路由。"""
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -48,7 +48,7 @@ def delete_story(story_id: int, db: Session = Depends(get_db)):
     story = db.get(Story, story_id)
     if story is None:
         raise HTTPException(status_code=404, detail="Story not found")
-    db.execute(StoryWord.__table__.delete().where(StoryWord.story_id == story_id))
+    db.execute(delete(StoryWord).where(StoryWord.story_id == story_id))
     db.delete(story)
     db.commit()
     return {"deleted": story_id}

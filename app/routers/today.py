@@ -73,7 +73,7 @@ def get_today(new_limit: int = 10, due_limit: int = 20, db: Session = Depends(ge
         new_cards_dict = [c for c in new_cards_dict if c["id"] not in hard_ids]
         due_cards_dict = [c for c in due_cards_dict if c["id"] not in hard_ids]
     return {
-        "error_cards": [card_to_dict(c) for c in error_first + hard_first],
+        "error_cards": [card_to_dict(c) for c in list(error_first) + list(hard_first)],
         "new_cards": new_cards_dict,
         "due_cards": due_cards_dict,
     }
@@ -166,18 +166,17 @@ def get_errors(db: Session = Depends(get_db)):
         .join(Card, Card.id == ErrorCard.card_id)
         .order_by(ErrorCard.error_count.desc(), ErrorCard.last_error_at)
     ).scalars().all()
-    return {
-        "errors": [
-            {
-                "card_id": r.card_id,
-                "error_count": r.error_count,
-                "word": db.get(Card, r.card_id).word,
-                "meaning": db.get(Card, r.card_id).meaning,
-                "last_error_at": r.last_error_at.isoformat() if r.last_error_at else None,
-            }
-            for r in rows
-        ]
-    }
+    result = []
+    for r in rows:
+        c = db.get(Card, r.card_id)
+        result.append({
+            "card_id": r.card_id,
+            "error_count": r.error_count,
+            "word": c.word if c else "",
+            "meaning": c.meaning if c else "",
+            "last_error_at": r.last_error_at.isoformat() if r.last_error_at else None,
+        })
+    return {"errors": result}
 
 
 @router.get("/stats")
@@ -259,7 +258,7 @@ def _calc_streak(db: Session, now: datetime, today_start: datetime) -> int:
         .scalars()
         .all()
     )
-    days = {r.date() for r in rows}
+    days = {r.date() for r in rows if r is not None}
     if not days:
         return 0
 
