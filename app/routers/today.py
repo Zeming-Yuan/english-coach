@@ -22,6 +22,7 @@ def card_to_dict(card: Card) -> dict:
         "example_cn": card.example_cn,
         "explanation": card.explanation,
         "contexts": card.contexts,
+        "kind": card.kind,
     }
 
 

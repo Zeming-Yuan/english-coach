@@ -1,9 +1,15 @@
+from __future__ import annotations
+
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import JSON, DateTime, String, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column,relationship
 
 from app.db import Base
+
+if TYPE_CHECKING:
+    from app.models.story import Story
 
 
 class Card(Base):
@@ -17,7 +23,12 @@ class Card(Base):
     example: Mapped[str] = mapped_column(String(500), nullable=True)
     example_cn: Mapped[str] = mapped_column(String(500), nullable=True)
     contexts: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    kind: Mapped[str] = mapped_column(String(10),nullable=False,server_default="word")
     explanation: Mapped[str] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.now()
+    )
+    # 关联故事（多对多）
+    stories: Mapped[list["Story"]] = relationship(
+        secondary="story_words", back_populates="cards"
     )

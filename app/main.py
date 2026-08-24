@@ -6,7 +6,7 @@
 
 from fastapi import FastAPI
 
-from app.routers import health, quiz, reviews, today
+from app.routers import health, quiz, reviews, today,stories
 
 app = FastAPI(
     title="EnglishCoach",
@@ -19,3 +19,4 @@ app.include_router(health.router, prefix="/api", tags=["health"])
 app.include_router(today.router, prefix="/api", tags=["today"])
 app.include_router(reviews.router, prefix="/api", tags=["reviews"])
 app.include_router(quiz.router, prefix="/api", tags=["quiz"])
+app.include_router(stories.router, prefix="/api", tags=["stories"])

@@ -41,7 +41,7 @@ def make_quiz_cards(db):
     for word, meaning, example in [
         ("apple", "苹果", "I like to eat an apple every day."),
         ("banana", "香蕉", "Monkeys love to eat bananas."),
-        ("cherry", "樱桃", "She put cherries on top of the cake."),
+        ("cherry", "樱桃", "She ate a cherry after lunch."),
         ("date", "枣子", "Dates are sweet fruits."),
         ("egg", "鸡蛋", "I had a boiled egg for breakfast."),
     ]:

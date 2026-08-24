@@ -12,6 +12,7 @@ from app.db import get_db
 from app.models.card import Card
 from app.models.review import Review
 from app.services.scheduler import build_fsrs_card, schedule
+from app.services.graduation import graduate_to_sentence, is_graduated
 
 router = APIRouter()
 
@@ -62,5 +63,13 @@ def submit_review(req: ReviewRequest, db: Session = Depends(get_db)):
         else 0
     )
     review.last_review = now
+    # 5. 毕业检查：词卡毕业则自动生成句子卡
+    graduated_sentence = None
+    if card.kind == "word" and is_graduated(review):
+        graduated_sentence = graduate_to_sentence(card, db)
     db.commit()
-    return {"card_id": req.card_id, "next_due": new_card.due}
+    result = {"card_id": req.card_id, "next_due": new_card.due}
+    if graduated_sentence:
+        result["graduated"] = True
+        result["sentence_card_id"] = graduated_sentence.id
+    return result

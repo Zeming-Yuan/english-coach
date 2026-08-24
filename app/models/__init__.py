@@ -2,5 +2,6 @@
 
 from app.models.card import Card
 from app.models.review import Review
+from app.models.story import Story, StoryWord
 
-__all__ = ["Card", "Review"]
+__all__ = ["Card", "Review", "Story", "StoryWord"]

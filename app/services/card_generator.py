@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models.card import Card
+from app.services.model_router import Task, route
 
 client = OpenAI(api_key=settings.deepseek_api_key, base_url=settings.deepseek_base_url)
 
@@ -24,7 +25,7 @@ def generate_cards(words: list[str], db: Session) -> list[Card]:
     existing = {w for (w,) in db.query(Card.word).filter(Card.word.in_(words)).all()}
     new_words = [w for w in words if w not in existing]
     resp = client.chat.completions.create(
-        model="deepseek-v4-flash",
+        model=route(Task.BULK),
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {
