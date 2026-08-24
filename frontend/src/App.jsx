@@ -7,6 +7,11 @@ import QuizPage from "./views/QuizPage.jsx";
 import SpellingPage from "./views/SpellingPage.jsx";
 import ListeningPage from "./views/ListeningPage.jsx";
 import MixedPage from "./views/MixedPage.jsx";
+import WordsPage from "./views/WordsPage.jsx";
+import StoriesPage from "./views/StoriesPage.jsx";
+import AddPage from "./views/AddPage.jsx";
+import StatsPage from "./views/StatsPage.jsx";
+import SettingsPage from "./views/SettingsPage.jsx";
 
 /* ============ 视图路由 ============ */
 const NAV_TABS = { queue: "队列", words: "单词本", stories: "故事", add: "加词" };
@@ -73,10 +78,11 @@ export default function App() {
       {/* 内容区 */}
       <main className="stage">
         {view === "queue" && <QueueView setView={setView} setStudyQueue={setStudyQueue} />}
-        {view === "words" && <PlaceholderView name="单词本" />}
-        {view === "stories" && <PlaceholderView name="故事" />}
-        {view === "add" && <PlaceholderView name="加词" />}
-        {view === "settings" && <PlaceholderView name="设置" />}
+        {view === "words" && <WordsPage />}
+        {view === "stories" && <StoriesPage />}
+        {view === "add" && <AddPage onStartStudy={(cards) => { setStudyQueue(cards); setView("study"); }} />}
+        {view === "stats" && <StatsPage onBack={() => setView("queue")} />}
+        {view === "settings" && <SettingsPage darkMode={darkMode} setDarkMode={setDarkMode} />}
         {view === "study" && <StudyPage queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} />}
         {view === "quiz" && <QuizPage onExit={() => setView("queue")} />}
         {view === "spelling" && <SpellingPage onExit={() => setView("queue")} />}
