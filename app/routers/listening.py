@@ -50,6 +50,15 @@ def get_listening(limit: int = 5, db: Session = Depends(get_db)):
         if c.id not in seen:
             seen.add(c.id)
             pool.append(c)
+
+    # 今日队列为空时，从全库随机取词
+    if not pool:
+        all_word_cards = (
+            db.execute(select(Card).where(Card.kind == "word")).scalars().all()
+        )
+        pool = random.sample(all_word_cards, min(limit, len(all_word_cards)))
+        seen = {c.id for c in pool}
+
     selected = pool[:limit]
 
     if not selected:

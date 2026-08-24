@@ -322,6 +322,12 @@ function finishStudy() {
   $("#done-detail").textContent = bits.join("。") + "。";
 }
 
+// 退出学习流程
+$("#btn-exit-study").addEventListener("click", async () => {
+  show("view-queue");
+  await loadToday();
+});
+
 $("#btn-to-quiz").addEventListener("click", async () => {
   try {
     await startQuiz();
@@ -859,8 +865,13 @@ let spellingCorrect = 0;
 async function startSpelling() {
   const data = await api("/api/today");
   spellingQueue = [...data.new_cards, ...data.due_cards].filter((c) => c.kind === "word");
+  // 今日队列为空时，从全库取词
   if (spellingQueue.length === 0) {
-    toast("今天没有需要拼写的词");
+    const allData = await api("/api/cards");
+    spellingQueue = allData.cards.filter((c) => c.kind === "word");
+  }
+  if (spellingQueue.length === 0) {
+    toast("还没有单词，先去加词吧");
     return;
   }
   spellingIdx = 0;

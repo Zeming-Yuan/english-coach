@@ -122,7 +122,7 @@ body {
 .btn-ghost:hover { color: var(--ink); border-color: var(--muted); }
 
 /* ---------- 学习页 ---------- */
-.study-head { display: flex; justify-content: flex-end; padding: 4px 2px 8px; }
+.study-head { display: flex; justify-content: space-between; align-items: center; padding: 4px 2px 8px; }
 .study-count { font-weight: 800; font-size: 14px; color: var(--muted); }
 
 .progress-track {
