@@ -195,6 +195,10 @@ async function loadToday() {
     } else {
       streakEl.hidden = true;
     }
+    // 晚间提醒：20 点后还没学 → 睡眠巩固提示
+    const hour = new Date().getHours();
+    const needStudy = stats.reviewed_today === 0;
+    $("#evening-reminder").hidden = !(hour >= 20 && needStudy);
   } catch {}
   return data;
 }

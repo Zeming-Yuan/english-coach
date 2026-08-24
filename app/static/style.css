@@ -1154,6 +1154,19 @@ body {
   margin-bottom: 12px;
 }
 
+/* 晚间提醒条（睡眠巩固） */
+.evening-reminder {
+  background: linear-gradient(120deg, #E8E0FF, #D9E7FF);
+  border-radius: 14px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #5A4FA8;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow-sm);
+}
+.evening-reminder[hidden] { display: none; }
+
 /* ============================================================
    学习统计页
    ============================================================ */
