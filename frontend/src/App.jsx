@@ -85,7 +85,7 @@ export default function App() {
         {view === "stats" && <StatsPage onBack={() => setView("queue")} />}
         {view === "settings" && <SettingsPage darkMode={darkMode} setDarkMode={setDarkMode} />}
         {view === "lessons" && <LessonsPage onExit={() => setView("queue")} />}
-        {view === "study" && <StudyPage queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} />}
+        {view === "study" && <StudyPage queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} />}
         {view === "quiz" && <QuizPage onExit={() => setView("queue")} />}
         {view === "spelling" && <SpellingPage onExit={() => setView("queue")} />}
         {view === "listening" && <ListeningPage onExit={() => setView("queue")} />}
@@ -117,6 +117,7 @@ function QueueView({ setView, setStudyQueue }) {
   const [stats, setStats] = useState(null);
   const [lessonData, setLessonData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [dailyGoal, setDailyGoal] = useState(() => storageGet("dailyGoal", 10));
 
   useEffect(() => {
     async function load() {
@@ -148,16 +149,23 @@ function QueueView({ setView, setStudyQueue }) {
   const isEmpty = data.new_cards.length === 0 && data.due_cards.length === 0 && errorCount === 0;
 
   // 今日目标环
-  const dailyGoal = storageGet("dailyGoal", 10);
   const done = stats?.reviewed_today || 0;
   const queueTotal = errorCount + data.new_cards.length + data.due_cards.length;
   const target = Math.min(dailyGoal, queueTotal);
   const pct = target > 0 ? Math.min(1, done / target) : 0;
   const deg = Math.round(pct * 360);
+  const hour = new Date().getHours();
+  const showEveningReminder = hour >= 20 && done === 0;
 
   return (
     <section className="view view-center">
       <p className="eyebrow">今天的学习</p>
+
+      {showEveningReminder && (
+        <div className="evening-reminder">
+          🌙 睡前的复习记忆最牢——今天学完再去睡吧
+        </div>
+      )}
 
       <div className="queue-cards">
         <div className="big-stat">
@@ -179,6 +187,20 @@ function QueueView({ setView, setStudyQueue }) {
             <div className="goal-text">
               <span className="goal-title">{done >= target ? "今日目标达成 🎉" : pct === 0 ? "今日目标" : "继续加油"}</span>
               <span className="goal-sub">{done >= target ? `目标 ${target} 词已达成` : `还剩 ${target - done} 张`}</span>
+              <select
+                className="goal-daily-set"
+                value={dailyGoal}
+                onChange={(e) => {
+                  const n = parseInt(e.target.value);
+                  setDailyGoal(n);
+                  storageSet("dailyGoal", n);
+                }}
+              >
+                <option value={5}>5 词/日</option>
+                <option value={10}>10 词/日</option>
+                <option value={15}>15 词/日</option>
+                <option value={20}>20 词/日</option>
+              </select>
             </div>
           </div>
         )}

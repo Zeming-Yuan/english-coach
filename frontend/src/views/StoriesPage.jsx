@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { api } from "../lib/api.js";
 import { speak } from "../lib/tts.js";
 import { escapeHtml } from "../lib/utils.js";
+import { showToast } from "../App.jsx";
 
 /**
  * 故事视图：列表/删除/阅读/整句朗读/点词弹卡。
@@ -10,6 +11,7 @@ export default function StoriesPage() {
   const [stories, setStories] = useState([]);
   const [activeStory, setActiveStory] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
     api("/api/stories").then((d) => { setStories(d.stories); setLoading(false); }).catch(() => setLoading(false));
@@ -41,9 +43,18 @@ export default function StoriesPage() {
     <section className="view">
       <div className="page-head">
         <h2 className="page-title">故事</h2>
-        <button className="btn btn-primary btn-small" onClick={async () => {
-          try { await api("/api/stories/generate", { method: "POST" }); const d = await api("/api/stories"); setStories(d.stories); } catch {}
-        }}>生成新故事</button>
+        <button className="btn btn-primary btn-small" disabled={generating} onClick={async () => {
+          setGenerating(true);
+          try {
+            await api("/api/stories/generate", { method: "POST" });
+            const d = await api("/api/stories");
+            setStories(d.stories);
+          } catch (e) {
+            showToast("生成失败：" + e.message, "重试");
+          } finally {
+            setGenerating(false);
+          }
+        }}>{generating ? "生成中…" : "生成新故事"}</button>
       </div>
       <div className="story-list">
         {stories.length === 0 && <div className="story-empty">还没有故事。「生成新故事」会用你学过的词编一篇</div>}

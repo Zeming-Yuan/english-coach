@@ -27,13 +27,22 @@ export default function QuizPage({ onExit }) {
   const q = questions[qIdx];
   const total = questions.length;
 
-  // cn2en/fill 格子渲染
-  const renderBoxes = (typed, wordLen) => {
+  // cn2en/fill 格子渲染（feedback 阶段显示正确答案）
+  const renderBoxes = (typed, wordLen, expected = null) => {
     const boxes = [];
     for (let i = 0; i < wordLen; i++) {
       const ch = i < typed.length ? typed[i] : "";
-      const cls = ch ? "spelling-box" : "spelling-box box-pending";
-      boxes.push(<span key={i} className={cls}>{ch}</span>);
+      let cls = "spelling-box box-pending";
+      if (expected) {
+        // 反馈阶段：显示正确字母（绿色）
+        cls = "spelling-box box-correct";
+        boxes.push(<span key={i} className={cls}>{expected[i] || ""}</span>);
+      } else if (ch) {
+        cls = "spelling-box";
+        boxes.push(<span key={i} className={cls}>{ch}</span>);
+      } else {
+        boxes.push(<span key={i} className={cls}>{""}</span>);
+      }
     }
     return boxes;
   };
@@ -82,7 +91,7 @@ export default function QuizPage({ onExit }) {
     }
   }, [qIdx, total]);
 
-  // Enter 键
+  // Enter 键（输入阶段挂在 input，反馈阶段挂在 document）
   const handleKeyDown = useCallback((e) => {
     if (e.key === "Enter") {
       e.preventDefault();
@@ -90,6 +99,16 @@ export default function QuizPage({ onExit }) {
       else if (phase === "feedback") nextQuestion();
     }
   }, [phase, confirmAnswer, nextQuestion]);
+
+  // 反馈阶段文档级 Enter
+  useEffect(() => {
+    if (phase !== "feedback") return;
+    const handler = (e) => {
+      if (e.key === "Enter") { e.preventDefault(); nextQuestion(); }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [phase, nextQuestion]);
 
   // 跳过
   const skipQuestion = useCallback(() => {
@@ -199,16 +218,24 @@ export default function QuizPage({ onExit }) {
 
         {/* 反馈 */}
         {phase === "feedback" && feedback && (
-          <div className={`quiz-feedback ${feedback.correct ? "ok" : "err"}`}>
-            {feedback.correct ? (
-              "✅ 正确！"
-            ) : (
-              <>
-                {feedback.userInput && <>❌ 你的答案：<b>{escapeHtml(feedback.userInput || "（空）")}</b><br /></>}
-                正确答案：<b className="right">{escapeHtml(feedback.expected)}</b>
-              </>
+          <>
+            {/* 错题高亮正确字母 */}
+            {!feedback.correct && (q.type === "cn2en" || q.type === "fill") && (
+              <div className="spelling-word-display">
+                {renderBoxes(feedback.userInput || "", q.word_length || feedback.expected.length, feedback.expected)}
+              </div>
             )}
-          </div>
+            <div className={`quiz-feedback ${feedback.correct ? "ok" : "err"}`}>
+              {feedback.correct ? (
+                "✅ 正确！"
+              ) : (
+                <>
+                  {feedback.userInput && <>❌ 你的答案：<b>{escapeHtml(feedback.userInput || "（空）")}</b><br /></>}
+                  正确答案：<b className="right">{escapeHtml(feedback.expected)}</b>
+                </>
+              )}
+            </div>
+          </>
         )}
 
         {/* 按钮 */}

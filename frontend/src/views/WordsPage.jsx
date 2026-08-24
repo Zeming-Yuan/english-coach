@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { api } from "../lib/api.js";
 import { speak, prewarmTts } from "../lib/tts.js";
 import { escapeHtml } from "../lib/utils.js";
+import { showToast } from "../App.jsx";
 
 /**
  * 单词本视图：搜索/A-Z/快速查阅/详情/编辑/删除/记忆法/换例句/困难词。
@@ -11,6 +12,8 @@ export default function WordsPage({ onBack }) {
   const [query, setQuery] = useState("");
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [quickPeek, setQuickPeek] = useState(null);
+  const [peekPos, setPeekPos] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     api("/api/cards").then((d) => {
@@ -51,6 +54,9 @@ export default function WordsPage({ onBack }) {
     return <WordDetail cardId={detail} onBack={() => setDetail(null)} />;
   }
 
+  // 点击关闭快速查阅
+  const closePeek = () => { setQuickPeek(null); };
+
   return (
     <section className="view">
       <div className="page-head">
@@ -73,7 +79,11 @@ export default function WordsPage({ onBack }) {
             if (c.graduated) badges.push("毕业");
             if (c.error_count > 0) badges.push(`错词×${c.error_count}`);
             return (
-              <div key={c.id} className="word-item" onClick={() => setDetail(c.id)}>
+              <div key={c.id} className="word-item" onClick={() => setDetail(c.id)} onContextMenu={(e) => {
+                e.preventDefault();
+                setQuickPeek(c);
+                setPeekPos({ x: Math.min(e.clientX, window.innerWidth - 280), y: Math.min(e.clientY, window.innerHeight - 200) });
+              }}>
                 <div className="word-main">
                   <div className="word-item-word">
                     {escapeHtml(c.word)}
@@ -96,6 +106,23 @@ export default function WordsPage({ onBack }) {
           ))}
         </nav>
       </div>
+
+      {/* 快速查阅浮层 */}
+      {quickPeek && (
+        <div className="quick-peek" style={{ left: peekPos.x, top: peekPos.y }}>
+          <div className="quick-peek-head">
+            <span className="qp-word">{quickPeek.word}</span>
+            <button className="speak-mini" onClick={() => speak(quickPeek.word)}>🔊</button>
+          </div>
+          {quickPeek.phonetic && <div className="qp-phonetic">{quickPeek.phonetic}</div>}
+          <div className="qp-meaning">{quickPeek.meaning}</div>
+          {quickPeek.example && <div className="qp-example">{quickPeek.example}</div>}
+          <button className="btn btn-ghost btn-small" style={{ marginTop: 8 }} onClick={() => { setDetail(quickPeek.id); setQuickPeek(null); }}>查看详情 →</button>
+        </div>
+      )}
+
+      {/* 点击关闭浮层 */}
+      {quickPeek && <div style={{ position: "fixed", inset: 0, zIndex: 149 }} onClick={closePeek} />}
     </section>
   );
 }
@@ -136,7 +163,9 @@ function WordDetail({ cardId, onBack }) {
     try {
       const updated = await api(`/api/cards/${c.id}/regenerate`, { method: "POST" });
       setCard(updated);
-    } catch {}
+    } catch (e) {
+      showToast("换例句失败：" + e.message, "重试", regenerate);
+    }
   };
 
   const editMeaning = async () => {

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { api } from "../lib/api.js";
 import { speak } from "../lib/tts.js";
 import { escapeHtml } from "../lib/utils.js";
+import { showToast } from "../App.jsx";
 
 /**
  * 课程学习视图：AI 20 级递进（音标启蒙→高频词→简单句→场景对话）。
@@ -37,7 +38,7 @@ export default function LessonsPage({ onExit }) {
         setActiveLesson(lesson);
       }
     } catch (e) {
-      window.dispatchEvent(new CustomEvent("toast-detail", { detail: { msg: "课程加载失败：" + e.message } }));
+      showToast("课程加载失败：" + e.message, "重试");
     } finally {
       setGenerating(false);
     }

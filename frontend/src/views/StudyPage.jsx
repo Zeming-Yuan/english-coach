@@ -10,7 +10,7 @@ import { escapeHtml, highlightWord } from "../lib/utils.js";
  * onExit: () => void 返回队列
  * onToQuiz: () => void 进测验
  */
-export default function StudyPage({ queue, onExit, onToQuiz }) {
+export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
   const [idx, setIdx] = useState(0);
   const [flipped, setFlipped] = useState(false);
   const [graduated, setGraduated] = useState([]);
@@ -92,7 +92,7 @@ export default function StudyPage({ queue, onExit, onToQuiz }) {
             {answered} 张卡已复习，明天的队列会按你的记忆自动安排。
           </p>
           <button className="btn btn-primary" onClick={onToQuiz}>去做测验</button>
-          <button className="btn btn-ghost" style={{ marginTop: 8 }} onClick={() => { /* 再练混合 */ }}>🎲 再练一轮混合</button>
+          {onToMixed && <button className="btn btn-ghost" style={{ marginTop: 8 }} onClick={onToMixed}>🎲 再练一轮混合</button>}
         </div>
       </section>
     );
@@ -128,11 +128,13 @@ export default function StudyPage({ queue, onExit, onToQuiz }) {
           <div className="card-face card-front">
             <div className={`front-main ${isSentence ? "has-mark" : ""}`} dangerouslySetInnerHTML={{ __html: frontMain }} />
             <div className="front-phonetic">{isSentence ? card.word : (card.phonetic || "")}</div>
+            <button className="speak-btn" title="朗读" style={{ position: "absolute", top: 14, right: 16 }} onClick={(e) => { e.stopPropagation(); speak(isSentence ? (card.example || card.word) : card.word); }}>🔊</button>
             <span className="flip-hint">先回想 3 秒 · 点这翻面对照</span>
           </div>
           <div className="card-face card-back">
             <div className="back-meaning">{backMeaning}</div>
             {backExample && <div className="back-example" dangerouslySetInnerHTML={{ __html: backExample }} />}
+            {card.example && <button className="speak-btn" title="朗读例句" style={{ position: "absolute", top: 14, right: 16 }} onClick={(e) => { e.stopPropagation(); speak(card.example); }}>🔊</button>}
             {contexts.length > 0 && (
               <div className="bubble-list">
                 {contexts.map((ctx, i) => (
