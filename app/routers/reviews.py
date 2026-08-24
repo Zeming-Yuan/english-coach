@@ -11,8 +11,8 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models.card import Card
 from app.models.review import Review
-from app.services.scheduler import build_fsrs_card, schedule
 from app.services.graduation import graduate_to_sentence, is_graduated
+from app.services.scheduler import build_fsrs_card, schedule
 
 router = APIRouter()
 

@@ -15,8 +15,8 @@ from enum import Enum
 class Task(str, Enum):
     """任务类型：决定路由到哪个模型。"""
 
-    BULK = "bulk"             # 批量生成类：量大、任务简单、对推理要求低
-    REASONING = "reasoning"   # 推理类：任务难、需要多步推理或工具调用
+    BULK = "bulk"  # 批量生成类：量大、任务简单、对推理要求低
+    REASONING = "reasoning"  # 推理类：任务难、需要多步推理或工具调用
 
 
 FLASH_MODEL = "deepseek-v4-flash"

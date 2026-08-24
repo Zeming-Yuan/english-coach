@@ -1,7 +1,6 @@
 """故事路由。"""
 
-from fastapi import APIRouter, Depends,HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -12,24 +11,27 @@ from app.services.story_generator import generate_story
 
 router = APIRouter()
 
+
 @router.post("/stories/generate")
-def create_story(db:Session = Depends(get_db)):
+def create_story(db: Session = Depends(get_db)):
     """生成一篇 AI 故事。"""
     try:
         story = generate_story(db)
-    except Exception as e:
+    except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return _story_to_dict(story,db)
+    return _story_to_dict(story, db)
+
 
 @router.get("/stories/{story_id}")
-def get_story(story_id:int,db:Session = Depends(get_db)):
+def get_story(story_id: int, db: Session = Depends(get_db)):
     """读取一篇故事（含关联词）。"""
-    story = db.get(Story,story_id)
+    story = db.get(Story, story_id)
     if story is None:
-        raise HTTPException(status_code=404,detail="Story not found")
-    return _story_to_dict(story,db)
+        raise HTTPException(status_code=404, detail="Story not found")
+    return _story_to_dict(story, db)
 
-def _story_to_dict(story:Story,db:Session) -> dict:
+
+def _story_to_dict(story: Story, db: Session) -> dict:
     """故事 → 字典（含关联词卡信息）。"""
     stmt = (
         select(Card)
@@ -41,7 +43,8 @@ def _story_to_dict(story:Story,db:Session) -> dict:
         "id": story.id,
         "title": story.title,
         "content": story.content,
-        "words":[
-            {"id":c.id,"word":c.word,"phonetic":c.phonetic,"meaning":c.meaning} for c in cards
+        "words": [
+            {"id": c.id, "word": c.word, "phonetic": c.phonetic, "meaning": c.meaning}
+            for c in cards
         ],
     }

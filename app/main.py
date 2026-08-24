@@ -6,7 +6,7 @@
 
 from fastapi import FastAPI
 
-from app.routers import health, quiz, reviews, today,stories
+from app.routers import health, quiz, reviews, stories, today
 
 app = FastAPI(
     title="EnglishCoach",
