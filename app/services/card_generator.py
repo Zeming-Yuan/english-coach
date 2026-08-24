@@ -23,6 +23,34 @@ SYSTEM_PROMPT = (
 )
 
 
+def regenerate_example(word: str) -> tuple[str, str, str]:
+    """为已有单词重新生成例句/翻译/讲解（换一个按钮，轻量）。"""
+    resp = client.chat.completions.create(
+        model=route(Task.BULK),
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "你是零基础英语老师。为单词重新生成一个新例句：具体、有画面感、"
+                    "用词简单，避免和常见例句重复。"
+                    '严格输出 JSON: {"example": "...", "example_cn": "...", "explanation": "..."}'
+                ),
+            },
+            {"role": "user", "content": word},
+        ],
+        response_format={"type": "json_object"},
+    )
+    content = resp.choices[0].message.content
+    if not content:
+        raise ValueError("DeepSeek 返回空内容")
+    data = json.loads(content)
+    return (
+        data.get("example", ""),
+        data.get("example_cn", ""),
+        data.get("explanation", ""),
+    )
+
+
 def generate_cards(words: list[str], db: Session) -> list[Card]:
     """批量生成词卡：调 DeepSeek → 解析 JSON → 入库（已存在的单词跳过）。"""
     existing = {w for (w,) in db.query(Card.word).filter(Card.word.in_(words)).all()}

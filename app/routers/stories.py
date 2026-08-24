@@ -42,6 +42,18 @@ def get_story(story_id: int, db: Session = Depends(get_db)):
     return _story_to_dict(story, db)
 
 
+@router.delete("/stories/{story_id}")
+def delete_story(story_id: int, db: Session = Depends(get_db)):
+    """删除故事（关联表 story_words 一并删除，词卡保留）。"""
+    story = db.get(Story, story_id)
+    if story is None:
+        raise HTTPException(status_code=404, detail="Story not found")
+    db.execute(StoryWord.__table__.delete().where(StoryWord.story_id == story_id))
+    db.delete(story)
+    db.commit()
+    return {"deleted": story_id}
+
+
 def _story_to_dict(story: Story, db: Session) -> dict:
     """故事 → 字典（含关联词卡信息）。"""
     stmt = (

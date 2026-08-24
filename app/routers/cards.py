@@ -10,7 +10,7 @@ from app.models.card import Card
 from app.models.error_card import ErrorCard
 from app.models.memo import Memo
 from app.models.review import Review
-from app.services.card_generator import generate_cards
+from app.services.card_generator import generate_cards, regenerate_example
 
 router = APIRouter()
 
@@ -65,6 +65,24 @@ def generate(req: GenerateCardsIn, db: Session = Depends(get_db)):
     }
 
 
+@router.post("/cards/{card_id}/regenerate")
+def regenerate_card_example(card_id: int, db: Session = Depends(get_db)):
+    """换一个例句：重新生成例句/翻译/讲解并更新卡。"""
+    card = db.get(Card, card_id)
+    if card is None:
+        raise HTTPException(status_code=404, detail="Card not found")
+    try:
+        example, example_cn, explanation = regenerate_example(card.word)
+    except (ValueError, TypeError) as e:
+        raise HTTPException(status_code=502, detail=str(e))
+    if example:
+        card.example = example
+        card.example_cn = example_cn
+        card.explanation = explanation
+        db.commit()
+    return card_to_dict(card, db)
+
+
 @router.get("/cards")
 def list_cards(db: Session = Depends(get_db)):
     """单词本：全库卡片，按创建时间倒序。"""
@@ -95,7 +113,8 @@ def get_card_detail(card_id: int, db: Session = Depends(get_db)):
     latest = reviews[0] if reviews else None
     history = [
         {
-            "rating": r.state,  # state 字段在 FSRS 里实际存的是评分
+            "rating": r.rating,  # 用户评分 1-4（旧数据为 None）
+            "state": r.state,  # FSRS 状态（兜底展示）
             "last_review": r.last_review.isoformat() if r.last_review else None,
             "review_count": r.review_count,
         }

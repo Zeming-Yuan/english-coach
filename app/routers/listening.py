@@ -137,6 +137,7 @@ def score_listening(payload: ListeningScoreIn, db: Session = Depends(get_db)):
         )
         review.last_review = now
         review.review_count += 1
+        review.rating = payload.rating  # 记录评分（复习历史展示）
     else:
         review = Review(
             card_id=payload.card_id,
@@ -148,6 +149,7 @@ def score_listening(payload: ListeningScoreIn, db: Session = Depends(get_db)):
             elapsed_days=0,
             last_review=now,
             review_count=1,
+            rating=payload.rating,
         )
         db.add(review)
 

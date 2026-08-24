@@ -528,14 +528,27 @@ body {
   border-radius: 16px;
   padding: 14px 16px;
   box-shadow: var(--shadow-sm);
-  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
   transition: transform 0.12s ease;
   text-align: left;
   font-family: var(--font);
 }
 .story-item:hover { transform: translateY(-1px); }
+.story-item-main { flex: 1; min-width: 0; cursor: pointer; }
 .story-item-title { font-size: 16px; font-weight: 800; color: var(--ink); }
 .story-item-meta { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.story-delete {
+  background: none;
+  border: none;
+  font-size: 15px;
+  cursor: pointer;
+  opacity: 0.55;
+  flex-shrink: 0;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+.story-delete:hover { opacity: 1; transform: scale(1.1); }
 .story-empty { color: var(--muted); font-size: 14px; text-align: center; padding: 48px 0; }
 
 /* 故事阅读页 */
@@ -632,6 +645,31 @@ body {
   font-size: 10px; font-weight: 800; opacity: 0.6;
   display: block; margin-bottom: 2px;
 }
+/* 课程列表 */
+.lesson-list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 14px 16px;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  margin-bottom: 10px;
+  font-family: var(--font);
+  transition: transform 0.12s ease;
+}
+.lesson-list-item:hover { transform: translateY(-1px); }
+.lesson-list-item-main { flex: 1; min-width: 0; }
+.lesson-list-item-title { font-size: 15px; font-weight: 800; color: var(--ink); }
+.lesson-list-item-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.story-delete-lesson {
+  background: none; border: none;
+  font-size: 18px; color: var(--muted);
+  cursor: pointer; flex-shrink: 0;
+}
+
 .lesson-word { cursor: default; }
 .lesson-master-btn {
   width: 30px;
@@ -867,6 +905,19 @@ body {
 .history-row:last-child { border-bottom: none; }
 .history-date { color: var(--muted); font-weight: 600; }
 .history-count { font-weight: 800; color: var(--ink); }
+.history-rating {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 1px 8px;
+  border-radius: 999px;
+}
+.history-rating.rating-1 { background: #FFE4E0; color: var(--coral); }
+.history-rating.rating-2 { background: #FFF3DE; color: #B8860B; }
+.history-rating.rating-3 { background: var(--mint-soft); color: #137A62; }
+.history-rating.rating-4 { background: var(--mint-soft); color: #137A62; }
+.history-rating.state-0 { background: #EBEDF0; color: var(--muted); }
+.history-rating.state-2 { background: #FFE4E0; color: var(--coral); }
+.history-rating.state-3 { background: var(--mint-soft); color: #137A62; }
 
 /* 详情页评分区 */
 #detail-rating-area {
@@ -1203,6 +1254,20 @@ body {
 .learn-now-row {
   margin-top: 12px;
 }
+
+/* spinner */
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--line);
+  border-top-color: var(--coral);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  vertical-align: -2px;
+  margin-right: 6px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* 跳过按钮 */
 .spelling-skip {

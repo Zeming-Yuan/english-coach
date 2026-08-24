@@ -20,3 +20,4 @@ class Review(Base):
     elapsed_days: Mapped[int] = mapped_column(Integer, nullable=False)
     last_review: Mapped[datetime | None] = mapped_column(DateTime)
     review_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    rating: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 评分 1-4（旧数据为空）

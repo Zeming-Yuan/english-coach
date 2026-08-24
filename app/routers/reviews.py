@@ -64,6 +64,7 @@ def submit_review(req: ReviewRequest, db: Session = Depends(get_db)):
         else 0
     )
     review.last_review = now
+    review.rating = req.rating  # 记录评分（复习历史展示）
     # 5. 毕业检查：词卡毕业则自动生成句子卡
     graduated_sentence = None
     if card.kind == "word" and is_graduated(review):

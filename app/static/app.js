@@ -742,6 +742,7 @@ function quizEnterNext(e) {
 
 // 测验结果（汇总错题）
 function showQuizResult() {
+  $("#btn-quiz-again").hidden = false;
   const total = state.questions.length;
   const wrongCount = state.wrongList.length;
   const correctCount = total - wrongCount;
@@ -797,6 +798,17 @@ function showResult(data) {
       "它们会出现在明天的队列里。";
   }
 }
+
+// 再测一次（换题库）
+$("#btn-quiz-again").addEventListener("click", async () => {
+  $("#btn-quiz-again").hidden = true;
+  try {
+    await startQuiz();
+  } catch (e) {
+    toast("再测失败：" + e.message);
+    $("#btn-quiz-again").hidden = false;
+  }
+});
 
 // 错题项点击 → 进单词详情
 $("#result-detail").addEventListener("click", async (e) => {
@@ -1049,10 +1061,19 @@ function renderWordDetail() {
   const historyEl = $("#detail-history");
   historyEl.innerHTML = "";
   if (c.review_history.length > 0) {
+    const ratingNames = { 1: "忘了", 2: "模糊", 3: "记得", 4: "太简单" };
+    const stateNames = { 0: "新词", 1: "学习中", 2: "重学", 3: "熟练" };
     c.review_history.forEach((r) => {
       const date = r.last_review ? new Date(r.last_review).toLocaleDateString() : "-";
-      const ratingNames = { 1: "忘了", 2: "模糊", 3: "记得", 4: "太简单" };
-      historyEl.innerHTML += `<div class="history-row"><span class="history-date">${date}</span><span class="history-count">第 ${r.review_count} 次</span></div>`;
+      // 有评分显示评分标签；旧数据（无评分）按 FSRS 状态兜底
+      const label = r.rating ? ratingNames[r.rating] : stateNames[r.state] || "复习";
+      const kind = r.rating ? `rating-${r.rating}` : `state-${r.state}`;
+      historyEl.innerHTML +=
+        `<div class="history-row">` +
+        `<span class="history-date">${date}</span>` +
+        `<span class="history-rating ${kind}">${label}</span>` +
+        `<span class="history-count">第 ${r.review_count} 次</span>` +
+        `</div>`;
     });
     historySection.hidden = false;
   } else {
@@ -1070,6 +1091,31 @@ $("#detail-example-speak").addEventListener("click", (e) => {
   e.stopPropagation();
   if (detailCard && detailCard.example) {
     speak(detailCard.example, $("#detail-example-speak"));
+  }
+});
+
+// 换一个例句（AI 重新生成）
+$("#detail-example-regen").addEventListener("click", async (e) => {
+  e.stopPropagation();
+  if (!detailCard) return;
+  const btn = $("#detail-example-regen");
+  btn.disabled = true;
+  btn.textContent = "⏳";
+  try {
+    detailCard = await api(`/api/cards/${detailCard.id}/regenerate`, { method: "POST" });
+    $("#detail-example-text").textContent = detailCard.example;
+    const exEl = $("#detail-example");
+    exEl.hidden = !(detailCard.example && detailCard.kind !== "sentence");
+    if (detailCard.explanation) {
+      $("#detail-explanation").textContent = detailCard.explanation;
+      $("#detail-explanation").hidden = false;
+    }
+    toast("例句已更新 🔄");
+  } catch (err) {
+    toast("换例句失败：" + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "🔄";
   }
 });
 
@@ -1263,6 +1309,7 @@ $("#btn-listening-back").addEventListener("click", async () => {
 
 /* ============ 混合练习（交错 Interleaving） ============ */
 let mixedQueue = [];
+let mixedWrong = []; // 答错题记录（完成页列表）
 let mixedIdx = 0;
 let mixedCorrect = 0;
 
@@ -1309,6 +1356,7 @@ async function startMixed() {
     mixedQueue = items;
     mixedIdx = 0;
     mixedCorrect = 0;
+    mixedWrong = [];
     show("view-mixed");
     renderMixedQuestion();
   } catch (e) {
@@ -1346,6 +1394,7 @@ function skipMixedQuestion(item) {
   const expected = item.q.word || (item.q.correct_index !== undefined ? item.q.options[item.q.correct_index] : "");
   sfxFail();
   if (expected) {
+    mixedWrong.push({ q: item.q, expected });
     mixedFeedback(item, document.body, false, expected, null);
   } else {
     const fb = document.createElement("div");
@@ -1388,7 +1437,8 @@ function renderMixedListen(item, body) {
     <div class="mixed-type-label">🎧 听发音选单词</div>
     <div class="listening-prompt">
       <button id="mixed-listen-speak" class="btn-speak-large" title="播放发音">🔊</button>
-      <div class="listening-meaning" style="color:var(--muted);font-size:14px;font-weight:600">点上面喇叭听发音</div>
+      <div class="listening-meaning">${escapeHtml(q.meaning || "")}</div>
+      <div class="listening-hint" style="font-size:12px">点喇叭听发音</div>
     </div>
     <div class="listening-options" id="mixed-listen-options"></div>
   `;
@@ -1401,6 +1451,7 @@ function renderMixedListen(item, body) {
       const correct = i === q.correct_index;
       if (correct) { sfxSuccess(); } else { sfxFail(); }
       mixedCorrect += correct ? 1 : 0;
+      if (!correct) mixedWrong.push({ q, expected: q.word });
       mixedFeedback(item, body, correct, q.word, i);
       try {
         await api("/api/listening/score", {
@@ -1457,6 +1508,7 @@ function renderMixedChoice(item, body) {
       const expected = result?.details?.[0]?.expected || opt;
       if (isCorrect) { sfxSuccess(); } else { sfxFail(); }
       mixedCorrect += isCorrect ? 1 : 0;
+      if (!isCorrect) mixedWrong.push({ q: item.q, expected });
       mixedFeedback(item, body, isCorrect, expected, null);
       setTimeout(() => mixedNext(item), 1400);
     });
@@ -1531,6 +1583,7 @@ async function submitMixedSpell(item) {
   const correct = resp.correct;
   if (correct) { sfxSuccess(); } else { sfxFail(); }
   mixedCorrect += correct ? 1 : 0;
+  if (!correct) mixedWrong.push({ q, expected: q.word });
   mixedFeedback(item, document.body, correct, q.word, typed);
   setTimeout(() => mixedNext(item), 1400);
 }
@@ -1572,10 +1625,35 @@ function showMixedDone() {
   const total = mixedQueue.length;
   const pct = Math.round((mixedCorrect / total) * 100);
   $("#mixed-result").textContent = `答对 ${mixedCorrect}/${total} 题（${pct} 分）· 混合题型记忆更牢 🚀`;
+
+  // 错题列表（可点击进详情）
+  const body = $("#mixed-body");
+  if (mixedWrong.length > 0) {
+    let html = `<div class="quiz-wrong-list"><div class="quiz-wrong-title">❌ 错题回顾（点击查看）</div>`;
+    mixedWrong.forEach((w, i) => {
+      const q = w.q;
+      const meaning = q.meaning || "";
+      html +=
+        `<div class="quiz-wrong-item" data-wrong-idx="${i}" style="cursor:pointer">` +
+        `<span class="quiz-wrong-meaning">${escapeHtml(meaning)}</span>` +
+        `<span class="quiz-wrong-expected">${escapeHtml(w.expected)} ›</span></div>`;
+    });
+    html += `</div>`;
+    body.innerHTML = html;
+  }
 }
 
 // 入口
 $("#btn-start-mixed").addEventListener("click", startMixed);
+
+// 错题项点击 → 进详情
+$("#mixed-body").addEventListener("click", (e) => {
+  const item = e.target.closest(".quiz-wrong-item");
+  if (item) {
+    const w = mixedWrong[parseInt(item.dataset.wrongIdx)];
+    if (w && w.q.card_id) openWordDetail(w.q.card_id);
+  }
+});
 
 // 再来一轮
 $("#btn-mixed-again").addEventListener("click", () => {
@@ -1985,7 +2063,7 @@ $("#btn-add-generate").addEventListener("click", async () => {
   const words = raw.split(/[,，\s]+/).filter(Boolean).slice(0, 20);
   const btn = $("#btn-add-generate");
   btn.disabled = true;
-  $("#add-result").innerHTML = '<span class="loading">AI 生成中，请稍候…</span>';
+  $("#add-result").innerHTML = '<span class="spinner"></span><span class="loading">AI 生成中，请稍候…</span>';
   try {
     const data = await api("/api/cards/generate", {
       method: "POST",
@@ -2029,13 +2107,27 @@ async function loadStories() {
       return;
     }
     data.stories.forEach((s) => {
-      const el = document.createElement("button");
+      const el = document.createElement("div");
       el.className = "story-item";
       el.innerHTML = `
-        <div class="story-item-title">${escapeHtml(s.title)}</div>
-        <div class="story-item-meta">${s.words.length} 个词 · ${escapeHtml(s.content.slice(0, 40))}…</div>
+        <div class="story-item-main">
+          <div class="story-item-title">${escapeHtml(s.title)}</div>
+          <div class="story-item-meta">${s.words.length} 个词 · ${escapeHtml(s.content.slice(0, 40))}…</div>
+        </div>
+        <button class="story-delete" title="删除故事">🗑</button>
       `;
-      el.addEventListener("click", () => openStory(s.id));
+      el.querySelector(".story-item-main").addEventListener("click", () => openStory(s.id));
+      el.querySelector(".story-delete").addEventListener("click", async (e) => {
+        e.stopPropagation();
+        if (!confirm(`删除故事「${s.title}」？（词卡不会删）`)) return;
+        try {
+          await api(`/api/stories/${s.id}`, { method: "DELETE" });
+          el.remove();
+          toast("已删除");
+        } catch (err) {
+          toast("删除失败：" + err.message);
+        }
+      });
       list.appendChild(el);
     });
   } catch (e) {
@@ -2202,11 +2294,8 @@ async function loadLessonEntry() {
       entry.hidden = false;
       $("#lesson-entry-title").textContent = "20 级课程全部完成！🎓";
       $("#lesson-entry-sub").textContent = "继续用队列/故事巩固吧";
-      btn.textContent = "回顾";
-      btn.onclick = () => {
-        const last = data.lessons[data.lessons.length - 1];
-        openLesson(last.level);
-      };
+      btn.textContent = "回顾全部";
+      btn.onclick = () => openLessonList();
       return;
     }
     if (data.lessons.length === 0) {
@@ -2223,11 +2312,51 @@ async function loadLessonEntry() {
     $("#lesson-entry-sub").textContent = `已完成 ${data.lessons.length}/20 课 · 下一课：${data.next_level}`;
     btn.textContent = "继续 →";
     btn.onclick = () => openLesson(last.level);
+    // 已学多课入口旁加"全部课"小按钮（回看历史课）
+    $("#btn-lesson-list").hidden = data.lessons.length <= 1;
   } catch {
     $("#lesson-entry").hidden = true;
     $("#btn-open-lesson").hidden = true;
   }
 }
+
+// 全部课按钮
+$("#btn-lesson-list").addEventListener("click", openLessonList);
+
+// 课程列表（回看历史整课）
+async function openLessonList() {
+  try {
+    const data = await api("/api/lessons");
+    const list = $("#lesson-list");
+    list.innerHTML = "";
+    if (data.lessons.length === 0) {
+      list.innerHTML = `<div class="story-empty">还没有课程</div>`;
+      return;
+    }
+    [...data.lessons].reverse().forEach((l) => {
+      const item = document.createElement("div");
+      item.className = "lesson-list-item";
+      item.innerHTML = `
+        <div class="lesson-list-item-main">
+          <div class="lesson-list-item-title">第 ${l.level} 课 · ${escapeHtml(l.title)}</div>
+          <div class="lesson-list-item-sub">${(l.content.dialogue || []).length} 句对话 · 点击回看</div>
+        </div>
+        <button class="story-delete-lesson" title="查看">›</button>
+      `;
+      item.addEventListener("click", () => openLesson(l.level));
+      list.appendChild(item);
+    });
+    show("view-lesson-list");
+  } catch (e) {
+    toast("加载课程失败：" + e.message);
+  }
+}
+
+$("#btn-back-lesson-list").addEventListener("click", async () => {
+  show("view-queue");
+  await loadToday();
+  await loadLessonEntry();
+});
 
 async function openLesson(level, generate = false) {
   try {
