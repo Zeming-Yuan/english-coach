@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.routers import (
     cards,
+    export,
     health,
     lessons,
     listening,
@@ -40,6 +41,7 @@ app.include_router(tts.router, prefix="/api", tags=["tts"])
 app.include_router(lessons.router, prefix="/api", tags=["lessons"])
 app.include_router(listening.router, prefix="/api", tags=["listening"])
 app.include_router(memos.router, prefix="/api", tags=["memos"])
+app.include_router(export.router, prefix="/api", tags=["export"])
 
 # 前端静态文件
 app.mount("/static", StaticFiles(directory="app/static"), name="static")

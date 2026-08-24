@@ -167,3 +167,39 @@ def test_get_card_detail_with_reviews(client, db_session):
     assert data["review_count"] == 2
     assert data["next_due"] is not None
     assert len(data["review_history"]) == 2
+
+
+def test_update_card(client, db_session):
+    """编辑词卡：只更新提供的字段。"""
+    db_session.add(Card(word="apple", meaning="苹果", example="I eat an apple.", kind="word"))
+    db_session.commit()
+    resp = client.put("/api/cards/1", json={"meaning": "苹果（水果）", "example": "The red apple fell down."})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["meaning"] == "苹果（水果）"
+    assert data["example"] == "The red apple fell down."
+
+
+def test_delete_card_cascades(client, db_session):
+    """删除词卡：级联清 reviews/memos。"""
+    from datetime import datetime, timezone
+
+    from app.models.memo import Memo
+    from app.models.review import Review
+    card = Card(word="apple", meaning="苹果", kind="word")
+    db_session.add(card)
+    db_session.commit()
+    db_session.refresh(card)
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    db_session.add(Review(card_id=card.id, state=1, due=now, stability=1.0, difficulty=1.0, elapsed_days=0, last_review=now, review_count=1))
+    db_session.add(Memo(card_id=card.id, content="谐音记忆"))
+    db_session.commit()
+    resp = client.delete(f"/api/cards/{card.id}")
+    assert resp.status_code == 200
+    assert db_session.query(Review).filter_by(card_id=card.id).count() == 0
+    assert db_session.query(Memo).filter_by(card_id=card.id).count() == 0
+
+
+def test_update_card_not_found(client):
+    resp = client.put("/api/cards/999", json={"meaning": "x"})
+    assert resp.status_code == 404

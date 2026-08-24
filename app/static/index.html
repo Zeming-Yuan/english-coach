@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=31">
+  <link rel="stylesheet" href="/static/style.css?v=32">
 </head>
 <body>
   <div class="app">
@@ -53,6 +53,12 @@
             <div class="goal-text">
               <span id="goal-title" class="goal-title">今日目标</span>
               <span id="goal-sub" class="goal-sub">完成队列</span>
+              <select id="goal-daily-set" class="goal-daily-set" title="设置每日目标">
+                <option value="5">5 词/日</option>
+                <option value="10" selected>10 词/日</option>
+                <option value="15">15 词/日</option>
+                <option value="20">20 词/日</option>
+              </select>
             </div>
           </div>
         </div>
@@ -348,6 +354,31 @@
           </div>
         </div>
 
+        <!-- 本周正确率 + 8 周趋势 -->
+        <div class="weekly-accuracy">
+          <h3 class="lesson-section">本周正确率 <span id="week-acc-val" class="week-acc">-</span></h3>
+          <div id="week-bars" class="week-bars"></div>
+        </div>
+
+        <!-- 导出 -->
+        <div class="export-row">
+          <button id="btn-export-json" class="btn btn-ghost btn-small">💾 备份词库</button>
+          <button id="btn-export-anki" class="btn btn-ghost btn-small">🎴 导出 Anki</button>
+          <button id="btn-report-card" class="btn btn-ghost btn-small">🏅 成绩单</button>
+        </div>
+
+        <!-- 成绩单 modal -->
+        <div id="report-modal" class="modal" hidden>
+          <div class="modal-mask" data-close></div>
+          <div class="modal-card report-card">
+            <canvas id="report-canvas" width="340" height="420"></canvas>
+            <div class="report-actions">
+              <button id="btn-report-download" class="btn btn-primary btn-small">💾 保存图片</button>
+              <button class="btn btn-ghost btn-small" data-close>关闭</button>
+            </div>
+          </div>
+        </div>
+
         <!-- 日历热力图（GitHub 风格，最近一年） -->
         <h3 class="lesson-section">最近 1 年</h3>
         <div class="gh-calendar-wrap">
@@ -418,6 +449,13 @@
             <button class="btn-rating rating-4" data-rating="4">4<span class="rating-label">太简单</span></button>
           </div>
         </div>
+
+        <!-- 管理操作 -->
+        <div class="detail-actions">
+          <button id="btn-detail-hard" class="btn btn-ghost btn-small">⭕ 困难词</button>
+          <button id="btn-detail-edit" class="btn btn-ghost btn-small">✏️ 编辑</button>
+          <button id="btn-detail-delete" class="btn btn-ghost btn-small danger">🗑 删除</button>
+        </div>
       </section>
 
       <!-- ===== 视图：课程学习 ===== -->
@@ -480,6 +518,6 @@
     </nav>
   </div>
 
-  <script src="/static/app.js?v=37"></script>
+  <script src="/static/app.js?v=38"></script>
 </body>
 </html>

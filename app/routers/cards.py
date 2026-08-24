@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models.card import Card
 from app.models.error_card import ErrorCard
+from app.models.hard_card import HardCard
 from app.models.memo import Memo
 from app.models.review import Review
 from app.services.card_generator import generate_cards, regenerate_example
@@ -19,6 +20,66 @@ class GenerateCardsIn(BaseModel):
     """生成词卡请求体。"""
 
     words: list[str] = Field(min_length=1, max_length=20)
+
+
+class UpdateCardIn(BaseModel):
+    """词卡编辑请求体：字段可部分更新。"""
+
+    meaning: str | None = Field(default=None, max_length=500)
+    phonetic: str | None = Field(default=None, max_length=50)
+    example: str | None = Field(default=None, max_length=500)
+    example_cn: str | None = Field(default=None, max_length=500)
+    explanation: str | None = Field(default=None, max_length=500)
+
+
+@router.post("/cards/{card_id}/hard")
+def toggle_hard(card_id: int, db: Session = Depends(get_db)):
+    """切换困难词标记（自主增强：优先重现）。"""
+    card = db.get(Card, card_id)
+    if card is None:
+        raise HTTPException(status_code=404, detail="Card not found")
+    row = (
+        db.execute(select(HardCard).where(HardCard.card_id == card_id))
+        .scalars()
+        .first()
+    )
+    if row:
+        db.delete(row)
+        db.commit()
+        return {"card_id": card_id, "is_hard": False}
+    db.add(HardCard(card_id=card_id))
+    db.commit()
+    return {"card_id": card_id, "is_hard": True}
+
+
+@router.put("/cards/{card_id}")
+def update_card(card_id: int, payload: UpdateCardIn, db: Session = Depends(get_db)):
+    """编辑词卡（用户纠正 AI 生成错误）。"""
+    card = db.get(Card, card_id)
+    if card is None:
+        raise HTTPException(status_code=404, detail="Card not found")
+    data = payload.model_dump(exclude_none=True)
+    for field, value in data.items():
+        setattr(card, field, value)
+    db.commit()
+    return card_to_dict(card, db)
+
+
+@router.delete("/cards/{card_id}")
+def delete_card(card_id: int, db: Session = Depends(get_db)):
+    """删除词卡（级联清复习/记忆法/错词/故事关联）。"""
+    card = db.get(Card, card_id)
+    if card is None:
+        raise HTTPException(status_code=404, detail="Card not found")
+    from app.models.story import StoryWord
+
+    db.execute(Review.__table__.delete().where(Review.card_id == card_id))
+    db.execute(Memo.__table__.delete().where(Memo.card_id == card_id))
+    db.execute(ErrorCard.__table__.delete().where(ErrorCard.card_id == card_id))
+    db.execute(StoryWord.__table__.delete().where(StoryWord.card_id == card_id))
+    db.delete(card)
+    db.commit()
+    return {"deleted": card_id}
 
 
 def card_to_dict(card: Card, db: Session) -> dict:
@@ -35,6 +96,11 @@ def card_to_dict(card: Card, db: Session) -> dict:
         .scalars()
         .first()
     )
+    hard = (
+        db.execute(select(HardCard).where(HardCard.card_id == card.id))
+        .scalars()
+        .first()
+    )
     return {
         "id": card.id,
         "word": card.word,
@@ -48,6 +114,7 @@ def card_to_dict(card: Card, db: Session) -> dict:
         "review_count": review.review_count if review else 0,
         "graduated": review.state == 3 if review else False,
         "error_count": error.error_count if error else 0,
+        "is_hard": hard is not None,
     }
 
 

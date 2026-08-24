@@ -90,3 +90,22 @@ def test_errors_endpoint(client, db_session):
     assert errs[0]["card_id"] == card.id
     assert errs[0]["error_count"] == 2
     assert errs[0]["word"] == card.word
+
+
+def test_toggle_hard(client, db_session):
+    """困难词切换：标记→队列优先→取消。"""
+    from app.models.hard_card import HardCard
+    card = _add_word(db_session, word="difficult-word")
+    # 标记
+    resp = client.post(f"/api/cards/{card.id}/hard")
+    assert resp.status_code == 200
+    assert resp.json()["is_hard"] is True
+    assert db_session.query(HardCard).filter_by(card_id=card.id).count() == 1
+    # 队列优先
+    today = client.get("/api/today").json()
+    assert len(today["error_cards"]) >= 1
+    assert any(c["id"] == card.id for c in today["error_cards"])
+    # 取消
+    resp = client.post(f"/api/cards/{card.id}/hard")
+    assert resp.json()["is_hard"] is False
+    assert db_session.query(HardCard).filter_by(card_id=card.id).count() == 0

@@ -207,17 +207,27 @@ async function loadToday() {
   return data;
 }
 
-// 今日目标环（P0-2）
+// 今日目标环（P0-2 + 课49 可设置）
+let dailyGoal = 10;
+try { dailyGoal = parseInt(localStorage.getItem("dailyGoal") || "10"); } catch {}
+
+let goalDailySetInitialized = false;
 function updateGoalRing(stats) {
   const data = state.lastToday || {};
-  const target = (data.error_cards?.length || 0) + (data.new_cards?.length || 0) + (data.due_cards?.length || 0);
+  const queueTotal = (data.error_cards?.length || 0) + (data.new_cards?.length || 0) + (data.due_cards?.length || 0);
   const done = stats.reviewed_today || 0;
+  // 目标 = min(自定义每日目标, 队列总量)（自定义目标为上限感）
+  const target = Math.min(dailyGoal, queueTotal);
   const ring = $("#goal-ring-wrap");
-  if (target === 0) {
+  if (queueTotal === 0) {
     ring.hidden = true;
     return;
   }
   ring.hidden = false;
+  if (!goalDailySetInitialized) {
+    goalDailySetInitialized = true;
+    $("#goal-daily-set").value = String(dailyGoal);
+  }
   const pct = Math.min(1, done / target);
   const deg = Math.round(pct * 360);
   $("#goal-ring").style.background =
@@ -226,12 +236,20 @@ function updateGoalRing(stats) {
   $("#goal-total").textContent = `/ ${target}`;
   if (done >= target) {
     $("#goal-title").textContent = "今日目标达成 🎉";
-    $("#goal-sub").textContent = "明天再见，先休息大脑";
+    $("#goal-sub").textContent = `目标 ${target} 词已达成`;
   } else {
     $("#goal-title").textContent = pct === 0 ? "今日目标" : "继续加油";
     $("#goal-sub").textContent = `还剩 ${target - done} 张`;
   }
 }
+
+// 目标设置
+$("#goal-daily-set").addEventListener("change", (e) => {
+  dailyGoal = parseInt(e.target.value);
+  try { localStorage.setItem("dailyGoal", String(dailyGoal)); } catch {}
+  const stats = { reviewed_today: parseInt($("#stat-reviewed").textContent || "0") };
+  updateGoalRing(stats);
+});
 
 $("#btn-start-study").addEventListener("click", async () => {
   const data = await loadToday();
@@ -1003,6 +1021,10 @@ function renderWordDetail() {
   badges.push(c.kind === "sentence" ? '<span class="badge badge-sentence">句子</span>' : '<span class="badge badge-word">词</span>');
   if (c.graduated) badges.push('<span class="badge badge-graduated">毕业</span>');
   if (c.error_count > 0) badges.push(`<span class="badge badge-error">错词 ×${c.error_count}</span>`);
+  if (c.is_hard) badges.push('<span class="badge badge-error">⭕ 困难词</span>');
+  // 按钮态同步
+  const hardBtn = $("#btn-detail-hard");
+  if (hardBtn) hardBtn.classList.toggle("hard-active", !!c.is_hard);
   $("#detail-badges").innerHTML = badges.join("");
 
   // 释义
@@ -1112,7 +1134,7 @@ $("#detail-example-regen").addEventListener("click", async (e) => {
     }
     toast("例句已更新 🔄");
   } catch (err) {
-    toast("换例句失败：" + err.message);
+    toast("换例句失败：" + err.message, "重试", () => $("#detail-example-regen").click());
   } finally {
     btn.disabled = false;
     btn.textContent = "🔄";
@@ -1159,6 +1181,56 @@ $("#btn-detail-memo-edit").addEventListener("click", async () => {
     }
   } catch (e) {
     toast("保存失败：" + e.message);
+  }
+});
+
+// 困难词切换
+$("#btn-detail-hard").addEventListener("click", async () => {
+  if (!detailCard) return;
+  try {
+    const resp = await api(`/api/cards/${detailCard.id}/hard`, { method: "POST" });
+    detailCard.is_hard = resp.is_hard;
+    renderWordDetail();
+    toast(resp.is_hard ? "⭕ 已标记困难词，会优先重现" : "已取消标记");
+  } catch (e) {
+    toast("操作失败：" + e.message);
+  }
+});
+
+// 编辑词卡（弹窗逐字段）
+$("#btn-detail-edit").addEventListener("click", async () => {
+  if (!detailCard) return;
+  const c = detailCard;
+  const v = prompt(
+    "编辑释义：", c.meaning || ""
+  );
+  if (v === null) return;
+  const meaning = v.trim();
+  const phonetic = prompt("编辑音标：", c.phonetic || "");
+  if (phonetic === null) return;
+  try {
+    detailCard = await api(`/api/cards/${c.id}`, {
+      method: "PUT",
+      body: JSON.stringify({ meaning, phonetic: phonetic.trim() }),
+    });
+    renderWordDetail();
+    toast("已保存 ✏️");
+  } catch (e) {
+    toast("保存失败：" + e.message);
+  }
+});
+
+// 删除词卡
+$("#btn-detail-delete").addEventListener("click", async () => {
+  if (!detailCard) return;
+  if (!confirm(`删除「${detailCard.word}」？\n复习记录/记忆法/错词都会一并删除，无法恢复。`)) return;
+  try {
+    await api(`/api/cards/${detailCard.id}`, { method: "DELETE" });
+    toast("已删除 🗑");
+    show("view-words");
+    await loadWords();
+  } catch (e) {
+    toast("删除失败：" + e.message);
   }
 });
 
@@ -1909,6 +1981,12 @@ async function openStats() {
     $("#stats-streak-val").textContent = statsData.streak;
     $("#stats-today-val").textContent = statsData.reviewed_today;
 
+    // 本周正确率 + 8 周趋势
+    try {
+      const weekly = await api("/api/stats/weekly");
+      renderWeeklyAccuracy(weekly);
+    } catch {}
+
     // 日历热力图
     renderCalendar(historyData.days);
 
@@ -2044,6 +2122,128 @@ function getCalTooltip() {
   return tip;
 }
 
+// 本周正确率 + 8 周趋势柱状
+function renderWeeklyAccuracy(weekly) {
+  const val = $("#week-acc-val");
+  if (weekly.this_week !== null && weekly.this_week !== undefined) {
+    val.textContent = weekly.this_week + "%";
+    val.style.color = weekly.this_week >= 80 ? "#137A62" : (weekly.this_week >= 60 ? "#B8860B" : "var(--coral)");
+  } else {
+    val.textContent = "（暂无）";
+    val.style.color = "var(--muted)";
+  }
+
+  const bars = $("#week-bars");
+  bars.innerHTML = "";
+  weekly.weeks.forEach((w) => {
+    const wrap = document.createElement("div");
+    wrap.className = "week-bar-wrap";
+    wrap.title = `${w.start}：${w.total} 题 · 正确率 ${w.accuracy === null ? "-" : w.accuracy + "%"}`;
+    const bar = document.createElement("div");
+    bar.className = "week-bar";
+    bar.style.height = w.accuracy === null ? "2px" : (w.accuracy * 0.5) + "px";
+    if (w.accuracy !== null) bar.style.background = w.accuracy >= 80 ? "var(--mint)" : (w.accuracy >= 60 ? "var(--sun)" : "var(--coral)");
+    wrap.appendChild(bar);
+    bars.appendChild(wrap);
+  });
+}
+
+// 成绩单分享卡（canvas 绘制，可存图进简历/作品集）
+function escapedStyle(c) {
+  const s = document.createElement("span");
+  s.textContent = c;
+  document.body.appendChild(s);
+  const w = s.getBoundingClientRect().width;
+  s.remove();
+  return w;
+}
+
+async function openReportCard() {
+  try {
+    const stats = await api("/api/stats");
+    const canvas = $("#report-canvas");
+    const ctx = canvas.getContext("2d");
+
+    // 背景
+    ctx.fillStyle = "#F7FBFA";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // 顶部渐变条
+    ctx.fillStyle = "#2DBE9E";
+    ctx.fillRect(0, 0, canvas.width, 86);
+    ctx.fillStyle = "#fff";
+    ctx.font = "900 22px Nunito, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("EnglishCoach 学习报告", canvas.width / 2, 42);
+    ctx.font = "600 12px sans-serif";
+    ctx.fillStyle = "rgba(255,255,255,0.85)";
+    ctx.fillText("零基础英语 · AI 个性化学习", canvas.width / 2, 64);
+
+    // 数据区
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#1E2A32";
+    ctx.font = "900 30px sans-serif";
+    ctx.fillText(String(stats.total_cards), 46, 150);
+    ctx.fillText(String(stats.graduated), 46, 280);
+    ctx.fillText(String(stats.streak), 46, 410);
+    ctx.font = "700 13px sans-serif";
+    ctx.fillStyle = "#7A8B94";
+    ctx.fillText("累计词汇", 96, 144);
+    ctx.fillText("已毕业", 96, 274);
+    ctx.fillText("连续天数", 96, 404);
+    // 分隔线
+    ctx.strokeStyle = "#D9E2E6";
+    ctx.beginPath();
+    ctx.moveTo(30, 190); ctx.lineTo(310, 190);
+    ctx.moveTo(30, 320); ctx.lineTo(310, 320);
+    ctx.stroke();
+
+    // 尾部
+    ctx.textAlign = "center";
+    ctx.font = "700 11px sans-serif";
+    ctx.fillStyle = "#7A8B94";
+    ctx.fillText("坚持每天 20 分钟，英语不再是零基础", canvas.width / 2, 400);
+
+    $("#report-modal").hidden = false;
+  } catch (e) {
+    toast("生成失败：" + e.message);
+  }
+}
+
+$("#btn-report-card").addEventListener("click", openReportCard);
+
+// 保存图片
+$("#btn-report-download").addEventListener("click", () => {
+  const canvas = $("#report-canvas");
+  const a = document.createElement("a");
+  a.href = canvas.toDataURL("image/png");
+  a.download = "englishcoach_report.png";
+  a.click();
+  toast("已保存 📸");
+});
+
+// 导出备份/Anki
+function downloadExport(path, filename) {
+  fetch(path)
+    .then((r) => r.blob())
+    .then((blob) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast("已下载：" + filename);
+    })
+    .catch((e) => toast("导出失败：" + e.message));
+}
+
+$("#btn-export-json").addEventListener("click", () =>
+  downloadExport("/api/export/cards", "englishcoach_backup.json")
+);
+$("#btn-export-anki").addEventListener("click", () =>
+  downloadExport("/api/export/anki", "englishcoach_anki.csv")
+);
+
 // 入口：点击统计区域
 $("#today-stats").addEventListener("click", openStats);
 
@@ -2090,7 +2290,10 @@ $("#btn-add-generate").addEventListener("click", async () => {
       $("#add-result").innerHTML = '<span class="warn">这些词都已经在单词本里了</span>';
     }
   } catch (e) {
-    $("#add-result").innerHTML = `<span class="err">生成失败：${escapeHtml(e.message)}</span>`;
+    $("#add-result").innerHTML =
+      `<span class="err">生成失败：${escapeHtml(e.message)}</span>` +
+      `<div class="learn-now-row"><button id="btn-add-retry" class="btn btn-ghost btn-small">↻ 重试</button></div>`;
+    $("#btn-add-retry").addEventListener("click", () => $("#btn-add-generate").click());
   } finally {
     btn.disabled = false;
   }
@@ -2144,7 +2347,7 @@ $("#btn-new-story").addEventListener("click", async () => {
     await loadStories();
     toast("新故事生成好了！");
   } catch (e) {
-    toast("生成失败：" + e.message);
+    toast("生成失败：" + e.message, "重试", () => $("#btn-new-story").click());
   } finally {
     btn.disabled = false;
     btn.textContent = "生成新故事";
@@ -2268,7 +2471,7 @@ $$(".nav-item").forEach((el) => {
 });
 
 /* ============ Toast ============ */
-function toast(msg) {
+function toast(msg, actionLabel, action) {
   let el = $("#toast");
   if (!el) {
     el = document.createElement("div");
@@ -2276,10 +2479,21 @@ function toast(msg) {
     el.className = "toast";
     document.body.appendChild(el);
   }
-  el.textContent = msg;
+  el.innerHTML = "";
+  el.append(msg);
+  if (actionLabel && action) {
+    const btn = document.createElement("button");
+    btn.className = "toast-action";
+    btn.textContent = actionLabel;
+    btn.addEventListener("click", () => {
+      el.classList.remove("show");
+      action();
+    });
+    el.appendChild(btn);
+  }
   el.classList.add("show");
   clearTimeout(el._t);
-  el._t = setTimeout(() => el.classList.remove("show"), 2600);
+  el._t = setTimeout(() => el.classList.remove("show"), 4000);
 }
 
 /* ============ 课程 ============ */
@@ -2369,7 +2583,7 @@ async function openLesson(level, generate = false) {
     renderLesson();
     show("view-lesson");
   } catch (e) {
-    toast("课程加载失败：" + e.message);
+    toast("课程加载失败：" + e.message, "重试", () => openLesson(level, generate));
   }
 }
 

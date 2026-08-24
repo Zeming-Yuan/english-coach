@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models.card import Card
 from app.models.error_card import ErrorCard
+from app.models.hard_card import HardCard
 from app.models.review import Review
 
 router = APIRouter()
@@ -60,11 +61,73 @@ def get_today(new_limit: int = 10, due_limit: int = 20, db: Session = Depends(ge
     if error_ids:
         new_cards_dict = [c for c in new_cards_dict if c["id"] not in error_ids]
         due_cards_dict = [c for c in due_cards_dict if c["id"] not in error_ids]
+    # 困难词优先（自主增强）：并入 error_cards 列表尾部
+    hard_first = db.execute(
+        select(Card)
+        .join(HardCard, HardCard.card_id == Card.id)
+        .where(Card.id.not_in(error_ids)) if error_ids else
+        select(Card).join(HardCard, HardCard.card_id == Card.id)
+    ).scalars().all()
+    hard_ids = {c.id for c in hard_first}
+    if hard_ids:
+        new_cards_dict = [c for c in new_cards_dict if c["id"] not in hard_ids]
+        due_cards_dict = [c for c in due_cards_dict if c["id"] not in hard_ids]
     return {
-        "error_cards": [card_to_dict(c) for c in error_first],
+        "error_cards": [card_to_dict(c) for c in error_first + hard_first],
         "new_cards": new_cards_dict,
         "due_cards": due_cards_dict,
     }
+
+
+@router.get("/stats/weekly")
+def get_weekly_accuracy(db: Session = Depends(get_db)):
+    """近 8 周复习正确率：周维度趋势 + 本周正确率。
+
+    正确率口径：rating>=3 视为对，rating 为 null 的旧记录按 state 兜底
+    （state==2 视为错，否则为对）。无数据周返回 None。
+    """
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    reviews = db.execute(
+        select(Review).where(Review.last_review >= now - timedelta(days=56))
+    ).scalars().all()
+
+    def is_ok(r):
+        if r.rating is not None:
+            return r.rating >= 3
+        return r.state != 2  # 旧数据兜底
+
+    weeks = []
+    for i in range(7, -1, -1):
+        week_start = (now - timedelta(days=(now.weekday() + 7 * i))).replace(
+            hour=0, minute=0, second=0, microsecond=0
+        )
+        week_end = week_start + timedelta(days=7)
+        week_reviews = [
+            r
+            for r in reviews
+            if r.last_review is not None
+            and week_start <= r.last_review < week_end
+        ]
+        if week_reviews:
+            ok = sum(1 for r in week_reviews if is_ok(r))
+            weeks.append(
+                {
+                    "start": week_start.strftime("%Y-%m-%d"),
+                    "total": len(week_reviews),
+                    "accuracy": round(ok / len(week_reviews) * 100),
+                }
+            )
+        else:
+            weeks.append({"start": week_start.strftime("%Y-%m-%d"), "total": 0, "accuracy": None})
+
+    # 本周正确率（前 7 天）
+    week_ago = now - timedelta(days=7)
+    recent = [r for r in reviews if r.last_review is not None and r.last_review >= week_ago]
+    this_week_accuracy = (
+        round(sum(1 for r in recent if is_ok(r)) / len(recent) * 100) if recent else None
+    )
+
+    return {"weeks": weeks, "this_week": this_week_accuracy}
 
 
 def _adaptive_new_limit(db: Session, base: int) -> int:
