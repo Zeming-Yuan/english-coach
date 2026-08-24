@@ -161,6 +161,7 @@ function setNav(nav) {
 /* ============ 队列页 ============ */
 async function loadToday() {
   const data = await api("/api/today");
+  state.lastToday = data; // 供目标环计算
   $("#stat-new").textContent = data.new_cards.length;
   $("#stat-due").textContent = data.due_cards.length;
 
@@ -199,8 +200,37 @@ async function loadToday() {
     const hour = new Date().getHours();
     const needStudy = stats.reviewed_today === 0;
     $("#evening-reminder").hidden = !(hour >= 20 && needStudy);
+
+    // 今日目标环：目标 = 队列总量，已学 = 今日复习次数
+    updateGoalRing(stats);
   } catch {}
   return data;
+}
+
+// 今日目标环（P0-2）
+function updateGoalRing(stats) {
+  const data = state.lastToday || {};
+  const target = (data.error_cards?.length || 0) + (data.new_cards?.length || 0) + (data.due_cards?.length || 0);
+  const done = stats.reviewed_today || 0;
+  const ring = $("#goal-ring-wrap");
+  if (target === 0) {
+    ring.hidden = true;
+    return;
+  }
+  ring.hidden = false;
+  const pct = Math.min(1, done / target);
+  const deg = Math.round(pct * 360);
+  $("#goal-ring").style.background =
+    `conic-gradient(var(--mint) ${deg}deg, #EBEDF0 ${deg}deg)`;
+  $("#goal-num").textContent = done;
+  $("#goal-total").textContent = `/ ${target}`;
+  if (done >= target) {
+    $("#goal-title").textContent = "今日目标达成 🎉";
+    $("#goal-sub").textContent = "明天再见，先休息大脑";
+  } else {
+    $("#goal-title").textContent = pct === 0 ? "今日目标" : "继续加油";
+    $("#goal-sub").textContent = `还剩 ${target - done} 张`;
+  }
 }
 
 $("#btn-start-study").addEventListener("click", async () => {
@@ -1755,8 +1785,19 @@ $("#btn-add-generate").addEventListener("click", async () => {
       $("#add-result").innerHTML =
         `<span class="ok">✅ 生成 ${data.generated} 张卡：${data.cards.map((c) => escapeHtml(c.word)).join("、")}</span>` +
         (data.skipped > 0 ? `<br><span class="warn">${data.skipped} 个已存在跳过</span>` : "") +
-        `<br><span class="warn">明天开始它们会出现在队列里</span>`;
+        `<br><span class="warn">这些词已经进入你的词库，明天会按记忆安排复习</span>` +
+        `<div class="learn-now-row"><button id="btn-learn-now" class="btn btn-primary btn-small">🕐 马上学一学（不等到明天）</button></div>`;
       $("#add-input").value = "";
+
+      // 立即学一学：把刚生成的卡直接进闪卡学习流
+      $("#btn-learn-now").addEventListener("click", () => {
+        state.queue = data.cards;
+        state.idx = 0;
+        state.answered = 0;
+        state.graduated = [];
+        show("view-study");
+        renderCard();
+      });
     } else {
       $("#add-result").innerHTML = '<span class="warn">这些词都已经在单词本里了</span>';
     }
