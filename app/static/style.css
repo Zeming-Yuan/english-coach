@@ -711,3 +711,257 @@ body {
 }
 .modal-feedback.ok { color: #137A62; }
 .modal-feedback.done { color: var(--muted); }
+
+/* ============================================================
+   单词详情页
+   ============================================================ */
+.word-detail-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 20px;
+  margin-top: 10px;
+}
+.word-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.word-detail-word {
+  font-size: 32px;
+  font-weight: 900;
+  color: var(--ink);
+}
+.word-detail-phonetic {
+  color: var(--muted);
+  font-size: 15px;
+  margin-top: 4px;
+}
+.word-detail-badges {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+.word-detail-meaning {
+  font-size: 18px;
+  font-weight: 700;
+  margin-top: 14px;
+  line-height: 1.6;
+}
+.word-detail-example {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.7;
+  margin-top: 10px;
+  padding-left: 12px;
+  border-left: 3px solid var(--line);
+}
+.word-detail-example:empty { display: none; }
+.word-detail-example .example-en {
+  color: var(--ink);
+  font-weight: 600;
+}
+.word-detail-explanation {
+  background: var(--sun-soft);
+  border-radius: 14px;
+  padding: 10px 14px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #8A6410;
+  margin-top: 14px;
+}
+.word-detail-explanation:empty { display: none; }
+
+/* 状态卡 */
+.word-detail-status {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 16px;
+}
+.status-item {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 10px;
+  text-align: center;
+}
+.status-label {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.status-value {
+  display: block;
+  font-size: 18px;
+  font-weight: 900;
+  color: var(--ink);
+  margin-top: 4px;
+}
+
+/* 复习历史 */
+.detail-history-section { margin-top: 16px; }
+.detail-history {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.history-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--line);
+}
+.history-row:last-child { border-bottom: none; }
+.history-date { color: var(--muted); font-weight: 600; }
+.history-count { font-weight: 800; color: var(--ink); }
+
+/* 详情页评分区 */
+#detail-rating-area {
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+#view-word-detail .bubble-list { margin-top: 14px; }
+
+/* ============================================================
+   听写练习
+   ============================================================ */
+.listening-body { margin-top: 10px; }
+.listening-prompt {
+  text-align: center;
+  margin-bottom: 20px;
+}
+.listening-hint {
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 12px;
+}
+.btn-speak-large {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 3px solid var(--coral);
+  background: var(--card);
+  font-size: 36px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 4px 16px rgba(255, 122, 102, 0.2);
+}
+.btn-speak-large:hover { transform: scale(1.05); }
+.btn-speak-large:active { transform: scale(0.95); }
+.btn-speak-large.speaking {
+  animation: speak-pulse 0.6s ease infinite alternate;
+  border-color: var(--mint);
+}
+.listening-meaning {
+  font-size: 20px;
+  font-weight: 800;
+  margin-top: 16px;
+  color: var(--ink);
+}
+.listening-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 16px;
+}
+.listening-option {
+  padding: 16px 12px;
+  font-size: 16px;
+  font-weight: 700;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+.listening-option.correct {
+  background: var(--mint-soft);
+  border-color: var(--mint);
+  color: #137A62;
+}
+.listening-option.wrong {
+  background: #FFF0EE;
+  border-color: var(--coral);
+  color: var(--coral);
+}
+.listening-option:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+.listening-feedback {
+  text-align: center;
+  font-size: 16px;
+  font-weight: 800;
+  margin-top: 16px;
+  min-height: 24px;
+}
+.listening-feedback.ok { color: #137A62; }
+.listening-feedback.err { color: var(--coral); }
+
+/* ============================================================
+   学习统计页
+   ============================================================ */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-top: 10px;
+}
+.stats-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 12px;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+}
+.stats-card-value {
+  display: block;
+  font-size: 28px;
+  font-weight: 900;
+  color: var(--ink);
+}
+.stats-card-label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+/* 日历热力图 */
+.calendar-heatmap {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+  max-width: 100%;
+}
+.cal-cell {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  min-width: 0;
+}
+.cal-empty { visibility: hidden; }
+.cal-level-0 { background: #EBEDF0; }
+.cal-level-1 { background: #9BE9A8; }
+.cal-level-2 { background: #40C463; }
+.cal-level-3 { background: #30A14E; }
+
+.calendar-legend {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.legend-cell {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+}

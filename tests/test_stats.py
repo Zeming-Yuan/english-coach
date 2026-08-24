@@ -152,3 +152,59 @@ def test_streak_today_missed_but_yesterday_ok(client, db_session):
 
     resp = client.get("/api/stats")
     assert resp.json()["streak"] == 3
+
+
+def test_stats_history_empty(client):
+    """空库历史 → 全 0。"""
+    resp = client.get("/api/stats/history?days=7")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data["days"]) == 8  # 7+1 天
+    for d in data["days"]:
+        assert d["reviews"] == 0
+        assert d["new_cards"] == 0
+
+
+def test_stats_history_with_data(client, db_session):
+    """有复习记录的历史统计。"""
+    card = Card(word="test", meaning="测试", kind="word")
+    db_session.add(card)
+    db_session.commit()
+    db_session.refresh(card)
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    # 今天复习 2 次（1 次新词 + 1 次复习）
+    db_session.add(
+        Review(
+            card_id=card.id,
+            state=1,
+            due=now,
+            stability=1.0,
+            difficulty=1.0,
+            elapsed_days=0,
+            last_review=now,
+            review_count=1,
+        )
+    )
+    db_session.add(
+        Review(
+            card_id=card.id,
+            state=3,
+            due=now + timedelta(days=1),
+            stability=2.0,
+            difficulty=1.0,
+            elapsed_days=0,
+            last_review=now,
+            review_count=2,
+        )
+    )
+    db_session.commit()
+
+    resp = client.get("/api/stats/history?days=3")
+    data = resp.json()
+    assert len(data["days"]) == 4
+    # 今天应该有 2 条复习、1 条新词
+    today_str = now.strftime("%Y-%m-%d")
+    today_data = next(d for d in data["days"] if d["date"] == today_str)
+    assert today_data["reviews"] == 2
+    assert today_data["new_cards"] == 1

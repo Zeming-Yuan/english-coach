@@ -69,6 +69,51 @@ def get_stats(db: Session = Depends(get_db)):
     }
 
 
+@router.get("/stats/history")
+def get_stats_history(days: int = 90, db: Session = Depends(get_db)):
+    """学习统计历史：最近 N 天每日复习数 + 新词数。"""
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    start = now - timedelta(days=days)
+
+    # 每日复习数（按 last_review 日期分组）
+    rows = db.execute(
+        select(
+            func.date(Review.last_review).label("date"),
+            func.count(Review.id).label("count"),
+        )
+        .where(Review.last_review >= start)
+        .group_by(func.date(Review.last_review))
+        .order_by(func.date(Review.last_review))
+    ).all()
+    review_map = {r.date: r.count for r in rows}
+
+    # 每日新词数（按 Review 创建时间，即首次复习）
+    new_rows = db.execute(
+        select(
+            func.date(Review.last_review).label("date"),
+            func.count(Review.id).label("count"),
+        )
+        .where(Review.last_review >= start, Review.review_count == 1)
+        .group_by(func.date(Review.last_review))
+        .order_by(func.date(Review.last_review))
+    ).all()
+    new_map = {r.date: r.count for r in new_rows}
+
+    # 构造每日数据（含 0 的天也返回）
+    result = []
+    for i in range(days + 1):
+        d = (now - timedelta(days=days - i)).strftime("%Y-%m-%d")
+        result.append(
+            {
+                "date": d,
+                "reviews": review_map.get(d, 0),
+                "new_cards": new_map.get(d, 0),
+            }
+        )
+
+    return {"days": result}
+
+
 def _calc_streak(db: Session, now: datetime, today_start: datetime) -> int:
     """连续学习天数：从今天（或昨天）往回数有复习记录的连续天数。
 

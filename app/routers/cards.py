@@ -66,3 +66,47 @@ def list_cards(db: Session = Depends(get_db)):
         .all()
     )
     return {"cards": [card_to_dict(c, db) for c in cards]}
+
+
+@router.get("/cards/{card_id}")
+def get_card_detail(card_id: int, db: Session = Depends(get_db)):
+    """单词详情：全部字段 + 复习历史 + 毕业状态。"""
+    card = db.get(Card, card_id)
+    if card is None:
+        raise HTTPException(status_code=404, detail="Card not found")
+
+    # 复习记录（最新在前）
+    reviews = (
+        db.execute(
+            select(Review).where(Review.card_id == card_id).order_by(Review.id.desc())
+        )
+        .scalars()
+        .all()
+    )
+
+    latest = reviews[0] if reviews else None
+    history = [
+        {
+            "rating": r.state,  # state 字段在 FSRS 里实际存的是评分
+            "last_review": r.last_review.isoformat() if r.last_review else None,
+            "review_count": r.review_count,
+        }
+        for r in reviews
+    ]
+
+    return {
+        "id": card.id,
+        "word": card.word,
+        "kind": card.kind,
+        "phonetic": card.phonetic,
+        "meaning": card.meaning,
+        "example": card.example,
+        "example_cn": card.example_cn,
+        "explanation": card.explanation,
+        "contexts": card.contexts,
+        "created_at": card.created_at.isoformat(),
+        "graduated": latest.state == 3 if latest else False,
+        "review_count": latest.review_count if latest else 0,
+        "next_due": latest.due.isoformat() if latest else None,
+        "review_history": history,
+    }

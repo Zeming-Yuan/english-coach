@@ -484,12 +484,325 @@ async function loadWords() {
       </div>
       <button class="speak-mini" title="朗读">🔊</button>
     `;
-    item.querySelector(".speak-mini").addEventListener("click", () => {
+    item.querySelector(".speak-mini").addEventListener("click", (e) => {
+      e.stopPropagation();
       speak(c.kind === "sentence" ? (c.example || c.word) : c.word, item.querySelector(".speak-mini"));
     });
+    item.addEventListener("click", () => openWordDetail(c.id));
     list.appendChild(item);
   });
 }
+
+/* ============ 单词详情 ============ */
+let detailCard = null;
+
+async function openWordDetail(cardId) {
+  try {
+    detailCard = await api(`/api/cards/${cardId}`);
+    renderWordDetail();
+    show("view-word-detail");
+  } catch (e) {
+    toast("加载详情失败：" + e.message);
+  }
+}
+
+function renderWordDetail() {
+  const c = detailCard;
+  $("#detail-word").textContent = c.word;
+  $("#detail-phonetic").textContent = c.phonetic || "";
+
+  // 标签
+  const badges = [];
+  badges.push(c.kind === "sentence" ? '<span class="badge badge-sentence">句子</span>' : '<span class="badge badge-word">词</span>');
+  if (c.graduated) badges.push('<span class="badge badge-graduated">毕业</span>');
+  $("#detail-badges").innerHTML = badges.join("");
+
+  // 释义
+  $("#detail-meaning").textContent = c.kind === "sentence" ? (c.example_cn || "") : (c.meaning || "");
+
+  // 例句
+  const exampleEl = $("#detail-example");
+  if (c.example && c.kind !== "sentence") {
+    exampleEl.innerHTML = `<span class="example-en">${escapeHtml(c.example)}</span>`;
+    exampleEl.hidden = false;
+  } else {
+    exampleEl.hidden = true;
+  }
+
+  // 对话气泡
+  const ctxEl = $("#detail-contexts");
+  ctxEl.innerHTML = "";
+  if (c.contexts && c.contexts.length > 0) {
+    c.contexts.forEach((ctx, i) => {
+      const side = i % 2 === 0 ? "bubble-a" : "bubble-b";
+      ctxEl.innerHTML += `<div class="bubble ${side}"><div class="bubble-en">${escapeHtml(ctx.en)}</div><div class="bubble-cn">${escapeHtml(ctx.cn)}</div></div>`;
+    });
+    ctxEl.hidden = false;
+  } else {
+    ctxEl.hidden = true;
+  }
+
+  // 讲解
+  const explEl = $("#detail-explanation");
+  if (c.explanation) {
+    explEl.textContent = c.explanation;
+    explEl.hidden = false;
+  } else {
+    explEl.hidden = true;
+  }
+
+  // 状态卡
+  $("#detail-review-count").textContent = c.review_count;
+  const stateNames = { 0: "新词", 1: "学习中", 2: "重新学习", 3: "已毕业" };
+  const latestState = c.review_history.length > 0 ? (c.graduated ? 3 : 1) : 0;
+  $("#detail-state").textContent = c.graduated ? "已毕业 ✅" : (c.review_count > 0 ? "学习中" : "新词");
+  $("#detail-next-due").textContent = c.next_due ? new Date(c.next_due).toLocaleDateString() : "-";
+
+  // 复习历史
+  const historySection = $("#detail-history-section");
+  const historyEl = $("#detail-history");
+  historyEl.innerHTML = "";
+  if (c.review_history.length > 0) {
+    c.review_history.forEach((r) => {
+      const date = r.last_review ? new Date(r.last_review).toLocaleDateString() : "-";
+      const ratingNames = { 1: "忘了", 2: "模糊", 3: "记得", 4: "太简单" };
+      historyEl.innerHTML += `<div class="history-row"><span class="history-date">${date}</span><span class="history-count">第 ${r.review_count} 次</span></div>`;
+    });
+    historySection.hidden = false;
+  } else {
+    historySection.hidden = true;
+  }
+}
+
+// 发音按钮
+$("#detail-speak").addEventListener("click", () => {
+  if (detailCard) speak(detailCard.word, $("#detail-speak"));
+});
+
+// 评分按钮
+$$("#detail-rating-area .btn-rating").forEach((btn) => {
+  btn.addEventListener("click", async () => {
+    if (!detailCard) return;
+    const rating = parseInt(btn.dataset.rating);
+    try {
+      const resp = await api("/api/reviews", {
+        method: "POST",
+        body: JSON.stringify({ card_id: detailCard.id, rating }),
+      });
+      // 刷新详情
+      detailCard = await api(`/api/cards/${detailCard.id}`);
+      renderWordDetail();
+      toast(resp.graduated ? "🎓 这个词毕业了！" : "✅ 已记录");
+    } catch (e) {
+      toast("提交失败：" + e.message);
+    }
+  });
+});
+
+// 返回按钮
+$("#btn-back-words").addEventListener("click", async () => {
+  show("view-words");
+  await loadWords();
+});
+
+/* ============ 听写练习 ============ */
+let listeningQuestions = [];
+let listeningIdx = 0;
+let listeningCorrect = 0;
+
+async function startListening() {
+  try {
+    const data = await api("/api/listening");
+    if (data.questions.length === 0) {
+      toast("今天没有需要听写的词");
+      return;
+    }
+    listeningQuestions = data.questions;
+    listeningIdx = 0;
+    listeningCorrect = 0;
+    show("view-listening");
+    renderListeningQuestion();
+  } catch (e) {
+    toast("加载听写失败：" + e.message);
+  }
+}
+
+function renderListeningQuestion() {
+  const q = listeningQuestions[listeningIdx];
+  $("#listening-count").textContent = `${listeningIdx + 1} / ${listeningQuestions.length}`;
+  $("#listening-progress-fill").style.width = `${((listeningIdx) / listeningQuestions.length) * 100}%`;
+  $("#listening-meaning").textContent = q.meaning;
+  $("#listening-feedback").textContent = "";
+  $("#listening-feedback").className = "listening-feedback";
+
+  // 选项
+  const optEl = $("#listening-options");
+  optEl.innerHTML = "";
+  q.options.forEach((opt, i) => {
+    const btn = document.createElement("button");
+    btn.className = "btn btn-ghost listening-option";
+    btn.textContent = opt;
+    btn.addEventListener("click", () => handleListeningAnswer(i, btn));
+    optEl.appendChild(btn);
+  });
+
+  // 自动播放发音
+  speak(q.word, null);
+}
+
+async function handleListeningAnswer(selected, btn) {
+  const q = listeningQuestions[listeningIdx];
+  const correct = selected === q.correct_index;
+
+  // 禁用所有选项
+  $$("#listening-options .listening-option").forEach((b) => {
+    b.disabled = true;
+    if (b.textContent === q.word) {
+      b.classList.add("correct");
+    }
+  });
+
+  if (correct) {
+    listeningCorrect++;
+    btn.classList.add("correct");
+    $("#listening-feedback").textContent = "✅ 正确！";
+    $("#listening-feedback").className = "listening-feedback ok";
+  } else {
+    btn.classList.add("wrong");
+    $("#listening-feedback").textContent = `❌ 正确答案是：${q.word}`;
+    $("#listening-feedback").className = "listening-feedback err";
+  }
+
+  // 提交 FSRS 评分
+  try {
+    await api("/api/listening/score", {
+      method: "POST",
+      body: JSON.stringify({
+        card_id: q.card_id,
+        selected_index: selected,
+        correct_index: q.correct_index,
+        rating: correct ? 3 : 1,
+      }),
+    });
+  } catch {}
+
+  // 2 秒后下一题
+  setTimeout(() => {
+    listeningIdx++;
+    if (listeningIdx >= listeningQuestions.length) {
+      showListeningDone();
+    } else {
+      renderListeningQuestion();
+    }
+  }, 1500);
+}
+
+function showListeningDone() {
+  $("#listening-body").hidden = true;
+  $("#listening-done").hidden = false;
+  $("#listening-progress-fill").style.width = "100%";
+  const total = listeningQuestions.length;
+  const pct = Math.round((listeningCorrect / total) * 100);
+  $("#listening-result").textContent = `答对 ${listeningCorrect}/${total} 题（${pct} 分）`;
+}
+
+// 入口按钮
+$("#btn-start-listening").addEventListener("click", startListening);
+
+// 再来一轮
+$("#btn-listening-again").addEventListener("click", () => {
+  $("#listening-body").hidden = false;
+  $("#listening-done").hidden = true;
+  startListening();
+});
+
+// 播音按钮
+$("#listening-speak").addEventListener("click", () => {
+  if (listeningQuestions[listeningIdx]) {
+    speak(listeningQuestions[listeningIdx].word, $("#listening-speak"));
+  }
+});
+
+// 返回按钮
+$("#btn-back-listening").addEventListener("click", async () => {
+  show("view-queue");
+  await loadToday();
+});
+
+$("#btn-listening-back").addEventListener("click", async () => {
+  show("view-queue");
+  await loadToday();
+});
+
+/* ============ 学习统计 ============ */
+async function openStats() {
+  try {
+    const [statsData, historyData] = await Promise.all([
+      api("/api/stats"),
+      api("/api/stats/history?days=90"),
+    ]);
+
+    // 数字卡片
+    $("#stats-total").textContent = statsData.total_cards;
+    $("#stats-graduated").textContent = statsData.graduated;
+    $("#stats-streak-val").textContent = statsData.streak;
+    $("#stats-today-val").textContent = statsData.reviewed_today;
+
+    // 日历热力图
+    renderCalendar(historyData.days);
+
+    show("view-stats");
+  } catch (e) {
+    toast("加载统计失败：" + e.message);
+  }
+}
+
+function renderCalendar(days) {
+  const cal = $("#calendar-heatmap");
+  cal.innerHTML = "";
+
+  // 找最大复习数（用于颜色分级）
+  const maxReviews = Math.max(1, ...days.map((d) => d.reviews));
+
+  // 按周排列（7 行 × N 列）
+  // 先找到第一天是周几
+  const firstDate = new Date(days[0].date + "T00:00:00");
+  const firstDayOfWeek = firstDate.getDay(); // 0=日
+
+  // 填充空白天（让第一列对齐）
+  for (let i = 0; i < firstDayOfWeek; i++) {
+    const empty = document.createElement("div");
+    empty.className = "cal-cell cal-empty";
+    cal.appendChild(empty);
+  }
+
+  // 每天一个格子
+  days.forEach((d) => {
+    const cell = document.createElement("div");
+    cell.className = "cal-cell";
+    const level = getHeatLevel(d.reviews, maxReviews);
+    cell.classList.add(`cal-level-${level}`);
+    cell.title = `${d.date}: ${d.reviews} 次复习`;
+    cal.appendChild(cell);
+  });
+}
+
+function getHeatLevel(reviews, max) {
+  if (reviews === 0) return 0;
+  const ratio = reviews / max;
+  if (ratio <= 0.25) return 1;
+  if (ratio <= 0.5) return 2;
+  return 3;
+}
+
+// 入口：点击统计区域
+$("#today-stats").addEventListener("click", openStats);
+
+// 返回按钮
+$("#btn-back-stats").addEventListener("click", async () => {
+  show("view-queue");
+  await loadToday();
+});
 
 /* ============ 加词 ============ */
 $("#btn-add-generate").addEventListener("click", async () => {
