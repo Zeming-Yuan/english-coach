@@ -33,7 +33,7 @@ export default function SettingsPage({ darkMode, setDarkMode }) {
           </div>
         </div>
         <div className="settings-row">
-          <span className="settings-label">每日新词量</span>
+          <span className="settings-label">最低保底</span>
           <div className="diff-group">
             {[5, 10, 15, 20].map((n) => (
               <button key={n} className={`diff-btn ${daily === n ? "diff-active" : ""}`} onClick={() => updateDaily(n)}>{n}</button>

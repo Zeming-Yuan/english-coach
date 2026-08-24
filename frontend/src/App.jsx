@@ -148,10 +148,11 @@ function QueueView({ setView, setStudyQueue }) {
   const errorCount = (data.error_cards || []).length;
   const isEmpty = data.new_cards.length === 0 && data.due_cards.length === 0 && errorCount === 0;
 
-  // 今日目标环
+  // 今日目标环（科学自适应：后端推荐值驱动，用户设置为最低保底）
   const done = stats?.reviewed_today || 0;
   const queueTotal = errorCount + data.new_cards.length + data.due_cards.length;
-  const target = Math.min(dailyGoal, queueTotal);
+  const adaptiveGoal = data.recommended_goal || 10;  // 后端自适应推荐
+  const target = Math.min(Math.max(dailyGoal, adaptiveGoal), queueTotal);  // 取保底和推荐的较大值
   const pct = target > 0 ? Math.min(1, done / target) : 0;
   const deg = Math.round(pct * 360);
   const hour = new Date().getHours();
@@ -186,20 +187,30 @@ function QueueView({ setView, setStudyQueue }) {
             </div>
             <div className="goal-text">
               <span className="goal-title">{done >= target ? "今日目标达成 🎉" : pct === 0 ? "今日目标" : "继续加油"}</span>
-              <span className="goal-sub">{done >= target ? `目标 ${target} 词已达成` : `还剩 ${target - done} 张`}</span>
+              <span className="goal-sub">
+                {done >= target
+                  ? `目标 ${target} 词已达成`
+                  : `还剩 ${target - done} 张`}
+                {data.error_rate !== null && data.error_rate !== undefined && (
+                  <span style={{ marginLeft: 8, fontSize: 10, opacity: 0.7 }}>
+                    （近7天正确率 ${100 - data.error_rate}%）
+                  </span>
+                )}
+              </span>
               <select
                 className="goal-daily-set"
                 value={dailyGoal}
+                title="最低保底目标（实际目标由学习表现自动调节）"
                 onChange={(e) => {
                   const n = parseInt(e.target.value);
                   setDailyGoal(n);
                   storageSet("dailyGoal", n);
                 }}
               >
-                <option value={5}>5 词/日</option>
-                <option value={10}>10 词/日</option>
-                <option value={15}>15 词/日</option>
-                <option value={20}>20 词/日</option>
+                <option value={5}>至少 5 词/日</option>
+                <option value={10}>至少 10 词/日</option>
+                <option value={15}>至少 15 词/日</option>
+                <option value={20}>至少 20 词/日</option>
               </select>
             </div>
           </div>

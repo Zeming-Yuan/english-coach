@@ -31,7 +31,8 @@ def card_to_dict(card: Card) -> dict:
 @router.get("/today")
 def get_today(new_limit: int = 10, due_limit: int = 20, db: Session = Depends(get_db)):
     # 难度自适应：近 7 天正确率自动调新词量（desired-retention 思想）
-    new_limit = _adaptive_new_limit(db, new_limit)
+    adaptive_limit, error_rate = _adaptive_new_limit(db, new_limit)
+    new_limit = adaptive_limit
     stmt = (
         select(Card)
         .outerjoin(Review, Review.card_id == Card.id)
@@ -76,6 +77,8 @@ def get_today(new_limit: int = 10, due_limit: int = 20, db: Session = Depends(ge
         "error_cards": [card_to_dict(c) for c in list(error_first) + list(hard_first)],
         "new_cards": new_cards_dict,
         "due_cards": due_cards_dict,
+        "recommended_goal": adaptive_limit,  # 自适应推荐（科学驱动）
+        "error_rate": round(error_rate * 100) if error_rate is not None else None,  # 近7天错误率 %
     }
 
 
@@ -130,15 +133,14 @@ def get_weekly_accuracy(db: Session = Depends(get_db)):
     return {"weeks": weeks, "this_week": this_week_accuracy}
 
 
-def _adaptive_new_limit(db: Session, base: int) -> int:
-    """近 7 天复习正确率 → 新词量调节。
+def _adaptive_new_limit(db: Session, base: int) -> tuple[int, float | None]:
+    """近 7 天复习正确率 → 新词量调节（desired-retention 思想）。
 
-    规则（desired-retention 思想）：
+    规则：
     - 错误率 >30%（难）→ 新词量降到 5
     - 错误率 <15%（简单）→ 新词量升到 15
     - 中间保持 base（10）
-    注：Review.state 存 FSRS 状态且未存评分，用 state==2（Relearning，
-    FSRS 中答错后进入的重学状态）近似"近期答错"。
+    返回 (推荐新词量, 错误率 0-1 或 None)。
     """
     from datetime import timedelta as _td
 
@@ -148,14 +150,14 @@ def _adaptive_new_limit(db: Session, base: int) -> int:
         select(Review).where(Review.last_review >= week_ago)
     ).scalars().all()
     if not reviews:
-        return base  # 数据不足，默认
+        return base, None  # 数据不足
     wrong = sum(1 for r in reviews if r.state == 2)
     error_rate = wrong / len(reviews)
     if error_rate > 0.3:
-        return 5
+        return 5, error_rate
     if error_rate < 0.15:
-        return 15
-    return base
+        return 15, error_rate
+    return base, error_rate
 
 
 @router.get("/errors")
