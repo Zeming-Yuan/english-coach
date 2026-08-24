@@ -1348,10 +1348,6 @@ body {
   height: 14px;
   border-radius: 2px;
 }
-.cal-cell.cal-today {
-  outline: 1.5px solid var(--ink);
-  outline-offset: 1px;
-}
 .cal-empty { visibility: hidden; }
 .cal-l0 { background: #EBEDF0; }
 .cal-l1 { background: #9BE9A8; }
