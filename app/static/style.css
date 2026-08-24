@@ -907,63 +907,100 @@ body {
    ============================================================ */
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
   margin-top: 10px;
 }
 .stats-card {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 16px 12px;
+  border-radius: 12px;
+  padding: 12px 8px;
   text-align: center;
   box-shadow: var(--shadow-sm);
 }
 .stats-card-value {
   display: block;
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 900;
   color: var(--ink);
 }
 .stats-card-label {
   display: block;
-  font-size: 12px;
+  font-size: 10px;
   color: var(--muted);
   font-weight: 700;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
-/* 日历热力图 */
-.calendar-heatmap {
+/* GitHub 风格热力图 */
+.gh-calendar-wrap {
+  overflow-x: auto;
+  padding-bottom: 4px;
+  -webkit-overflow-scrolling: touch;
+}
+.cal-months {
+  position: relative;
+  height: 18px;
+  margin-left: 26px; /* 给星期标签留位 */
+  margin-bottom: 2px;
+}
+.cal-month-label {
+  position: absolute;
+  top: 0;
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 700;
+}
+.cal-body {
+  display: flex;
+  gap: 0;
+}
+.cal-weekdays {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 3px;
-  max-width: 100%;
+  grid-template-rows: repeat(7, 14px);
+  gap: 2px;
+  width: 22px;
+  flex-shrink: 0;
+  margin-right: 4px;
+}
+.cal-weekdays span {
+  font-size: 9px;
+  color: var(--muted);
+  font-weight: 700;
+  line-height: 14px;
+  text-align: right;
+}
+.cal-grid {
+  display: grid;
+  grid-template-rows: repeat(7, 14px);
+  grid-auto-flow: column;
+  grid-auto-columns: 14px;
+  gap: 2px;
 }
 .cal-cell {
-  aspect-ratio: 1;
-  border-radius: 4px;
-  min-width: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 2px;
 }
 .cal-empty { visibility: hidden; }
-.cal-level-0 { background: #EBEDF0; }
-.cal-level-1 { background: #9BE9A8; }
-.cal-level-2 { background: #40C463; }
-.cal-level-3 { background: #30A14E; }
+.cal-l0 { background: #EBEDF0; }
+.cal-l1 { background: #9BE9A8; }
+.cal-l2 { background: #40C463; }
+.cal-l3 { background: #30A14E; }
 
-.calendar-legend {
+.cal-legend {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 4px;
+  gap: 3px;
   margin-top: 8px;
-  font-size: 11px;
+  font-size: 10px;
   color: var(--muted);
 }
-.legend-cell {
-  width: 14px;
-  height: 14px;
-  border-radius: 3px;
+.cal-legend .cal-cell {
+  width: 12px;
+  height: 12px;
 }
 
 /* ============================================================

@@ -875,32 +875,74 @@ async function openStats() {
 }
 
 function renderCalendar(days) {
-  const cal = $("#calendar-heatmap");
-  cal.innerHTML = "";
+  const grid = $("#cal-grid");
+  const monthsEl = $("#cal-months");
+  grid.innerHTML = "";
+  monthsEl.innerHTML = "";
 
-  // 找最大复习数（用于颜色分级）
+  if (days.length === 0) return;
+
   const maxReviews = Math.max(1, ...days.map((d) => d.reviews));
 
-  // 按周排列（7 行 × N 列）
-  // 先找到第一天是周几
-  const firstDate = new Date(days[0].date + "T00:00:00");
-  const firstDayOfWeek = firstDate.getDay(); // 0=日
+  // 构建日期 → 数据映射
+  const map = {};
+  days.forEach((d) => { map[d.date] = d; });
 
-  // 填充空白天（让第一列对齐）
-  for (let i = 0; i < firstDayOfWeek; i++) {
-    const empty = document.createElement("div");
-    empty.className = "cal-cell cal-empty";
-    cal.appendChild(empty);
+  // 补齐第一天之前的空位，使第一列对齐星期日
+  const firstDate = new Date(days[0].date + "T00:00:00");
+  const firstDow = firstDate.getDay(); // 0=日
+
+  // 生成所有格子（含前后补齐），按列（周）排列
+  // GitHub 风格：7 行（日~六）× N 列（周）
+  const totalCells = firstDow + days.length;
+  const totalWeeks = Math.ceil(totalCells / 7);
+
+  // 月份标签：记录每个月在哪一列开始
+  const monthLabels = [];
+  let lastMonth = -1;
+
+  // 生成格子数据
+  const cells = [];
+  // 前面空位
+  for (let i = 0; i < firstDow; i++) {
+    cells.push(null);
+  }
+  days.forEach((d) => cells.push(d));
+  // 后面补齐到完整周
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  // 按列（周）渲染：每列 7 个格子
+  for (let col = 0; col < cells.length / 7; col++) {
+    for (let row = 0; row < 7; row++) {
+      const d = cells[col * 7 + row];
+      const cell = document.createElement("div");
+      cell.className = "cal-cell";
+      if (!d) {
+        cell.classList.add("cal-empty");
+      } else {
+        const level = getHeatLevel(d.reviews, maxReviews);
+        cell.classList.add(`cal-l${level}`);
+        cell.title = `${d.date}：${d.reviews} 次复习`;
+        // 记录月份变化
+        const m = parseInt(d.date.split("-")[1]);
+        if (m !== lastMonth) {
+          monthLabels.push({ col, month: m });
+          lastMonth = m;
+        }
+      }
+      grid.appendChild(cell);
+    }
   }
 
-  // 每天一个格子
-  days.forEach((d) => {
-    const cell = document.createElement("div");
-    cell.className = "cal-cell";
-    const level = getHeatLevel(d.reviews, maxReviews);
-    cell.classList.add(`cal-level-${level}`);
-    cell.title = `${d.date}: ${d.reviews} 次复习`;
-    cal.appendChild(cell);
+  // 渲染月份标签
+  const monthNames = ["", "1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
+  monthLabels.forEach((ml) => {
+    const span = document.createElement("span");
+    span.className = "cal-month-label";
+    span.textContent = monthNames[ml.month];
+    // 每列宽 14px(格子) + 2px(gap) = 16px
+    span.style.left = (ml.col * 16) + "px";
+    monthsEl.appendChild(span);
   });
 }
 
