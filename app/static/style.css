@@ -632,16 +632,34 @@ body {
   font-size: 10px; font-weight: 800; opacity: 0.6;
   display: block; margin-bottom: 2px;
 }
-.lesson-word { cursor: pointer; }
+.lesson-word { cursor: default; }
+.lesson-master-btn {
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+.lesson-master-btn:hover {
+  border-color: var(--mint);
+  color: var(--mint);
+}
 .lesson-word.word-mastered {
   border-color: var(--mint);
   background: var(--mint-soft);
 }
-.lesson-word.word-mastered .word-item-word::after {
-  content: " ✓";
-  color: var(--mint);
-  font-size: 14px;
+.lesson-word.word-mastered .lesson-master-btn {
+  background: var(--mint);
+  border-color: var(--mint);
+  color: #fff;
 }
+.lesson-word.word-mastered .word-item-word { color: #137A62; }
 
 /* Toast 提示（替代裸 alert） */
 .toast {
@@ -1141,6 +1159,20 @@ body {
   flex-shrink: 0;
 }
 
+/* 故事整句朗读 */
+.story-sentence {
+  cursor: pointer;
+  transition: background 0.15s ease;
+  border-radius: 6px;
+  padding: 1px 2px;
+}
+.story-sentence:hover {
+  background: rgba(45, 190, 158, 0.15);
+}
+.story-sentence.speaking {
+  background: var(--mint-soft);
+}
+
 /* 混合练习 */
 .mixed-body { margin-top: 10px; }
 .mixed-type-label {
@@ -1171,6 +1203,32 @@ body {
 .learn-now-row {
   margin-top: 12px;
 }
+
+/* 跳过按钮 */
+.spelling-skip {
+  margin-top: 14px;
+  width: 100%;
+  justify-content: center;
+}
+
+/* 选项发音小按钮 */
+.quiz-option {
+  position: relative;
+}
+.quiz-option-speak {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 13px;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.15s ease;
+}
+.quiz-option-speak:hover { opacity: 1; }
+.quiz-option:disabled .quiz-option-speak { pointer-events: none; }
 
 /* 今日目标环 */
 .goal-ring-wrap {

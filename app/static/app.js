@@ -122,9 +122,9 @@ function speakOnline(text, btn, fallback) {
   audio.play().catch(fail);
 }
 
-/* 预合成：列表加载时提前暖缓存，点击按钮即秒播 */
+/* 预合成：列表加载时提前暖缓存，点击按钮即秒播（限前 50 防并发爆炸） */
 function prewarmTts(words) {
-  words.forEach((w) => {
+  words.slice(0, 50).forEach((w) => {
     fetch(`/api/tts/audio/${encodeURIComponent(w)}/preload`).catch(() => {});
   });
 }
@@ -495,6 +495,11 @@ $("#btn-to-quiz").addEventListener("click", async () => {
   }
 });
 
+// 完成页：再练一轮混合
+$("#btn-to-mixed").addEventListener("click", () => {
+  startMixed();
+});
+
 /* ============ 测验 ============ */
 // 测验格子实时反馈（复用拼写练习逻辑，但不自动提交）
 function renderQuizBoxes(input, display) {
@@ -582,18 +587,29 @@ function renderQuestion() {
     q.options.forEach((opt) => {
       const b = document.createElement("button");
       b.className = "quiz-option";
+      b.dataset.value = opt;
       b.textContent = opt;
       b.addEventListener("click", () => {
         opts.querySelectorAll(".quiz-option").forEach((x) => x.classList.remove("selected"));
         b.classList.add("selected");
       });
+      // 选项发声按钮（点击只发音不选中）
+      const spk = document.createElement("button");
+      spk.className = "quiz-option-speak";
+      spk.textContent = "🔊";
+      spk.title = "听发音";
+      spk.addEventListener("click", (e) => {
+        e.stopPropagation();
+        speak(opt, spk);
+      });
+      b.appendChild(spk);
       opts.appendChild(b);
     });
     card.appendChild(opts);
     body.appendChild(card);
     state._pending = () => opts.querySelector(".selected")?.textContent || "";
   } else if (q.type === "fill") {
-    prompt.textContent = `填空：${q.prompt}`;
+    prompt.textContent = `填空：${q.prompt}${q.hint ? `（${q.hint}）` : ""}`;
     card.appendChild(prompt);
     const display = document.createElement("div");
     display.className = "spelling-word-display";
@@ -622,7 +638,14 @@ function renderQuestion() {
   $("#btn-quiz-submit").hidden = false;
   $("#btn-quiz-submit").textContent = "确认";
   $("#btn-quiz-submit").disabled = false;
+  $("#btn-quiz-skip").hidden = false;
 }
+
+// 跳过这题：视为空答案判错
+$("#btn-quiz-skip").addEventListener("click", () => {
+  state._quizSkipped = true;
+  $("#btn-quiz-submit").click();
+});
 
 // 确认答案 → 判对错 → 显示反馈 → 下一题/查看结果
 $("#btn-quiz-submit").addEventListener("click", async () => {
@@ -639,9 +662,10 @@ $("#btn-quiz-submit").addEventListener("click", async () => {
     return;
   }
 
-  // 第一次点击：判对错
+  // 第一次点击：判对错（跳过时视为空答案判错）
   const q = state.questions[state.qIdx];
-  const userInput = state._pending();
+  const userInput = state._quizSkipped ? "" : state._pending();
+  state._quizSkipped = false;
   btn.disabled = true;
 
   // 调后端判分
@@ -664,6 +688,8 @@ $("#btn-quiz-submit").addEventListener("click", async () => {
     sfxFail();
     state.wrongList.push({ question: q, user_input: userInput, expected: result.expected });
   }
+  // 播正确答案发音（拼写/听写已有，测验补上）
+  speak(result.expected, null);
 
   // 显示反馈
   const body = $("#quiz-body");
@@ -691,7 +717,7 @@ $("#btn-quiz-submit").addEventListener("click", async () => {
   if (input) { input.disabled = true; input.oninput = null; }
   body.querySelectorAll(".quiz-option").forEach((b) => {
     b.disabled = true;
-    if (b.textContent === result.expected) b.classList.add("correct");
+    if (b.dataset.value === result.expected) b.classList.add("correct");
   });
 
   // 按钮变"下一题"或"查看结果"
@@ -736,12 +762,12 @@ function showQuizResult() {
     let html = `答对 <span class="right">${correctCount}</span> / ${total} 题。<br><br>`;
     html += `<div class="quiz-wrong-list">`;
     html += `<div class="quiz-wrong-title">❌ 错题回顾</div>`;
-    state.wrongList.forEach((w) => {
+    state.wrongList.forEach((w, i) => {
       const q = w.question;
       const meaning = q.prompt || "";
-      html += `<div class="quiz-wrong-item">`;
+      html += `<div class="quiz-wrong-item" data-wrong-idx="${i}" style="cursor:pointer">`;
       html += `<span class="quiz-wrong-meaning">${escapeHtml(meaning)}</span>`;
-      html += `<span class="quiz-wrong-expected">${escapeHtml(w.expected)}</span>`;
+      html += `<span class="quiz-wrong-expected">${escapeHtml(w.expected)} ›</span>`;
       html += `</div>`;
     });
     html += `</div>`;
@@ -771,6 +797,15 @@ function showResult(data) {
       "它们会出现在明天的队列里。";
   }
 }
+
+// 错题项点击 → 进单词详情
+$("#result-detail").addEventListener("click", async (e) => {
+  const item = e.target.closest(".quiz-wrong-item");
+  if (item) {
+    const w = state.wrongList[parseInt(item.dataset.wrongIdx)];
+    if (w) openWordDetail(w.question.card_id);
+  }
+});
 
 $("#btn-back-queue").addEventListener("click", async () => {
   show("view-queue");
@@ -964,7 +999,7 @@ function renderWordDetail() {
   // 例句
   const exampleEl = $("#detail-example");
   if (c.example && c.kind !== "sentence") {
-    exampleEl.innerHTML = `<span class="example-en">${escapeHtml(c.example)}</span>`;
+    $("#detail-example-text").textContent = c.example;
     exampleEl.hidden = false;
   } else {
     exampleEl.hidden = true;
@@ -1028,6 +1063,14 @@ function renderWordDetail() {
 // 发音按钮
 $("#detail-speak").addEventListener("click", () => {
   if (detailCard) speak(detailCard.word, $("#detail-speak"));
+});
+
+// 例句发音
+$("#detail-example-speak").addEventListener("click", (e) => {
+  e.stopPropagation();
+  if (detailCard && detailCard.example) {
+    speak(detailCard.example, $("#detail-example-speak"));
+  }
 });
 
 // 评分按钮
@@ -1139,12 +1182,12 @@ async function handleListeningAnswer(selected, btn) {
   if (correct) {
     sfxSuccess();
     listeningCorrect++;
-    btn.classList.add("correct");
+    if (btn) btn.classList.add("correct");
     $("#listening-feedback").textContent = "✅ 正确！";
     $("#listening-feedback").className = "listening-feedback ok";
   } else {
     sfxFail();
-    btn.classList.add("wrong");
+    if (btn) btn.classList.add("wrong");
     $("#listening-feedback").textContent = `❌ 正确答案是：${q.word}`;
     $("#listening-feedback").className = "listening-feedback err";
   }
@@ -1197,6 +1240,14 @@ $("#listening-speak").addEventListener("click", () => {
   if (listeningQuestions[listeningIdx]) {
     speak(listeningQuestions[listeningIdx].word, $("#listening-speak"));
   }
+});
+
+// 跳过这题（不记得就跳过，显示答案）
+$("#btn-listening-skip").addEventListener("click", () => {
+  if (!listeningQuestions.length) return;
+  const q = listeningQuestions[listeningIdx];
+  const wrongIdx = (q.correct_index + 1) % q.options.length;
+  handleListeningAnswer(wrongIdx, null);
 });
 
 // 返回按钮
@@ -1277,6 +1328,49 @@ function renderMixedQuestion() {
   } else {
     renderMixedSpell(item, body);
   }
+
+  // 跳过这题
+  const skipBtn = document.createElement("button");
+  skipBtn.className = "btn btn-ghost btn-small spelling-skip";
+  skipBtn.textContent = "跳过这题 →";
+  skipBtn.addEventListener("click", () => skipMixedQuestion(item));
+  body.appendChild(skipBtn);
+}
+
+// 混合-跳过：跳过 = 判错（错误增强），显示答案后下一题
+function skipMixedQuestion(item) {
+  const expected = item.q.word || (item.q.correct_index !== undefined ? item.q.options[item.q.correct_index] : "");
+  sfxFail();
+  if (expected) {
+    mixedFeedback(item, document.body, false, expected, null);
+  } else {
+    const fb = document.createElement("div");
+    fb.className = "quiz-feedback err";
+    fb.textContent = "⏭ 已跳过（算作答错，会巩固）";
+    $("#mixed-body").appendChild(fb);
+  }
+  // 提交错误记录（错误增强）
+  if (item.type === "listen" && item.q.correct_index !== undefined) {
+    const wrongIdx = (item.q.correct_index + 1) % item.q.options.length;
+    api("/api/listening/score", {
+      method: "POST",
+      body: JSON.stringify({
+        card_id: item.q.card_id, selected_index: wrongIdx,
+        correct_index: item.q.correct_index, rating: 1,
+      }),
+    }).catch(() => {});
+  } else if (item.type === "choice") {
+    api("/api/quiz/score", {
+      method: "POST",
+      body: JSON.stringify({ answers: [{ card_id: item.q.card_id, user_input: "" }] }),
+    }).catch(() => {});
+  } else if (item.type === "spell") {
+    api("/api/typing/check", {
+      method: "POST",
+      body: JSON.stringify({ card_id: item.q.card_id, user_input: "" }),
+    }).catch(() => {});
+  }
+  setTimeout(() => mixedNext(item), 1500);
 }
 
 function typeName(t) {
@@ -1334,7 +1428,18 @@ function renderMixedChoice(item, body) {
   q.options.forEach((opt) => {
     const btn = document.createElement("button");
     btn.className = "quiz-option";
+    btn.dataset.value = opt;
     btn.textContent = opt;
+    // 选项发声（点击只发音不选中）
+    const spk = document.createElement("button");
+    spk.className = "quiz-option-speak";
+    spk.textContent = "🔊";
+    spk.title = "听发音";
+    spk.addEventListener("click", (e) => {
+      e.stopPropagation();
+      speak(opt, spk);
+    });
+    btn.appendChild(spk);
     btn.addEventListener("click", async () => {
       // 走服务端判分（choice 题正确答案在服务端）
       let result = null;
@@ -1438,7 +1543,9 @@ function mixedFeedback(item, container, correct, expectedText, userText) {
   const options = body.querySelectorAll(".listening-option, .quiz-option");
   options.forEach((b) => {
     b.disabled = true;
-    if (b.textContent === expectedText) b.classList.add("correct");
+    if (b.dataset.value === expectedText || b.textContent === expectedText) {
+      b.classList.add("correct");
+    }
   });
 }
 
@@ -1682,6 +1789,17 @@ $("#btn-spelling-again").addEventListener("click", () => {
   startSpelling();
 });
 
+// 跳过这题
+$("#btn-spelling-skip").addEventListener("click", () => {
+  if (!spellingQueue.length) return;
+  const card = spellingQueue[spellingIdx];
+  const input = $("#spelling-input");
+  input.oninput = null;
+  input.onkeydown = null;
+  input.value = "";
+  checkSpelling(card); // 空值→判错→显示答案
+});
+
 // 返回
 $("#btn-back-spelling").addEventListener("click", async () => {
   show("view-queue");
@@ -1892,9 +2010,9 @@ async function openStory(id) {
   const s = await api(`/api/stories/${id}`);
   show("view-story-read");
   $("#story-read-title").textContent = s.title;
-  // 原文分词（先不转义，HTML 转义放在每个 token 输出时做一次）
-  $("#story-read-content").innerHTML =
-    s.content.split(/\s+/).map((tok) => {
+  // 按句拆分渲染：句子点击整句朗读，词点击保持弹卡
+  const renderTokens = (sentText) =>
+    sentText.split(/\s+/).map((tok) => {
       const clean = tok.replace(/[^a-zA-Z'-]/g, "").toLowerCase();
       const isTarget = s.words.some((w) => w.word.toLowerCase() === clean);
       if (isTarget) {
@@ -1902,8 +2020,14 @@ async function openStory(id) {
         return `<span class="sw" data-word="${escapeHtml(word.word)}">${escapeHtml(tok)}</span>`;
       }
       return escapeHtml(tok);
-    }).join(" ") +
-    `<div class="story-tap-tip">👆 点击绿色词查看释义 / 朗读</div>`;
+    }).join(" ");
+
+  const sentences = s.content.match(/[^.!?]+[.!?]*\s*/g) || [s.content];
+  $("#story-read-content").innerHTML =
+    sentences.map((sent, i) =>
+      `<span class="story-sentence" data-sid="${i}">${renderTokens(sent)}</span>`
+    ).join("") +
+    `<div class="story-tap-tip">👆 点击句子整句朗读 · 点击绿词查看释义</div>`;
 
   $("#story-read-words").innerHTML = "";
   s.words.forEach((w) => {
@@ -1919,6 +2043,13 @@ async function openStory(id) {
       const word = el.dataset.word;
       el.classList.add("tapped");
       openWordModal(word, s);
+    });
+  });
+  // 句子整句朗读（词点击已 stopPropagation，不会冲突）
+  $$(".story-sentence", $("#story-read-content")).forEach((el) => {
+    el.addEventListener("click", () => {
+      const text = el.textContent.trim();
+      if (text) speak(text, el);
     });
   });
 }
@@ -2078,12 +2209,15 @@ function renderLesson() {
         <div class="word-item-phonetic">${escapeHtml(w.phonetic || "")}</div>
         <div class="word-item-meaning">${escapeHtml(w.meaning || "")}</div>
       </div>
-      <button class="speak-mini" title="朗读">🔊</button>`;
-    item.querySelector(".speak-mini").addEventListener("click", () =>
-      speak(w.word, item.querySelector(".speak-mini"))
-    );
-    // 点击词标记已掌握（评分 3=记得）
-    item.addEventListener("click", async () => {
+      <button class="speak-mini" title="朗读">🔊</button>
+      <button class="lesson-master-btn" title="记住了">✓</button>`;
+    item.querySelector(".speak-mini").addEventListener("click", (e) => {
+      e.stopPropagation();
+      speak(w.word, item.querySelector(".speak-mini"));
+    });
+    // 确认式标记已掌握（评分 3=记得），与整行点击分离防误触
+    item.querySelector(".lesson-master-btn").addEventListener("click", async (e) => {
+      e.stopPropagation();
       const cardId = L.card_ids?.[w.word];
       if (!cardId) return;
       try {
@@ -2092,6 +2226,7 @@ function renderLesson() {
           body: JSON.stringify({ card_id: cardId, rating: 3 }),
         });
         item.classList.add("word-mastered");
+        toast(`✓ ${w.word} 已标记掌握`);
       } catch (e) {
         toast("记录失败");
       }

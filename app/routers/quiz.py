@@ -79,6 +79,7 @@ def get_quiz(limit: int = 5, db: Session = Depends(get_db)):
                     "prompt": make_fill_prompt(card.example, card.word),
                     "card_id": card.id,
                     "word_length": len(card.word),
+                    "hint": card.meaning,  # 中文释义：让用户知道要填哪个词
                 }
             )
     return {"questions": questions}

@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=25">
+  <link rel="stylesheet" href="/static/style.css?v=26">
 </head>
 <body>
   <div class="app">
@@ -192,6 +192,7 @@
           <h2>今天的词都过了一遍</h2>
           <p id="done-detail" class="done-detail"></p>
           <button id="btn-to-quiz" class="btn btn-primary">去做测验</button>
+          <button id="btn-to-mixed" class="btn btn-ghost">🎲 再练一轮混合</button>
         </div>
       </section>
 
@@ -202,6 +203,7 @@
         </div>
         <div id="quiz-body"></div>
         <button id="btn-quiz-submit" class="btn btn-primary btn-wide" hidden>确认</button>
+        <button id="btn-quiz-skip" class="btn btn-ghost btn-small" hidden>跳过这题 →</button>
       </section>
 
       <!-- ===== 视图：结果 ===== -->
@@ -243,6 +245,7 @@
           </div>
           <div id="listening-options" class="listening-options"></div>
           <div id="listening-feedback" class="listening-feedback"></div>
+          <button id="btn-listening-skip" class="btn btn-ghost btn-small spelling-skip">跳过这题 →</button>
         </div>
 
         <div id="listening-done" class="study-done" hidden>
@@ -283,6 +286,7 @@
 
           <div id="spelling-hint" class="spelling-hint"></div>
           <div id="spelling-feedback" class="spelling-feedback"></div>
+          <button id="btn-spelling-skip" class="btn btn-ghost btn-small spelling-skip">跳过这题 →</button>
         </div>
 
         <div id="spelling-done" class="study-done" hidden>
@@ -379,7 +383,7 @@
           <div id="detail-phonetic" class="word-detail-phonetic"></div>
           <div id="detail-badges" class="word-detail-badges"></div>
           <div id="detail-meaning" class="word-detail-meaning"></div>
-          <div id="detail-example" class="word-detail-example"></div>
+          <div id="detail-example" class="word-detail-example"><span id="detail-example-text"></span><button id="detail-example-speak" class="speak-mini" title="朗读例句">🔊</button></div>
           <div id="detail-contexts" class="bubble-list"></div>
           <div id="detail-explanation" class="word-detail-explanation"></div>
           <div id="detail-memo" class="word-detail-memo" hidden>
@@ -473,6 +477,6 @@
     </nav>
   </div>
 
-  <script src="/static/app.js?v=28"></script>
+  <script src="/static/app.js?v=29"></script>
 </body>
 </html>
