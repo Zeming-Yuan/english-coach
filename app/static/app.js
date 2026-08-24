@@ -1917,6 +1917,12 @@ function renderCalendar(days) {
       host.appendChild(cell);
     }
   }
+
+  // 默认滚到最新（今天在最右，进来直接看到）
+  requestAnimationFrame(() => {
+    const wrap = host.closest(".gh-calendar-wrap");
+    if (wrap) wrap.scrollLeft = wrap.scrollWidth;
+  });
 }
 
 function getHeatLevel(reviews, max) {
