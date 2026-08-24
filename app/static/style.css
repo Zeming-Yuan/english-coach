@@ -1354,6 +1354,21 @@ body {
 .cal-l2 { background: #40C463; }
 .cal-l3 { background: #30A14E; }
 
+.cal-tooltip {
+  position: fixed;
+  z-index: 300;
+  pointer-events: none;
+  background: var(--ink);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 8px;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+.cal-tooltip[hidden] { display: none; }
+
 .cal-legend {
   display: flex;
   align-items: center;

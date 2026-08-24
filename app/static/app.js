@@ -1906,7 +1906,11 @@ function renderCalendar(days) {
         cell.classList.add("cal-empty");
       } else {
         cell.classList.add(`cal-l${getHeatLevel(d.reviews, maxReviews)}`);
-        cell.title = `${d.date}：${d.reviews} 次复习`;
+        cell.dataset.date = d.date;
+        cell.dataset.reviews = d.reviews;
+        cell.addEventListener("mouseenter", showCalTooltip);
+        cell.addEventListener("mousemove", moveCalTooltip);
+        cell.addEventListener("mouseleave", hideCalTooltip);
       }
       cell.style.gridRow = String(row + 2);
       cell.style.gridColumn = String(col + 2);
@@ -1923,6 +1927,38 @@ function getHeatLevel(reviews, max) {
   return 3;
 }
 
+// 热力图自定义 tooltip（鼠标悬停显示日期）
+function showCalTooltip(e) {
+  const cell = e.target;
+  const tip = getCalTooltip();
+  tip.textContent = `${cell.dataset.date} · ${cell.dataset.reviews} 次复习`;
+  tip.hidden = false;
+  moveCalTooltip(e);
+}
+
+function moveCalTooltip(e) {
+  const tip = getCalTooltip();
+  const x = Math.min(e.clientX + 12, window.innerWidth - 160);
+  const y = e.clientY + 14;
+  tip.style.left = x + "px";
+  tip.style.top = y + "px";
+}
+
+function hideCalTooltip() {
+  const tip = document.getElementById("cal-tooltip");
+  if (tip) tip.hidden = true;
+}
+
+function getCalTooltip() {
+  let tip = document.getElementById("cal-tooltip");
+  if (!tip) {
+    tip = document.createElement("div");
+    tip.id = "cal-tooltip";
+    tip.className = "cal-tooltip";
+    document.body.appendChild(tip);
+  }
+  return tip;
+}
 
 // 入口：点击统计区域
 $("#today-stats").addEventListener("click", openStats);
