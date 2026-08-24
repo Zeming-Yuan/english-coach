@@ -37,7 +37,11 @@ def test_generate_cards(mock_client, client, db_session):
         (),
         {
             "choices": [
-                type("Choice", (), {"message": type("Msg", (), {"content": MOCK_GENERATE_RESPONSE})()})()
+                type(
+                    "Choice",
+                    (),
+                    {"message": type("Msg", (), {"content": MOCK_GENERATE_RESPONSE})()},
+                )()
             ]
         },
     )()
@@ -69,7 +73,11 @@ def test_generate_cards_already_exists(client, db_session):
             (),
             {
                 "choices": [
-                    type("Choice", (), {"message": type("Msg", (), {"content": '{"cards": []}'})()})()
+                    type(
+                        "Choice",
+                        (),
+                        {"message": type("Msg", (), {"content": '{"cards": []}'})()},
+                    )()
                 ]
             },
         )()

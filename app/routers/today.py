@@ -78,9 +78,11 @@ def _calc_streak(db: Session, now: datetime, today_start: datetime) -> int:
     - 今天昨天都没学 → streak 归零
     """
     # 取所有复习过的（日期去重，日期 = last_review 的日期）
-    rows = db.execute(
-        select(Review.last_review).where(Review.last_review.is_not(None))
-    ).scalars().all()
+    rows = (
+        db.execute(select(Review.last_review).where(Review.last_review.is_not(None)))
+        .scalars()
+        .all()
+    )
     days = {r.date() for r in rows}
     if not days:
         return 0

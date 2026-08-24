@@ -23,9 +23,7 @@ def card_to_dict(card: Card, db: Session) -> dict:
     """Card → 字典（含复习状态）。"""
     review = (
         db.execute(
-            select(Review)
-            .where(Review.card_id == card.id)
-            .order_by(Review.id.desc())
+            select(Review).where(Review.card_id == card.id).order_by(Review.id.desc())
         )
         .scalars()
         .first()

@@ -26,20 +26,43 @@ def test_stats_counts(client, db_session):
 
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     # card1 今天复习过 2 次
-    db_session.add_all([
-        Review(card_id=card1.id, state=1, due=now, stability=1.0,
-               difficulty=1.0, elapsed_days=0, last_review=now,
-               review_count=1),
-        Review(card_id=card1.id, state=3, due=now + timedelta(days=1), stability=2.0,
-               difficulty=1.0, elapsed_days=0, last_review=now,
-               review_count=2),
-    ])
+    db_session.add_all(
+        [
+            Review(
+                card_id=card1.id,
+                state=1,
+                due=now,
+                stability=1.0,
+                difficulty=1.0,
+                elapsed_days=0,
+                last_review=now,
+                review_count=1,
+            ),
+            Review(
+                card_id=card1.id,
+                state=3,
+                due=now + timedelta(days=1),
+                stability=2.0,
+                difficulty=1.0,
+                elapsed_days=0,
+                last_review=now,
+                review_count=2,
+            ),
+        ]
+    )
     # card2 昨天复习过 1 次（不算今天）
-    db_session.add(Review(
-        card_id=card2.id, state=1, due=now, stability=1.0,
-        difficulty=1.0, elapsed_days=0,
-        last_review=now - timedelta(days=1), review_count=1,
-    ))
+    db_session.add(
+        Review(
+            card_id=card2.id,
+            state=1,
+            due=now,
+            stability=1.0,
+            difficulty=1.0,
+            elapsed_days=0,
+            last_review=now - timedelta(days=1),
+            review_count=1,
+        )
+    )
     db_session.commit()
 
     resp = client.get("/api/stats")
@@ -59,11 +82,18 @@ def test_streak_consecutive_days(client, db_session):
 
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     for i in range(3):
-        db_session.add(Review(
-            card_id=card.id, state=1, due=now, stability=1.0,
-            difficulty=1.0, elapsed_days=0,
-            last_review=now - timedelta(days=i), review_count=i + 1,
-        ))
+        db_session.add(
+            Review(
+                card_id=card.id,
+                state=1,
+                due=now,
+                stability=1.0,
+                difficulty=1.0,
+                elapsed_days=0,
+                last_review=now - timedelta(days=i),
+                review_count=i + 1,
+            )
+        )
     db_session.commit()
 
     resp = client.get("/api/stats")
@@ -79,11 +109,18 @@ def test_streak_broken_yesterday(client, db_session):
 
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     # 前天学过，昨天没学
-    db_session.add(Review(
-        card_id=card.id, state=1, due=now, stability=1.0,
-        difficulty=1.0, elapsed_days=0,
-        last_review=now - timedelta(days=2), review_count=1,
-    ))
+    db_session.add(
+        Review(
+            card_id=card.id,
+            state=1,
+            due=now,
+            stability=1.0,
+            difficulty=1.0,
+            elapsed_days=0,
+            last_review=now - timedelta(days=2),
+            review_count=1,
+        )
+    )
     db_session.commit()
 
     resp = client.get("/api/stats")
@@ -99,11 +136,18 @@ def test_streak_today_missed_but_yesterday_ok(client, db_session):
 
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     for i in range(1, 4):  # 昨天、前天、大前天
-        db_session.add(Review(
-            card_id=card.id, state=1, due=now, stability=1.0,
-            difficulty=1.0, elapsed_days=0,
-            last_review=now - timedelta(days=i), review_count=i,
-        ))
+        db_session.add(
+            Review(
+                card_id=card.id,
+                state=1,
+                due=now,
+                stability=1.0,
+                difficulty=1.0,
+                elapsed_days=0,
+                last_review=now - timedelta(days=i),
+                review_count=i,
+            )
+        )
     db_session.commit()
 
     resp = client.get("/api/stats")

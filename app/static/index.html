@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=6">
+  <link rel="stylesheet" href="/static/style.css?v=8">
 </head>
 <body>
   <div class="app">
@@ -46,6 +46,16 @@
           <h2>欢迎来到 EnglishCoach</h2>
           <p>AI 会根据你的记忆安排每天学什么。<br>先加几个想学的词，马上开始！</p>
           <button id="btn-goto-add" class="btn btn-primary">先加几个词</button>
+        </div>
+
+        <!-- 课程入口卡 -->
+        <div id="lesson-entry" class="lesson-entry" hidden>
+          <div class="lesson-entry-body">
+            <div class="lesson-entry-label">继续课程</div>
+            <div id="lesson-entry-title" class="lesson-entry-title"></div>
+            <div id="lesson-entry-sub" class="lesson-entry-sub"></div>
+          </div>
+          <button id="btn-open-lesson" class="btn btn-primary btn-small">开始 →</button>
         </div>
 
         <!-- 今日统计 + streak -->
@@ -159,6 +169,26 @@
         <div id="story-read-words" class="story-read-words"></div>
       </section>
 
+      <!-- ===== 视图：课程学习 ===== -->
+      <section id="view-lesson" class="view" hidden>
+        <div class="page-head">
+          <button id="btn-back-lesson" class="btn btn-ghost btn-small">← 返回</button>
+        </div>
+        <p id="lesson-level" class="eyebrow"></p>
+        <h2 id="lesson-title" class="page-title"></h2>
+        <div id="lesson-tips" class="lesson-tips"></div>
+
+        <h3 class="lesson-section">本课单词 · 点一下标记已掌握</h3>
+        <div id="lesson-words" class="word-list"></div>
+
+        <h3 class="lesson-section">对话 · 点句子听发音</h3>
+        <div id="lesson-dialogue" class="bubble-list"></div>
+
+        <div class="lesson-actions">
+          <button id="btn-lesson-done" class="btn btn-primary btn-wide">✅ 学完本课，进入下一课</button>
+        </div>
+      </section>
+
     </main>
 
     <!-- ===== 模态：故事点词评分 ===== -->
@@ -199,6 +229,6 @@
     </nav>
   </div>
 
-  <script src="/static/app.js?v=6"></script>
+  <script src="/static/app.js?v=8"></script>
 </body>
 </html>

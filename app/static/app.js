@@ -249,6 +249,14 @@ function flip() {
   state.flipped = !state.flipped;
   $("#study-card").classList.toggle("flipped", state.flipped);
   $("#rating-area").hidden = !state.flipped;
+  // 翻到背面时自动播一次发音（单词/例句），不用手动点 🔊
+  if (state.flipped) {
+    const card = state.queue[state.idx];
+    const text = card.kind === "sentence"
+      ? (card.example || card.word)
+      : card.word;
+    speak(text, null);
+  }
 }
 
 $("#study-card").addEventListener("click", flip);
@@ -674,5 +682,135 @@ function toast(msg) {
   el._t = setTimeout(() => el.classList.remove("show"), 2600);
 }
 
+/* ============ 课程 ============ */
+let currentLesson = null;
+
+async function loadLessonEntry() {
+  try {
+    const data = await api("/api/lessons");
+    const entry = $("#lesson-entry");
+    const btn = $("#btn-open-lesson");
+    if (data.is_done) {
+      entry.hidden = false;
+      $("#lesson-entry-title").textContent = "20 级课程全部完成！🎓";
+      $("#lesson-entry-sub").textContent = "继续用队列/故事巩固吧";
+      btn.textContent = "回顾";
+      btn.onclick = () => {
+        const last = data.lessons[data.lessons.length - 1];
+        openLesson(last.level);
+      };
+      return;
+    }
+    if (data.lessons.length === 0) {
+      entry.hidden = false;
+      $("#lesson-entry-title").textContent = "开始零基础课程";
+      $("#lesson-entry-sub").textContent = "从第 1 课开始，AI 带你循序渐进";
+      btn.textContent = "开始";
+      btn.onclick = () => openLesson(data.next_level, true);
+      return;
+    }
+    const last = data.lessons[data.lessons.length - 1];
+    entry.hidden = false;
+    $("#lesson-entry-title").textContent = `第 ${last.level} 课 · ${last.title}`;
+    $("#lesson-entry-sub").textContent = `已完成 ${data.lessons.length}/20 课 · 下一课：${data.next_level}`;
+    btn.textContent = "继续 →";
+    btn.onclick = () => openLesson(last.level);
+  } catch {
+    $("#lesson-entry").hidden = true;
+    $("#btn-open-lesson").hidden = true;
+  }
+}
+
+async function openLesson(level, generate = false) {
+  try {
+    if (generate) {
+      $("#btn-open-lesson").textContent = "生成中…";
+      currentLesson = await api("/api/lessons/next", { method: "POST" });
+    } else {
+      currentLesson = await api(`/api/lessons/${level}`);
+    }
+    renderLesson();
+    show("view-lesson");
+  } catch (e) {
+    toast("课程加载失败：" + e.message);
+  }
+}
+
+function renderLesson() {
+  const L = currentLesson;
+  $("#lesson-level").textContent = `第 ${L.level} 课`;
+  $("#lesson-title").textContent = L.title;
+  $("#lesson-tips").textContent = (L.content.tips || []).join("；");
+
+  // 词表：点击评分（复用 /api/reviews），再点切换状态
+  const wordsEl = $("#lesson-words");
+  wordsEl.innerHTML = "";
+  (L.content.words || []).forEach((w) => {
+    const item = document.createElement("div");
+    item.className = "word-item lesson-word";
+    item.innerHTML = `
+      <div class="word-main">
+        <div class="word-item-word">${escapeHtml(w.word)}</div>
+        <div class="word-item-phonetic">${escapeHtml(w.phonetic || "")}</div>
+        <div class="word-item-meaning">${escapeHtml(w.meaning || "")}</div>
+      </div>
+      <button class="speak-mini" title="朗读">🔊</button>`;
+    item.querySelector(".speak-mini").addEventListener("click", () =>
+      speak(w.word, item.querySelector(".speak-mini"))
+    );
+    // 点击词标记已掌握（评分 3=记得）
+    item.addEventListener("click", async () => {
+      const cardId = L.card_ids?.[w.word];
+      if (!cardId) return;
+      try {
+        await api("/api/reviews", {
+          method: "POST",
+          body: JSON.stringify({ card_id: cardId, rating: 3 }),
+        });
+        item.classList.add("word-mastered");
+      } catch (e) {
+        toast("记录失败");
+      }
+    });
+    wordsEl.appendChild(item);
+  });
+
+  // 对话：点句子听发音
+  const dlgEl = $("#lesson-dialogue");
+  dlgEl.innerHTML = "";
+  (L.content.dialogue || []).forEach((line, i) => {
+    const row = document.createElement("div");
+    const side = i % 2 === 0 ? "bubble-a" : "bubble-b";
+    row.className = `bubble ${side} lesson-dialogue-row`;
+    row.innerHTML = `<span class="spk">${escapeHtml(line.speaker)}</span>` +
+      `<div class="bubble-en">${escapeHtml(line.en)}</div>` +
+      `<div class="bubble-cn">${escapeHtml(line.cn)}</div>`;
+    row.addEventListener("click", () => speak(line.en, row));
+    dlgEl.appendChild(row);
+  });
+}
+
+$("#btn-back-lesson").addEventListener("click", async () => {
+  show("view-queue");
+  await loadToday();
+  await loadLessonEntry();
+});
+
+$("#btn-lesson-done").addEventListener("click", async () => {
+  const btn = $("#btn-lesson-done");
+  btn.disabled = true;
+  btn.textContent = "生成下一课中…";
+  try {
+    currentLesson = await api("/api/lessons/next", { method: "POST" });
+    renderLesson();
+    toast(`🎉 第 ${currentLesson.level} 课开始！`);
+  } catch (e) {
+    toast("出错了：" + e.message);
+    btn.disabled = false;
+    btn.textContent = "✅ 学完本课，进入下一课";
+  }
+});
+
 /* ============ 启动 ============ */
 loadToday().catch((e) => console.error("加载今日队列失败", e));
+loadLessonEntry().catch((e) => console.error("加载课程入口失败", e));

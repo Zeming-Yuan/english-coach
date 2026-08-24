@@ -573,6 +573,72 @@ body {
 /* 加词/故事 空态提升 */
 .view-center { min-height: 55vh; }
 
+/* ============================================================
+   课程（lesson 入口卡 + 课程学习页）
+   ============================================================ */
+.lesson-entry {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  background: linear-gradient(120deg, var(--mint-soft), #EAF7F2);
+  border: 1px solid #C7EBDF;
+  border-radius: 20px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
+}
+.lesson-entry[hidden] { display: none !important; }
+.lesson-entry-body { text-align: left; min-width: 0; }
+.lesson-entry-label {
+  font-size: 11px; font-weight: 800; color: #137A62;
+  letter-spacing: 0.06em; text-transform: uppercase;
+}
+.lesson-entry-title {
+  font-size: 16px; font-weight: 900; margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lesson-entry-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.lesson-entry .btn { flex-shrink: 0; }
+
+.lesson-tips {
+  background: var(--sun-soft);
+  border-radius: 14px;
+  padding: 10px 14px;
+  font-size: 13px; line-height: 1.7;
+  color: #8A6410;
+  margin: 10px 0 18px;
+}
+.lesson-tips:empty { display: none; }
+.lesson-section {
+  font-size: 14px; font-weight: 800; color: var(--muted);
+  margin: 20px 0 10px;
+  letter-spacing: 0.02em;
+}
+.lesson-actions { margin-top: 22px; }
+.lesson-dialogue-row {
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+}
+.lesson-dialogue-row.bubble-a:hover,
+.lesson-dialogue-row.bubble-b:hover {
+  filter: brightness(0.97);
+}
+.lesson-dialogue-row .spk {
+  font-size: 10px; font-weight: 800; opacity: 0.6;
+  display: block; margin-bottom: 2px;
+}
+.lesson-word { cursor: pointer; }
+.lesson-word.word-mastered {
+  border-color: var(--mint);
+  background: var(--mint-soft);
+}
+.lesson-word.word-mastered .word-item-word::after {
+  content: " ✓";
+  color: var(--mint);
+  font-size: 14px;
+}
+
 /* Toast 提示（替代裸 alert） */
 .toast {
   position: fixed;

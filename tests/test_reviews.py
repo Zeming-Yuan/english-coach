@@ -85,8 +85,8 @@ def test_review_graduates_word_to_sentence(client, db_session):
     # 提交 3 次复习（每次 rating=3=Good）
     for _ in range(3):
         resp = client.post("/api/reviews", json={"card_id": card.id, "rating": 3})
-    assert resp.status_code == 200
-    data = resp.json()
+    assert resp.status_code == 200  # type: ignore
+    data = resp.json()  # type: ignore
     assert data["graduated"] is True
     assert "sentence_card_id" in data
     # 验证句子卡确实入库了

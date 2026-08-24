@@ -12,6 +12,8 @@ from app.db import Base
 
 if TYPE_CHECKING:
     from app.models.card import Card
+
+
 class Story(Base):
     """一篇 AI 生成的故事。"""
 

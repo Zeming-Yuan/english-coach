@@ -70,6 +70,7 @@ def test_tts_audio_too_long():
 
 def test_tts_audio_synthesis_fails(monkeypatch):
     """合成失败（网络异常）→ 流式输出空（前端静默，不 500）。"""
+
     async def _boom(text: str):
         raise OSError("network down")
         yield  # 让 async generator 形状成立
@@ -83,6 +84,7 @@ def test_tts_audio_synthesis_fails(monkeypatch):
 
 def test_tts_preload_caches(monkeypatch):
     """/preload 预合成入缓存。"""
+
     async def _fake_synthesize(text: str):
         yield b"abc"
 
