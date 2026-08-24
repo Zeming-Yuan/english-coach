@@ -918,6 +918,31 @@ body {
 /* ============================================================
    拼写练习（Qwerty 风格）
    ============================================================ */
+.spelling-difficulty {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.diff-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.15s ease;
+}
+.diff-btn:hover { border-color: var(--coral); color: var(--coral); }
+.diff-btn.diff-active {
+  background: var(--coral);
+  border-color: var(--coral);
+  color: #fff;
+}
+
 .spelling-body { margin-top: 10px; text-align: center; }
 .spelling-meaning {
   font-size: 22px;

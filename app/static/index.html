@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=20">
+  <link rel="stylesheet" href="/static/style.css?v=21">
 </head>
 <body>
   <div class="app">
@@ -239,6 +239,13 @@
         </div>
         <div class="progress-track"><div id="spelling-progress" class="progress-fill"></div></div>
 
+        <!-- 难度选择（渐褪提示 Fading Scaffolding） -->
+        <div class="spelling-difficulty" id="spelling-difficulty">
+          <button class="diff-btn" data-diff="1">教过</button>
+          <button class="diff-btn" data-diff="2">提示</button>
+          <button class="diff-btn" data-diff="3">独立</button>
+        </div>
+
         <div id="spelling-body" class="spelling-body">
           <div class="spelling-meaning" id="spelling-meaning"></div>
           <div class="spelling-phonetic" id="spelling-phonetic"></div>
@@ -415,6 +422,6 @@
     </nav>
   </div>
 
-  <script src="/static/app.js?v=20"></script>
+  <script src="/static/app.js?v=21"></script>
 </body>
 </html>

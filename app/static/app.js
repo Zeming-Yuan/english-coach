@@ -1065,10 +1065,34 @@ $("#btn-listening-back").addEventListener("click", async () => {
   await loadToday();
 });
 
-/* ============ 拼写练习（Qwerty 风格） ============ */
+/* ============ 拼写练习（Qwerty 风格 + 渐褪提示） ============ */
 let spellingQueue = [];
 let spellingIdx = 0;
 let spellingCorrect = 0;
+let spellingDiff = 2; // 默认"提示"档；1=教过(首字母) 2=提示(空格数) 3=独立(自由)
+
+// 恢复上次难度
+try {
+  const saved = parseInt(localStorage.getItem("spellingDiff") || "2");
+  if (saved >= 1 && saved <= 3) spellingDiff = saved;
+} catch {}
+
+// 难度按钮
+$$("#spelling-difficulty .diff-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    spellingDiff = parseInt(btn.dataset.diff);
+    try { localStorage.setItem("spellingDiff", String(spellingDiff)); } catch {}
+    updateSpellingDiffUI();
+    renderSpellingWord();
+  });
+});
+
+function updateSpellingDiffUI() {
+  $$("#spelling-difficulty .diff-btn").forEach((btn) => {
+    btn.classList.toggle("diff-active", parseInt(btn.dataset.diff) === spellingDiff);
+  });
+}
+updateSpellingDiffUI();
 
 async function startSpelling() {
   const data = await api("/api/today");
@@ -1099,15 +1123,24 @@ function renderSpellingWord() {
   $("#spelling-phonetic").textContent = card.phonetic || "";
   $("#spelling-feedback").textContent = "";
   $("#spelling-feedback").className = "spelling-feedback";
-  $("#spelling-hint").textContent = `输入上面的英文单词（${target.length} 个字母）`;
 
-  // 渲染占位格子
+  const diffLabels = { 1: "教过：首字母已提示", 2: "提示：空格数提醒", 3: "独立：完全靠自己" };
+  $("#spelling-hint").textContent = `输入上面的英文单词 · ${diffLabels[spellingDiff]}`;
+
+  // 渲染占位格子（难度1 显示首字母提示）
   const display = $("#spelling-word-display");
   display.innerHTML = "";
   for (let i = 0; i < target.length; i++) {
     const box = document.createElement("span");
     box.className = "spelling-box";
     box.dataset.index = i;
+    if (spellingDiff === 1 && i === 0) {
+      box.textContent = target[0];
+      box.classList.add("box-correct");
+      box.style.color = "var(--muted)";
+    } else {
+      box.classList.add("box-pending");
+    }
     display.appendChild(box);
   }
 
