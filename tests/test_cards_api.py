@@ -1,6 +1,6 @@
 """词卡 API 测试（生成端点 mock AI）。"""
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
 from app.models.card import Card
@@ -134,7 +134,7 @@ def test_get_card_detail_with_reviews(client, db_session):
     db_session.flush()
 
     # 模拟两次复习
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     db_session.add(
         Review(
             card_id=card.id,

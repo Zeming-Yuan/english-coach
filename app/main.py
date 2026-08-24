@@ -10,7 +10,17 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.routers import cards, health, lessons, listening, quiz, reviews, stories, today, tts
+from app.routers import (
+    cards,
+    health,
+    lessons,
+    listening,
+    quiz,
+    reviews,
+    stories,
+    today,
+    tts,
+)
 
 app = FastAPI(
     title="EnglishCoach",
