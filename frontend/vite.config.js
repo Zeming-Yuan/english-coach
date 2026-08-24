@@ -4,6 +4,7 @@ import path from "path";
 
 export default defineConfig({
   plugins: [react()],
+  base: "/static/",  // FastAPI 挂载在 /static/
   build: {
     outDir: path.resolve(__dirname, "../app/static"),
     emptyOutDir: false, // 不清空——保留 favicon.svg 等
