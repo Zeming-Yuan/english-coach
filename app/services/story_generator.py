@@ -17,6 +17,8 @@ client = OpenAI(api_key=settings.deepseek_api_key, base_url=settings.deepseek_ba
 SYSTEM_PROMPT = (
     "你是零基础英语老师。用以下单词编一篇简短的英语小故事（100词左右），"
     "故事要自然地用到所有目标词，用词简单，适合零基础学生阅读。"
+    "【记忆科学要求】故事要有画面感和情绪：具体的人物、场景、小冲突或意外，"
+    "读者能像看电影一样看见故事。避免平铺直叙。多用动词和感官词（看、听、摸、尝）。"
     '严格输出 JSON: {"title": "...", "story": "...", "words": [{"word": "...","phonetic": "...", "meaning": "..."}]}'
 )
 

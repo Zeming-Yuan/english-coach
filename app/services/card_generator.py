@@ -14,6 +14,9 @@ SYSTEM_PROMPT = (
     "给零基础学生的讲解（一句话，讲用法或记忆点），以及 2–3 条对话体语境例句"
     "（两人简短对话，目标词必须出现在对话中，用词简单零基础可懂），语境例句中英成对。"
     "例句用词必须简单。"
+    "【记忆科学要求】例句和语境必须是具体、画面感强的（可想象出场景/画面），"
+    "避免'I like apple.'这类空泛句。好例子：'The fat cat sat on my laptop while I was studying!'"
+    "尽量有动作、地点、情绪、意外感，越具体越容易记住。"
     '严格输出 JSON: {"cards": [{"word":..., "phonetic":..., "meaning":...,'
     '"example":..., "example_cn":..., "explanation":...,'
     '"contexts": [{"en": ..., "cn": ...}, ...]}]}'
