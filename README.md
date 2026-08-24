@@ -75,6 +75,9 @@ python -m uvicorn app.main:app --reload --port 8001
 # 5. 浏览器打开 http://localhost:8001
 ```
 
+> 前端开发：`cd frontend && npm install && npm run dev`（Vite dev server，API 代理到 8001）
+> 生产构建：`cd frontend && npm run build`（输出到 `app/static/`，FastAPI 直接挂载）
+
 > 首次使用：进「加词」页输入几个单词（如 `apple, banana, teacher`）→ 点"马上学一学"立即开练；或从「开始零基础课程」走 20 级递进。
 
 ## 测试
@@ -103,7 +106,7 @@ node e2e_story.js                # 故事流程 E2E
 
 ## 技术栈
 
-FastAPI · SQLAlchemy 2.0 · SQLite · Alembic · DeepSeek API（OpenAI 兼容协议，deepseek-v4-flash / v4-pro 双模型路由）· py-fsrs（FSRS 间隔重复）· edge-tts（英音合成）· 原生 JS 前端（Web Audio API 音效）· pytest（106 测试）· ruff · Playwright E2E
+FastAPI · SQLAlchemy 2.0 · SQLite · Alembic · DeepSeek API（OpenAI 兼容协议，deepseek-v4-flash / v4-pro 双模型路由）· py-fsrs（FSRS 间隔重复）· edge-tts（英音合成）· **React 19 + Vite**（Web Audio API 音效）· pytest（108 测试）· ruff · Playwright E2E
 
 ## 目录结构
 
@@ -112,7 +115,8 @@ app/
   models/       SQLAlchemy 模型（Card/Review/Story/StoryWord/Lesson/Memo/ErrorCard/HardCard）
   routers/      API 路由（today/reviews/quiz/cards/listening/lessons/stories/memos/tts/export）
   services/     业务层（生成器/FSRS/毕业/判分/错词追踪/模型路由）
-  static/       前端单页（index.html / style.css / app.js）
+  static/       构建产物（index.html + assets/），由 frontend/ 构建生成
+frontend/       React 19 + Vite 源码（views/组件、lib/共享层）
 tests/          pytest 测试
 data/           SQLite 数据文件（不提交）
 ```
