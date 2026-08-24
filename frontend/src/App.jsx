@@ -2,6 +2,11 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "./lib/api.js";
 import { storageGet, storageSet } from "./lib/utils.js";
 import { setTtsRate } from "./lib/tts.js";
+import StudyPage from "./views/StudyPage.jsx";
+import QuizPage from "./views/QuizPage.jsx";
+import SpellingPage from "./views/SpellingPage.jsx";
+import ListeningPage from "./views/ListeningPage.jsx";
+import MixedPage from "./views/MixedPage.jsx";
 
 /* ============ 视图路由 ============ */
 const NAV_TABS = { queue: "队列", words: "单词本", stories: "故事", add: "加词" };
@@ -41,6 +46,7 @@ function Toast() {
 /* ============ 主应用 ============ */
 export default function App() {
   const [view, setView] = useState("queue");
+  const [studyQueue, setStudyQueue] = useState([]);
   const [navLocked, setNavLocked] = useState(false);
   const [darkMode, setDarkMode] = useState(() => storageGet("darkMode", false));
 
@@ -66,11 +72,16 @@ export default function App() {
 
       {/* 内容区 */}
       <main className="stage">
-        {view === "queue" && <QueueView setView={setView} />}
+        {view === "queue" && <QueueView setView={setView} setStudyQueue={setStudyQueue} />}
         {view === "words" && <PlaceholderView name="单词本" />}
         {view === "stories" && <PlaceholderView name="故事" />}
         {view === "add" && <PlaceholderView name="加词" />}
         {view === "settings" && <PlaceholderView name="设置" />}
+        {view === "study" && <StudyPage queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} />}
+        {view === "quiz" && <QuizPage onExit={() => setView("queue")} />}
+        {view === "spelling" && <SpellingPage onExit={() => setView("queue")} />}
+        {view === "listening" && <ListeningPage onExit={() => setView("queue")} />}
+        {view === "mixed" && <MixedPage onExit={() => setView("queue")} />}
       </main>
 
       {/* 底部导航 */}
@@ -92,8 +103,8 @@ export default function App() {
   );
 }
 
-/* ============ 队列页（先行迁移，验证骨架） ============ */
-function QueueView({ setView }) {
+/* ============ 队列页 ============ */
+function QueueView({ setView, setStudyQueue }) {
   const [data, setData] = useState(null);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -179,11 +190,15 @@ function QueueView({ setView }) {
 
       {!isEmpty && (
         <>
-          <button className="btn btn-primary btn-large" onClick={() => setView("study")}>开始今天的学习</button>
+          <button className="btn btn-primary btn-large" onClick={() => {
+            const queue = [...(data.error_cards || []), ...data.new_cards, ...data.due_cards];
+            setStudyQueue(queue);
+            setView("study");
+          }}>开始今天的学习</button>
           <button className="btn btn-ghost" onClick={() => setView("quiz")}>直接做测验</button>
-          <button className="btn btn-ghost">🎧 听写练习</button>
-          <button className="btn btn-ghost">⌨️ 拼写练习</button>
-          <button className="btn btn-ghost">🎲 混合练习</button>
+          <button className="btn btn-ghost" onClick={() => setView("listening")}>🎧 听写练习</button>
+          <button className="btn btn-ghost" onClick={() => setView("spelling")}>⌨️ 拼写练习</button>
+          <button className="btn btn-ghost" onClick={() => setView("mixed")}>🎲 混合练习</button>
         </>
       )}
     </section>
