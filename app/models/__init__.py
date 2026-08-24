@@ -3,7 +3,8 @@
 from app.models.card import Card
 from app.models.error_card import ErrorCard
 from app.models.lesson import Lesson
+from app.models.memo import Memo
 from app.models.review import Review
 from app.models.story import Story, StoryWord
 
-__all__ = ["Card", "ErrorCard", "Lesson", "Review", "Story", "StoryWord"]
+__all__ = ["Card", "ErrorCard", "Lesson", "Memo", "Review", "Story", "StoryWord"]

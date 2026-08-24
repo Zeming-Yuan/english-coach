@@ -15,6 +15,7 @@ from app.routers import (
     health,
     lessons,
     listening,
+    memos,
     quiz,
     reviews,
     stories,
@@ -38,6 +39,7 @@ app.include_router(cards.router, prefix="/api", tags=["cards"])
 app.include_router(tts.router, prefix="/api", tags=["tts"])
 app.include_router(lessons.router, prefix="/api", tags=["lessons"])
 app.include_router(listening.router, prefix="/api", tags=["listening"])
+app.include_router(memos.router, prefix="/api", tags=["memos"])
 
 # 前端静态文件
 app.mount("/static", StaticFiles(directory="app/static"), name="static")

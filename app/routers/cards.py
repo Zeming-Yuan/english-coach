@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models.card import Card
 from app.models.error_card import ErrorCard
+from app.models.memo import Memo
 from app.models.review import Review
 from app.services.card_generator import generate_cards
 
@@ -105,6 +106,9 @@ def get_card_detail(card_id: int, db: Session = Depends(get_db)):
         .scalars()
         .first()
     )
+    memo = (
+        db.execute(select(Memo).where(Memo.card_id == card_id)).scalars().first()
+    )
 
     return {
         "id": card.id,
@@ -120,6 +124,7 @@ def get_card_detail(card_id: int, db: Session = Depends(get_db)):
         "graduated": latest.state == 3 if latest else False,
         "review_count": latest.review_count if latest else 0,
         "error_count": error.error_count if error else 0,
+        "memo": memo.content if memo else None,
         "next_due": latest.due.isoformat() if latest else None,
         "review_history": history,
     }

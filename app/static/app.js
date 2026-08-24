@@ -263,10 +263,50 @@ function renderCard() {
     });
   }
 
+  // 记忆法区域重置（翻面时加载）
+  $("#back-memo").hidden = true;
+  $("#back-memo-text").textContent = "";
+
   updateProgress();
   $("#rating-area").hidden = true;
   $("#study-done").hidden = true;
   $("#study-card").hidden = false;
+}
+
+// 加载并展示用户记忆法（自我解释效应）
+async function loadCardMemo(cardId) {
+  try {
+    const data = await api(`/api/memos/${cardId}`);
+    const memoBox = $("#back-memo");
+    if (data.content) {
+      $("#back-memo-text").textContent = data.content;
+      memoBox.hidden = false;
+    } else {
+      memoBox.hidden = true;
+    }
+  } catch {}
+}
+
+// 编辑记忆法
+async function editCardMemo() {
+  const card = state.queue[state.idx];
+  const current = $("#back-memo-text").textContent || "";
+  const input = prompt("怎么写这个单词记得更牢？（谐音/联想/小故事）\n直接放弃按取消：", current);
+  if (input === null) return;
+  const text = input.trim();
+  try {
+    if (text) {
+      await api(`/api/memos/${card.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ content: text }),
+      });
+      $("#back-memo-text").textContent = text;
+      $("#back-memo").hidden = false;
+      toast("记忆法已保存，下次复习会展示 🧠");
+    }
+  } catch (e) {
+    toast("保存失败：" + e.message);
+  }
 }
 
 function highlightWord(text, word) {
@@ -313,6 +353,8 @@ function flip() {
     }
     state.flipElapsed = frontElapsed; // 供评分时校准
     speak(text, null);
+    // 翻面时加载记忆法
+    loadCardMemo(card.id);
   }
 }
 
@@ -322,6 +364,12 @@ $("#study-card").addEventListener("keydown", (e) => {
     e.preventDefault();
     flip();
   }
+});
+
+// 记忆法编辑按钮（阻止冒泡到翻面）
+$("#btn-back-memo-edit").addEventListener("click", (e) => {
+  e.stopPropagation();
+  editCardMemo();
 });
 
 // 发音：正面单词 / 背面例句
@@ -898,6 +946,16 @@ function renderWordDetail() {
   $("#detail-state").textContent = c.graduated ? "已毕业 ✅" : (c.review_count > 0 ? "学习中" : "新词");
   $("#detail-next-due").textContent = c.next_due ? new Date(c.next_due).toLocaleDateString() : "-";
 
+  // 记忆法
+  const memoBox = $("#detail-memo");
+  const memoText = $("#detail-memo-text");
+  if (c.memo) {
+    memoText.textContent = c.memo;
+    memoBox.hidden = false;
+  } else {
+    memoBox.hidden = true;
+  }
+
   // 复习历史
   const historySection = $("#detail-history-section");
   const historyEl = $("#detail-history");
@@ -937,6 +995,29 @@ $$("#detail-rating-area .btn-rating").forEach((btn) => {
       toast("提交失败：" + e.message);
     }
   });
+});
+
+// 详情页编辑记忆法
+$("#btn-detail-memo-edit").addEventListener("click", async () => {
+  if (!detailCard) return;
+  const current = $("#detail-memo-text").textContent || "";
+  const input = prompt("怎么写这个单词记得更牢？（谐音/联想/小故事）\n直接放弃按取消：", current);
+  if (input === null) return;
+  const text = input.trim();
+  try {
+    if (text) {
+      await api(`/api/memos/${detailCard.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ content: text }),
+      });
+      detailCard.memo = text;
+      $("#detail-memo-text").textContent = text;
+      $("#detail-memo").hidden = false;
+      toast("记忆法已保存 🧠");
+    }
+  } catch (e) {
+    toast("保存失败：" + e.message);
+  }
 });
 
 // 返回按钮

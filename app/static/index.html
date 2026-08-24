@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=22">
+  <link rel="stylesheet" href="/static/style.css?v=23">
 </head>
 <body>
   <div class="app">
@@ -150,6 +150,13 @@
               <div id="back-example" class="back-example"></div>
               <button id="btn-speak-example" class="speak-btn" title="朗读例句">🔊</button>
               <div id="back-contexts" class="bubble-list"></div>
+              <div id="back-memo" class="back-memo" hidden>
+                <div class="back-memo-label">🧠 你的记忆法</div>
+                <div class="back-memo-content">
+                  <span id="back-memo-text"></span>
+                  <button id="btn-back-memo-edit" class="memo-edit-btn" title="编辑记忆法">✏️</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -358,6 +365,11 @@
           <div id="detail-example" class="word-detail-example"></div>
           <div id="detail-contexts" class="bubble-list"></div>
           <div id="detail-explanation" class="word-detail-explanation"></div>
+          <div id="detail-memo" class="word-detail-memo" hidden>
+            <span class="word-detail-memo-label">🧠 我的记忆法</span>
+            <span id="detail-memo-text"></span>
+            <button id="btn-detail-memo-edit" class="memo-edit-btn">✏️</button>
+          </div>
         </div>
 
         <!-- 状态卡 -->
@@ -444,6 +456,6 @@
     </nav>
   </div>
 
-  <script src="/static/app.js?v=23"></script>
+  <script src="/static/app.js?v=24"></script>
 </body>
 </html>

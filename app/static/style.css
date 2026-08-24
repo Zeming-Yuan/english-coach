@@ -785,6 +785,21 @@ body {
   margin-top: 14px;
 }
 .word-detail-explanation:empty { display: none; }
+.word-detail-memo {
+  background: var(--sun-soft);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-top: 10px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #8A6410;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.word-detail-memo[hidden] { display: none; }
+.word-detail-memo-label { font-weight: 800; flex-shrink: 0; }
+#detail-memo-text { flex: 1; word-break: break-word; }
 
 /* 状态卡 */
 .word-detail-status {
@@ -1091,6 +1106,39 @@ body {
   color: var(--muted);
   margin-top: 12px;
   text-align: center;
+}
+
+/* 记忆法（自我解释） */
+.back-memo {
+  background: var(--sun-soft);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-top: 10px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #8A6410;
+}
+.back-memo-label {
+  font-size: 11px;
+  font-weight: 800;
+  margin-bottom: 2px;
+}
+.back-memo-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+#back-memo-text {
+  flex: 1;
+  word-break: break-word;
+}
+.memo-edit-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  flex-shrink: 0;
 }
 
 /* 混合练习 */
