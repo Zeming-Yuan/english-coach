@@ -225,6 +225,7 @@ $("#btn-goto-add").addEventListener("click", () => show("view-add"));
 function renderCard() {
   const card = state.queue[state.idx];
   state.flipped = false;
+  state.flipStartedAt = Date.now(); // JOL：记录正面停留起点
   $("#study-card").classList.remove("flipped", "leave-left", "leave-right", "enter");
   void $("#study-card").offsetWidth;
   $("#study-card").classList.add("enter");
@@ -296,6 +297,7 @@ function updateProgress() {
 }
 
 function flip() {
+  const frontElapsed = (Date.now() - state.flipStartedAt) / 1000;
   state.flipped = !state.flipped;
   $("#study-card").classList.toggle("flipped", state.flipped);
   $("#rating-area").hidden = !state.flipped;
@@ -305,6 +307,11 @@ function flip() {
     const text = card.kind === "sentence"
       ? (card.example || card.word)
       : card.word;
+    // JOL 元认知引导：翻面太快（没自问自答）给温和提醒
+    if (frontElapsed < 2) {
+      toast("先自己回想一下这个词的含义，再翻面对照效果更好 ✍️");
+    }
+    state.flipElapsed = frontElapsed; // 供评分时校准
     speak(text, null);
   }
 }
@@ -341,6 +348,10 @@ async function rate(rating) {
       body: JSON.stringify({ card_id: card.id, rating }),
     });
     if (resp.graduated) state.graduated.push(card.word);
+    // JOL 校准：没自问就翻面却评"记得/太简单"→ 提醒元认知
+    if (rating >= 3 && state.flipElapsed < 2) {
+      toast("这个评分是你回想后的吗？下次先想出声再翻面，记忆更准");
+    }
   } catch (e) {
     console.error("评分提交失败", e);
   }
