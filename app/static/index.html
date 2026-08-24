@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=32">
+  <link rel="stylesheet" href="/static/style.css?v=33">
 </head>
 <body>
   <div class="app">
@@ -22,7 +22,34 @@
         <span id="topbar-count"></span>
         <div class="mini-track"><div id="topbar-fill" class="mini-fill"></div></div>
       </div>
+      <button id="btn-open-settings" class="settings-btn" title="设置">⚙️</button>
     </header>
+
+    <!-- 设置面板 -->
+    <div id="settings-panel" class="settings-panel" hidden>
+      <div class="settings-panel-head">设置 <button id="btn-close-settings" class="memo-edit-btn">✕</button></div>
+      <div class="settings-row">
+        <span class="settings-label">发音速度</span>
+        <div class="diff-group" id="set-rate">
+          <button class="diff-btn" data-rate="0.7">慢速</button>
+          <button class="diff-btn" data-rate="0.9">标准</button>
+          <button class="diff-btn" data-rate="1.2">快速</button>
+        </div>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">每日新词量</span>
+        <div class="diff-group" id="set-daily">
+          <button class="diff-btn" data-n="5">5</button>
+          <button class="diff-btn" data-n="10">10</button>
+          <button class="diff-btn" data-n="15">15</button>
+          <button class="diff-btn" data-n="20">20</button>
+        </div>
+      </div>
+      <div class="settings-row">
+        <span class="settings-label">暗色模式</span>
+        <button id="set-dark" class="btn btn-ghost btn-small">开启</button>
+      </div>
+    </div>
 
     <main class="stage">
 
@@ -365,6 +392,8 @@
           <button id="btn-export-json" class="btn btn-ghost btn-small">💾 备份词库</button>
           <button id="btn-export-anki" class="btn btn-ghost btn-small">🎴 导出 Anki</button>
           <button id="btn-report-card" class="btn btn-ghost btn-small">🏅 成绩单</button>
+          <button id="btn-import-json" class="btn btn-ghost btn-small">📥 恢复词库</button>
+          <input id="import-file" type="file" accept=".json" hidden>
         </div>
 
         <!-- 成绩单 modal -->
@@ -518,6 +547,6 @@
     </nav>
   </div>
 
-  <script src="/static/app.js?v=38"></script>
+  <script src="/static/app.js?v=39"></script>
 </body>
 </html>

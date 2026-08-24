@@ -67,6 +67,18 @@ function sfxFail() {
   playTone(262, 0.25, now + 0.12, "triangle"); // C4
 }
 
+/* ============ 设置（发音速度/暗色模式，localStorage） ============ */
+let ttsRate = 0.9;
+let darkMode = false;
+try {
+  ttsRate = parseFloat(localStorage.getItem("ttsRate") || "0.9");
+  darkMode = localStorage.getItem("darkMode") === "1";
+} catch {}
+
+function applyTheme() {
+  document.body.classList.toggle("dark", darkMode);
+}
+
 /* ============ TTS 朗读（本地语音优先，在线兜底） ============ */
 let ttsVoice = null;
 let hasEnVoice = false;
@@ -98,7 +110,7 @@ function speakLocal(text, btn) {
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.lang = "en-US";
-  u.rate = 0.9;
+  u.rate = ttsRate;  // 发音速度（设置页可调）
   if (ttsVoice) u.voice = ttsVoice;
   u.onstart = () => btn && btn.classList.add("speaking");
   u.onend = () => btn && btn.classList.remove("speaking");
@@ -128,6 +140,50 @@ function prewarmTts(words) {
     fetch(`/api/tts/audio/${encodeURIComponent(w)}/preload`).catch(() => {});
   });
 }
+
+/* ============ 设置面板 ============ */
+$("#btn-open-settings").addEventListener("click", () => {
+  const panel = $("#settings-panel");
+  panel.hidden = !panel.hidden;
+  if (!panel.hidden) {
+    syncSettingsUI();
+  }
+});
+$("#btn-close-settings").addEventListener("click", () => $("#settings-panel").hidden = true);
+
+function syncSettingsUI() {
+  $$("#set-rate .diff-btn").forEach((b) => b.classList.toggle("diff-active", parseFloat(b.dataset.rate) === ttsRate));
+  $$("#set-daily .diff-btn").forEach((b) => b.classList.toggle("diff-active", parseInt(b.dataset.n) === dailyGoal));
+  $("#set-dark").textContent = darkMode ? "关闭" : "开启";
+}
+
+$$("#set-rate .diff-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    ttsRate = parseFloat(btn.dataset.rate);
+    try { localStorage.setItem("ttsRate", String(ttsRate)); } catch {}
+    syncSettingsUI();
+    toast("发音速度已更新");
+  });
+});
+
+$$("#set-daily .diff-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    dailyGoal = parseInt(btn.dataset.n);
+    try { localStorage.setItem("dailyGoal", String(dailyGoal)); } catch {}
+    try { localStorage.setItem("goal-daily-set", ""); } catch {}
+    syncSettingsUI();
+    const stats = { reviewed_today: parseInt($("#stat-reviewed").textContent || "0") };
+    updateGoalRing(stats);
+    toast("每日目标已更新");
+  });
+});
+
+$("#set-dark").addEventListener("click", () => {
+  darkMode = !darkMode;
+  try { localStorage.setItem("darkMode", darkMode ? "1" : "0"); } catch {}
+  applyTheme();
+  syncSettingsUI();
+});
 
 /* ============ 视图切换 ============ */
 function show(viewId) {
@@ -2237,6 +2293,31 @@ function downloadExport(path, filename) {
     .catch((e) => toast("导出失败：" + e.message));
 }
 
+// 恢复备份（选择 JSON 文件导入）
+$("#btn-import-json").addEventListener("click", () => $("#import-file").click());
+$("#import-file").addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (!confirm("导入会覆盖当前的复习记录/记忆法/错词（词卡按单词去重合并）。确认恢复？")) {
+    e.target.value = "";
+    return;
+  }
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    const resp = await api("/api/import/cards", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+    toast(`✅ 恢复完成：导入 ${resp.imported_words} 个新词`);
+    await openStats();
+  } catch (err) {
+    toast("恢复失败：" + err.message);
+  } finally {
+    e.target.value = "";
+  }
+});
+
 $("#btn-export-json").addEventListener("click", () =>
   downloadExport("/api/export/cards", "englishcoach_backup.json")
 );
@@ -2667,5 +2748,6 @@ $("#btn-lesson-done").addEventListener("click", async () => {
 });
 
 /* ============ 启动 ============ */
+applyTheme();
 loadToday().catch((e) => console.error("加载今日队列失败", e));
 loadLessonEntry().catch((e) => console.error("加载课程入口失败", e));

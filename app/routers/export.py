@@ -1,12 +1,14 @@
-"""导出路由：全量备份 JSON + Anki CSV。"""
+"""导出/导入路由：全量备份 JSON + Anki CSV + 恢复导入。"""
 
 import csv
 import io
 import json
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
-from sqlalchemy import select
+from pydantic import BaseModel
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -16,6 +18,103 @@ from app.models.memo import Memo
 from app.models.review import Review
 
 router = APIRouter()
+
+
+def _parse_dt(v):
+    """解析 ISO 日期（容错 None/非法）。"""
+    if not v:
+        return None
+    try:
+        return datetime.fromisoformat(str(v).replace("Z", "+00:00")).replace(
+            tzinfo=None
+        )
+    except ValueError:
+        return None
+
+
+class ImportIn(BaseModel):
+    """导入备份请求体（与 /api/export/cards 输出同构）。"""
+
+    cards: list[dict] = []
+    reviews: list[dict] = []
+    memos: list[dict] = []
+    errors: list[dict] = []
+
+
+@router.post("/import/cards")
+def import_cards(payload: ImportIn, db: Session = Depends(get_db)):
+    """导入备份：按 word 去重，缺失卡重建，复习/记忆法/错词回写。"""
+    # 清空关联表（全量恢复语义）
+    db.execute(delete(Review))
+    db.execute(delete(Memo))
+    db.execute(delete(ErrorCard))
+    # 词卡：按 word 复用已有卡或重建（列表按 word 去重）
+    word_to_id = {}
+    new_words = 0
+    seen = set()
+    for c in payload.cards:
+        w = (c.get("word") or "").strip()
+        if not w or w in seen:
+            continue
+        seen.add(w)
+        existing = db.execute(
+            select(Card).where(Card.word == w, Card.kind == c.get("kind", "word"))
+        ).scalars().first()
+        if existing:
+            word_to_id[w] = existing.id
+            continue
+        card = Card(
+            word=w,
+            phonetic=c.get("phonetic"),
+            meaning=c.get("meaning"),
+            example=c.get("example"),
+            example_cn=c.get("example_cn"),
+            contexts=c.get("contexts"),
+            kind=c.get("kind", "word"),
+            explanation=c.get("explanation"),
+        )
+        word_to_id.pop(w, None)
+        db.add(card)
+        db.flush()
+        word_to_id[w] = card.id
+        new_words += 1
+    db.commit()  # 卡片就位
+
+    # 复习记录回写（old card_id → new id 映射由 word 兜底：按 review.card_id 查旧卡名）
+    old_id_to_word = {c.get("id"): c.get("word") for c in payload.cards}
+    for r in payload.reviews:
+        word = old_id_to_word.get(r.get("card_id"))
+        if not word or word not in word_to_id:
+            continue
+        due = _parse_dt(r.get("due")) or datetime.now(timezone.utc).replace(
+            tzinfo=None
+        )
+        db.add(
+            Review(
+                card_id=word_to_id[word],
+                state=int(r.get("state", 0)),
+                step=r.get("step"),
+                due=due,
+                stability=float(r.get("stability", 1.0)),
+                difficulty=float(r.get("difficulty", 1.0)),
+                elapsed_days=int(r.get("elapsed_days", 0)),
+                last_review=_parse_dt(r.get("last_review")),
+                review_count=int(r.get("review_count", 1)),
+                rating=r.get("rating"),
+            )
+        )
+    for m in payload.memos:
+        word = old_id_to_word.get(m.get("card_id"))
+        if word and word in word_to_id and m.get("content"):
+            db.add(Memo(card_id=word_to_id[word], content=m["content"]))
+    for e in payload.errors:
+        word = old_id_to_word.get(e.get("card_id"))
+        if word and word in word_to_id:
+            db.add(
+                ErrorCard(card_id=word_to_id[word], error_count=int(e.get("error_count", 1)))
+            )
+    db.commit()
+    return {"imported_words": new_words, "requests": len(payload.cards)}
 
 
 @router.get("/export/cards")

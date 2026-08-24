@@ -1,22 +1,58 @@
 # EnglishCoach — 零基础英语 AI 学习工具
 
-面向零基础英语学习者的 AI 个性化学习应用：AI 按需生成单词卡（音标/释义/对话体语境例句/讲解）→ 闪卡学习 + FSRS 间隔重复复习 → 课程式学习 → 产出型测验 → 学过的词 AI 编成故事阅读。全程发音（edge-tts 微软神经语音）。
+面向零基础英语学习者的 AI 个性化学习应用。核心闭环：**AI 生成词卡 → 间隔重复（FSRS）→ 产出型练习（拼写/听写/测验/混合）→ 情景记忆（语境/故事/记忆法）→ 学习科学持续优化**。全程发音（edge-tts 微软神经语音），本地运行。
 
-## 功能
+## 学习科学设计（本项目的核心亮点）
 
-- **今日队列**：新词 + 按 FSRS 排期的复习卡，每日自动安排
-- **闪卡学习**：翻面看释义 / 例句 / **AI 生成的两句对话语境**（聊天气泡样）
-- **评分**：忘了 / 模糊 / 记得 / 太简单 → FSRS 决定下次复习时间；学习途中可随时退出
-- **词毕业**：复习 3 次后例句自动变成句子卡继续学
-- **课程式学习**：AI 20 级递进（音标启蒙→高频词→简单句→初级对话），词表点词评分、对话点句发音
-- **测验**：中译英×3 + 选词 + 填空，**逐题判分 + 即时反馈 + 正确答案提示 + 错题汇总**
-- **拼写练习**：Qwerty 风格——显示释义，键盘拼写，逐字实时校验（对绿错红）+ 音效
-- **听写练习**：播发音 → 4 选 1，答对/答错都有音效反馈
-- **单词本**：全部学过的词 + 搜索（词/释义/例句中文）+ A-Z 侧边快速导航 + **右键快速查阅浮层** + 点击进详情页（复习历史/毕业状态/语境气泡）
-- **故事模式**：AI 用你学过的词编一篇英文小故事，点词看释义、评分、发音
-- **加词**：输入想学的词（逗号分隔），AI 生成完整学习卡片
-- **学习统计**：今日已学、累计词汇、🔥连续学习天数（streak）+ **GitHub 风格热力图**（最近 3 个月打卡日历）
-- **发音**：edge-tts 英文神经语音，流式合成 + 缓存 + 单词本预加热，点击即播
+| 科学原理 | 落地功能 |
+|---|---|
+| **间隔重复 / 遗忘曲线** | FSRS（py-fsrs）按个人记忆状态排下次复习，desired-retention 思想：近 7 天正确率自动调每日新词量（5/10/15） |
+| **提取练习 (Retrieval)** | 拼写练习（Qwerty 式逐字反馈）、听写 4 选 1、测验逐题判分 |
+| **生成效应 (Generation)** | 释义 → 主动拼写英文，比被动识别记忆深 |
+| **错误增强 (Errorful Learning)** | 答错词加权入库（error_cards），优先重现，连续对 2 次减权 |
+| **渐褪提示 (Fading Scaffolding)** | 拼写三档：教过（首字母）→ 提示（空格数）→ 独立（自由回忆） |
+| **元认知校准 (JOL)** | 翻面前"先回想 3 秒"引导 + 过快翻面提醒，破除流畅性错觉 |
+| **双重编码 (Dual Coding)** | AI 例句/故事强制"具体、有画面感、有情绪"（如 "The red apple rolled off the table into the dog's bowl."） |
+| **交错练习 (Interleaving)** | 混合练习：拼写/听写/选择随机交错 |
+| **自我解释 (Self-explanation)** | 每词可写自己的记忆法（谐音/联想），复习时展示 |
+| **情绪记忆锚点** | streak、目标环、音效反馈、成绩单分享卡 |
+| **睡眠巩固提醒** | 20 点后未学习时提示"睡前复习记忆最牢" |
+
+## 功能全景（52 课迭代）
+
+**核心学习**
+- 今日队列：新词 + FSRS 到期卡 + 错词/困难词优先重现
+- 课程式学习：AI 20 级递进（音标启蒙 → 高频词 → 简单句 → 场景对话）
+- 闪卡学习：翻面对照 + 自动发音 + 语境气泡 + 评分（忘了/模糊/记得/太简单）
+- 词毕业：复习 3 次 → 例句自动转句子卡继续学
+
+**产出型练习**
+- 拼写练习（三档难度、逐字绿/红校验、回车提交、音效）
+- 听写练习（播发音 4 选 1）
+- 测验（中译英×3 + 选词 + 填空，逐题判分、错题汇总可点进详情）
+- 混合练习（三题型随机交错 + 完成页错题列表）
+
+**内容与记忆**
+- 故事模式：AI 用已学词编故事，整句朗读 + 点词弹卡评分
+- 语境例句：两句对话体气泡（可"换一个"）
+- 自我记忆法（谐音/联想/小故事）
+
+**单词本**
+- 搜索（词/释义/例句中文）+ A-Z 侧边导航 + 右键快速查阅
+- 详情页：复习历史（评分标签）/毕业状态/错词数/困难词标记/例句发音
+- 编辑/删除词卡（AI 生成错了可纠正）
+
+**学习统计**
+- 今日目标环（每日目标可设 5/10/15/20）、🔥 streak、错词入口
+- 本周正确率 + 8 周趋势柱状
+- GitHub 风格热力图（最近一年，hover 显示日期）
+- 🏅 成绩单分享卡（canvas 生成，可存图进简历）
+
+**数据与设置**
+- 💾 全量备份 JSON 导出 + 📥 恢复导入（词库/复习/记忆法/错词）
+- 🎴 Anki CSV 导出（UTF-8 BOM，无缝沉淀到你现有的 Anki 复习流）
+- ⚙️ 设置：发音速度 / 每日新词量 / 暗色模式
+- 新用户 5 分钟闭环：生成词后"马上学一学"不等明天
 
 ## 快速开始
 
@@ -39,44 +75,43 @@ python -m uvicorn app.main:app --reload --port 8001
 # 5. 浏览器打开 http://localhost:8001
 ```
 
-> 首次使用：进「加词」页输入几个单词（如 `apple, banana, teacher`），AI 生成词卡后明天开始进入队列。也可以立即点「课程」从第 1 课开始零基础递进学习，或点「拼写练习」「听写练习」打开即练。
+> 首次使用：进「加词」页输入几个单词（如 `apple, banana, teacher`）→ 点"马上学一学"立即开练；或从「开始零基础课程」走 20 级递进。
 
 ## 测试
 
 ```bash
-python -m pytest                 # 83 个后端测试
+python -m pytest                 # 106 个后端测试
 node e2e_test.js                 # E2E（需 npx playwright + Edge）
 node e2e_story.js                # 故事流程 E2E
 ```
 
-## API 文档
+## API 概览
 
 启动后访问 `http://localhost:8001/docs`（FastAPI 自动生成）。
 
-| 方法 | 路径 | 说明 |
-|---|---|---|
-| GET | /api/today | 今日队列（新词 + 到期卡） |
-| GET | /api/stats / GET /api/stats/history | 学习统计 + streak / 历史热力图数据 |
-| POST | /api/reviews | 评分提交（FSRS 调度） |
-| GET | /api/quiz / POST | 测验题 / 逐题判分（typing/check） |
-| POST | /api/typing/check | 打字判分 |
-| GET | /api/cards / POST /api/cards/generate / GET /api/cards/{id} | 单词本 / AI 生成词卡 / 单词详情 |
-| GET | /api/listening / POST /api/listening/score | 听写题 / 听写评分 |
-| GET | /api/lessons / POST /api/lessons/next / GET /api/lessons/{level} | 课程进度 / 生成下一课 / 课程详情 |
-| GET | /api/stories / POST /api/stories/generate / GET /api/stories/{id} | 故事 |
-| GET | /api/tts/audio/{word} | 发音合成（流式 + 缓存） |
+| 领域 | 端点 |
+|---|---|
+| 队列 | GET /api/today（含 error_cards 优先）、GET /api/stats /stats/history /stats/weekly |
+| 学习 | POST /api/reviews（FSRS + 错词加权） |
+| 词卡 | GET/POST/PUT/DELETE /api/cards/*、POST /api/cards/{id}/regenerate、/hard |
+| 练习 | GET /api/quiz、POST /api/typing/check、GET/POST /api/listening* |
+| 课程 | GET /api/lessons*（AI 20 级逐课生成） |
+| 故事 | GET/POST/DELETE /api/stories* |
+| 记忆法 | GET/PUT /api/memos/{card_id} |
+| 发音 | GET /api/tts/audio/{word}（流式 + 缓存 + 预合成） |
+| 数据 | GET /api/export/cards、/api/export/anki、POST /api/import/cards |
 
 ## 技术栈
 
-FastAPI · SQLAlchemy 2.0 · SQLite · Alembic · DeepSeek API（OpenAI 兼容协议，模型 deepseek-v4-flash）· py-fsrs（FSRS 间隔重复）· edge-tts（英音合成）· 原生 JS 前端 · pytest · ruff · Playwright E2E
+FastAPI · SQLAlchemy 2.0 · SQLite · Alembic · DeepSeek API（OpenAI 兼容协议，deepseek-v4-flash / v4-pro 双模型路由）· py-fsrs（FSRS 间隔重复）· edge-tts（英音合成）· 原生 JS 前端（Web Audio API 音效）· pytest（106 测试）· ruff · Playwright E2E
 
 ## 目录结构
 
 ```
 app/
-  models/       SQLAlchemy 模型（Card / Review / Story / StoryWord / Lesson）
-  routers/      API 路由（today / reviews / quiz / cards / listening / lessons / stories / tts / health）
-  services/     业务层（词卡生成 / FSRS 调度 / 毕业 / 故事生成 / 课程生成 / 判分 / 模型路由）
+  models/       SQLAlchemy 模型（Card/Review/Story/StoryWord/Lesson/Memo/ErrorCard/HardCard）
+  routers/      API 路由（today/reviews/quiz/cards/listening/lessons/stories/memos/tts/export）
+  services/     业务层（生成器/FSRS/毕业/判分/错词追踪/模型路由）
   static/       前端单页（index.html / style.css / app.js）
 tests/          pytest 测试
 data/           SQLite 数据文件（不提交）
