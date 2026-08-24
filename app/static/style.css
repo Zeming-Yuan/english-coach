@@ -961,18 +961,32 @@ body {
   color: var(--coral);
 }
 
-/* 输入框：覆盖在格子上方，点击即可打字 */
-.spelling-word-display {
-  position: relative;
-}
+/* 输入框 */
 .spelling-input {
-  position: absolute;
-  inset: 0;
+  display: block;
   width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: text;
-  font-size: 24px; /* 防止 iOS 缩放 */
+  padding: 14px 16px;
+  border: 2px solid var(--line);
+  border-radius: 14px;
+  font-size: 20px;
+  font-weight: 700;
+  font-family: inherit;
+  text-align: center;
+  letter-spacing: 0.15em;
+  background: var(--card);
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.2s;
+  margin-top: 12px;
+}
+.spelling-input:focus {
+  border-color: var(--coral);
+}
+.spelling-input::placeholder {
+  color: var(--muted);
+  letter-spacing: 0;
+  font-weight: 600;
+  font-size: 14px;
 }
 
 .spelling-hint {

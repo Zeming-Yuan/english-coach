@@ -905,22 +905,16 @@ function renderSpellingWord() {
 
   // 清空输入并聚焦
   input.value = "";
-  input.maxLength = target.length;
   setTimeout(() => input.focus(), 100);
 
   // 监听输入
   input.oninput = () => handleSpellingInput(card);
-  input.onkeydown = (e) => {
-    if (e.key === "Enter" && input.value.length === target.length) {
-      checkSpelling(card);
-    }
-  };
 }
 
 function handleSpellingInput(card) {
   const input = $("#spelling-input");
   const target = card.word.toLowerCase();
-  const typed = input.value.toLowerCase();
+  const typed = input.value.toLowerCase().slice(0, target.length); // 截断多余字符
   const boxes = $$("#spelling-word-display .spelling-box");
 
   // 逐字校验
@@ -942,7 +936,8 @@ function handleSpellingInput(card) {
   }
 
   // 全部输入完自动检查
-  if (typed.length === target.length) {
+  if (typed.length === target.length && input.value.length >= target.length) {
+    input.value = typed; // 截断多余
     setTimeout(() => checkSpelling(card), 300);
   }
 }
