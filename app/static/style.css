@@ -459,6 +459,10 @@ body {
 .badge-word { background: var(--mint-soft); color: #137A62; }
 .badge-sentence { background: var(--coral-soft); color: #C4442F; }
 .badge-graduated { background: var(--sun-soft); color: #8A6410; }
+.badge-error { background: #FFE4E0; color: var(--coral); }
+
+.error-entry { border-color: #F5C6BE; }
+.error-entry .lesson-entry-label { color: var(--coral); }
 .speak-mini {
   background: var(--paper); border: 1px solid var(--line);
   border-radius: 99px; width: 30px; height: 30px;

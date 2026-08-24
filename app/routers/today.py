@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models.card import Card
+from app.models.error_card import ErrorCard
 from app.models.review import Review
 
 router = APIRouter()
@@ -46,7 +47,44 @@ def get_today(new_limit: int = 10, due_limit: int = 20, db: Session = Depends(ge
     )
     due_cards = db.execute(stmt).scalars().all()
     due_cards_dict = [card_to_dict(card) for card in due_cards]
-    return {"new_cards": new_cards_dict, "due_cards": due_cards_dict}
+    # 错词优先：有错词记录的卡排到队列最前面（错误增强效应）
+    error_first = db.execute(
+        select(Card)
+        .join(ErrorCard, ErrorCard.card_id == Card.id)
+        .order_by(ErrorCard.error_count.desc())
+        .limit(10)
+    ).scalars().all()
+    error_ids = {c.id for c in error_first}
+    if error_ids:
+        new_cards_dict = [c for c in new_cards_dict if c["id"] not in error_ids]
+        due_cards_dict = [c for c in due_cards_dict if c["id"] not in error_ids]
+    return {
+        "error_cards": [card_to_dict(c) for c in error_first],
+        "new_cards": new_cards_dict,
+        "due_cards": due_cards_dict,
+    }
+
+
+@router.get("/errors")
+def get_errors(db: Session = Depends(get_db)):
+    """错词本：记录在 error_cards 里的卡，按错误次数倒序。"""
+    rows = db.execute(
+        select(ErrorCard)
+        .join(Card, Card.id == ErrorCard.card_id)
+        .order_by(ErrorCard.error_count.desc(), ErrorCard.last_error_at)
+    ).scalars().all()
+    return {
+        "errors": [
+            {
+                "card_id": r.card_id,
+                "error_count": r.error_count,
+                "word": db.get(Card, r.card_id).word,
+                "meaning": db.get(Card, r.card_id).meaning,
+                "last_error_at": r.last_error_at.isoformat() if r.last_error_at else None,
+            }
+            for r in rows
+        ]
+    }
 
 
 @router.get("/stats")

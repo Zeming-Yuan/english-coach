@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models.card import Card
+from app.models.error_card import ErrorCard
 from app.models.review import Review
 from app.services.card_generator import generate_cards
 
@@ -28,6 +29,11 @@ def card_to_dict(card: Card, db: Session) -> dict:
         .scalars()
         .first()
     )
+    error = (
+        db.execute(select(ErrorCard).where(ErrorCard.card_id == card.id))
+        .scalars()
+        .first()
+    )
     return {
         "id": card.id,
         "word": card.word,
@@ -40,6 +46,7 @@ def card_to_dict(card: Card, db: Session) -> dict:
         "contexts": card.contexts,
         "review_count": review.review_count if review else 0,
         "graduated": review.state == 3 if review else False,
+        "error_count": error.error_count if error else 0,
     }
 
 
@@ -93,6 +100,11 @@ def get_card_detail(card_id: int, db: Session = Depends(get_db)):
         }
         for r in reviews
     ]
+    error = (
+        db.execute(select(ErrorCard).where(ErrorCard.card_id == card_id))
+        .scalars()
+        .first()
+    )
 
     return {
         "id": card.id,
@@ -107,6 +119,7 @@ def get_card_detail(card_id: int, db: Session = Depends(get_db)):
         "created_at": card.created_at.isoformat(),
         "graduated": latest.state == 3 if latest else False,
         "review_count": latest.review_count if latest else 0,
+        "error_count": error.error_count if error else 0,
         "next_due": latest.due.isoformat() if latest else None,
         "review_history": history,
     }

@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models.card import Card
 from app.models.review import Review
+from app.services.error_tracking import record_error
 
 router = APIRouter()
 
@@ -150,6 +151,8 @@ def score_listening(payload: ListeningScoreIn, db: Session = Depends(get_db)):
         )
         db.add(review)
 
+    # 错词追踪：答错加权，答对减权
+    record_error(db, payload.card_id, is_correct=correct)
     db.commit()
 
     return {

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models.card import Card
+from app.services.error_tracking import record_error
 from app.services.scoring import make_fill_prompt, normalize
 
 router = APIRouter()
@@ -22,8 +23,12 @@ def check_typing(payload: TypingCheckIn, db: Session = Depends(get_db)):
     card = db.execute(select(Card).where(Card.id == payload.card_id)).scalars().first()
     if card is None:
         raise HTTPException(status_code=404, detail="Card not found")
+    correct = normalize(payload.user_input) == normalize(card.word)
+    # 错词追踪：答错加权，答对减权（错误增强效应）
+    record_error(db, payload.card_id, is_correct=correct)
+    db.commit()
     return {
-        "correct": normalize(payload.user_input) == normalize(card.word),
+        "correct": correct,
         "expected": normalize(card.word),
         "normalized_answer": normalize(payload.user_input),
     }

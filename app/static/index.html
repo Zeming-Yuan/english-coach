@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=19">
+  <link rel="stylesheet" href="/static/style.css?v=20">
 </head>
 <body>
   <div class="app">
@@ -46,6 +46,15 @@
           <h2>欢迎来到 EnglishCoach</h2>
           <p>AI 会根据你的记忆安排每天学什么。<br>先加几个想学的词，马上开始！</p>
           <button id="btn-goto-add" class="btn btn-primary">先加几个词</button>
+        </div>
+
+        <!-- 错词复习卡（错误增强效应） -->
+        <div id="error-entry" class="lesson-entry error-entry" hidden>
+          <div class="lesson-entry-body">
+            <div class="lesson-entry-label">⚠️ 错词复习</div>
+            <div id="lesson-entry-sub" class="lesson-entry-sub">上次答错的 <b id="error-entry-count">0</b> 个词 · 优先重现效果最好</div>
+          </div>
+          <button id="btn-error-study" class="btn btn-primary btn-small">复习 →</button>
         </div>
 
         <!-- 课程入口卡 -->
@@ -406,6 +415,6 @@
     </nav>
   </div>
 
-  <script src="/static/app.js?v=19"></script>
+  <script src="/static/app.js?v=20"></script>
 </body>
 </html>

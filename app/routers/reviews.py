@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models.card import Card
 from app.models.review import Review
+from app.services.error_tracking import record_error
 from app.services.graduation import graduate_to_sentence, is_graduated
 from app.services.scheduler import build_fsrs_card, schedule
 
@@ -67,6 +68,8 @@ def submit_review(req: ReviewRequest, db: Session = Depends(get_db)):
     graduated_sentence = None
     if card.kind == "word" and is_graduated(review):
         graduated_sentence = graduate_to_sentence(card, db)
+    # 6. 错词追踪：rating<=2 加权，>=3 减权（错误增强效应）
+    record_error(db, req.card_id, is_correct=req.rating >= 3)
     db.commit()
     result = {"card_id": req.card_id, "next_due": new_card.due}
     if graduated_sentence:

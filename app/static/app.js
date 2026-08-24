@@ -164,11 +164,24 @@ async function loadToday() {
   $("#stat-new").textContent = data.new_cards.length;
   $("#stat-due").textContent = data.due_cards.length;
 
+  // 错词入口（错误增强效应：优先重现）
+  const errorCount = (data.error_cards || []).length;
+  const errorEntry = $("#error-entry");
+  if (errorCount > 0) {
+    errorEntry.hidden = false;
+    $("#error-entry-count").textContent = errorCount;
+  } else {
+    errorEntry.hidden = true;
+  }
+
   // 队列 & 引导逻辑
-  const isEmpty = data.new_cards.length === 0 && data.due_cards.length === 0;
+  const isEmpty =
+    data.new_cards.length === 0 && data.due_cards.length === 0 && errorCount === 0;
   $("#welcome-box").hidden = !isEmpty;
   $("#btn-start-study").hidden = isEmpty;
   $("#btn-start-quiz").hidden = isEmpty;
+  $("#btn-start-listening").hidden = isEmpty;
+  $("#btn-start-spelling").hidden = isEmpty;
 
   // 今日统计
   try {
@@ -188,7 +201,8 @@ async function loadToday() {
 
 $("#btn-start-study").addEventListener("click", async () => {
   const data = await loadToday();
-  state.queue = [...data.new_cards, ...data.due_cards];
+  // 错词优先（错误增强效应），再新词/到期卡
+  state.queue = [...data.error_cards || [], ...data.new_cards, ...data.due_cards];
   state.idx = 0;
   state.answered = 0;
   state.graduated = [];
@@ -357,6 +371,22 @@ function finishStudy() {
   bits.push(`${state.answered} 张卡已复习，明天的队列会按你的记忆自动安排`);
   $("#done-detail").textContent = bits.join("。") + "。";
 }
+
+// 错词复习入口：仅错词进入学习流（错误增强效应）
+$("#btn-error-study").addEventListener("click", async () => {
+  const data = await api("/api/today");
+  state.queue = data.error_cards || [];
+  if (state.queue.length === 0) {
+    toast("错词已经清空，太棒了 🎉");
+    await loadToday();
+    return;
+  }
+  state.idx = 0;
+  state.answered = 0;
+  state.graduated = [];
+  show("view-study");
+  renderCard();
+});
 
 // 退出学习流程
 $("#btn-exit-study").addEventListener("click", async () => {
@@ -677,6 +707,7 @@ function renderWordList(cards) {
     const badges = [];
     badges.push(c.kind === "sentence" ? '<span class="badge badge-sentence">句子</span>' : '<span class="badge badge-word">词</span>');
     if (c.graduated) badges.push('<span class="badge badge-graduated">毕业</span>');
+    if (c.error_count > 0) badges.push(`<span class="badge badge-error">错词 ×${c.error_count}</span>`);
 
     item.innerHTML = `
       <div class="word-main">
@@ -812,6 +843,7 @@ function renderWordDetail() {
   const badges = [];
   badges.push(c.kind === "sentence" ? '<span class="badge badge-sentence">句子</span>' : '<span class="badge badge-word">词</span>');
   if (c.graduated) badges.push('<span class="badge badge-graduated">毕业</span>');
+  if (c.error_count > 0) badges.push(`<span class="badge badge-error">错词 ×${c.error_count}</span>`);
   $("#detail-badges").innerHTML = badges.join("");
 
   // 释义
