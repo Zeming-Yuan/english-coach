@@ -851,6 +851,169 @@ $("#btn-listening-back").addEventListener("click", async () => {
   await loadToday();
 });
 
+/* ============ 拼写练习（Qwerty 风格） ============ */
+let spellingQueue = [];
+let spellingIdx = 0;
+let spellingCorrect = 0;
+
+async function startSpelling() {
+  const data = await api("/api/today");
+  spellingQueue = [...data.new_cards, ...data.due_cards].filter((c) => c.kind === "word");
+  if (spellingQueue.length === 0) {
+    toast("今天没有需要拼写的词");
+    return;
+  }
+  spellingIdx = 0;
+  spellingCorrect = 0;
+  show("view-spelling");
+  renderSpellingWord();
+}
+
+function renderSpellingWord() {
+  const card = spellingQueue[spellingIdx];
+  const target = card.word;
+  const input = $("#spelling-input");
+
+  $("#spelling-count").textContent = `${spellingIdx + 1} / ${spellingQueue.length}`;
+  $("#spelling-progress").style.width = `${(spellingIdx / spellingQueue.length) * 100}%`;
+  $("#spelling-meaning").textContent = card.meaning || "";
+  $("#spelling-phonetic").textContent = card.phonetic || "";
+  $("#spelling-feedback").textContent = "";
+  $("#spelling-feedback").className = "spelling-feedback";
+  $("#spelling-hint").textContent = `输入上面的英文单词（${target.length} 个字母）`;
+
+  // 渲染占位格子
+  const display = $("#spelling-word-display");
+  display.innerHTML = "";
+  for (let i = 0; i < target.length; i++) {
+    const box = document.createElement("span");
+    box.className = "spelling-box";
+    box.dataset.index = i;
+    display.appendChild(box);
+  }
+
+  // 清空输入并聚焦
+  input.value = "";
+  input.maxLength = target.length;
+  setTimeout(() => input.focus(), 100);
+
+  // 监听输入
+  input.oninput = () => handleSpellingInput(card);
+  input.onkeydown = (e) => {
+    if (e.key === "Enter" && input.value.length === target.length) {
+      checkSpelling(card);
+    }
+  };
+}
+
+function handleSpellingInput(card) {
+  const input = $("#spelling-input");
+  const target = card.word.toLowerCase();
+  const typed = input.value.toLowerCase();
+  const boxes = $$("#spelling-word-display .spelling-box");
+
+  // 逐字校验
+  for (let i = 0; i < boxes.length; i++) {
+    const box = boxes[i];
+    box.className = "spelling-box";
+    if (i < typed.length) {
+      if (typed[i] === target[i]) {
+        box.classList.add("box-correct");
+        box.textContent = card.word[i];
+      } else {
+        box.classList.add("box-wrong");
+        box.textContent = card.word[i]; // 显示正确字母（红色）
+      }
+    } else {
+      box.textContent = "";
+      box.classList.add("box-pending");
+    }
+  }
+
+  // 全部输入完自动检查
+  if (typed.length === target.length) {
+    setTimeout(() => checkSpelling(card), 300);
+  }
+}
+
+async function checkSpelling(card) {
+  const input = $("#spelling-input");
+  const typed = input.value.toLowerCase();
+  const target = card.word.toLowerCase();
+  const correct = typed === target;
+
+  if (correct) spellingCorrect++;
+
+  // 禁用输入
+  input.oninput = null;
+  input.onkeydown = null;
+
+  // 反馈
+  const fb = $("#spelling-feedback");
+  if (correct) {
+    fb.textContent = "✅ 正确！";
+    fb.className = "spelling-feedback ok";
+    speak(card.word, null);
+  } else {
+    fb.textContent = `❌ 正确拼写：${card.word}`;
+    fb.className = "spelling-feedback err";
+    // 显示全部正确字母
+    const boxes = $$("#spelling-word-display .spelling-box");
+    boxes.forEach((box, i) => {
+      box.className = "spelling-box box-correct";
+      box.textContent = card.word[i];
+    });
+    speak(card.word, null);
+  }
+
+  // FSRS 评分
+  try {
+    await api("/api/reviews", {
+      method: "POST",
+      body: JSON.stringify({ card_id: card.id, rating: correct ? 3 : 1 }),
+    });
+  } catch {}
+
+  // 1.5 秒后下一题
+  setTimeout(() => {
+    spellingIdx++;
+    if (spellingIdx >= spellingQueue.length) {
+      showSpellingDone();
+    } else {
+      renderSpellingWord();
+    }
+  }, 1800);
+}
+
+function showSpellingDone() {
+  $("#spelling-body").hidden = true;
+  $("#spelling-done").hidden = false;
+  $("#spelling-progress").style.width = "100%";
+  const total = spellingQueue.length;
+  const pct = Math.round((spellingCorrect / total) * 100);
+  $("#spelling-result").textContent = `拼对 ${spellingCorrect}/${total} 词（${pct} 分）`;
+}
+
+// 入口
+$("#btn-start-spelling").addEventListener("click", startSpelling);
+
+// 再来一轮
+$("#btn-spelling-again").addEventListener("click", () => {
+  $("#spelling-body").hidden = false;
+  $("#spelling-done").hidden = true;
+  startSpelling();
+});
+
+// 返回
+$("#btn-back-spelling").addEventListener("click", async () => {
+  show("view-queue");
+  await loadToday();
+});
+$("#btn-spelling-back").addEventListener("click", async () => {
+  show("view-queue");
+  await loadToday();
+});
+
 /* ============ 学习统计 ============ */
 async function openStats() {
   try {

@@ -912,6 +912,80 @@ body {
 .listening-feedback.err { color: var(--coral); }
 
 /* ============================================================
+   拼写练习（Qwerty 风格）
+   ============================================================ */
+.spelling-body { margin-top: 10px; text-align: center; }
+.spelling-meaning {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--ink);
+  margin-bottom: 4px;
+}
+.spelling-phonetic {
+  font-size: 14px;
+  color: var(--muted);
+  margin-bottom: 20px;
+}
+.spelling-phonetic:empty { display: none; }
+
+/* 逐字格子 */
+.spelling-word-display {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  min-height: 48px;
+}
+.spelling-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 48px;
+  border-bottom: 3px solid var(--line);
+  font-size: 24px;
+  font-weight: 900;
+  color: transparent;
+  transition: all 0.15s ease;
+}
+.spelling-box.box-pending {
+  border-bottom-color: var(--line);
+  color: transparent;
+}
+.spelling-box.box-correct {
+  border-bottom-color: var(--mint);
+  color: var(--mint);
+}
+.spelling-box.box-wrong {
+  border-bottom-color: var(--coral);
+  color: var(--coral);
+}
+
+/* 隐藏输入框（键盘捕获用） */
+.spelling-input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  top: 50%;
+  left: 50%;
+}
+
+.spelling-hint {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.spelling-feedback {
+  font-size: 18px;
+  font-weight: 800;
+  margin-top: 14px;
+  min-height: 28px;
+}
+.spelling-feedback.ok { color: #137A62; }
+.spelling-feedback.err { color: var(--coral); }
+
+/* ============================================================
    学习统计页
    ============================================================ */
 .stats-grid {

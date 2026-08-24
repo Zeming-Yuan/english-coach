@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=13">
+  <link rel="stylesheet" href="/static/style.css?v=14">
 </head>
 <body>
   <div class="app">
@@ -67,6 +67,7 @@
         <button id="btn-start-study" class="btn btn-primary btn-large">开始今天的学习</button>
         <button id="btn-start-quiz" class="btn btn-ghost">直接做测验</button>
         <button id="btn-start-listening" class="btn btn-ghost">🎧 听写练习</button>
+        <button id="btn-start-spelling" class="btn btn-ghost">⌨️ 拼写练习</button>
       </section>
 
       <!-- ===== 视图：单词本 ===== -->
@@ -216,6 +217,39 @@
           <p id="listening-result" class="done-detail"></p>
           <button id="btn-listening-again" class="btn btn-primary">再来一轮</button>
           <button id="btn-listening-back" class="btn btn-ghost">回到队列</button>
+        </div>
+      </section>
+
+      <!-- ===== 视图：拼写练习 ===== -->
+      <section id="view-spelling" class="view view-center" hidden>
+        <div class="page-head">
+          <button id="btn-back-spelling" class="btn btn-ghost btn-small">← 返回</button>
+        </div>
+        <div class="spelling-head">
+          <span id="spelling-count" class="study-count"></span>
+        </div>
+        <div class="progress-track"><div id="spelling-progress" class="progress-fill"></div></div>
+
+        <div id="spelling-body" class="spelling-body">
+          <div class="spelling-meaning" id="spelling-meaning"></div>
+          <div class="spelling-phonetic" id="spelling-phonetic"></div>
+
+          <!-- 逐字显示区 -->
+          <div class="spelling-word-display" id="spelling-word-display"></div>
+
+          <!-- 隐藏的真实输入 -->
+          <input id="spelling-input" class="spelling-input" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+
+          <div id="spelling-hint" class="spelling-hint">输入上面的英文单词</div>
+          <div id="spelling-feedback" class="spelling-feedback"></div>
+        </div>
+
+        <div id="spelling-done" class="study-done" hidden>
+          <div class="done-emoji">⌨️</div>
+          <h2>拼写完成！</h2>
+          <p id="spelling-result" class="done-detail"></p>
+          <button id="btn-spelling-again" class="btn btn-primary">再来一轮</button>
+          <button id="btn-spelling-back" class="btn btn-ghost">回到队列</button>
         </div>
       </section>
 
@@ -372,6 +406,6 @@
     </nav>
   </div>
 
-  <script src="/static/app.js?v=12"></script>
+  <script src="/static/app.js?v=13"></script>
 </body>
 </html>
