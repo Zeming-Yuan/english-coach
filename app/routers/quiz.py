@@ -36,8 +36,12 @@ def check_typing(payload: TypingCheckIn, db: Session = Depends(get_db)):
 
 @router.get("/quiz")
 def get_quiz(limit: int = 5, db: Session = Depends(get_db)):
-    # 1. 全库随机抽 5 张卡（random.shuffle 后取前 limit）
-    cards = db.execute(select(Card).order_by(Card.id)).scalars().all()
+    # 1. 只抽单词卡（句子卡的释义是整句翻译，不适合单格拼写/选择）
+    cards = (
+        db.execute(select(Card).where(Card.kind == "word").order_by(Card.id))
+        .scalars()
+        .all()
+    )
     selected = random.sample(cards, min(limit, len(cards)))
 
     # 2. 前 3 张 → cn2en，第 4 张 → choice，第 5 张 → fill

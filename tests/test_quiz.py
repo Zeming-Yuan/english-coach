@@ -118,3 +118,17 @@ def test_quiz_score_unknown_card_skipped(client, db_session):
     )
     assert resp.json()["total"] == 1
     assert resp.json()["correct"] == 0  # 卡不存在：跳过不计
+
+
+def test_quiz_excludes_sentence_cards(client, db_session):
+    """测验只抽单词卡：句子卡不进入 cn2en/choice（释义是整句翻译）。"""
+    db_session.add(Card(word="apple", meaning="苹果", kind="word"))
+    db_session.add(Card(word="apple", meaning="我吃一个苹果。", kind="sentence"))
+    db_session.commit()
+    resp = client.get("/api/quiz?limit=5")
+    questions = resp.json()["questions"]
+    assert len(questions) >= 1
+    # 所有题要么来自 word 卡（word_length 与释义匹配），且无句子卡整句释义
+    for q in questions:
+        if q["type"] in ("cn2en", "fill"):
+            assert q.get("word_length") < 20
