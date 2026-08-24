@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css?v=10">
+  <link rel="stylesheet" href="/static/style.css?v=11">
 </head>
 <body>
   <div class="app">
@@ -74,7 +74,27 @@
         <div class="page-head">
           <h2 class="page-title">单词本</h2>
         </div>
-        <div id="word-list" class="word-list"></div>
+        <!-- 搜索栏 -->
+        <div class="word-search-bar">
+          <input id="word-search" class="word-search-input" type="text" placeholder="搜索单词或释义…" autocomplete="off">
+          <span id="word-search-count" class="word-search-count"></span>
+        </div>
+        <div class="word-list-wrap">
+          <div id="word-list" class="word-list"></div>
+          <!-- A-Z 侧边栏 -->
+          <nav id="alpha-nav" class="alpha-nav"></nav>
+        </div>
+        <!-- 快速查阅浮层 -->
+        <div id="quick-peek" class="quick-peek" hidden>
+          <div class="quick-peek-head">
+            <span id="qp-word" class="qp-word"></span>
+            <button id="qp-speak" class="speak-mini" title="朗读">🔊</button>
+          </div>
+          <div id="qp-phonetic" class="qp-phonetic"></div>
+          <div id="qp-meaning" class="qp-meaning"></div>
+          <div id="qp-example" class="qp-example"></div>
+          <button id="qp-detail" class="btn btn-ghost btn-small" style="margin-top:8px">查看详情 →</button>
+        </div>
       </section>
 
       <!-- ===== 视图：故事 ===== -->
@@ -341,6 +361,6 @@
     </nav>
   </div>
 
-  <script src="/static/app.js?v=10"></script>
+  <script src="/static/app.js?v=11"></script>
 </body>
 </html>

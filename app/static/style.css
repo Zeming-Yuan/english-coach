@@ -965,3 +965,140 @@ body {
   height: 14px;
   border-radius: 3px;
 }
+
+/* ============================================================
+   单词本增强：搜索 + A-Z 导航 + 快速查阅
+   ============================================================ */
+.word-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.word-search-input {
+  flex: 1;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  font-size: 14px;
+  font-family: inherit;
+  background: var(--card);
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.2s;
+}
+.word-search-input:focus {
+  border-color: var(--coral);
+}
+.word-search-input::placeholder { color: var(--muted); }
+.word-search-count {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* 列表容器 + 侧边栏 */
+.word-list-wrap {
+  display: flex;
+  position: relative;
+}
+#word-list {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 字母分组头 */
+.word-letter-header {
+  font-size: 13px;
+  font-weight: 900;
+  color: var(--coral);
+  padding: 8px 0 4px;
+  border-bottom: 2px solid var(--coral);
+  margin-bottom: 6px;
+  letter-spacing: 0.05em;
+}
+
+/* A-Z 侧边导航 */
+.alpha-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  position: sticky;
+  top: 0;
+  right: 0;
+  width: 28px;
+  flex-shrink: 0;
+  margin-left: 6px;
+  align-self: flex-start;
+}
+.alpha-btn {
+  display: block;
+  width: 28px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--coral);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s, transform 0.1s;
+  font-family: inherit;
+  padding: 0;
+  line-height: 22px;
+  text-align: center;
+}
+.alpha-btn:hover {
+  background: rgba(255, 122, 102, 0.12);
+}
+.alpha-btn:active {
+  transform: scale(0.9);
+}
+.alpha-btn.alpha-disabled {
+  color: var(--line);
+  cursor: default;
+  pointer-events: none;
+}
+
+/* 快速查阅浮层 */
+.quick-peek {
+  position: fixed;
+  z-index: 150;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(30, 42, 50, 0.18);
+  padding: 14px 16px;
+  min-width: 200px;
+  max-width: 280px;
+  animation: fade-in 0.15s ease;
+}
+.quick-peek-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.qp-word {
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--ink);
+}
+.qp-phonetic {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.qp-meaning {
+  font-size: 14px;
+  font-weight: 700;
+  margin-top: 8px;
+  color: var(--ink);
+}
+.qp-example {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-top: 6px;
+}
+.qp-example:empty { display: none; }

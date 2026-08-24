@@ -456,20 +456,42 @@ $("#btn-back-queue").addEventListener("click", async () => {
 });
 
 /* ============ 单词本 ============ */
+let allCards = []; // 缓存全量卡片
+
 async function loadWords() {
   const data = await api("/api/cards");
+  allCards = data.cards;
+  renderWordList(allCards);
+  buildAlphaNav(allCards);
+}
+
+function renderWordList(cards) {
   const list = $("#word-list");
   list.innerHTML = "";
 
-  if (data.cards.length === 0) {
+  if (cards.length === 0) {
     list.innerHTML = `<div class="story-empty">还没有卡片，先去「加词」添加第一个吧</div>`;
+    $("#word-search-count").textContent = "";
     return;
   }
 
-  // 预热发音缓存：列表里的词都预先合成，点击即播
-  prewarmTts(data.cards.map((c) => (c.kind === "sentence" ? (c.example || c.word) : c.word)));
+  // 预热发音
+  prewarmTts(cards.map((c) => (c.kind === "sentence" ? (c.example || c.word) : c.word)));
 
-  data.cards.forEach((c) => {
+  // 按首字母分组
+  let currentLetter = "";
+  cards.forEach((c) => {
+    const firstChar = (c.word || "").charAt(0).toUpperCase();
+    const letter = /[A-Z]/.test(firstChar) ? firstChar : "#";
+    if (letter !== currentLetter) {
+      currentLetter = letter;
+      const header = document.createElement("div");
+      header.className = "word-letter-header";
+      header.id = `letter-${letter}`;
+      header.textContent = letter;
+      list.appendChild(header);
+    }
+
     const item = document.createElement("div");
     item.className = "word-item";
     const badges = [];
@@ -484,14 +506,109 @@ async function loadWords() {
       </div>
       <button class="speak-mini" title="朗读">🔊</button>
     `;
+    // 点发音
     item.querySelector(".speak-mini").addEventListener("click", (e) => {
       e.stopPropagation();
       speak(c.kind === "sentence" ? (c.example || c.word) : c.word, item.querySelector(".speak-mini"));
     });
+    // 长按/右键快速查阅
+    item.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      showQuickPeek(c, e);
+    });
+    // 点击进详情
     item.addEventListener("click", () => openWordDetail(c.id));
     list.appendChild(item);
   });
 }
+
+// A-Z 侧边栏
+function buildAlphaNav(cards) {
+  const nav = $("#alpha-nav");
+  nav.innerHTML = "";
+  const letters = new Set();
+  cards.forEach((c) => {
+    const ch = (c.word || "").charAt(0).toUpperCase();
+    letters.add(/[A-Z]/.test(ch) ? ch : "#");
+  });
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").forEach((L) => {
+    const btn = document.createElement("button");
+    btn.className = "alpha-btn";
+    btn.textContent = L;
+    if (!letters.has(L)) btn.classList.add("alpha-disabled");
+    btn.addEventListener("click", () => {
+      const target = document.getElementById(`letter-${L}`);
+      if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    nav.appendChild(btn);
+  });
+}
+
+// 搜索
+$("#word-search").addEventListener("input", (e) => {
+  const q = e.target.value.trim().toLowerCase();
+  if (!q) {
+    renderWordList(allCards);
+    buildAlphaNav(allCards);
+    $("#word-search-count").textContent = "";
+    return;
+  }
+  const filtered = allCards.filter(
+    (c) =>
+      (c.word || "").toLowerCase().includes(q) ||
+      (c.meaning || "").toLowerCase().includes(q) ||
+      (c.example_cn || "").toLowerCase().includes(q)
+  );
+  renderWordList(filtered);
+  buildAlphaNav(filtered);
+  $("#word-search-count").textContent = `${filtered.length} 个结果`;
+});
+
+// 快速查阅浮层
+let qpCard = null;
+function showQuickPeek(card, event) {
+  qpCard = card;
+  $("#qp-word").textContent = card.word;
+  $("#qp-phonetic").textContent = card.phonetic || "";
+  $("#qp-meaning").textContent = card.kind === "sentence" ? (card.example_cn || "") : (card.meaning || "");
+  const exEl = $("#qp-example");
+  if (card.example && card.kind !== "sentence") {
+    exEl.textContent = card.example;
+    exEl.hidden = false;
+  } else {
+    exEl.hidden = true;
+  }
+  const peek = $("#quick-peek");
+  peek.hidden = false;
+  // 定位：靠近点击处
+  const rect = peek.getBoundingClientRect();
+  const x = Math.min(event.clientX, window.innerWidth - rect.width - 12);
+  const y = Math.min(event.clientY, window.innerHeight - rect.height - 12);
+  peek.style.left = x + "px";
+  peek.style.top = y + "px";
+}
+
+// 关闭快速查阅（点别处）
+document.addEventListener("click", (e) => {
+  if (!$("#quick-peek").hidden && !$("#quick-peek").contains(e.target)) {
+    $("#quick-peek").hidden = true;
+    qpCard = null;
+  }
+});
+
+// 快速查阅 - 发音
+$("#qp-speak").addEventListener("click", () => {
+  if (qpCard) speak(qpCard.word, $("#qp-speak"));
+});
+
+// 快速查阅 - 查看详情
+$("#qp-detail").addEventListener("click", () => {
+  if (qpCard) {
+    $("#quick-peek").hidden = true;
+    openWordDetail(qpCard.id);
+    qpCard = null;
+  }
+});
 
 /* ============ 单词详情 ============ */
 let detailCard = null;
