@@ -1822,7 +1822,7 @@ async function openStats() {
   try {
     const [statsData, historyData] = await Promise.all([
       api("/api/stats"),
-      api("/api/stats/history?days=90"),
+      api("/api/stats/history?days=365"),
     ]);
 
     // 数字卡片
@@ -1841,44 +1841,63 @@ async function openStats() {
 }
 
 function renderCalendar(days) {
-  const grid = $("#cal-grid");
-  const monthsEl = $("#cal-months");
-  grid.innerHTML = "";
-  monthsEl.innerHTML = "";
-
+  const host = $("#cal-heatmap");
+  host.innerHTML = "";
   if (days.length === 0) return;
 
   const maxReviews = Math.max(1, ...days.map((d) => d.reviews));
-
-  // 构建日期 → 数据映射
   const map = {};
   days.forEach((d) => { map[d.date] = d; });
 
-  // 补齐第一天之前的空位，使第一列对齐星期日
+  // GitHub 精确结构：周=（列，0=起始对齐周日），行=周一~周日（index 0=周日）
   const firstDate = new Date(days[0].date + "T00:00:00");
-  const firstDow = firstDate.getDay(); // 0=日
-
-  // 生成所有格子（含前后补齐），按列（周）排列
-  // GitHub 风格：7 行（日~六）× N 列（周）
-  const totalCells = firstDow + days.length;
-  const totalWeeks = Math.ceil(totalCells / 7);
-
-  // 月份标签：记录每个月在哪一列开始
-  const monthLabels = [];
-  let lastMonth = -1;
-
-  // 生成格子数据
+  const firstDow = firstDate.getDay(); // 0=周日
+  // 补空位
   const cells = [];
-  // 前面空位
-  for (let i = 0; i < firstDow; i++) {
-    cells.push(null);
-  }
+  for (let i = 0; i < firstDow; i++) cells.push(null);
   days.forEach((d) => cells.push(d));
-  // 后面补齐到完整周
   while (cells.length % 7 !== 0) cells.push(null);
+  const weeks = cells.length / 7;
 
-  // 按列（周）渲染：每列 7 个格子
-  for (let col = 0; col < cells.length / 7; col++) {
+  // CSS grid 布局：首列 26px 标签列 + weeks 列数据；行 0=月份，1-7=周日..周六
+  host.style.gridTemplateColumns = `26px repeat(${weeks}, 1fr)`;
+  host.style.gridTemplateRows = "18px repeat(7, 14px)";
+
+  const monthNames = ["", "1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
+
+  // 行 0：月份标签（每列首个有效日期的月份）
+  let lastMonth = -1;
+  for (let col = 0; col < weeks; col++) {
+    const firstDay = cells[col * 7];
+    if (firstDay) {
+      const m = parseInt(firstDay.date.split("-")[1]);
+      if (m !== lastMonth) {
+        const lab = document.createElement("div");
+        lab.className = "cal-month-label";
+        lab.textContent = monthNames[m];
+        lab.style.gridRow = "1";
+        lab.style.gridColumn = String(col + 2);
+        host.appendChild(lab);
+        lastMonth = m;
+      }
+    }
+  }
+
+  // 行 1-7：星期标签（一/三/五 对应行 1=周一,3=周三,5=周五）
+  const weekLabels = { 1: "一", 3: "三", 5: "五" };
+  for (let row = 1; row <= 7; row++) {
+    if (weekLabels[row]) {
+      const lab = document.createElement("span");
+      lab.className = "cal-weekday-label";
+      lab.textContent = weekLabels[row];
+      lab.style.gridRow = String(row + 1);
+      lab.style.gridColumn = "1";
+      host.appendChild(lab);
+    }
+  }
+
+  // 数据格子：gridRow = 行(1-7), gridColumn = col+2
+  for (let col = 0; col < weeks; col++) {
     for (let row = 0; row < 7; row++) {
       const d = cells[col * 7 + row];
       const cell = document.createElement("div");
@@ -1886,30 +1905,14 @@ function renderCalendar(days) {
       if (!d) {
         cell.classList.add("cal-empty");
       } else {
-        const level = getHeatLevel(d.reviews, maxReviews);
-        cell.classList.add(`cal-l${level}`);
+        cell.classList.add(`cal-l${getHeatLevel(d.reviews, maxReviews)}`);
         cell.title = `${d.date}：${d.reviews} 次复习`;
-        // 记录月份变化
-        const m = parseInt(d.date.split("-")[1]);
-        if (m !== lastMonth) {
-          monthLabels.push({ col, month: m });
-          lastMonth = m;
-        }
       }
-      grid.appendChild(cell);
+      cell.style.gridRow = String(row + 2);
+      cell.style.gridColumn = String(col + 2);
+      host.appendChild(cell);
     }
   }
-
-  // 渲染月份标签
-  const monthNames = ["", "1月", "2月", "3月", "4月", "5月", "6月", "7月", "8月", "9月", "10月", "11月", "12月"];
-  monthLabels.forEach((ml) => {
-    const span = document.createElement("span");
-    span.className = "cal-month-label";
-    span.textContent = monthNames[ml.month];
-    // 每列宽 14px(格子) + 2px(gap) = 16px
-    span.style.left = (ml.col * 16) + "px";
-    monthsEl.appendChild(span);
-  });
 }
 
 function getHeatLevel(reviews, max) {
