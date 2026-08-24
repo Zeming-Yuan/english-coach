@@ -567,6 +567,9 @@ function renderQuestion() {
     input.autocomplete = "off";
     input.spellcheck = false;
     input.addEventListener("input", () => renderQuizBoxes(input, display));
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); $("#btn-quiz-submit").click(); }
+    });
     card.appendChild(input);
     body.appendChild(card);
     setTimeout(() => input.focus(), 50);
@@ -606,6 +609,9 @@ function renderQuestion() {
     input.autocomplete = "off";
     input.spellcheck = false;
     input.addEventListener("input", () => renderQuizBoxes(input, display));
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); $("#btn-quiz-submit").click(); }
+    });
     card.appendChild(input);
     body.appendChild(card);
     setTimeout(() => input.focus(), 50);
@@ -1371,6 +1377,16 @@ function renderMixedSpell(item, body) {
       setTimeout(() => submitMixedSpell(item), 300);
     }
   };
+  // 回车提交
+  input.onkeydown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (input.value.trim().length > 0) {
+        input.oninput = null;
+        submitMixedSpell(item);
+      }
+    }
+  };
   setTimeout(() => input.focus(), 100);
 }
 
@@ -1540,6 +1556,16 @@ function renderSpellingWord() {
 
   // 监听输入
   input.oninput = () => handleSpellingInput(card);
+  // 回车立即提交判定（不等字数输满）
+  input.onkeydown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (input.value.length > 0) {
+        input.oninput = null;
+        checkSpelling(card);
+      }
+    }
+  };
 }
 
 function handleSpellingInput(card) {
