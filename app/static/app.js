@@ -1907,6 +1907,11 @@ function renderCalendar(days) {
       } else {
         cell.classList.add(`cal-l${getHeatLevel(d.reviews, maxReviews)}`);
         cell.title = `${d.date}：${d.reviews} 次复习`;
+        // 今天的格子高亮（深色边框"今天"）
+        if (d.date === todayStr()) {
+          cell.classList.add("cal-today");
+          cell.title = `${d.date}：${d.reviews} 次复习 · 就是今天`;
+        }
       }
       cell.style.gridRow = String(row + 2);
       cell.style.gridColumn = String(col + 2);
@@ -1921,6 +1926,12 @@ function getHeatLevel(reviews, max) {
   if (ratio <= 0.25) return 1;
   if (ratio <= 0.5) return 2;
   return 3;
+}
+
+// 本地日期 YYYY-MM-DD（含今天标记用）
+function todayStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 // 入口：点击统计区域
