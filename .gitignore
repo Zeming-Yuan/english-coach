@@ -29,3 +29,7 @@ Thumbs.db
 # ---- 日志 ----
 *.log
 logs/
+
+# ---- Node / E2E ----
+node_modules/
+e2e_*.png

@@ -24,6 +24,8 @@ def generate_cards(words: list[str], db: Session) -> list[Card]:
     """批量生成词卡：调 DeepSeek → 解析 JSON → 入库（已存在的单词跳过）。"""
     existing = {w for (w,) in db.query(Card.word).filter(Card.word.in_(words)).all()}
     new_words = [w for w in words if w not in existing]
+    if not new_words:
+        return []  # 全部已存在：不调 API，白烧钱（教学点 12）
     resp = client.chat.completions.create(
         model=route(Task.BULK),
         messages=[

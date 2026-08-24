@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -47,3 +47,22 @@ def get_today(new_limit: int = 10, due_limit: int = 20, db: Session = Depends(ge
     due_cards = db.execute(stmt).scalars().all()
     due_cards_dict = [card_to_dict(card) for card in due_cards]
     return {"new_cards": new_cards_dict, "due_cards": due_cards_dict}
+
+
+@router.get("/stats")
+def get_stats(db: Session = Depends(get_db)):
+    """学习统计：今日复习次数、词卡总数。"""
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    reviewed_today = db.execute(
+        select(func.count(Review.id)).where(Review.last_review >= today_start)
+    ).scalar_one()
+    total_cards = db.execute(select(func.count(Card.id))).scalar_one()
+    graduated = db.execute(
+        select(func.count(Review.id)).where(Review.state == 3)
+    ).scalar_one()
+    return {
+        "reviewed_today": reviewed_today,
+        "total_cards": total_cards,
+        "graduated": graduated,
+    }

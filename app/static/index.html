@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EnglishCoach</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="app">
+    <!-- 顶栏 -->
+    <header class="topbar">
+      <div class="logo">
+        <span class="logo-mark">E</span>
+        <span class="logo-text">EnglishCoach</span>
+      </div>
+      <div id="topbar-progress" class="topbar-progress" hidden>
+        <span id="topbar-count"></span>
+        <div class="mini-track"><div id="topbar-fill" class="mini-fill"></div></div>
+      </div>
+    </header>
+
+    <main class="stage">
+
+      <!-- ===== 视图：队列 ===== -->
+      <section id="view-queue" class="view view-center">
+        <p class="eyebrow">今天的学习</p>
+        <div class="queue-cards">
+          <div class="big-stat">
+            <span class="big-number" id="stat-new">0</span>
+            <span class="big-label">个新词</span>
+          </div>
+          <div class="big-stat big-stat-alt">
+            <span class="big-number" id="stat-due">0</span>
+            <span class="big-label">待复习</span>
+          </div>
+        </div>
+
+        <!-- 欢迎/引导（首次或空队列时） -->
+        <div id="welcome-box" class="welcome-box" hidden>
+          <div class="welcome-emoji">👋</div>
+          <h2>欢迎来到 EnglishCoach</h2>
+          <p>AI 会根据你的记忆安排每天学什么。<br>先加几个想学的词，马上开始！</p>
+          <button id="btn-goto-add" class="btn btn-primary">先加几个词</button>
+        </div>
+
+        <!-- 今日统计 -->
+        <div id="today-stats" class="today-stats">
+          <span>今日已学 <b id="stat-reviewed">0</b> 张 · 累计 <b id="stat-total">0</b> 词</span>
+        </div>
+
+        <button id="btn-start-study" class="btn btn-primary btn-large">开始今天的学习</button>
+        <button id="btn-start-quiz" class="btn btn-ghost">直接做测验</button>
+      </section>
+
+      <!-- ===== 视图：单词本 ===== -->
+      <section id="view-words" class="view" hidden>
+        <div class="page-head">
+          <h2 class="page-title">单词本</h2>
+        </div>
+        <div id="word-list" class="word-list"></div>
+      </section>
+
+      <!-- ===== 视图：故事 ===== -->
+      <section id="view-stories" class="view" hidden>
+        <div class="page-head">
+          <h2 class="page-title">故事</h2>
+          <button id="btn-new-story" class="btn btn-primary btn-small">生成新故事</button>
+        </div>
+        <div id="story-list" class="story-list"></div>
+      </section>
+
+      <!-- ===== 视图：加词 ===== -->
+      <section id="view-add" class="view view-center" hidden>
+        <div class="add-card">
+          <h2 class="page-title">加词</h2>
+          <p class="add-hint">输入想学的单词，用逗号或空格分隔，AI 帮你生成学习卡片</p>
+          <textarea id="add-input" class="add-input" rows="3"
+            placeholder="例：apple, banana, teacher"></textarea>
+          <button id="btn-add-generate" class="btn btn-primary btn-wide">AI 生成词卡</button>
+          <div id="add-result" class="add-result"></div>
+        </div>
+      </section>
+
+      <!-- ===== 视图：学习（闪卡） ===== -->
+      <section id="view-study" class="view" hidden>
+        <div class="study-head">
+          <span id="study-count" class="study-count"></span>
+        </div>
+        <div class="progress-track"><div id="study-progress" class="progress-fill"></div></div>
+
+        <div class="scene">
+          <div id="study-card" class="card" tabindex="0" role="button" aria-label="点击翻面">
+            <div class="card-face card-front">
+              <div id="front-main" class="front-main"></div>
+              <div id="front-phonetic" class="front-phonetic"></div>
+              <button id="btn-speak-front" class="speak-btn" title="朗读">🔊</button>
+              <span class="flip-hint">点一下翻面</span>
+            </div>
+            <div class="card-face card-back">
+              <div id="back-meaning" class="back-meaning"></div>
+              <div id="back-example" class="back-example"></div>
+              <button id="btn-speak-example" class="speak-btn" title="朗读例句">🔊</button>
+              <div id="back-contexts" class="bubble-list"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="rating-area" class="rating-area" hidden>
+          <div class="rating-buttons">
+            <button class="btn-rating rating-1" data-rating="1">1<span class="rating-label">忘了</span></button>
+            <button class="btn-rating rating-2" data-rating="2">2<span class="rating-label">模糊</span></button>
+            <button class="btn-rating rating-3" data-rating="3">3<span class="rating-label">记得</span></button>
+            <button class="btn-rating rating-4" data-rating="4">4<span class="rating-label">太简单</span></button>
+          </div>
+        </div>
+
+        <div id="study-done" class="study-done" hidden>
+          <div class="done-emoji">🎉</div>
+          <h2>今天的词都过了一遍</h2>
+          <p id="done-detail" class="done-detail"></p>
+          <button id="btn-to-quiz" class="btn btn-primary">去做测验</button>
+        </div>
+      </section>
+
+      <!-- ===== 视图：测验 ===== -->
+      <section id="view-quiz" class="view view-center" hidden>
+        <div class="study-head">
+          <span id="quiz-count" class="study-count"></span>
+        </div>
+        <div id="quiz-body"></div>
+        <button id="btn-quiz-next" class="btn btn-primary btn-wide" hidden>下一题</button>
+        <button id="btn-quiz-submit" class="btn btn-primary btn-wide" hidden>提交答案</button>
+      </section>
+
+      <!-- ===== 视图：结果 ===== -->
+      <section id="view-result" class="view view-center" hidden>
+        <div id="result-badge" class="result-badge"></div>
+        <div class="result-score">
+          <span id="result-number" class="big-number">0</span>
+          <span class="big-label">分</span>
+        </div>
+        <div id="result-detail" class="result-detail"></div>
+        <button id="btn-back-queue" class="btn btn-primary">回到队列</button>
+      </section>
+
+      <!-- ===== 视图：故事阅读 ===== -->
+      <section id="view-story-read" class="view" hidden>
+        <div class="page-head">
+          <button id="btn-back-stories" class="btn btn-ghost btn-small">← 返回</button>
+        </div>
+        <h2 id="story-read-title" class="story-read-title"></h2>
+        <div id="story-read-content" class="story-read-content"></div>
+        <div id="story-read-words" class="story-read-words"></div>
+      </section>
+
+    </main>
+
+    <!-- 底部导航 -->
+    <nav class="bottom-nav" id="bottom-nav">
+      <button class="nav-item nav-active" data-nav="queue">
+        <span class="nav-icon">📋</span><span>队列</span>
+      </button>
+      <button class="nav-item" data-nav="words">
+        <span class="nav-icon">📖</span><span>单词本</span>
+      </button>
+      <button class="nav-item" data-nav="stories">
+        <span class="nav-icon">📚</span><span>故事</span>
+      </button>
+      <button class="nav-item" data-nav="add">
+        <span class="nav-icon">➕</span><span>加词</span>
+      </button>
+    </nav>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

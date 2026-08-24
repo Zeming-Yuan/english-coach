@@ -22,6 +22,17 @@ def create_story(db: Session = Depends(get_db)):
     return _story_to_dict(story, db)
 
 
+@router.get("/stories")
+def list_stories(db: Session = Depends(get_db)):
+    """故事列表（按创建时间倒序）。"""
+    stories = (
+        db.execute(select(Story).order_by(Story.created_at.desc(), Story.id.desc()))
+        .scalars()
+        .all()
+    )
+    return {"stories": [_story_to_dict(s, db) for s in stories]}
+
+
 @router.get("/stories/{story_id}")
 def get_story(story_id: int, db: Session = Depends(get_db)):
     """读取一篇故事（含关联词）。"""

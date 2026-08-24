@@ -4,9 +4,13 @@
 文档：http://localhost:8000/docs
 """
 
-from fastapi import FastAPI
+from pathlib import Path
 
-from app.routers import health, quiz, reviews, stories, today
+from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
+from app.routers import cards, health, quiz, reviews, stories, today
 
 app = FastAPI(
     title="EnglishCoach",
@@ -20,3 +24,13 @@ app.include_router(today.router, prefix="/api", tags=["today"])
 app.include_router(reviews.router, prefix="/api", tags=["reviews"])
 app.include_router(quiz.router, prefix="/api", tags=["quiz"])
 app.include_router(stories.router, prefix="/api", tags=["stories"])
+app.include_router(cards.router, prefix="/api", tags=["cards"])
+
+# 前端静态文件
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
+
+@app.get("/", include_in_schema=False)
+def index():
+    """返回前端首页。"""
+    return FileResponse(Path("app/static/index.html"))
