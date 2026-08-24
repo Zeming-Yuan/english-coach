@@ -31,14 +31,17 @@ async function api(path, opts = {}) {
   return resp.json();
 }
 
-/* ============ TTS 朗读 ============ */
+/* ============ TTS 朗读（本地语音优先，在线兜底） ============ */
 let ttsVoice = null;
+let hasEnVoice = false;
+
 function pickVoice() {
   const voices = speechSynthesis.getVoices();
   ttsVoice =
     voices.find((v) => v.lang === "en-US" && v.localService) ||
     voices.find((v) => v.lang.startsWith("en")) ||
     null;
+  hasEnVoice = voices.some((v) => v.lang.startsWith("en"));
 }
 if ("speechSynthesis" in window) {
   pickVoice();
@@ -46,7 +49,16 @@ if ("speechSynthesis" in window) {
 }
 
 function speak(text, btn) {
-  if (!("speechSynthesis" in window)) return;
+  // 先cancel掉可能残留的本地语音（不然旧声音继续播，和新音频重叠）
+  if ("speechSynthesis" in window) speechSynthesis.cancel();
+  // 默认走在线标准音频（Dictionary API，发音正确统一）；
+  // 无网络/无音频时才 fallback 到 speechSynthesis（可能中文音，但总比没声强）
+  speakOnline(text, btn, () => speakLocal(text, btn));
+}
+
+/* 本地兜底：Web Speech API（断网时才用，发音可能不准） */
+function speakLocal(text, btn) {
+  if (!("speechSynthesis" in window) || !hasEnVoice) return;
   speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.lang = "en-US";
@@ -56,6 +68,29 @@ function speak(text, btn) {
   u.onend = () => btn && btn.classList.remove("speaking");
   u.onerror = () => btn && btn.classList.remove("speaking");
   speechSynthesis.speak(u);
+}
+
+/* 在线兜底：走同源 /api/tts/{word}（后端代理 Dictionary API），
+   audio 元素加载跨域音频不受 CORS 限制 */
+/* 在线兜底：后端代理同源音频字节流（/api/tts/audio/{word}），
+   不直连外部 mp3，规避代理/CORS/网络策略问题 */
+function speakOnline(text, btn, fallback) {
+  const word = text.trim().toLowerCase();
+  btn && btn.classList.add("speaking");
+  const done = () => btn && btn.classList.remove("speaking");
+  const fail = () => { done(); console.log("[tts] 音频播放失败，兜底本地", word); fallback && fallback(); };
+  console.log("[tts] 播放在线音频", `/api/tts/audio/${encodeURIComponent(word)}`);
+  const audio = new Audio(`/api/tts/audio/${encodeURIComponent(word)}`);
+  audio.onended = done;
+  audio.onerror = fail;
+  audio.play().catch(fail);
+}
+
+/* 预合成：列表加载时提前暖缓存，点击按钮即秒播 */
+function prewarmTts(words) {
+  words.forEach((w) => {
+    fetch(`/api/tts/audio/${encodeURIComponent(w)}/preload`).catch(() => {});
+  });
 }
 
 /* ============ 视图切换 ============ */
@@ -104,6 +139,13 @@ async function loadToday() {
     const stats = await api("/api/stats");
     $("#stat-reviewed").textContent = stats.reviewed_today;
     $("#stat-total").textContent = stats.total_cards;
+    const streakEl = $("#stat-streak");
+    if (stats.streak > 0) {
+      $("#stat-streak-num").textContent = stats.streak;
+      streakEl.hidden = false;
+    } else {
+      streakEl.hidden = true;
+    }
   } catch {}
   return data;
 }
@@ -416,6 +458,9 @@ async function loadWords() {
     return;
   }
 
+  // 预热发音缓存：列表里的词都预先合成，点击即播
+  prewarmTts(data.cards.map((c) => (c.kind === "sentence" ? (c.example || c.word) : c.word)));
+
   data.cards.forEach((c) => {
     const item = document.createElement("div");
     item.className = "word-item";
@@ -540,12 +585,66 @@ async function openStory(id) {
       e.stopPropagation();
       const word = el.dataset.word;
       el.classList.add("tapped");
-      speak(word, null);
+      openWordModal(word, s);
     });
   });
 }
 
 $("#btn-back-stories").addEventListener("click", () => show("view-stories"));
+
+/* ============ 故事点词：弹卡 + 评分 ============ */
+let modalCard = null;
+
+function openWordModal(word, story) {
+  const card = story.words.find((w) => w.word.toLowerCase() === word.toLowerCase());
+  if (!card) return;
+  modalCard = card;
+  $("#word-modal").hidden = false;
+  $("#modal-word").textContent = card.word;
+  $("#modal-phonetic").textContent = card.phonetic || "";
+  $("#modal-meaning").textContent = card.meaning || "";
+  $("#modal-example").textContent = "";
+  $("#modal-feedback").textContent = "";
+  $("#modal-feedback").className = "modal-feedback";
+}
+
+$("#modal-speak").addEventListener("click", () => {
+  if (modalCard) speak(modalCard.word, $("#modal-speak"));
+});
+
+// 评分：复用 /api/reviews（与学习页同一套 FSRS）
+$$(".modal-rating .btn-rating").forEach((btn) => {
+  btn.addEventListener("click", async () => {
+    if (!modalCard) return;
+    const rating = Number(btn.dataset.rating);
+    const fb = $("#modal-feedback");
+    // 评分按钮点击时闪现按下的反馈
+    btn.style.transform = "scale(0.92)";
+    setTimeout(() => (btn.style.transform = ""), 150);
+    try {
+      const resp = await api("/api/reviews", {
+        method: "POST",
+        body: JSON.stringify({ card_id: modalCard.id, rating }),
+      });
+      fb.className = "modal-feedback ok";
+      fb.textContent = resp.graduated
+        ? `✅ 已记录！这个词毕业了，例句变成句子卡`
+        : `✅ 已记录，下次复习：${new Date(resp.next_due).toLocaleDateString()}`;
+      speak(modalCard.word, null);
+    } catch (e) {
+      fb.className = "modal-feedback";
+      fb.textContent = "提交失败：" + e.message;
+    }
+  });
+});
+
+// 关闭：点遮罩
+$$("[data-close]").forEach((el) => {
+  el.addEventListener("click", () => {
+    $("#word-modal").hidden = true;
+    modalCard = null;
+  });
+});
 
 /* ============ 底部导航 ============ */
 $$(".nav-item").forEach((el) => {

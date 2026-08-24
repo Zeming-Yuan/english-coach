@@ -66,8 +66,8 @@ const BASE = "http://127.0.0.1:8001";
       // 发音按钮存在
       step("正面发音按钮存在", await page.locator("#btn-speak-front").isVisible());
 
-      // 评分第一张
-      await page.locator('.btn-rating[data-rating="3"]').click();
+      // 评分第一张（限定学习页的 rating 区，避免与故事 modal 的重复）
+      await page.locator('#rating-area .btn-rating[data-rating="3"]').click();
       await page.waitForTimeout(900);
       const count = await page.locator("#study-count").textContent();
       step(`评分后进入下一张（${count.trim()}）`, /\/\s*\d+/.test(count.trim()));

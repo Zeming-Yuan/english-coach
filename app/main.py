@@ -10,7 +10,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.routers import cards, health, quiz, reviews, stories, today
+from app.routers import cards, health, quiz, reviews, stories, today, tts
 
 app = FastAPI(
     title="EnglishCoach",
@@ -25,6 +25,7 @@ app.include_router(reviews.router, prefix="/api", tags=["reviews"])
 app.include_router(quiz.router, prefix="/api", tags=["quiz"])
 app.include_router(stories.router, prefix="/api", tags=["stories"])
 app.include_router(cards.router, prefix="/api", tags=["cards"])
+app.include_router(tts.router, prefix="/api", tags=["tts"])
 
 # 前端静态文件
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
