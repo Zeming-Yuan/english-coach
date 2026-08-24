@@ -1003,6 +1003,67 @@ body {
 .spelling-feedback.ok { color: #137A62; }
 .spelling-feedback.err { color: var(--coral); }
 
+/* 测验反馈 */
+.quiz-feedback {
+  text-align: center;
+  font-size: 16px;
+  font-weight: 800;
+  margin-top: 16px;
+  padding: 12px;
+  border-radius: 12px;
+  line-height: 1.8;
+}
+.quiz-feedback.ok {
+  color: #137A62;
+  background: var(--mint-soft);
+}
+.quiz-feedback.err {
+  color: var(--coral);
+  background: #FFF0EE;
+}
+.quiz-feedback .right { color: #137A62; font-weight: 900; }
+
+/* 测验错题列表 */
+.quiz-wrong-list {
+  text-align: left;
+  margin-top: 12px;
+}
+.quiz-wrong-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--coral);
+  margin-bottom: 8px;
+}
+.quiz-wrong-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  margin-bottom: 6px;
+}
+.quiz-wrong-meaning {
+  font-size: 13px;
+  color: var(--muted);
+  max-width: 55%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.quiz-wrong-expected {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ink);
+}
+.quiz-wrong-hint {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 12px;
+  text-align: center;
+}
+
 /* ============================================================
    学习统计页
    ============================================================ */

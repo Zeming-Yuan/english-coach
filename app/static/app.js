@@ -407,7 +407,7 @@ async function startQuiz() {
   }
   state.questions = data.questions;
   state.qIdx = 0;
-  state.answers = [];
+  state.wrongList = []; // 错题记录
   show("view-quiz");
   renderQuestion();
 }
@@ -430,7 +430,6 @@ function renderQuestion() {
   if (q.type === "cn2en") {
     prompt.textContent = `「${q.prompt}」用英语怎么说？`;
     card.appendChild(prompt);
-    // 格子显示区
     const display = document.createElement("div");
     display.className = "spelling-word-display";
     for (let i = 0; i < (q.word_length || 5); i++) {
@@ -439,7 +438,6 @@ function renderQuestion() {
       display.appendChild(box);
     }
     card.appendChild(display);
-    // 可见输入框
     const input = document.createElement("input");
     input.className = "spelling-input";
     input.placeholder = `输入英文单词（${q.word_length || "?"} 个字母）`;
@@ -467,12 +465,10 @@ function renderQuestion() {
     });
     card.appendChild(opts);
     body.appendChild(card);
-    state._pending = () =>
-      opts.querySelector(".selected")?.textContent || "";
+    state._pending = () => opts.querySelector(".selected")?.textContent || "";
   } else if (q.type === "fill") {
     prompt.textContent = `填空：${q.prompt}`;
     card.appendChild(prompt);
-    // 格子显示区
     const display = document.createElement("div");
     display.className = "spelling-word-display";
     for (let i = 0; i < (q.word_length || 5); i++) {
@@ -481,7 +477,6 @@ function renderQuestion() {
       display.appendChild(box);
     }
     card.appendChild(display);
-    // 可见输入框
     const input = document.createElement("input");
     input.className = "spelling-input";
     input.placeholder = `填缺的词（${q.word_length || "?"} 个字母）`;
@@ -494,24 +489,124 @@ function renderQuestion() {
     state._pending = () => input.value.trim();
   }
 
-  $("#btn-quiz-next").hidden = state.qIdx >= total - 1;
-  $("#btn-quiz-submit").hidden = state.qIdx < total - 1;
+  // 显示"确认"按钮
+  $("#btn-quiz-submit").hidden = false;
+  $("#btn-quiz-submit").textContent = "确认";
+  $("#btn-quiz-submit").disabled = false;
 }
 
-$("#btn-quiz-next").addEventListener("click", () => {
-  state.answers.push({ card_id: state.questions[state.qIdx].card_id, user_input: state._pending() });
-  state.qIdx += 1;
-  renderQuestion();
+// 确认答案 → 判对错 → 显示反馈 → 下一题/查看结果
+$("#btn-quiz-submit").addEventListener("click", async () => {
+  const btn = $("#btn-quiz-submit");
+  if (btn.dataset.phase === "next") {
+    // 已看完反馈，进入下一题
+    btn.dataset.phase = "";
+    state.qIdx++;
+    if (state.qIdx >= state.questions.length) {
+      showQuizResult();
+    } else {
+      renderQuestion();
+    }
+    return;
+  }
+
+  // 第一次点击：判对错
+  const q = state.questions[state.qIdx];
+  const userInput = state._pending();
+  btn.disabled = true;
+
+  // 调后端判分
+  let result;
+  try {
+    result = await api("/api/typing/check", {
+      method: "POST",
+      body: JSON.stringify({ card_id: q.card_id, user_input: userInput }),
+    });
+  } catch (e) {
+    toast("判分失败：" + e.message);
+    btn.disabled = false;
+    return;
+  }
+
+  const correct = result.correct;
+  if (correct) {
+    sfxSuccess();
+  } else {
+    sfxFail();
+    state.wrongList.push({ question: q, user_input: userInput, expected: result.expected });
+  }
+
+  // 显示反馈
+  const body = $("#quiz-body");
+  const feedback = document.createElement("div");
+  feedback.className = `quiz-feedback ${correct ? "ok" : "err"}`;
+  if (correct) {
+    feedback.textContent = "✅ 正确！";
+  } else {
+    feedback.innerHTML = `❌ 你的答案：<b>${escapeHtml(userInput || "（空）")}</b><br>正确答案：<b class="right">${escapeHtml(result.expected)}</b>`;
+  }
+  body.appendChild(feedback);
+
+  // 高亮格子（如果有的话）
+  const boxes = body.querySelectorAll(".spelling-box");
+  if (boxes.length > 0 && !correct) {
+    const expected = result.expected.toLowerCase();
+    boxes.forEach((box, i) => {
+      box.className = "spelling-box box-correct";
+      box.textContent = expected[i] || "";
+    });
+  }
+
+  // 禁用输入
+  const input = body.querySelector(".spelling-input");
+  if (input) { input.disabled = true; input.oninput = null; }
+  body.querySelectorAll(".quiz-option").forEach((b) => {
+    b.disabled = true;
+    if (b.textContent === result.expected) b.classList.add("correct");
+  });
+
+  // 按钮变"下一题"或"查看结果"
+  const isLast = state.qIdx >= state.questions.length - 1;
+  btn.textContent = isLast ? "查看结果" : "下一题 →";
+  btn.disabled = false;
+  btn.dataset.phase = "next";
 });
 
-$("#btn-quiz-submit").addEventListener("click", async () => {
-  state.answers.push({ card_id: state.questions[state.qIdx].card_id, user_input: state._pending() });
-  const data = await api("/api/quiz/score", {
-    method: "POST",
-    body: JSON.stringify({ answers: state.answers }),
-  });
-  showResult(data);
-});
+// 测验结果（汇总错题）
+function showQuizResult() {
+  const total = state.questions.length;
+  const wrongCount = state.wrongList.length;
+  const correctCount = total - wrongCount;
+  const score = Math.round((correctCount / total) * 100);
+
+  show("view-result");
+  let badge = "🙂";
+  if (score === 100) badge = "🏆";
+  else if (score >= 80) badge = "🌟";
+  else if (score >= 60) badge = "👍";
+  $("#result-badge").textContent = badge;
+  $("#result-number").textContent = score;
+
+  const el = $("#result-detail");
+  if (wrongCount === 0) {
+    el.innerHTML = "全部答对！明天的复习不会再忘了 📚";
+  } else {
+    let html = `答对 <span class="right">${correctCount}</span> / ${total} 题。<br><br>`;
+    html += `<div class="quiz-wrong-list">`;
+    html += `<div class="quiz-wrong-title">❌ 错题回顾</div>`;
+    state.wrongList.forEach((w) => {
+      const q = w.question;
+      const meaning = q.prompt || "";
+      html += `<div class="quiz-wrong-item">`;
+      html += `<span class="quiz-wrong-meaning">${escapeHtml(meaning)}</span>`;
+      html += `<span class="quiz-wrong-expected">${escapeHtml(w.expected)}</span>`;
+      html += `</div>`;
+    });
+    html += `</div>`;
+    html += `<div class="quiz-wrong-hint">这些词会出现在明天的复习队列里 📚</div>`;
+    el.innerHTML = html;
+  }
+}
 
 /* ============ 结果页 ============ */
 function showResult(data) {
