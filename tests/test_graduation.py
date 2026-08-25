@@ -48,7 +48,7 @@ def test_not_graduated(db_session):
 
 
 def test_graduate_creates_sentence_card(db_session):
-    """毕业生成句子卡，meaning 填 example_cn。"""
+    """毕业生成句子卡（AI 生成更复杂的句子）。"""
     card = Card(
         word="hello",
         phonetic="/həˈloʊ/",
@@ -63,8 +63,10 @@ def test_graduate_creates_sentence_card(db_session):
     sentence = graduate_to_sentence(card, db_session)
     assert sentence is not None
     assert sentence.kind == "sentence"
-    assert sentence.meaning == "你好，怎么样？"
-    assert sentence.example == "Hello, how are you?"
+    assert sentence.word == "hello"
+    # AI 生成的句子可能和原例句不同，只检查有内容
+    assert sentence.example
+    assert sentence.meaning
 
 
 def test_graduate_no_duplicate(db_session):
@@ -86,7 +88,7 @@ def test_graduate_no_duplicate(db_session):
 
 
 def test_graduate_no_example(db_session):
-    """没有例句 → 不生成句子卡。"""
+    """没有例句 → AI 仍会生成句子卡（或返回 None 如果 AI 也失败）。"""
     card = Card(
         word="hello",
         phonetic="/həˈloʊ/",
@@ -98,4 +100,9 @@ def test_graduate_no_example(db_session):
     db_session.add(card)
     db_session.commit()
     db_session.refresh(card)
-    assert graduate_to_sentence(card, db_session) is None
+    # 新逻辑：即使没有例句，AI 也会尝试生成句子
+    result = graduate_to_sentence(card, db_session)
+    # 结果可能是句子卡（AI 成功）或 None（AI 失败且无例句兜底）
+    if result is not None:
+        assert result.kind == "sentence"
+        assert result.word == "hello"

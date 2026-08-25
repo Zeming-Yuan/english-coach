@@ -1996,3 +1996,15 @@ body {
 .back-lookup-head { display: flex; align-items: center; gap: 6px; }
 .back-lookup-phonetic { font-size: 12px; color: var(--muted); margin-top: 2px; }
 .back-lookup-meaning { margin-top: 4px; font-weight: 700; }
+
+/* 单词本 tab 切换 */
+.word-tabs { display: flex; gap: 6px; margin-left: auto; }
+.word-tab {
+  font-size: 12px; font-weight: 700; padding: 4px 10px;
+  border-radius: 999px; border: 1.5px solid var(--line);
+  background: transparent; color: var(--muted); cursor: pointer;
+  transition: all 0.15s;
+}
+.word-tab-active {
+  background: var(--mint); color: #fff; border-color: var(--mint);
+}

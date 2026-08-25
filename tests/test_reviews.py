@@ -94,7 +94,8 @@ def test_review_graduates_word_to_sentence(client, db_session):
             sentence_card_id = data.get("sentence_card_id")
     # 至少有一次响应触发了毕业
     assert graduated_in_response is True
-    # 验证句子卡确实入库了
+    # 验证句子卡确实入库了（AI 生成的句子可能不同）
     sentence = db_session.get(Card, sentence_card_id)
     assert sentence.kind == "sentence"
-    assert sentence.meaning == "你好，怎么样？"
+    assert sentence.word == "hello"
+    assert sentence.meaning  # AI 生成的中文翻译

@@ -14,6 +14,7 @@ export default function WordsPage({ onBack }) {
   const [loading, setLoading] = useState(true);
   const [quickPeek, setQuickPeek] = useState(null);
   const [peekPos, setPeekPos] = useState({ x: 0, y: 0 });
+  const [tab, setTab] = useState("words"); // words | sentences
 
   useEffect(() => {
     api("/api/cards").then((d) => {
@@ -23,13 +24,16 @@ export default function WordsPage({ onBack }) {
     }).catch(() => setLoading(false));
   }, []);
 
+  // 按 tab 筛选（词汇/句子）
+  const tabFiltered = allCards.filter((c) => tab === "words" ? c.kind !== "sentence" : c.kind === "sentence");
+
   const filtered = query
-    ? allCards.filter((c) =>
+    ? tabFiltered.filter((c) =>
         (c.word || "").toLowerCase().includes(query) ||
         (c.meaning || "").toLowerCase().includes(query) ||
         (c.example_cn || "").toLowerCase().includes(query)
       )
-    : allCards;
+    : tabFiltered;
 
   // 按首字母分组
   const grouped = [];
@@ -61,6 +65,10 @@ export default function WordsPage({ onBack }) {
     <section className="view">
       <div className="page-head">
         <h2 className="page-title">单词本</h2>
+        <div className="word-tabs">
+          <button className={`word-tab ${tab === "words" ? "word-tab-active" : ""}`} onClick={() => setTab("words")}>📖 词汇</button>
+          <button className={`word-tab ${tab === "sentences" ? "word-tab-active" : ""}`} onClick={() => setTab("sentences")}>📝 句子</button>
+        </div>
       </div>
       <div className="word-search-bar">
         <input className="word-search-input" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="搜索单词或释义…" />
