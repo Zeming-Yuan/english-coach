@@ -85,12 +85,24 @@ export default function WordsPage({ onBack }) {
                 setPeekPos({ x: Math.min(e.clientX, window.innerWidth - 280), y: Math.min(e.clientY, window.innerHeight - 200) });
               }}>
                 <div className="word-main">
-                  <div className="word-item-word">
-                    {escapeHtml(c.word)}
-                    {badges.map((b, j) => <span key={j} className={`badge ${b === "句子" ? "badge-sentence" : b === "毕业" ? "badge-graduated" : b.startsWith("错词") ? "badge-error" : "badge-word"}`}>{b}</span>)}
-                  </div>
-                  {c.phonetic && <div className="word-item-phonetic">{escapeHtml(c.phonetic)}</div>}
-                  <div className="word-item-meaning">{escapeHtml(c.kind === "sentence" ? (c.example_cn || c.example || "") : (c.meaning || ""))} · 复习 {c.review_count} 次</div>
+                  {c.kind === "sentence" ? (
+                    <>
+                      <div className="word-item-word">
+                        {escapeHtml(c.example || c.word)}
+                        {badges.map((b, j) => <span key={j} className={`badge ${b === "句子" ? "badge-sentence" : b === "毕业" ? "badge-graduated" : b.startsWith("错词") ? "badge-error" : "badge-word"}`}>{b}</span>)}
+                      </div>
+                      <div className="word-item-meaning">{escapeHtml(c.example_cn || "")} · 复习 {c.review_count} 次</div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="word-item-word">
+                        {escapeHtml(c.word)}
+                        {badges.map((b, j) => <span key={j} className={`badge ${b === "句子" ? "badge-sentence" : b === "毕业" ? "badge-graduated" : b.startsWith("错词") ? "badge-error" : "badge-word"}`}>{b}</span>)}
+                      </div>
+                      {c.phonetic && <div className="word-item-phonetic">{escapeHtml(c.phonetic)}</div>}
+                      <div className="word-item-meaning">{escapeHtml(c.meaning || "")} · 复习 {c.review_count} 次</div>
+                    </>
+                  )}
                 </div>
                 <button className="speak-mini" title="朗读" onClick={(e) => { e.stopPropagation(); speak(c.kind === "sentence" ? (c.example || c.word) : c.word); }}>🔊</button>
               </div>
@@ -227,11 +239,22 @@ function WordDetail({ cardId, onBack, allCards, setDetail }) {
       </div>
 
       <div className="word-detail-card">
-        <div className="word-detail-header">
-          <div className="word-detail-word">{c.word}</div>
-          <button className="speak-btn" title="朗读" onClick={() => speak(c.word)}>🔊</button>
-        </div>
-        {c.phonetic && <div className="word-detail-phonetic">{c.phonetic}</div>}
+        {c.kind === "sentence" ? (
+          <>
+            <div className="word-detail-header">
+              <div className="word-detail-word" style={{ fontSize: 18 }}>{c.example || c.word}</div>
+              <button className="speak-btn" title="朗读" onClick={() => speak(c.example || c.word)}>🔊</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="word-detail-header">
+              <div className="word-detail-word">{c.word}</div>
+              <button className="speak-btn" title="朗读" onClick={() => speak(c.word)}>🔊</button>
+            </div>
+            {c.phonetic && <div className="word-detail-phonetic">{c.phonetic}</div>}
+          </>
+        )}
         <div className="word-detail-badges">
           <span className={`badge ${c.kind === "sentence" ? "badge-sentence" : "badge-word"}`}>{c.kind === "sentence" ? "句子" : "词"}</span>
           {c.graduated && <span className="badge badge-graduated">毕业</span>}
@@ -278,6 +301,7 @@ function WordDetail({ cardId, onBack, allCards, setDetail }) {
           </div>
         ) : (
           <>
+            {/* 词卡：显示例句 */}
             {c.example && c.kind !== "sentence" && (
               <div className="word-detail-example">
                 <span>{c.example}</span>
@@ -287,6 +311,10 @@ function WordDetail({ cardId, onBack, allCards, setDetail }) {
             )}
             {c.example_cn && c.kind !== "sentence" && (
               <div className="example-cn">{c.example_cn}</div>
+            )}
+            {/* 句子卡：例句已在头部显示，这里显示中文翻译 */}
+            {c.kind === "sentence" && c.example_cn && (
+              <div className="example-cn" style={{ fontSize: 15, marginTop: 4 }}>{c.example_cn}</div>
             )}
           </>
         )}
