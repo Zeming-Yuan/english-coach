@@ -1977,3 +1977,22 @@ body {
   border-radius: 999px; padding: 2px 10px;
   font-size: 12px; font-weight: 700; color: var(--ink);
 }
+
+/* 学习卡背面：可点击例句词 */
+.back-example-block { position: relative; margin: 8px 0; }
+.back-example { font-size: 15px; line-height: 1.6; }
+.back-example-cn { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.example-clickable-word {
+  cursor: pointer; border-radius: 3px; transition: background 0.12s;
+}
+.example-clickable-word:hover {
+  background: rgba(45, 190, 158, 0.2);
+}
+.back-lookup-panel {
+  background: #fff; border: 1.5px solid var(--mint);
+  border-radius: 10px; padding: 10px 12px; margin: 8px 0;
+  font-size: 13px;
+}
+.back-lookup-head { display: flex; align-items: center; gap: 6px; }
+.back-lookup-phonetic { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.back-lookup-meaning { margin-top: 4px; font-weight: 700; }

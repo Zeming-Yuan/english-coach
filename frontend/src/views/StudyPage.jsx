@@ -106,6 +106,35 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
   const backExample = !isSentence && card.example ? highlightWord(card.example, card.word) : "";
   const contexts = Array.isArray(card.contexts) ? card.contexts : [];
 
+  // 词查询状态
+  const [lookupWord, setLookupWord] = useState(null);
+  const [lookupResult, setLookupResult] = useState(null);
+
+  const handleExampleWordClick = async (e, word) => {
+    e.stopPropagation();
+    const clean = word.replace(/[^a-zA-Z'-]/g, "").toLowerCase();
+    if (!clean || clean.length < 2) return;
+    setLookupWord(clean);
+    setLookupResult(null);
+    try {
+      const r = await api(`/api/lookup/${encodeURIComponent(clean)}`);
+      setLookupResult(r);
+    } catch {
+      setLookupResult({ found: false });
+    }
+  };
+
+  const renderClickableExample = (text) => {
+    return text.split(/(\s+)/).map((tok, i) => {
+      if (/^\s+$/.test(tok)) return tok;
+      const clean = tok.replace(/[^a-zA-Z'-]/g, "").toLowerCase();
+      if (clean.length > 1) {
+        return <span key={i} className="example-clickable-word" onClick={(e) => handleExampleWordClick(e, tok)}>{tok}</span>;
+      }
+      return <span key={i}>{tok}</span>;
+    });
+  };
+
   return (
     <section className="view">
       <div className="study-head">
@@ -134,8 +163,25 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
           </div>
           <div className="card-face card-back">
             <div className="back-meaning">{backMeaning}</div>
-            {backExample && <div className="back-example" dangerouslySetInnerHTML={{ __html: backExample }} />}
-            {card.example && <button className="speak-btn" title="朗读例句" style={{ position: "absolute", top: 14, right: 16 }} onClick={(e) => { e.stopPropagation(); speak(card.example); }}>🔊</button>}
+            {backExample && (
+              <div className="back-example-block">
+                <div className="back-example">{renderClickableExample(card.example)}</div>
+                {card.example_cn && <div className="back-example-cn">{card.example_cn}</div>}
+                <button className="speak-mini" title="朗读例句" onClick={(e) => { e.stopPropagation(); speak(card.example); }}>🔊</button>
+              </div>
+            )}
+            {/* 词查询浮层 */}
+            {lookupWord && (
+              <div className="back-lookup-panel" onClick={(e) => e.stopPropagation()}>
+                <div className="back-lookup-head">
+                  <b>{lookupWord}</b>
+                  <button className="speak-mini" onClick={() => speak(lookupWord)}>🔊</button>
+                  <button className="story-word-panel-close" onClick={() => { setLookupWord(null); setLookupResult(null); }}>✕</button>
+                </div>
+                {lookupResult?.phonetic && <div className="back-lookup-phonetic">{lookupResult.phonetic}</div>}
+                <div className="back-lookup-meaning">{lookupResult?.meaning || (lookupResult?.found === false ? "暂无释义" : "查询中…")}</div>
+              </div>
+            )}
             {contexts.length > 0 && (
               <div className="bubble-list">
                 {contexts.map((ctx, i) => (
