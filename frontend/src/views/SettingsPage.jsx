@@ -12,6 +12,7 @@ export default function SettingsPage({ darkMode, setDarkMode }) {
   const [daily, setDaily] = useState(() => storageGet("dailyGoal", 10));
   const [refreshing, setRefreshing] = useState(false);
   const [refreshResult, setRefreshResult] = useState(null);
+  const [regenerating, setRegenerating] = useState(false);
 
   const updateRate = (r) => {
     setRate(r);
@@ -77,6 +78,27 @@ export default function SettingsPage({ darkMode, setDarkMode }) {
               本次刷新 {refreshResult.refreshed} 个 · 待刷新 {refreshResult.remaining} 个 / 共 {refreshResult.total_weak} 个弱例句
             </div>
           )}
+        </div>
+        <div className="settings-row" style={{ flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
+          <span className="settings-label">句子卡</span>
+          <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>为已毕业的词生成更复杂的阅读句子（15-25词，有上下文故事感）</p>
+          <button className="btn btn-ghost btn-small" disabled={regenerating} onClick={async () => {
+            setRegenerating(true);
+            try {
+              const r = await api("/api/cards/regenerate-sentences?limit=5", { method: "POST" });
+              if (r.generated > 0) {
+                showToast(`✅ 已生成 ${r.generated} 个句子卡（还剩 ${r.remaining} 个）`);
+              } else {
+                showToast("没有需要生成句子卡的词 ✅");
+              }
+            } catch (e) {
+              showToast("生成失败：" + e.message);
+            } finally {
+              setRegenerating(false);
+            }
+          }}>
+            {regenerating ? "生成中…" : "📝 生成句子卡（每次5个）"}
+          </button>
         </div>
       </div>
     </section>

@@ -261,6 +261,50 @@ def refresh_examples(limit: int = 10, db: Session = Depends(get_db)):
     }
 
 
+@router.post("/cards/regenerate-sentences")
+def regenerate_sentences(limit: int = 5, db: Session = Depends(get_db)):
+    """为已毕业但没有句子卡的词重新生成句子卡（AI 生成更复杂的句子）。
+
+    找出 review_count >= 3 但没有对应句子卡的 word 类型卡，
+    调 graduate_to_sentence 生成，每批最多 limit 个。
+    """
+    from app.services.graduation import graduate_to_sentence
+
+    # 找已毕业但没有句子卡的词
+    graduated_words = db.execute(
+        select(Card).where(Card.kind == "word")
+    ).scalars().all()
+
+    needs_sentence = []
+    for card in graduated_words:
+        # 检查是否已有句子卡
+        existing = db.execute(
+            select(Card).where(Card.word == card.word, Card.kind == "sentence")
+        ).scalars().first()
+        if existing is None:
+            needs_sentence.append(card)
+
+    if not needs_sentence:
+        return {"generated": 0, "remaining": 0, "total": 0}
+
+    batch = needs_sentence[:limit]
+    generated = 0
+    for card in batch:
+        try:
+            sentence = graduate_to_sentence(card, db)
+            if sentence:
+                generated += 1
+        except Exception:
+            continue
+
+    db.commit()
+    return {
+        "generated": generated,
+        "remaining": len(needs_sentence) - generated,
+        "total": len(needs_sentence),
+    }
+
+
 @router.get("/cards/{card_id}")
 def get_card_detail(card_id: int, db: Session = Depends(get_db)):
     """单词详情：全部字段 + 复习历史 + 毕业状态。"""
