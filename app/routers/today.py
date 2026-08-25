@@ -24,6 +24,7 @@ def card_to_dict(card: Card) -> dict:
         "example_cn": card.example_cn,
         "explanation": card.explanation,
         "contexts": card.contexts,
+        "related_words": card.related_words,
         "kind": card.kind,
     }
 
@@ -277,3 +278,51 @@ def _calc_streak(db: Session, now: datetime, today_start: datetime) -> int:
         streak += 1
         cursor -= timedelta(days=1)
     return streak
+
+
+@router.get("/recommended")
+def get_recommended(limit: int = 5, db: Session = Depends(get_db)):
+    """每日推荐词：基于遗忘曲线，推荐即将到期但未复习的词。
+
+    策略：
+    1. 优先推荐 due 在今天到明天之间到期的词（即将遗忘）
+    2. 其次推荐 review_count >= 2 但最近 3 天没复习的词（巩固期）
+    3. 排除已经在错误词/困难词列表里的（已有专门复习入口）
+    """
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    tomorrow = now + timedelta(days=1)
+    three_days_ago = now - timedelta(days=3)
+
+    # 已学过的词（有复习记录）
+    reviewed_cards = db.execute(
+        select(Card, Review)
+        .join(Review, Review.card_id == Card.id)
+        .where(Card.kind == "word")
+    ).all()
+
+    # 错误词/困难词 ID（已有专门入口，不重复推荐）
+    error_ids = {e.card_id for e in db.execute(select(ErrorCard)).scalars().all()}
+    hard_ids = {h.card_id for h in db.execute(select(HardCard)).scalars().all()}
+    exclude_ids = error_ids | hard_ids
+
+    candidates = []
+    for card, review in reviewed_cards:
+        if card.id in exclude_ids:
+            continue
+        # 即将到期（今天到明天）
+        if review.due and now <= review.due <= tomorrow:
+            candidates.append((card, review, 1))  # 优先级 1
+        # 巩固期：复习过 2+ 次但最近 3 天没复习
+        elif review.review_count >= 2 and (
+            review.last_review is None or review.last_review < three_days_ago
+        ):
+            candidates.append((card, review, 2))  # 优先级 2
+
+    # 按优先级排序，取前 limit 个
+    candidates.sort(key=lambda x: x[2])
+    selected = candidates[:limit]
+
+    return {
+        "recommended": [card_to_dict(card) for card, _, _ in selected],
+        "total_candidates": len(candidates),
+    }

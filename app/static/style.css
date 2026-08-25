@@ -1944,3 +1944,36 @@ body {
   margin-top: 6px;
 }
 .qp-example:empty { display: none; }
+
+/* 词族/近义词 */
+.related-words-box {
+  background: #F0F7FF; border-radius: 10px; padding: 10px 12px;
+  margin-top: 12px;
+}
+.related-words-label {
+  font-size: 12px; font-weight: 800; color: var(--muted);
+  margin-bottom: 6px;
+}
+.related-words-list {
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+.related-word-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: #fff; border: 1px solid var(--line);
+  border-radius: 999px; padding: 4px 10px;
+  font-size: 13px; font-weight: 700; color: var(--ink);
+  cursor: default;
+}
+.related-word-meaning {
+  font-size: 11px; font-weight: 400; color: var(--muted);
+}
+
+/* 每日推荐词 */
+.recommended-words {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;
+}
+.recommended-chip {
+  display: inline-block; background: #fff; border: 1px solid var(--line);
+  border-radius: 999px; padding: 2px 10px;
+  font-size: 12px; font-weight: 700; color: var(--ink);
+}

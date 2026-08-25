@@ -21,11 +21,15 @@ SYSTEM_PROMPT = (
     "用法要点 | 常见搭配 | 易错提醒。"
     "例：'可数名词，复数加s | a cat / cats / kitten(小猫) | 不要写成 catt'\n"
     "6. contexts: 2–3 条对话体语境例句（两人简短对话，目标词必须出现，用词简单），中英成对。\n"
+    "7. related_words: 词族/近义词数组（2-4个），每个元素含 word 和 meaning。"
+    "例：[{\"word\": \"kitten\", \"meaning\": \"小猫\"}, {\"word\": \"pet\", \"meaning\": \"宠物\"}]。"
+    "优先选同词族（如 teach→teacher）和常用近义词，用词简单零基础可懂。\n"
     "【记忆科学要求】例句和语境必须具体、有画面感：有真实场景和情绪，"
     "越具体越容易记住。尽量有动作、地点、情绪、意外感。\n"
     '严格输出 JSON: {"cards": [{"word":..., "phonetic":..., "meaning":...,'
     '"example":..., "example_cn":..., "explanation":...,'
-    '"contexts": [{"en": ..., "cn": ...}, ...]}]}'
+    '"contexts": [{"en": ..., "cn": ...}, ...],'
+    '"related_words": [{"word":..., "meaning":...}, ...]}]}'
 )
 
 
@@ -87,6 +91,8 @@ def generate_cards(words: list[str], db: Session) -> list[Card]:
         try:
             if not isinstance(c.get("contexts"), list):
                 c["contexts"] = []
+            if not isinstance(c.get("related_words"), list):
+                c["related_words"] = []
             if not c.get("word"):
                 continue
             # 质量校验：例句太短或太简单则清空（让前端显示"换一个"按钮）

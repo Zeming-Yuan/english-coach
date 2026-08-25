@@ -86,6 +86,21 @@ def get_quiz(limit: int = 5, db: Session = Depends(get_db)):
                     "hint": card.meaning,  # 中文释义：让用户知道要填哪个词
                 }
             )
+            # related: 词族/近义词题（如果有）
+            if len(selected) >= 6:
+                card = selected[5]
+                related = card.related_words or []
+                if related:
+                    rw = random.choice(related)
+                    questions.append(
+                        {
+                            "id": "related-1",
+                            "type": "related",
+                            "prompt": f"「{card.word}」的哪个相关词意思是「{rw['meaning']}」？",
+                            "card_id": card.id,
+                            "answer": rw["word"],
+                        }
+                    )
     return {"questions": questions}
 
 

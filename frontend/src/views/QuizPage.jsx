@@ -53,6 +53,18 @@ export default function QuizPage({ onExit }) {
     const userInput = q.type === "choice" ? (selected || "") : input.trim();
     setPhase("feedback");
 
+    // related 类型：直接比较答案
+    if (q.type === "related") {
+      const correct = userInput.toLowerCase() === (q.answer || "").toLowerCase();
+      if (correct) sfxSuccess(); else sfxFail();
+      speak(q.answer, null);
+      setFeedback({ correct, expected: q.answer, userInput });
+      if (!correct) {
+        setWrongList((w) => [...w, { question: q, user_input: userInput, expected: q.answer }]);
+      }
+      return;
+    }
+
     let result;
     try {
       result = await api("/api/typing/check", {
@@ -174,6 +186,7 @@ export default function QuizPage({ onExit }) {
           {q.type === "cn2en" && `「${q.prompt}」用英语怎么说？`}
           {q.type === "choice" && `「${q.prompt}」是哪个单词？`}
           {q.type === "fill" && `填空：${q.prompt}${q.hint ? `（${q.hint}）` : ""}`}
+          {q.type === "related" && q.prompt}
         </div>
 
         {/* cn2en / fill：格子 + 输入 */}
@@ -217,6 +230,26 @@ export default function QuizPage({ onExit }) {
               </div>
             ))}
           </div>
+        )}
+
+        {/* related：词族题（输入答案） */}
+        {q.type === "related" && phase === "input" && (
+          <>
+            <div className="spelling-word-display">
+              {renderBoxes(input, (q.answer || "").length || 5)}
+            </div>
+            <input
+              ref={inputRef}
+              className="spelling-input"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="输入相关词…"
+              autoFocus
+              autoComplete="off"
+              spellCheck={false}
+            />
+          </>
         )}
 
         {/* 反馈 */}

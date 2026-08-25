@@ -127,6 +127,7 @@ function QueueView({ setView, setStudyQueue }) {
   const [data, setData] = useState(null);
   const [stats, setStats] = useState(null);
   const [lessonData, setLessonData] = useState(null);
+  const [recommended, setRecommended] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dailyGoal, setDailyGoal] = useState(() => storageGet("dailyGoal", 10));
 
@@ -139,6 +140,11 @@ function QueueView({ setView, setStudyQueue }) {
         ]);
         setData(todayData);
         setStats(statsData);
+        // 推荐词（遗忘曲线）
+        try {
+          const rd = await api("/api/recommended?limit=5");
+          setRecommended(rd.recommended || []);
+        } catch {}
         // 课程入口
         try {
           const ld = await api("/api/lessons");
@@ -247,6 +253,27 @@ function QueueView({ setView, setStudyQueue }) {
           </div>
           <button className="btn btn-primary btn-small" onClick={() => {
             setStudyQueue(data.error_cards || []);
+            setView("study");
+          }}>复习 →</button>
+        </div>
+      )}
+
+      {/* 每日推荐词（遗忘曲线） */}
+      {recommended.length > 0 && (
+        <div className="lesson-entry" style={{ background: "linear-gradient(135deg, #FFF8F0, #FFF0F0)" }}>
+          <div className="lesson-entry-body">
+            <div className="lesson-entry-label">⏰ 推荐复习</div>
+            <div className="lesson-entry-sub">
+              {recommended.length} 个词即将遗忘 · 现在复习效果最好
+            </div>
+            <div className="recommended-words">
+              {recommended.map((c, i) => (
+                <span key={i} className="recommended-chip">{c.word}</span>
+              ))}
+            </div>
+          </div>
+          <button className="btn btn-primary btn-small" onClick={() => {
+            setStudyQueue(recommended);
             setView("study");
           }}>复习 →</button>
         </div>

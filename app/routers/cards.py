@@ -112,6 +112,7 @@ def card_to_dict(card: Card, db: Session) -> dict:
         "example_cn": card.example_cn,
         "explanation": card.explanation,
         "contexts": card.contexts,
+        "related_words": card.related_words,
         "review_count": review.review_count if review else 0,
         "graduated": review.state == 2 if review else False,
         "error_count": error.error_count if error else 0,
@@ -131,6 +132,7 @@ def _card_to_dict_fast(card: Card, review: Review | None, error: ErrorCard | Non
         "example_cn": card.example_cn,
         "explanation": card.explanation,
         "contexts": card.contexts,
+        "related_words": card.related_words,
         "review_count": review.review_count if review else 0,
         "graduated": review.state == 2 if review else False,
         "error_count": error.error_count if error else 0,
@@ -241,6 +243,13 @@ def refresh_examples(limit: int = 10, db: Session = Depends(get_db)):
                 card.example_cn = example_cn
                 card.explanation = explanation
                 refreshed += 1
+                # 同步更新对应的句子卡
+                sentence_card = db.execute(
+                    select(Card).where(Card.word == card.word, Card.kind == "sentence")
+                ).scalars().first()
+                if sentence_card:
+                    sentence_card.example = example
+                    sentence_card.example_cn = example_cn
         except Exception:
             continue  # 单个失败不阻塞整批
 
@@ -297,6 +306,7 @@ def get_card_detail(card_id: int, db: Session = Depends(get_db)):
         "example_cn": card.example_cn,
         "explanation": card.explanation,
         "contexts": card.contexts,
+        "related_words": card.related_words,
         "created_at": card.created_at.isoformat(),
         "graduated": latest.state == 2 if latest else False,
         "review_count": latest.review_count if latest else 0,

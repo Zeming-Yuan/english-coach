@@ -350,6 +350,21 @@ function WordDetail({ cardId, onBack, allCards, setDetail }) {
             ))}
           </div>
         )}
+
+        {/* 词族/近义词 */}
+        {Array.isArray(c.related_words) && c.related_words.length > 0 && (
+          <div className="related-words-box">
+            <div className="related-words-label">🔗 相关词</div>
+            <div className="related-words-list">
+              {c.related_words.map((rw, i) => (
+                <span key={i} className="related-word-chip" title={rw.meaning}>
+                  {rw.word}
+                  <span className="related-word-meaning">{rw.meaning}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 状态卡 */}

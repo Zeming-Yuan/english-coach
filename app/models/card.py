@@ -25,6 +25,7 @@ class Card(Base):
     contexts: Mapped[list | None] = mapped_column(JSON, nullable=True)
     kind: Mapped[str] = mapped_column(String(10), nullable=False, server_default="word")
     explanation: Mapped[str] = mapped_column(String(500), nullable=True)
+    related_words: Mapped[list | None] = mapped_column(JSON, nullable=True)  # 词族/近义词
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.now()
     )
