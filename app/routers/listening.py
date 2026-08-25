@@ -47,7 +47,7 @@ def get_listening(limit: int = 5, db: Session = Depends(get_db)):
     # 合并去重，取最多 limit 个
     seen = set()
     pool = []
-    for c in new_cards + due_cards:
+    for c in list(new_cards) + list(due_cards):
         if c.id not in seen:
             seen.add(c.id)
             pool.append(c)
@@ -128,8 +128,8 @@ def score_listening(payload: ListeningScoreIn, db: Session = Depends(get_db)):
         review.state = new_card.state.value
         review.step = new_card.step
         review.due = new_card.due
-        review.stability = new_card.stability
-        review.difficulty = new_card.difficulty
+        review.stability = new_card.stability  # type: ignore[assignment]
+        review.difficulty = new_card.difficulty  # type: ignore[assignment]
         review.elapsed_days = (
             (now - review.last_review.replace(tzinfo=timezone.utc)).days
             if review.last_review
