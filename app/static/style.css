@@ -238,6 +238,10 @@ body {
   position: absolute; bottom: 16px;
   font-size: 12px; color: var(--muted); font-weight: 600;
 }
+.flip-hint-back {
+  position: absolute; top: 12px; bottom: auto;
+  font-size: 11px; color: var(--muted); opacity: 0.6;
+}
 
 .back-meaning { font-size: 24px; font-weight: 800; margin-bottom: 6px; }
 .back-example { font-size: 16px; color: var(--muted); line-height: 1.6; margin-bottom: 14px; }
@@ -944,6 +948,16 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
+}
+.word-detail-word.word-detail-sentence {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+  line-height: 1.5;
+  font-size: 18px;
+  min-width: auto;
+  word-break: break-word;
+  flex: 1 1 auto;
 }
 .word-detail-phonetic {
   color: var(--muted);
@@ -2007,4 +2021,9 @@ body {
 }
 .word-tab-active {
   background: var(--mint); color: #fff; border-color: var(--mint);
+}
+
+/* 防翻译劫持：翻译插件会克隆 DOM，这些标记让 Chrome/Edge/沉浸式翻译忽略本页 */
+html.notranslate, html[translate="no"] {
+  -webkit-user-modify: read-write-plaintext-only;
 }

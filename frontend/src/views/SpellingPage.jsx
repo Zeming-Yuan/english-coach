@@ -181,6 +181,7 @@ export default function SpellingPage({ onExit, singleCard }) {
         <input
           ref={inputRef}
           className="spelling-input"
+          name="spelling-answer"
           value={input}
           onChange={(e) => setInput(e.target.value.slice(0, target.length))}
           onKeyDown={handleKeyDown}

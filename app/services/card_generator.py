@@ -95,12 +95,13 @@ def generate_cards(words: list[str], db: Session) -> list[Card]:
                 c["related_words"] = []
             if not c.get("word"):
                 continue
+            c.pop("kind", None)  # 防御：AI 不能决定卡片类型
             # 质量校验：例句太短或太简单则清空（让前端显示"换一个"按钮）
             example = c.get("example", "")
             if len(example) < 15 or example.lower().startswith(("this is ", "i have ", "i like ", "it is ")):
                 c["example"] = ""
                 c["example_cn"] = ""
-            cards.append(Card(**c))
+            cards.append(Card(**c, kind="word"))
         except (TypeError, ValueError):
             continue  # 跳过格式错误的卡，不阻塞整批
     db.add_all(cards)

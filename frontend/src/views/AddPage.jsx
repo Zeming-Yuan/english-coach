@@ -38,6 +38,7 @@ export default function AddPage({ onStartStudy }) {
         <p className="add-hint">输入想学的单词，用逗号或空格分隔，AI 帮你生成学习卡片</p>
         <textarea
           className="add-input"
+          name="words"
           rows={3}
           maxLength={500}
           autoFocus

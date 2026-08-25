@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { api } from "../lib/api.js";
 import { speak, prewarmTts } from "../lib/tts.js";
 import { escapeHtml } from "../lib/utils.js";
@@ -24,16 +24,32 @@ export default function WordsPage({ onBack }) {
     }).catch(() => setLoading(false));
   }, []);
 
-  // 按 tab 筛选（词汇/句子）— 用 === 严格匹配，避免 undefined 漏网
-  const tabFiltered = allCards.filter((c) => tab === "words" ? c.kind === "word" : c.kind === "sentence");
+  // 数据加载时就预分成两组并按字母排序，切换 tab 只是引用不同的数组
+  const { wordsCards, sentenceCards } = useMemo(() => {
+    const wc = [], sc = [];
+    for (const c of allCards) {
+      if (c.kind === "sentence") sc.push(c);
+      else wc.push(c);  // kind 为 word / undefined / null 统一归入词汇
+    }
+    const byWord = (a, b) => (a.word || "").localeCompare(b.word || "", "en", { sensitivity: "base" });
+    wc.sort(byWord);
+    sc.sort(byWord);
+    return { wordsCards: wc, sentenceCards: sc };
+  }, [allCards]);
 
+  const tabCards = tab === "words" ? wordsCards : sentenceCards;
+
+  // 搜索：按字段相关性加权排序
+  // 权重：word完全匹配(0) < word前缀(1) < word包含(2) < meaning匹配(3) < 例句翻译匹配(4)
   const filtered = query
-    ? tabFiltered.filter((c) =>
-        (c.word || "").toLowerCase().includes(query) ||
-        (c.meaning || "").toLowerCase().includes(query) ||
-        (c.example_cn || "").toLowerCase().includes(query)
-      )
-    : tabFiltered;
+    ? tabCards
+        .filter((c) =>
+          (c.word || "").toLowerCase().includes(query) ||
+          (c.meaning || "").toLowerCase().includes(query) ||
+          (c.example_cn || "").toLowerCase().includes(query)
+        )
+        .sort((a, b) => searchRank(a, query) - searchRank(b, query))
+    : tabCards;
 
   // 按首字母分组
   const grouped = [];
@@ -71,15 +87,17 @@ export default function WordsPage({ onBack }) {
         </div>
       </div>
       <div className="word-search-bar">
-        <input className="word-search-input" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="搜索单词或释义…" />
+        <input className="word-search-input" name="word-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="搜索单词或释义…" />
         {query && <span className="word-search-count">{filtered.length} 个结果</span>}
       </div>
       <div className="word-list-wrap">
-        <div className="word-list">
+        {/* key 含 query：搜索词变化时强制重建列表，避免 React diff 残留旧DOM */}
+        <div className="word-list" key={`${tab}-${query}`}>
           {filtered.length === 0 && <div className="story-empty">还没有卡片，先去「加词」添加第一个吧</div>}
           {grouped.map((g, i) => {
             if (g.type === "header") {
-              return <div key={i} className="word-letter-header" id={`letter-${g.letter}`}>{g.letter}</div>;
+              // 字母头 key 必须与卡片 key 空间隔离，否则冲突导致 diff 错乱
+              return <div key={`h-${g.letter}`} className="word-letter-header" id={`letter-${g.letter}`}>{g.letter}</div>;
             }
             const c = g.card;
             const badges = [];
@@ -145,6 +163,20 @@ export default function WordsPage({ onBack }) {
       {quickPeek && <div style={{ position: "fixed", inset: 0, zIndex: 149 }} onClick={closePeek} />}
     </section>
   );
+}
+
+/* ============ 搜索相关性排名 ============ */
+function searchRank(card, query) {
+  const q = query.toLowerCase();
+  const word = (card.word || "").toLowerCase();
+  const meaning = (card.meaning || "").toLowerCase();
+  const exampleCn = (card.example_cn || "").toLowerCase();
+  if (word === q) return 0;
+  if (word.startsWith(q)) return 1;
+  if (word.includes(q)) return 2;
+  if (meaning.includes(q)) return 3;
+  if (exampleCn.includes(q)) return 4;
+  return 5; // 其他字段（不该出现）
 }
 
 /* ============ 单词详情子组件 ============ */
@@ -250,7 +282,7 @@ function WordDetail({ cardId, onBack, allCards, setDetail }) {
         {c.kind === "sentence" ? (
           <>
             <div className="word-detail-header">
-              <div className="word-detail-word" style={{ fontSize: 18 }}>{c.example || c.word}</div>
+              <div className="word-detail-word word-detail-sentence">{c.example || c.word}</div>
               <button className="speak-btn" title="朗读" onClick={() => speak(c.example || c.word)}>🔊</button>
             </div>
           </>

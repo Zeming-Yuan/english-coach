@@ -235,6 +235,7 @@ export default function MixedPage({ onExit }) {
             <div className="spelling-word-display">{spellBoxes}</div>
             <input
               className="spelling-input"
+              name="spelling-answer"
               value={input}
               onChange={(e) => setInput(e.target.value.slice(0, q.word.length))}
               onKeyDown={handleKeyDown}

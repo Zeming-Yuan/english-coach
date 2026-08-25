@@ -198,6 +198,7 @@ export default function QuizPage({ onExit }) {
             <input
               ref={inputRef}
               className="spelling-input"
+              name="quiz-answer"
               value={input}
               onChange={(e) => setInput(e.target.value.slice(0, q.word_length || 5))}
               onKeyDown={handleKeyDown}
@@ -241,6 +242,7 @@ export default function QuizPage({ onExit }) {
             <input
               ref={inputRef}
               className="spelling-input"
+              name="quiz-answer"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}

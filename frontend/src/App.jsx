@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, Component } from "react";
 import { api } from "./lib/api.js";
 import { storageGet, storageSet } from "./lib/utils.js";
 import { setTtsRate } from "./lib/tts.js";
@@ -49,6 +49,35 @@ function Toast() {
   );
 }
 
+/* ============ 错误边界 ============ */
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+  componentDidCatch(error, info) {
+    console.error("[App] 渲染错误:", error, info);
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: 20, fontFamily: "monospace", fontSize: 14 }}>
+          <h3>⚠️ 页面崩溃了</h3>
+          <p style={{ color: "#c00" }}>{String(this.state.error?.message || this.state.error)}</p>
+          <pre style={{ whiteSpace: "pre-wrap", maxHeight: 300, overflow: "auto", background: "#f5f5f5", padding: 10 }}>
+            {String(this.state.error?.stack || "")}
+          </pre>
+          <button className="btn btn-primary" onClick={() => this.setState({ error: null })}>重试</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 /* ============ 主应用 ============ */
 export default function App() {
   const [view, setView] = useState("queue");
@@ -88,6 +117,7 @@ export default function App() {
       </header>
 
       {/* 内容区 */}
+      <ErrorBoundary>
       <main className="stage">
         {view === "queue" && <QueueView setView={setView} setStudyQueue={setStudyQueue} />}
         {view === "words" && <WordsPage />}
@@ -102,6 +132,7 @@ export default function App() {
         {view === "listening" && <ListeningPage onExit={() => setView("queue")} />}
         {view === "mixed" && <MixedPage onExit={() => setView("queue")} />}
       </main>
+      </ErrorBoundary>
 
       {/* 底部导航 */}
       <nav className={`bottom-nav ${!isNavView ? "nav-locked" : ""}`}>
