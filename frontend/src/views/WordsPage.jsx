@@ -24,8 +24,8 @@ export default function WordsPage({ onBack }) {
     }).catch(() => setLoading(false));
   }, []);
 
-  // 按 tab 筛选（词汇/句子）
-  const tabFiltered = allCards.filter((c) => tab === "words" ? c.kind !== "sentence" : c.kind === "sentence");
+  // 按 tab 筛选（词汇/句子）— 用 === 严格匹配，避免 undefined 漏网
+  const tabFiltered = allCards.filter((c) => tab === "words" ? c.kind === "word" : c.kind === "sentence");
 
   const filtered = query
     ? tabFiltered.filter((c) =>
