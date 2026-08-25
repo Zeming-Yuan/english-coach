@@ -24,12 +24,15 @@ SYSTEM_PROMPT = (
     "7. related_words: 词族/近义词数组（2-4个），每个元素含 word 和 meaning。"
     "例：[{\"word\": \"kitten\", \"meaning\": \"小猫\"}, {\"word\": \"pet\", \"meaning\": \"宠物\"}]。"
     "优先选同词族（如 teach→teacher）和常用近义词，用词简单零基础可懂。\n"
+    "8. chunks: 把 example 按意群切分为数组（3-6 段，每段 2-6 词，逗号/连接词/介词短语处切分），"
+    "每块标注角色 role（subject=主语 / predicate=谓宾 / adverbial=状语）。\n"
     "【记忆科学要求】例句和语境必须具体、有画面感：有真实场景和情绪，"
     "越具体越容易记住。尽量有动作、地点、情绪、意外感。\n"
     '严格输出 JSON: {"cards": [{"word":..., "phonetic":..., "meaning":...,'
     '"example":..., "example_cn":..., "explanation":...,'
     '"contexts": [{"en": ..., "cn": ...}, ...],'
-    '"related_words": [{"word":..., "meaning":...}, ...]}]}'
+    '"related_words": [{"word":..., "meaning":...}, ...],'
+    '"chunks": [{"text": "意群", "role": "subject|predicate|adverbial"}...]}]}'
 )
 
 
@@ -96,12 +99,21 @@ def generate_cards(words: list[str], db: Session) -> list[Card]:
             if not c.get("word"):
                 continue
             c.pop("kind", None)  # 防御：AI 不能决定卡片类型
+            c.pop("difficulty", None)  # 防御：难度由系统决定
+            if isinstance(c.get("chunks"), list):
+                # 兼容对象数组 [{text, role}] 或字符串数组
+                c["chunks"] = [
+                    ch if isinstance(ch, dict) else {"text": ch, "role": None}
+                    for ch in c["chunks"]
+                ]
+            else:
+                c["chunks"] = None
             # 质量校验：例句太短或太简单则清空（让前端显示"换一个"按钮）
             example = c.get("example", "")
             if len(example) < 15 or example.lower().startswith(("this is ", "i have ", "i like ", "it is ")):
                 c["example"] = ""
                 c["example_cn"] = ""
-            cards.append(Card(**c, kind="word"))
+            cards.append(Card(**c, kind="word", difficulty="basic"))
         except (TypeError, ValueError):
             continue  # 跳过格式错误的卡，不阻塞整批
     db.add_all(cards)

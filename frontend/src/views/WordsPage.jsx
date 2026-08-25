@@ -285,6 +285,24 @@ function WordDetail({ cardId, onBack, allCards, setDetail }) {
               <div className="word-detail-word word-detail-sentence">{c.example || c.word}</div>
               <button className="speak-btn" title="朗读" onClick={() => speak(c.example || c.word)}>🔊</button>
             </div>
+            {c.difficulty === "reading" && <span className="diff-chip">📖 阅读句</span>}
+            {/* 意群切分（初学辅助）— 点击单块朗读，可跟读 */}
+            {Array.isArray(c.chunks) && c.chunks.length > 1 && (
+              <div className="front-chunks" style={{ marginTop: 10 }}>
+                {c.chunks.map((ch, i) => {
+                  const item = typeof ch === "string" ? { text: ch, role: null } : ch;
+                  const label = item.role === "subject" ? "主语" : item.role === "predicate" ? "谓宾" : item.role === "adverbial" ? "状语" : "意群";
+                  return (
+                    <span
+                      key={i}
+                      className={`chunk ${item.role ? `role-${item.role}` : `chip-${i % 3}`}`}
+                      title={`${label} · 点击朗读`}
+                      onClick={() => speak(item.text)}
+                    >{item.text}</span>
+                  );
+                })}
+              </div>
+            )}
           </>
         ) : (
           <>

@@ -10,6 +10,7 @@ import { showToast } from "../App.jsx";
 export default function SettingsPage({ darkMode, setDarkMode }) {
   const [rate, setRate] = useState(() => storageGet("ttsRate", 0.9));
   const [daily, setDaily] = useState(() => storageGet("dailyGoal", 10));
+  const [cnMode, setCnMode] = useState(() => storageGet("sentenceCnMode", "auto"));
   const [refreshing, setRefreshing] = useState(false);
   const [refreshResult, setRefreshResult] = useState(null);
   const [regenerating, setRegenerating] = useState(false);
@@ -50,6 +51,14 @@ export default function SettingsPage({ darkMode, setDarkMode }) {
           <button className="btn btn-ghost btn-small" onClick={() => { setDarkMode(!darkMode); storageSet("darkMode", !darkMode); }}>
             {darkMode ? "关闭" : "开启"}
           </button>
+        </div>
+        <div className="settings-row">
+          <span className="settings-label">句子中文翻译</span>
+          <div className="diff-group">
+            {[{ l: "智能", v: "auto" }, { l: "常显", v: "on" }, { l: "隐藏", v: "off" }].map((o) => (
+              <button key={o.v} className={`diff-btn ${cnMode === o.v ? "diff-active" : ""}`} onClick={() => { setCnMode(o.v); storageSet("sentenceCnMode", o.v); }}>{o.l}</button>
+            ))}
+          </div>
         </div>
         <div className="settings-row" style={{ flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
           <span className="settings-label">词库例句质量</span>

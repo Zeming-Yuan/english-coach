@@ -1,8 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "../lib/api.js";
 import { speak } from "../lib/tts.js";
-import { escapeHtml, highlightWord } from "../lib/utils.js";
+import { escapeHtml, highlightWord, storageGet, storageSet } from "../lib/utils.js";
+import { splitSentence } from "../lib/chunks.js";
 import { showToast } from "../App.jsx";
+
+// 意群角色中文标签（悬浮提示）
+const ROLE_LABELS = { subject: "主语", predicate: "谓宾", adverbial: "状语" };
+const roleLabel = (role) => (role && ROLE_LABELS[role]) || "意群";
 
 /**
  * 闪卡学习视图。
@@ -20,6 +25,12 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
   const cardRef = useRef(null);
   const [exiting, setExiting] = useState(false);
   const [done, setDone] = useState(false);
+  // 中文翻译档位：auto=复习<3次显示，>=3次自动隐藏；on=常显；off=隐藏
+  const [cnMode, setCnMode] = useState(() => storageGet("sentenceCnMode", "auto"));
+
+  useEffect(() => {
+    storageSet("sentenceCnMode", cnMode);
+  }, [cnMode]);
   // 词查询状态（必须放在所有条件 return 之前，hook 顺序不能变）
   const [lookupWord, setLookupWord] = useState(null);
   const [lookupResult, setLookupResult] = useState(null);
@@ -27,6 +38,11 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
   const total = queue.length;
   const card = idx < total ? queue[idx] : null;
   const isSentence = card?.kind === "sentence";
+
+  // 智能默认：auto 模式下按复习次数渐进（card 定义后计算，避免 TDZ）
+  const showSentenceCn =
+    cnMode === "on" ||
+    (cnMode === "auto" && (card?.review_count ?? 0) < 3);
 
   // 每张卡重置
   useEffect(() => {
@@ -110,10 +126,22 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
 
   if (!card) return null;
 
+  // 对话体句子：按 A:/B: 分行渲染为气泡
+  const isDialog = isSentence && /^A:/m.test(card.example || "");
+  const dialogLines = isDialog
+    ? (card.example || "").split("\n").map((l) => l.trim()).filter(Boolean)
+    : [];
   const frontMain = isSentence ? highlightWord(card.example || card.word, card.word) : escapeHtml(card.word);
   const backMeaning = isSentence ? (card.example_cn || "") : (card.meaning || "");
   const backExample = !isSentence && card.example ? highlightWord(card.example, card.word) : "";
   const contexts = Array.isArray(card.contexts) ? card.contexts : [];
+
+  // 意群切分：优先 AI chunks，兜底启发式。chunks 可能是 {text,role} 或纯字符串
+  const chunkList = isSentence
+    ? (Array.isArray(card.chunks) && card.chunks.length > 0
+        ? card.chunks.map((ch) => typeof ch === "string" ? { text: ch, role: null } : ch)
+        : splitSentence(card.example || "").map((t) => ({ text: t, role: null })))
+    : [];
 
   const handleExampleWordClick = async (e, word) => {
     e.stopPropagation();
@@ -153,7 +181,7 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
       <div className="scene">
         <div
           ref={cardRef}
-          className={`card ${flipped ? "flipped" : ""} ${exiting ? (idx % 2 === 0 ? "leave-left" : "leave-right") : "enter"}`}
+          className={`card ${flipped ? "flipped" : ""} ${isSentence ? "card-tall" : ""} ${exiting ? (idx % 2 === 0 ? "leave-left" : "leave-right") : "enter"}`}
           onClick={flip}
           tabIndex={0}
           role="button"
@@ -161,8 +189,44 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
           onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && flip()}
         >
           <div className="card-face card-front">
-            <div className={`front-main ${isSentence ? "has-mark" : ""}`} dangerouslySetInnerHTML={{ __html: frontMain }} />
-            <div className="front-phonetic">{isSentence ? card.word : (card.phonetic || "")}</div>
+            {isDialog ? (
+              <div className="front-dialog">
+                {dialogLines.map((line, i) => {
+                  const isA = line.startsWith("A:");
+                  const body = highlightWord(line.replace(/^[AB]:\s*/, ""), card.word);
+                  return (
+                    <div key={i} className={`dialog-line ${isA ? "dialog-a" : "dialog-b"}`}>
+                      <span className="dialog-name">{isA ? "A" : "B"}</span>
+                      <span className="dialog-text" dangerouslySetInnerHTML={{ __html: body }} />
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className={`front-main ${isSentence ? "has-mark" : ""}`} dangerouslySetInnerHTML={{ __html: frontMain }} />
+            )}
+            <div className="front-phonetic">
+              {isSentence ? card.word : (card.phonetic || "")}
+              {isSentence && card.difficulty === "reading" &&
+                <span className="diff-chip">📖 阅读句</span>}
+            </div>
+            {/* 句子卡：意群切分提示（初学友好）— 点击单块朗读，可跟读 */}
+            {isSentence && chunkList.length > 1 && (
+              <div className="front-chunks">
+                {chunkList.map((ch, i) => (
+                  <span
+                    key={i}
+                    className={`chunk ${ch.role ? `role-${ch.role}` : `chip-${i % 3}`}`}
+                    title={`${roleLabel(ch.role)} · 点击朗读`}
+                    onClick={(e) => { e.stopPropagation(); speak(ch.text); }}
+                  >{ch.text}</span>
+                ))}
+              </div>
+            )}
+            {/* 句子卡：正面显示中文翻译（初学友好，可在设置关闭） */}
+            {isSentence && showSentenceCn && card.example_cn && (
+              <div className="front-sentence-cn">{card.example_cn}</div>
+            )}
             <button className="speak-btn" title="朗读" style={{ position: "absolute", top: 14, right: 16 }} onClick={(e) => { e.stopPropagation(); speak(isSentence ? (card.example || card.word) : card.word); }}>🔊</button>
             <span className="flip-hint">先回想 3 秒 · 点这翻面对照</span>
           </div>

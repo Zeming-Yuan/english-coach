@@ -26,6 +26,8 @@ class Card(Base):
     kind: Mapped[str] = mapped_column(String(10), nullable=False, server_default="word")
     explanation: Mapped[str] = mapped_column(String(500), nullable=True)
     related_words: Mapped[list | None] = mapped_column(JSON, nullable=True)  # 词族/近义词
+    chunks: Mapped[list | None] = mapped_column(JSON, nullable=True)  # 句子意群切分（初学友好）
+    difficulty: Mapped[str] = mapped_column(String(10), nullable=True)  # basic=基础句 / reading=阅读句
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.now()
     )

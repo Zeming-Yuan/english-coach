@@ -37,7 +37,7 @@ def graduate_to_sentence(card: Card, db: Session) -> Card | None:
     if existing is not None:
         return None
 
-    # 用 AI 生成更复杂的句子
+    # 用 AI 生成更复杂的句子（对话体优先 + 意群切分 + 难度标记）
     try:
         resp = client.chat.completions.create(
             model=route(Task.BULK),
@@ -45,14 +45,17 @@ def graduate_to_sentence(card: Card, db: Session) -> Card | None:
                 {
                     "role": "system",
                     "content": (
-                        "你是英语老师。为目标单词生成一个用于阅读练习的句子。\n"
+                        "你是零基础英语老师。为目标单词生成一个用于阅读练习的句子。\n"
                         "【要求】\n"
-                        "- 句子 15-25 词，有完整的情境和上下文\n"
+                        "- 优先用对话体（A/B 两人简短来往，有应答、有场景），如：\n"
+                        '  A: Look at that cloud! B: It looks like a giant rabbit.\n'
+                        "- 若无对话体则用叙述句，15-25 词，有画面感和故事性\n"
                         "- 目标词必须出现在句中\n"
                         "- 用词可以比零基础稍难一点（有 1-2 个生词没关系）\n"
-                        "- 有画面感、有故事性，不是简单的陈述句\n"
                         "- 同时提供自然的中文翻译\n"
-                        '严格输出 JSON: {"example": "英文句子", "example_cn": "中文翻译"}'
+                        "- 把英文句子按意群切分为 chunks（3-6 段，每段 2-6 词，逗号/连接词/介词短语处切分）\n"
+                        "- 每块标注语法角色 role：subject（主语+修饰）/ predicate（谓语+宾语）/ adverbial（时间地点状语）\n"
+                        '严格输出 JSON: {"example": "英文句子", "example_cn": "中文翻译", "chunks": [{"text": "意群", "role": "subject|predicate|adverbial"}...]}'
                     ),
                 },
                 {"role": "user", "content": card.word},
@@ -64,6 +67,14 @@ def graduate_to_sentence(card: Card, db: Session) -> Card | None:
             data = json.loads(content)
             example = data.get("example", "")
             example_cn = data.get("example_cn", "")
+            chunks = data.get("chunks") or []
+            if not isinstance(chunks, list):
+                chunks = []
+            # 兼容两种格式：字符串数组 或 {text, role} 对象数组
+            chunks = [
+                ch if isinstance(ch, dict) else {"text": ch, "role": None}
+                for ch in chunks
+            ]
             if example:
                 sentence_card = Card(
                     word=card.word,
@@ -72,6 +83,8 @@ def graduate_to_sentence(card: Card, db: Session) -> Card | None:
                     example=example,
                     example_cn=example_cn,
                     kind="sentence",
+                    chunks=chunks or None,
+                    difficulty="reading",
                 )
                 db.add(sentence_card)
                 db.flush()
