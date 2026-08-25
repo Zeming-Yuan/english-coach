@@ -4,7 +4,7 @@ import random
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -95,7 +95,7 @@ class ListeningScoreIn(BaseModel):
     card_id: int
     selected_index: int
     correct_index: int
-    rating: int = 3  # FSRS 评分，用户选对默认 3（记得）
+    rating: int = Field(default=3, ge=1, le=4)  # FSRS 评分 1-4
 
 
 @router.post("/listening/score")
@@ -160,6 +160,6 @@ def score_listening(payload: ListeningScoreIn, db: Session = Depends(get_db)):
     return {
         "correct": correct,
         "correct_word": card.word,
-        "graduated": review.state == 3,
+        "graduated": review.state == 2,
         "next_due": review.due.isoformat(),
     }

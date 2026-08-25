@@ -3,6 +3,7 @@ import { api } from "../lib/api.js";
 import { speak } from "../lib/tts.js";
 import { sfxSuccess, sfxFail } from "../lib/sfx.js";
 import { escapeHtml, highlightWord } from "../lib/utils.js";
+import { showToast } from "../App.jsx";
 
 /**
  * 闪卡学习视图。
@@ -44,7 +45,7 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
     setFlipped(true);
     // JOL 提醒
     if (elapsed < 2) {
-      window.dispatchEvent(new CustomEvent("toast-detail", { detail: { msg: "先自己回想一下这个词的含义，再翻面对照效果更好 ✍️" } }));
+      showToast("先自己回想一下这个词的含义，再翻面对照效果更好 ✍️");
     }
     // 自动发音
     const text = isSentence ? (card.example || card.word) : card.word;
@@ -58,7 +59,7 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
     const elapsed = (Date.now() - (flipStartedAt || Date.now())) / 1000;
     // JOL 校准
     if (rating >= 3 && elapsed < 2) {
-      window.dispatchEvent(new CustomEvent("toast-detail", { detail: { msg: "这个评分是你回想后的吗？下次先想出声再翻面，记忆更准" } }));
+      showToast("这个评分是你回想后的吗？下次先想出声再翻面，记忆更准");
     }
     try {
       const resp = await api("/api/reviews", {

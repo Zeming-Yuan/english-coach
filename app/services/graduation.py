@@ -8,9 +8,9 @@ from app.models.review import Review
 
 
 def is_graduated(review: Review) -> bool:
-    """判定词卡是否毕业：FSRS state == 3 (Review) 或复习次数 >= 3。"""
-    # State 枚举：0=New, 1=Learning, 2=Relearning, 3=Review
-    return review.state == 3 or review.review_count >= 3
+    """判定词卡是否毕业：FSRS state == 2 (Review) 或复习次数 >= 3。"""
+    # State 枚举（py-fsrs）：0=New, 1=Learning, 2=Review, 3=Relearning
+    return review.state == 2 or review.review_count >= 3
 
 
 def graduate_to_sentence(card: Card, db: Session) -> Card | None:
@@ -34,6 +34,5 @@ def graduate_to_sentence(card: Card, db: Session) -> Card | None:
         kind="sentence",
     )
     db.add(sentence_card)
-    db.commit()
-    db.refresh(sentence_card)
+    db.flush()  # 获取 id，不提交——由调用方统一管理事务
     return sentence_card

@@ -14,10 +14,10 @@ class Review(Base):
     card_id: Mapped[int] = mapped_column(ForeignKey("cards.id"), index=True)
     state: Mapped[int] = mapped_column(nullable=False)
     step: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    due: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    due: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
     stability: Mapped[float] = mapped_column(Float)
     difficulty: Mapped[float] = mapped_column(Float, nullable=False)
     elapsed_days: Mapped[int] = mapped_column(Integer, nullable=False)
-    last_review: Mapped[datetime | None] = mapped_column(DateTime)
+    last_review: Mapped[datetime | None] = mapped_column(DateTime, index=True)
     review_count: Mapped[int] = mapped_column(Integer, nullable=False)
     rating: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 评分 1-4（旧数据为空）

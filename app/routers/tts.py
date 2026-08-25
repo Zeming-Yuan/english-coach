@@ -12,6 +12,7 @@
 import io
 import logging
 import re
+from collections import OrderedDict
 
 import edge_tts
 from fastapi import APIRouter, HTTPException
@@ -27,8 +28,8 @@ VOICE = "en-US-AriaNeural"
 # edge-tts 只适合短文本；句子限长，避免生成超长
 MAX_TEXT_LEN = 200
 
-# 合成结果 LRU 缓存（words 数量级很小，简单 dict + 清上限即可）
-_cache: dict[str, bytes] = {}
+# 合成结果 LRU 缓存（OrderedDict，满时淘汰最旧一半）
+_cache: OrderedDict[str, bytes] = OrderedDict()
 _CACHE_MAX = 500
 
 
@@ -50,8 +51,11 @@ async def _synthesize_all(text: str) -> bytes:
 
 def _cache_put(text: str, data: bytes) -> None:
     if len(_cache) >= _CACHE_MAX:
-        _cache.clear()
+        # 淘汰最旧的一半（LRU）
+        for _ in range(_CACHE_MAX // 2):
+            _cache.popitem(last=False)
     _cache[text] = data
+    _cache.move_to_end(text)
 
 
 def _validate(text: str) -> str:

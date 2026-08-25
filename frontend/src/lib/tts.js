@@ -5,6 +5,7 @@
 
 let ttsVoice = null;
 let hasEnVoice = false;
+const audioCache = new Map();
 
 function pickVoice() {
   const voices = speechSynthesis.getVoices();
@@ -44,16 +45,19 @@ export function speak(word, btn = null) {
 }
 
 function speakOnline(word, done, fallback) {
-  const audio = new Audio(`/api/tts/audio/${encodeURIComponent(word)}`);
-  audio.onended = done;
-  audio.onerror = () => {
-    done();
-    fallback();
-  };
-  audio.play().catch(() => {
-    done();
-    fallback();
-  });
+  let audio = audioCache.get(word);
+  if (!audio) {
+    audio = new Audio(`/api/tts/audio/${encodeURIComponent(word)}`);
+    audioCache.set(word, audio);
+  }
+  let finished = false;
+  const finish = () => { if (finished) return; finished = true; done(); };
+  // 安全超时：Chrome 短文本可能不触发 onended
+  const safetyTimeout = setTimeout(finish, Math.max(word.length * 150, 3000));
+  audio.onended = () => { clearTimeout(safetyTimeout); finish(); };
+  audio.onerror = () => { clearTimeout(safetyTimeout); finish(); fallback(); };
+  audio.currentTime = 0;
+  audio.play().catch(() => { clearTimeout(safetyTimeout); finish(); fallback(); });
 }
 
 function speakLocal(word, done) {

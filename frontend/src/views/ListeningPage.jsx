@@ -77,8 +77,8 @@ export default function ListeningPage({ onExit }) {
         <div className="study-done">
           <div className="done-emoji">🎧</div>
           <h2>听写完成！</h2>
-          <p className="done-detail">答对 {correct}/{total} 题（{Math.round(correct / total * 100)} 分）</p>
-          <button className="btn btn-primary" onClick={() => { setIdx(0); setCorrect(0); setDone(false); setPhase("loading"); api("/api/listening").then((d) => { setQuestions(d.questions); setPhase("ready"); }); }}>再来一轮</button>
+          <p className="done-detail">答对 {correct}/{total} 题（{total > 0 ? Math.round(correct / total * 100) : 0} 分）</p>
+          <button className="btn btn-primary" onClick={() => { setIdx(0); setCorrect(0); setDone(false); setPhase("loading"); api("/api/listening").then((d) => { setQuestions(d.questions); setPhase("ready"); }).catch(() => setPhase("empty")); }}>再来一轮</button>
           <button className="btn btn-ghost" style={{ marginTop: 8 }} onClick={onExit}>回到队列</button>
         </div>
       </section>
@@ -123,8 +123,8 @@ export default function ListeningPage({ onExit }) {
             {feedback.correct ? "✅ 正确！" : `❌ 正确答案是：${feedback.correctWord}`}
           </div>
         )}
-        <button className="btn btn-ghost btn-small spelling-skip" onClick={feedback ? next : skip}>
-          跳过这题 →
+        <button className="btn btn-ghost btn-small spelling-skip" disabled={!!feedback} onClick={feedback ? next : skip}>
+          {feedback ? "下一题 →" : "跳过这题 →"}
         </button>
       </div>
     </section>

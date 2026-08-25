@@ -6,8 +6,9 @@ import { storageGet, storageSet } from "../lib/utils.js";
 
 /**
  * 拼写练习视图（Qwerty 风格 + 渐褪提示三档）。
+ * singleCard: 如果传入，只测这一个词（从单词详情页"测这个词"跳转）
  */
-export default function SpellingPage({ onExit }) {
+export default function SpellingPage({ onExit, singleCard }) {
   const [queue, setQueue] = useState([]);
   const [idx, setIdx] = useState(0);
   const [correct, setCorrect] = useState(0);
@@ -19,6 +20,12 @@ export default function SpellingPage({ onExit }) {
   const inputRef = useRef(null);
 
   useEffect(() => {
+    // 单词详情页跳转：只测一个词
+    if (singleCard) {
+      setQueue([singleCard]);
+      setPhase("ready");
+      return;
+    }
     async function load() {
       try {
         const data = await api("/api/today");
@@ -118,8 +125,10 @@ export default function SpellingPage({ onExit }) {
 
   const skip = useCallback(() => {
     if (!card) return;
-    submit(); // 空值判错
-  }, [card, submit]);
+    // 跳过不判错，直接显示答案并前进
+    speak(card.word, null);
+    setFeedback({ correct: false, expected: card.word });
+  }, [card]);
 
   if (phase === "loading") return <div className="story-empty">加载中…</div>;
   if (phase === "empty") return <div className="story-empty">还没有单词，先去加词吧</div>;

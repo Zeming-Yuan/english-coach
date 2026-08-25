@@ -40,7 +40,7 @@ def test_stats_counts(client, db_session):
             ),
             Review(
                 card_id=card1.id,
-                state=3,
+                state=2,
                 due=now + timedelta(days=1),
                 stability=2.0,
                 difficulty=1.0,
@@ -69,7 +69,7 @@ def test_stats_counts(client, db_session):
     data = resp.json()
     assert data["reviewed_today"] == 2  # 只算今天的 2 次
     assert data["total_cards"] == 2
-    assert data["graduated"] == 1  # state==3 的一条
+    assert data["graduated"] == 1  # state==2(Review) 的一条
     assert data["streak"] == 2  # 今天+昨天都学过 → 2 天
 
 
@@ -189,7 +189,7 @@ def test_stats_history_with_data(client, db_session):
     db_session.add(
         Review(
             card_id=card.id,
-            state=3,
+            state=2,
             due=now + timedelta(days=1),
             stability=2.0,
             difficulty=1.0,

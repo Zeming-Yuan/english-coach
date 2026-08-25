@@ -51,7 +51,7 @@ export default function WordsPage({ onBack }) {
 
   // 详情页
   if (detail) {
-    return <WordDetail cardId={detail} onBack={() => setDetail(null)} />;
+    return <WordDetail cardId={detail} onBack={() => setDetail(null)} allCards={filtered} setDetail={setDetail} />;
   }
 
   // 点击关闭快速查阅
@@ -128,11 +128,17 @@ export default function WordsPage({ onBack }) {
 }
 
 /* ============ 单词详情子组件 ============ */
-function WordDetail({ cardId, onBack }) {
+function WordDetail({ cardId, onBack, allCards, setDetail }) {
   const [c, setCard] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // 找到当前词在列表中的位置，支持上/下一个导航
+  const currentIndex = allCards ? allCards.findIndex((x) => x.id === cardId) : -1;
+  const prevCard = allCards && currentIndex > 0 ? allCards[currentIndex - 1] : null;
+  const nextCard = allCards && currentIndex < allCards.length - 1 ? allCards[currentIndex + 1] : null;
+
   useEffect(() => {
+    setLoading(true);
     api(`/api/cards/${cardId}`).then((d) => { setCard(d); setLoading(false); }).catch(() => setLoading(false));
   }, [cardId]);
 
@@ -159,10 +165,21 @@ function WordDetail({ cardId, onBack }) {
     } catch {}
   };
 
+  const [pendingExample, setPendingExample] = useState(null);
+
   const regenerate = async () => {
     try {
+      // 保存旧例句用于对比
+      const oldExample = c.example;
+      const oldExampleCn = c.example_cn;
+      const oldExplanation = c.explanation;
       const updated = await api(`/api/cards/${c.id}/regenerate`, { method: "POST" });
-      setCard(updated);
+      // 如果新例句和旧的不同，显示对比让用户选择
+      if (updated.example && updated.example !== oldExample) {
+        setPendingExample({ old: { example: oldExample, example_cn: oldExampleCn, explanation: oldExplanation }, new: updated });
+      } else {
+        setCard(updated);
+      }
     } catch (e) {
       showToast("换例句失败：" + e.message, "重试", regenerate);
     }
@@ -192,11 +209,23 @@ function WordDetail({ cardId, onBack }) {
 
   const contexts = Array.isArray(c.contexts) ? c.contexts : [];
 
+  // 讲解三要素分行（用 | 分隔）
+  const explanationParts = c.explanation ? c.explanation.split("|").map((s) => s.trim()).filter(Boolean) : [];
+
+  // 掌握度百分比（基于 review_count 和 graduated）
+  const masteryPct = c.graduated ? 100 : Math.min(90, c.review_count * 15);
+
   return (
     <section className="view">
       <div className="page-head">
         <button className="btn btn-ghost btn-small" onClick={onBack}>← 返回</button>
+        {/* 上/下一个词导航 */}
+        <div className="detail-nav">
+          {prevCard && <button className="btn btn-ghost btn-small" onClick={() => setDetail(prevCard.id)}>← 上一个</button>}
+          {nextCard && <button className="btn btn-ghost btn-small" onClick={() => setDetail(nextCard.id)}>下一个 →</button>}
+        </div>
       </div>
+
       <div className="word-detail-card">
         <div className="word-detail-header">
           <div className="word-detail-word">{c.word}</div>
@@ -209,14 +238,80 @@ function WordDetail({ cardId, onBack }) {
           {c.error_count > 0 && <span className="badge badge-error">错词×{c.error_count}</span>}
           {c.is_hard && <span className="badge badge-error">⭕ 困难词</span>}
         </div>
+
+        {/* 掌握度进度条 */}
+        <div className="mastery-bar-wrap">
+          <div className="mastery-bar" style={{ width: `${masteryPct}%` }} />
+          <span className="mastery-label">{masteryPct}% 掌握</span>
+        </div>
+
         <div className="word-detail-meaning">{c.kind === "sentence" ? (c.example_cn || "") : (c.meaning || "")}</div>
-        {c.example && c.kind !== "sentence" && (
-          <div className="word-detail-example">
-            <span>{c.example}</span>
-            <button className="speak-mini" title="朗读例句" onClick={() => speak(c.example)}>🔊</button>
-            <button className="memo-edit-btn" title="换一个例句" onClick={regenerate}>🔄</button>
+
+        {/* 例句（或换例句对比） */}
+        {pendingExample ? (
+          <div className="example-compare">
+            <div className="example-compare-label">旧例句：</div>
+            <div className="example-compare-old">{pendingExample.old.example}</div>
+            <div className="example-cn">{pendingExample.old.example_cn}</div>
+            <div className="example-compare-label" style={{ marginTop: 10 }}>新例句：</div>
+            <div className="example-compare-new">{pendingExample.new.example}</div>
+            <div className="example-cn">{pendingExample.new.example_cn}</div>
+            {pendingExample.new.explanation && (
+              <div className="explanation-box" style={{ marginTop: 8 }}>
+                {pendingExample.new.explanation.split("|").map((s, i) => (
+                  <div key={i} className="exp-line"><span className="exp-tag">{["📖 用法", "🔗 搭配", "⚠️ 易错"][i] || ""}</span>{s.trim()}</div>
+                ))}
+              </div>
+            )}
+            <div className="example-compare-actions">
+              <button className="btn btn-ghost btn-small" onClick={() => {
+                // 保留旧的：把新例句写回去（但用户选旧的，所以不更新）
+                setPendingExample(null);
+              }}>保留旧的</button>
+              <button className="btn btn-primary btn-small" onClick={() => {
+                // 用新的：更新卡片
+                setCard({ ...c, example: pendingExample.new.example, example_cn: pendingExample.new.example_cn, explanation: pendingExample.new.explanation || c.explanation });
+                setPendingExample(null);
+                showToast("✅ 已换新例句");
+              }}>用新的</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {c.example && c.kind !== "sentence" && (
+              <div className="word-detail-example">
+                <span>{c.example}</span>
+                <button className="speak-mini" title="朗读例句" onClick={() => speak(c.example)}>🔊</button>
+                <button className="memo-edit-btn" title="换一个例句" onClick={regenerate}>🔄</button>
+              </div>
+            )}
+            {c.example_cn && c.kind !== "sentence" && (
+              <div className="example-cn">{c.example_cn}</div>
+            )}
+          </>
+        )}
+
+        {/* 讲解三要素 */}
+        {explanationParts.length > 0 && (
+          <div className="explanation-box">
+            {explanationParts.length >= 1 && <div className="exp-line"><span className="exp-tag">📖 用法</span>{explanationParts[0]}</div>}
+            {explanationParts.length >= 2 && <div className="exp-line"><span className="exp-tag">🔗 搭配</span>{explanationParts[1]}</div>}
+            {explanationParts.length >= 3 && <div className="exp-line"><span className="exp-tag">⚠️ 易错</span>{explanationParts[2]}</div>}
           </div>
         )}
+
+        {/* 记忆法（前置到醒目位置） */}
+        {c.memo ? (
+          <div className="word-detail-memo">
+            <span className="word-detail-memo-label">🧠 我的记忆法</span>
+            <span>{c.memo}</span>
+            <button className="memo-edit-btn" onClick={editMemo}>✏️</button>
+          </div>
+        ) : (
+          <button className="btn btn-ghost btn-small" style={{ marginTop: 10 }} onClick={editMemo}>🧠 写个记忆法</button>
+        )}
+
+        {/* 对话体语境 */}
         {contexts.length > 0 && (
           <div className="bubble-list" style={{ marginTop: 14 }}>
             {contexts.map((ctx, i) => (
@@ -225,14 +320,6 @@ function WordDetail({ cardId, onBack }) {
                 <div className="bubble-cn">{ctx.cn}</div>
               </div>
             ))}
-          </div>
-        )}
-        {c.explanation && <div className="word-detail-explanation">{c.explanation}</div>}
-        {c.memo && (
-          <div className="word-detail-memo">
-            <span className="word-detail-memo-label">🧠 我的记忆法</span>
-            <span>{c.memo}</span>
-            <button className="memo-edit-btn" onClick={editMemo}>✏️</button>
           </div>
         )}
       </div>
@@ -244,22 +331,33 @@ function WordDetail({ cardId, onBack }) {
         <div className="status-item"><span className="status-label">下次复习</span><span className="status-value">{c.next_due ? new Date(c.next_due).toLocaleDateString() : "-"}</span></div>
       </div>
 
-      {/* 复习历史 */}
+      {/* 自测按钮 */}
+      <button className="btn btn-primary btn-wide" style={{ marginTop: 12 }} onClick={() => {
+        // 跳转到拼写练习，只测这一个词
+        window.dispatchEvent(new CustomEvent("quiz-single-word", { detail: { card: c } }));
+        onBack();
+      }}>📝 测这个词</button>
+
+      {/* 复习历史可视化时间线 */}
       {c.review_history?.length > 0 && (
         <div style={{ marginTop: 16 }}>
           <h3 className="lesson-section">复习历史</h3>
-          <div className="detail-history">
-            {c.review_history.map((r, i) => {
+          <div className="timeline">
+            {[...c.review_history].reverse().map((r, i) => {
               const date = r.last_review ? new Date(r.last_review).toLocaleDateString() : "-";
               const ratingNames = { 1: "忘了", 2: "模糊", 3: "记得", 4: "太简单" };
               const stateNames = { 0: "新词", 1: "学习中", 2: "重学", 3: "熟练" };
               const label = r.rating ? ratingNames[r.rating] : stateNames[r.state] || "复习";
-              const kind = r.rating ? `rating-${r.rating}` : `state-${r.state}`;
+              const ratingClass = r.rating ? `tl-rating-${r.rating}` : `tl-state-${r.state}`;
+              const isLast = i === c.review_history.length - 1;
               return (
-                <div key={i} className="history-row">
-                  <span className="history-date">{date}</span>
-                  <span className={`history-rating ${kind}`}>{label}</span>
-                  <span className="history-count">第 {r.review_count} 次</span>
+                <div key={i} className={`tl-item ${isLast ? "tl-latest" : ""}`}>
+                  <div className={`tl-dot ${ratingClass}`} />
+                  {i < c.review_history.length - 1 && <div className={`tl-line ${ratingClass}`} />}
+                  <div className="tl-content">
+                    <span className="tl-label">{label}</span>
+                    <span className="tl-date">{date} · 第 {r.review_count} 次</span>
+                  </div>
                 </div>
               );
             })}

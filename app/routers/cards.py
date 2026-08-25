@@ -76,6 +76,7 @@ def delete_card(card_id: int, db: Session = Depends(get_db)):
     db.execute(Review.__table__.delete().where(Review.card_id == card_id))
     db.execute(Memo.__table__.delete().where(Memo.card_id == card_id))
     db.execute(ErrorCard.__table__.delete().where(ErrorCard.card_id == card_id))
+    db.execute(HardCard.__table__.delete().where(HardCard.card_id == card_id))
     db.execute(StoryWord.__table__.delete().where(StoryWord.card_id == card_id))
     db.delete(card)
     db.commit()
@@ -112,9 +113,28 @@ def card_to_dict(card: Card, db: Session) -> dict:
         "explanation": card.explanation,
         "contexts": card.contexts,
         "review_count": review.review_count if review else 0,
-        "graduated": review.state == 3 if review else False,
+        "graduated": review.state == 2 if review else False,
         "error_count": error.error_count if error else 0,
         "is_hard": hard is not None,
+    }
+
+
+def _card_to_dict_fast(card: Card, review: Review | None, error: ErrorCard | None, is_hard: bool) -> dict:
+    """Card → 字典（批量预加载版本，无额外查询）。"""
+    return {
+        "id": card.id,
+        "word": card.word,
+        "kind": card.kind,
+        "phonetic": card.phonetic,
+        "meaning": card.meaning,
+        "example": card.example,
+        "example_cn": card.example_cn,
+        "explanation": card.explanation,
+        "contexts": card.contexts,
+        "review_count": review.review_count if review else 0,
+        "graduated": review.state == 2 if review else False,
+        "error_count": error.error_count if error else 0,
+        "is_hard": is_hard,
     }
 
 
@@ -158,7 +178,78 @@ def list_cards(db: Session = Depends(get_db)):
         .scalars()
         .all()
     )
-    return {"cards": [card_to_dict(c, db) for c in cards]}
+    if not cards:
+        return {"cards": []}
+    # 批量预加载关联数据，消除 N+1 查询
+    card_ids = [c.id for c in cards]
+    reviews = db.execute(
+        select(Review).where(Review.card_id.in_(card_ids))
+    ).scalars().all()
+    errors = db.execute(
+        select(ErrorCard).where(ErrorCard.card_id.in_(card_ids))
+    ).scalars().all()
+    hards = db.execute(
+        select(HardCard).where(HardCard.card_id.in_(card_ids))
+    ).scalars().all()
+    # 构建查找表：每个 card_id 取最新 review
+    review_map: dict[int, Review] = {}
+    for r in reviews:
+        if r.card_id not in review_map or r.id > review_map[r.card_id].id:
+            review_map[r.card_id] = r
+    error_map = {e.card_id: e for e in errors}
+    hard_set = {h.card_id for h in hards}
+
+    return {
+        "cards": [
+            _card_to_dict_fast(c, review_map.get(c.id), error_map.get(c.id), c.id in hard_set)
+            for c in cards
+        ]
+    }
+
+
+@router.post("/cards/refresh-examples")
+def refresh_examples(limit: int = 10, db: Session = Depends(get_db)):
+    """批量刷新旧词卡的例句/讲解（旧 prompt 生成的平淡句）。
+
+    找出 example 长度 < 30 或 explanation 不含 | 的 word 类型卡，
+    调 regenerate_example 更新，每批最多 limit 个。
+    """
+    from app.services.card_generator import regenerate_example
+
+    # 找需要刷新的卡
+    all_words = db.execute(
+        select(Card).where(Card.kind == "word")
+    ).scalars().all()
+
+    needs_refresh = []
+    for c in all_words:
+        example = c.example or ""
+        explanation = c.explanation or ""
+        if len(example) < 30 or "|" not in explanation:
+            needs_refresh.append(c)
+
+    if not needs_refresh:
+        return {"refreshed": 0, "remaining": 0, "total_weak": 0}
+
+    batch = needs_refresh[:limit]
+    refreshed = 0
+    for card in batch:
+        try:
+            example, example_cn, explanation = regenerate_example(card.word)
+            if example:
+                card.example = example
+                card.example_cn = example_cn
+                card.explanation = explanation
+                refreshed += 1
+        except Exception:
+            continue  # 单个失败不阻塞整批
+
+    db.commit()
+    return {
+        "refreshed": refreshed,
+        "remaining": len(needs_refresh) - refreshed,
+        "total_weak": len(needs_refresh),
+    }
 
 
 @router.get("/cards/{card_id}")
@@ -207,7 +298,7 @@ def get_card_detail(card_id: int, db: Session = Depends(get_db)):
         "explanation": card.explanation,
         "contexts": card.contexts,
         "created_at": card.created_at.isoformat(),
-        "graduated": latest.state == 3 if latest else False,
+        "graduated": latest.state == 2 if latest else False,
         "review_count": latest.review_count if latest else 0,
         "error_count": error.error_count if error else 0,
         "memo": memo.content if memo else None,

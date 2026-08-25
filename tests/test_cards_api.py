@@ -150,7 +150,7 @@ def test_get_card_detail_with_reviews(client, db_session):
     db_session.add(
         Review(
             card_id=card.id,
-            state=3,
+            state=2,
             due=now + timedelta(days=7),
             stability=5.0,
             difficulty=0.2,

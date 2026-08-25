@@ -18,40 +18,39 @@ export default function MixedPage({ onExit }) {
   const [selected, setSelected] = useState(null);
   const [done, setDone] = useState(false);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [listeningData, quizData, todayData] = await Promise.all([
-          api("/api/listening?limit=2"),
-          api("/api/quiz?limit=6"),
-          api("/api/today"),
-        ]);
-        const result = [];
-        // 听写
-        (listeningData.questions || []).slice(0, 2).forEach((q) => result.push({ type: "listen", q }));
-        // 选择
-        (quizData.questions || []).filter((q) => q.type === "choice").slice(0, 2).forEach((q) => result.push({ type: "choice", q }));
-        // 拼写
-        let spellPool = [...(todayData.error_cards || []), ...todayData.new_cards, ...todayData.due_cards].filter((c) => c.kind === "word");
-        if (spellPool.length === 0) {
-          const allData = await api("/api/cards");
-          spellPool = allData.cards.filter((c) => c.kind === "word");
-        }
-        spellPool.slice(0, 2).forEach((c) => result.push({ type: "spell", q: { card_id: c.id, word: c.word, meaning: c.meaning } }));
-        // 随机交错
-        for (let i = result.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [result[i], result[j]] = [result[j], result[i]];
-        }
-        if (result.length < 3) { setPhase("empty"); return; }
-        setItems(result);
-        setPhase("ready");
-      } catch {
-        setPhase("empty");
+  const load = useCallback(async () => {
+    try {
+      const [listeningData, quizData, todayData] = await Promise.all([
+        api("/api/listening?limit=2"),
+        api("/api/quiz?limit=6"),
+        api("/api/today"),
+      ]);
+      const result = [];
+      // 听写
+      (listeningData.questions || []).slice(0, 2).forEach((q) => result.push({ type: "listen", q }));
+      // 选择
+      (quizData.questions || []).filter((q) => q.type === "choice").slice(0, 2).forEach((q) => result.push({ type: "choice", q }));
+      // 拼写
+      let spellPool = [...(todayData.error_cards || []), ...todayData.new_cards, ...todayData.due_cards].filter((c) => c.kind === "word");
+      if (spellPool.length === 0) {
+        const allData = await api("/api/cards");
+        spellPool = allData.cards.filter((c) => c.kind === "word");
       }
+      spellPool.slice(0, 2).forEach((c) => result.push({ type: "spell", q: { card_id: c.id, word: c.word, meaning: c.meaning } }));
+      // 随机交错
+      for (let i = result.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [result[i], result[j]] = [result[j], result[i]];
+      }
+      if (result.length < 3) { setPhase("empty"); return; }
+      setItems(result);
+      setPhase("ready");
+    } catch {
+      setPhase("empty");
     }
-    load();
   }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   const item = items[idx];
   const total = items.length;
@@ -134,7 +133,7 @@ export default function MixedPage({ onExit }) {
         <div className="study-done">
           <div className="done-emoji">🎲</div>
           <h2>混合练习完成！</h2>
-          <p className="done-detail">答对 {correct}/{total} 题（{Math.round(correct / total * 100)} 分）· 混合题型记忆更牢 🚀</p>
+          <p className="done-detail">答对 {correct}/{total} 题（{total > 0 ? Math.round(correct / total * 100) : 0} 分）· 混合题型记忆更牢 🚀</p>
           {wrongList.length > 0 && (
             <div className="quiz-wrong-list">
               <div className="quiz-wrong-title">❌ 错题回顾</div>
@@ -146,7 +145,7 @@ export default function MixedPage({ onExit }) {
               ))}
             </div>
           )}
-          <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => { setIdx(0); setCorrect(0); setWrongList([]); setDone(false); setPhase("loading"); }}>再来一轮</button>
+          <button className="btn btn-primary" style={{ marginTop: 16 }} onClick={() => { setIdx(0); setCorrect(0); setWrongList([]); setDone(false); setPhase("loading"); load(); }}>再来一轮</button>
           <button className="btn btn-ghost" style={{ marginTop: 8 }} onClick={onExit}>回到队列</button>
         </div>
       </section>

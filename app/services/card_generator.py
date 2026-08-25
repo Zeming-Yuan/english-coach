@@ -10,13 +10,19 @@ from app.services.model_router import Task, route
 client = OpenAI(api_key=settings.deepseek_api_key, base_url=settings.deepseek_base_url)
 
 SYSTEM_PROMPT = (
-    "你是零基础英语老师。为每个单词生成：音标、中文释义、一个简单例句及翻译、"
-    "给零基础学生的讲解（一句话，讲用法或记忆点），以及 2–3 条对话体语境例句"
-    "（两人简短对话，目标词必须出现在对话中，用词简单零基础可懂），语境例句中英成对。"
-    "例句用词必须简单。"
-    "【记忆科学要求】例句和语境必须是具体、画面感强的（可想象出场景/画面），"
-    "避免'I like apple.'这类空泛句。好例子：'The fat cat sat on my laptop while I was studying!'"
-    "尽量有动作、地点、情绪、意外感，越具体越容易记住。"
+    "你是零基础英语老师。为每个单词生成学习卡片，包含以下字段：\n"
+    "1. phonetic: 音标\n"
+    "2. meaning: 中文释义（简洁）\n"
+    "3. example: 一个完整英文例句（必须有具体场景、人物或动作，至少 8 个单词。"
+    "禁止 'This is X' / 'I have X' / 'I like X' 式空泛句。"
+    "好例子：'The fat cat sat on my laptop while I was studying!'\n"
+    "4. example_cn: 例句的自然中文翻译\n"
+    "5. explanation: 讲解（必须包含三要素，用 | 分隔）："
+    "用法要点 | 常见搭配 | 易错提醒。"
+    "例：'可数名词，复数加s | a cat / cats / kitten(小猫) | 不要写成 catt'\n"
+    "6. contexts: 2–3 条对话体语境例句（两人简短对话，目标词必须出现，用词简单），中英成对。\n"
+    "【记忆科学要求】例句和语境必须具体、有画面感：有真实场景和情绪，"
+    "越具体越容易记住。尽量有动作、地点、情绪、意外感。\n"
     '严格输出 JSON: {"cards": [{"word":..., "phonetic":..., "meaning":...,'
     '"example":..., "example_cn":..., "explanation":...,'
     '"contexts": [{"en": ..., "cn": ...}, ...]}]}'
@@ -31,8 +37,12 @@ def regenerate_example(word: str) -> tuple[str, str, str]:
             {
                 "role": "system",
                 "content": (
-                    "你是零基础英语老师。为单词重新生成一个新例句：具体、有画面感、"
-                    "用词简单，避免和常见例句重复。"
+                    "你是零基础英语老师。为单词重新生成一个新例句和讲解。\n"
+                    "【例句要求】必须是完整句子（至少 8 个单词），有具体场景、人物或动作。"
+                    "禁止 'This is X' / 'I have X' / 'I like X' 式空泛句。"
+                    "好例子：'The fat cat sat on my laptop while I was studying!'\n"
+                    "【讲解要求】必须包含三要素，用 | 分隔：用法要点 | 常见搭配 | 易错提醒。"
+                    "例：'可数名词，复数加s | a cat / cats / kitten(小猫) | 不要写成 catt'\n"
                     '严格输出 JSON: {"example": "...", "example_cn": "...", "explanation": "..."}'
                 ),
             },
@@ -73,10 +83,20 @@ def generate_cards(words: list[str], db: Session) -> list[Card]:
         raise ValueError("DeepSeek 返回空内容")
     cards = []
     data = json.loads(content)
-    for c in data["cards"]:
-        if not isinstance(c.get("contexts"), list):
-            c["contexts"] = []
-        cards.append(Card(**c))
+    for c in data.get("cards", []):
+        try:
+            if not isinstance(c.get("contexts"), list):
+                c["contexts"] = []
+            if not c.get("word"):
+                continue
+            # 质量校验：例句太短或太简单则清空（让前端显示"换一个"按钮）
+            example = c.get("example", "")
+            if len(example) < 15 or example.lower().startswith(("this is ", "i have ", "i like ", "it is ")):
+                c["example"] = ""
+                c["example_cn"] = ""
+            cards.append(Card(**c))
+        except (TypeError, ValueError):
+            continue  # 跳过格式错误的卡，不阻塞整批
     db.add_all(cards)
     db.commit()
     return cards

@@ -121,7 +121,7 @@ export default function QuizPage({ onExit }) {
   // 结果页
   if (phase === "result") {
     const correctCount = total - wrongList.length;
-    const score = Math.round((correctCount / total) * 100);
+    const score = total > 0 ? Math.round((correctCount / total) * 100) : 0;
     return (
       <section className="view view-center">
         <div className="result-badge">{score === 100 ? "🏆" : score >= 80 ? "🌟" : score >= 60 ? "👍" : "🙂"}</div>
@@ -148,7 +148,7 @@ export default function QuizPage({ onExit }) {
             </>
           )}
         </div>
-        <button className="btn btn-ghost" onClick={() => { setQIdx(0); setWrongList([]); setPhase("loading"); api("/api/quiz?limit=5").then((d) => { setQuestions(d.questions); setPhase("input"); }); }}>
+        <button className="btn btn-ghost" onClick={() => { setQIdx(0); setWrongList([]); setPhase("loading"); api("/api/quiz?limit=5").then((d) => { setQuestions(d.questions); setPhase("input"); }).catch(() => setPhase("empty")); }}>
           再测一次
         </button>
         <button className="btn btn-primary" onClick={onExit}>回到队列</button>
@@ -200,10 +200,13 @@ export default function QuizPage({ onExit }) {
         {q.type === "choice" && phase === "input" && (
           <div className="quiz-options">
             {q.options?.map((opt) => (
-              <button
+              <div
                 key={opt}
+                role="button"
+                tabIndex={0}
                 className={`quiz-option ${selected === opt ? "selected" : ""}`}
                 onClick={() => setSelected(opt)}
+                onKeyDown={(e) => e.key === "Enter" && setSelected(opt)}
               >
                 {opt}
                 <button
@@ -211,7 +214,7 @@ export default function QuizPage({ onExit }) {
                   title="听发音"
                   onClick={(e) => { e.stopPropagation(); speak(opt); }}
                 >🔊</button>
-              </button>
+              </div>
             ))}
           </div>
         )}

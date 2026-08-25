@@ -19,7 +19,11 @@ SYSTEM_PROMPT = (
     "故事要自然地用到所有目标词，用词简单，适合零基础学生阅读。"
     "【记忆科学要求】故事要有画面感和情绪：具体的人物、场景、小冲突或意外，"
     "读者能像看电影一样看见故事。避免平铺直叙。多用动词和感官词（看、听、摸、尝）。"
-    '严格输出 JSON: {"title": "...", "story": "...", "words": [{"word": "...","phonetic": "...", "meaning": "..."}]}'
+    "【翻译要求】逐句中英对照：把故事拆成句子数组，每个元素包含英文和对应中文翻译。"
+    "翻译要自然流畅，不要逐字硬译。"
+    '严格输出 JSON: {"title": "...", "title_cn": "...", '
+    '"sentences": [{"en": "英文句子.", "cn": "中文翻译."}, ...], '
+    '"words": [{"word": "...","phonetic": "...", "meaning": "..."}]}'
 )
 
 
@@ -56,8 +60,16 @@ def generate_story(db: Session, word_limit: int = 8) -> Story:
     if not content:
         raise ValueError("DeepSeek API 返回空内容。")
     data = json.loads(content)
-    # 1. 创建故事
-    story = Story(title=data["title"], content=data["story"])
+    # 1. 创建故事：将 sentences 数组拼接为 content + content_cn
+    sentences = data.get("sentences", [])
+    content = "\n".join(s.get("en", "") for s in sentences)
+    content_cn = "\n".join(s.get("cn", "") for s in sentences)
+    story = Story(
+        title=data["title"],
+        content=content,
+        content_cn=content_cn,
+        title_cn=data.get("title_cn"),
+    )
     db.add(story)
     db.flush()  # 获取 story.id
 

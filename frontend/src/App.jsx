@@ -53,6 +53,7 @@ function Toast() {
 export default function App() {
   const [view, setView] = useState("queue");
   const [studyQueue, setStudyQueue] = useState([]);
+  const [singleCard, setSingleCard] = useState(null);
   const [navLocked, setNavLocked] = useState(false);
   const [darkMode, setDarkMode] = useState(() => storageGet("darkMode", false));
 
@@ -62,6 +63,16 @@ export default function App() {
     setTtsRate(rate);
     document.body.classList.toggle("dark", darkMode);
   }, [darkMode]);
+
+  // 监听"测这个词"事件（从单词详情页跳转）
+  useEffect(() => {
+    const handler = (e) => {
+      setSingleCard(e.detail.card);
+      setView("spelling");
+    };
+    window.addEventListener("quiz-single-word", handler);
+    return () => window.removeEventListener("quiz-single-word", handler);
+  }, []);
 
   const isNavView = NAV_TABS[view] !== undefined;
 
@@ -87,7 +98,7 @@ export default function App() {
         {view === "lessons" && <LessonsPage onExit={() => setView("queue")} />}
         {view === "study" && <StudyPage queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} />}
         {view === "quiz" && <QuizPage onExit={() => setView("queue")} />}
-        {view === "spelling" && <SpellingPage onExit={() => setView("queue")} />}
+        {view === "spelling" && <SpellingPage onExit={() => { setView("queue"); setSingleCard(null); }} singleCard={singleCard} />}
         {view === "listening" && <ListeningPage onExit={() => setView("queue")} />}
         {view === "mixed" && <MixedPage onExit={() => setView("queue")} />}
       </main>

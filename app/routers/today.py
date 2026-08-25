@@ -45,7 +45,7 @@ def get_today(new_limit: int = 10, due_limit: int = 20, db: Session = Depends(ge
     stmt = (
         select(Card)
         .join(Review, Review.card_id == Card.id)
-        .where(Review.due <= datetime.now(timezone.utc).replace(tzinfo=timezone.utc))
+        .where(Review.due <= datetime.now(timezone.utc).replace(tzinfo=None))
         .order_by(Review.due)
         .limit(due_limit)
     )
@@ -97,7 +97,7 @@ def get_weekly_accuracy(db: Session = Depends(get_db)):
     def is_ok(r):
         if r.rating is not None:
             return r.rating >= 3
-        return r.state != 2  # 旧数据兜底
+        return r.state == 2  # 旧数据兜底：state==2(Review) 视为正确
 
     weeks = []
     for i in range(7, -1, -1):
@@ -151,7 +151,7 @@ def _adaptive_new_limit(db: Session, base: int) -> tuple[int, float | None]:
     ).scalars().all()
     if not reviews:
         return base, None  # 数据不足
-    wrong = sum(1 for r in reviews if r.state == 2)
+    wrong = sum(1 for r in reviews if r.rating is not None and r.rating <= 2)
     error_rate = wrong / len(reviews)
     if error_rate > 0.3:
         return 5, error_rate
@@ -164,18 +164,17 @@ def _adaptive_new_limit(db: Session, base: int) -> tuple[int, float | None]:
 def get_errors(db: Session = Depends(get_db)):
     """错词本：记录在 error_cards 里的卡，按错误次数倒序。"""
     rows = db.execute(
-        select(ErrorCard)
+        select(ErrorCard, Card)
         .join(Card, Card.id == ErrorCard.card_id)
         .order_by(ErrorCard.error_count.desc(), ErrorCard.last_error_at)
-    ).scalars().all()
+    ).all()
     result = []
-    for r in rows:
-        c = db.get(Card, r.card_id)
+    for r, c in rows:
         result.append({
             "card_id": r.card_id,
             "error_count": r.error_count,
-            "word": c.word if c else "",
-            "meaning": c.meaning if c else "",
+            "word": c.word,
+            "meaning": c.meaning,
             "last_error_at": r.last_error_at.isoformat() if r.last_error_at else None,
         })
     return {"errors": result}
@@ -191,7 +190,7 @@ def get_stats(db: Session = Depends(get_db)):
     ).scalar_one()
     total_cards = db.execute(select(func.count(Card.id))).scalar_one()
     graduated = db.execute(
-        select(func.count(Review.id)).where(Review.state == 3)
+        select(func.count(Review.id)).where(Review.state == 2)
     ).scalar_one()
     return {
         "reviewed_today": reviewed_today,

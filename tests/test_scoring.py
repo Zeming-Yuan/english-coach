@@ -22,5 +22,6 @@ def test_normalize_apostrophe_is_significant():
     assert normalize("don't") == "don't"
 
 
-def test_normalize_keeps_chinese():
-    assert normalize("苹果") == "苹果"
+def test_normalize_strips_chinese():
+    """中文字符不参与英文判分，归一化后为空。"""
+    assert normalize("苹果") == ""

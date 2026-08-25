@@ -6,10 +6,10 @@ from app.services.graduation import graduate_to_sentence, is_graduated
 
 
 def test_graduated_by_state(db_session):
-    """FSRS state == 3 (Review) → 毕业。"""
+    """FSRS state == 2 (Review) → 毕业。"""
     review = Review(
         card_id=1,
-        state=3,
+        state=2,
         review_count=1,
         due="2026-01-01",
         stability=1.0,

@@ -70,7 +70,7 @@ def test_invalid_rating(client, db_session):
 
 
 def test_review_graduates_word_to_sentence(client, db_session):
-    """复习 3 次 → 词卡毕业 → 响应含 graduated + sentence_card_id。"""
+    """复习 3 次 → 词卡毕业 → 验证句子卡已生成。"""
     card = Card(
         word="hello",
         phonetic="/həˈloʊ/",
@@ -82,14 +82,19 @@ def test_review_graduates_word_to_sentence(client, db_session):
     db_session.add(card)
     db_session.commit()
     db_session.refresh(card)
-    # 提交 3 次复习（每次 rating=3=Good）
+    # 提交 3 次复习（每次 rating=3=Good），毕业可能在第 2 次就触发
+    graduated_in_response = False
+    sentence_card_id = None
     for _ in range(3):
         resp = client.post("/api/reviews", json={"card_id": card.id, "rating": 3})
-    assert resp.status_code == 200  # type: ignore
-    data = resp.json()  # type: ignore
-    assert data["graduated"] is True
-    assert "sentence_card_id" in data
+        assert resp.status_code == 200
+        data = resp.json()
+        if data.get("graduated"):
+            graduated_in_response = True
+            sentence_card_id = data.get("sentence_card_id")
+    # 至少有一次响应触发了毕业
+    assert graduated_in_response is True
     # 验证句子卡确实入库了
-    sentence = db_session.get(Card, data["sentence_card_id"])
+    sentence = db_session.get(Card, sentence_card_id)
     assert sentence.kind == "sentence"
     assert sentence.meaning == "你好，怎么样？"

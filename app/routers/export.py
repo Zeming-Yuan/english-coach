@@ -44,6 +44,9 @@ class ImportIn(BaseModel):
 @router.post("/import/cards")
 def import_cards(payload: ImportIn, db: Session = Depends(get_db)):
     """导入备份：按 word 去重，缺失卡重建，复习/记忆法/错词回写。"""
+    # 先校验 payload 有内容
+    if not payload.cards:
+        return {"imported_words": 0, "requests": 0}
     # 清空关联表（全量恢复语义）
     db.execute(delete(Review))
     db.execute(delete(Memo))

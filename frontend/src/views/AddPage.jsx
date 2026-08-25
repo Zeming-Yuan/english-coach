@@ -39,6 +39,8 @@ export default function AddPage({ onStartStudy }) {
         <textarea
           className="add-input"
           rows={3}
+          maxLength={500}
+          autoFocus
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="例：apple, banana, teacher"
