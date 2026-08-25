@@ -123,12 +123,12 @@ export default function WordsPage({ onBack }) {
       {quickPeek && (
         <div className="quick-peek" style={{ left: peekPos.x, top: peekPos.y }}>
           <div className="quick-peek-head">
-            <span className="qp-word">{quickPeek.word}</span>
-            <button className="speak-mini" onClick={() => speak(quickPeek.word)}>🔊</button>
+            <span className="qp-word">{quickPeek.kind === "sentence" ? (quickPeek.example || quickPeek.word) : quickPeek.word}</span>
+            <button className="speak-mini" onClick={() => speak(quickPeek.kind === "sentence" ? (quickPeek.example || quickPeek.word) : quickPeek.word)}>🔊</button>
           </div>
-          {quickPeek.phonetic && <div className="qp-phonetic">{quickPeek.phonetic}</div>}
-          <div className="qp-meaning">{quickPeek.meaning}</div>
-          {quickPeek.example && <div className="qp-example">{quickPeek.example}</div>}
+          {quickPeek.kind !== "sentence" && quickPeek.phonetic && <div className="qp-phonetic">{quickPeek.phonetic}</div>}
+          <div className="qp-meaning">{quickPeek.kind === "sentence" ? (quickPeek.example_cn || "") : (quickPeek.meaning || "")}</div>
+          {quickPeek.kind !== "sentence" && quickPeek.example && <div className="qp-example">{quickPeek.example}</div>}
           <button className="btn btn-ghost btn-small" style={{ marginTop: 8 }} onClick={() => { setDetail(quickPeek.id); setQuickPeek(null); }}>查看详情 →</button>
         </div>
       )}
@@ -359,12 +359,14 @@ function WordDetail({ cardId, onBack, allCards, setDetail }) {
         <div className="status-item"><span className="status-label">下次复习</span><span className="status-value">{c.next_due ? new Date(c.next_due).toLocaleDateString() : "-"}</span></div>
       </div>
 
-      {/* 自测按钮 */}
-      <button className="btn btn-primary btn-wide" style={{ marginTop: 12 }} onClick={() => {
-        // 跳转到拼写练习，只测这一个词
-        window.dispatchEvent(new CustomEvent("quiz-single-word", { detail: { card: c } }));
-        onBack();
-      }}>📝 测这个词</button>
+      {/* 自测按钮（句子卡不适合拼写测试，隐藏） */}
+      {c.kind !== "sentence" && (
+        <button className="btn btn-primary btn-wide" style={{ marginTop: 12 }} onClick={() => {
+          // 跳转到拼写练习，只测这一个词
+          window.dispatchEvent(new CustomEvent("quiz-single-word", { detail: { card: c } }));
+          onBack();
+        }}>📝 测这个词</button>
+      )}
 
       {/* 复习历史可视化时间线 */}
       {c.review_history?.length > 0 && (
