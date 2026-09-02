@@ -74,10 +74,16 @@ const BASE = "http://127.0.0.1:8001";
       step("评分区出现在首屏", await page.locator(".rating-buttons").isVisible());
       await page.locator(".btn-rating.rating-3").click();
       await page.waitForTimeout(900);
-      const count = (await page.locator(".study-count").textContent()).trim();
-      step(`评分后进入下一张（${count}）`, /^2\s*\/\s*\d+/.test(count) || /2\s*\/\s*\d+/.test(count));
-      await page.getByText("← 退出").click();
-      await page.waitForTimeout(600);
+      // 队列只剩 1 张时评分即进完成页，两种结局都算通过
+      if (await page.locator(".study-done").isVisible().catch(() => false)) {
+        step("最后一张评分进入完成页", true);
+        await backToQueue();
+      } else {
+        const count = (await page.locator(".study-count").textContent()).trim();
+        step(`评分后进入下一张（${count}）`, /^2\s*\/\s*\d+/.test(count));
+        await page.getByText("← 退出").click();
+        await page.waitForTimeout(600);
+      }
 
       // 6. 今日统计条
       step("今日统计可见", await page.locator(".today-stats").isVisible().catch(() => false));

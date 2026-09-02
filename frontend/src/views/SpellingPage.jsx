@@ -18,6 +18,10 @@ export default function SpellingPage({ onExit, singleCard }) {
   const [done, setDone] = useState(false);
   const [phase, setPhase] = useState("loading");
   const inputRef = useRef(null);
+  // 防重锁：submit 的 feedback 守卫在 await 期间失效（网络往返几十到几百 ms），
+  // 输满自动提交的 300ms 定时器和快速连按 Enter 会双双穿过检查 → correct 多计。
+  // MixedPage 的 submittedRef 同款模式；feedback 落地后解锁。
+  const submittedRef = useRef(false);
 
   useEffect(() => {
     // 单词详情页跳转：只测一个词
@@ -77,14 +81,18 @@ export default function SpellingPage({ onExit, singleCard }) {
   }
 
   const submit = useCallback(async () => {
-    if (!card || feedback) return;
+    if (!card || feedback || submittedRef.current) return;
+    submittedRef.current = true;
     let resp;
     try {
       resp = await api("/api/typing/check", {
         method: "POST",
         body: JSON.stringify({ card_id: card.id, user_input: input }),
       });
-    } catch { return; }
+    } catch {
+      submittedRef.current = false;
+      return;
+    }
     const ok = resp.correct;
     if (ok) sfxSuccess(); else sfxFail();
     speak(card.word, null);
@@ -96,6 +104,11 @@ export default function SpellingPage({ onExit, singleCard }) {
       body: JSON.stringify({ card_id: card.id, rating: ok ? 3 : 1 }),
     }).catch(() => {});
   }, [card, input, feedback]);
+
+  // feedback 提交后解锁防重锁（覆盖下一题/再来一轮/单卡重测所有路径）
+  useEffect(() => {
+    if (feedback) submittedRef.current = false;
+  }, [feedback]);
 
   const nextCard = useCallback(() => {
     setFeedback(null);
@@ -139,7 +152,7 @@ export default function SpellingPage({ onExit, singleCard }) {
           <div className="done-emoji">⌨️</div>
           <h2>拼写完成！</h2>
           <p className="done-detail">拼对 {correct}/{total} 词（{Math.round(correct / total * 100)} 分）</p>
-          <button className="btn btn-primary" onClick={() => { setIdx(0); setCorrect(0); setDone(false); }}>再来一轮</button>
+          <button className="btn btn-primary" onClick={() => { setIdx(0); setCorrect(0); setDone(false); setFeedback(null); setInput(""); }}>再来一轮</button>
           <button className="btn btn-ghost" style={{ marginTop: 8 }} onClick={onExit}>回到队列</button>
         </div>
       </section>
