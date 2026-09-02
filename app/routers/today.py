@@ -31,13 +31,17 @@ def card_to_dict(card: Card) -> dict:
 
 @router.get("/today")
 def get_today(new_limit: int = 10, due_limit: int = 20, db: Session = Depends(get_db)):
+    # 决策（2026-09-02）：句子卡退出复习队列，只留单词卡。
+    # 依据：词库 <200 词时 AI 例句含大量未学词（违反 i+1），整句提取负载淹没问题词；
+    # 语境复现职责由故事页承担（自定节奏、无评分压力）。
+    # 句子卡数据保留在 cards 表，词库过 200 词后可评估恢复。
     # 难度自适应：近 7 天正确率自动调新词量（desired-retention 思想）
     adaptive_limit, error_rate = _adaptive_new_limit(db, new_limit)
     new_limit = adaptive_limit
     stmt = (
         select(Card)
         .outerjoin(Review, Review.card_id == Card.id)
-        .where(Review.id.is_(None))
+        .where(Review.id.is_(None), Card.kind == "word")
         .order_by(Card.id)
         .limit(new_limit)
     )
@@ -46,7 +50,7 @@ def get_today(new_limit: int = 10, due_limit: int = 20, db: Session = Depends(ge
     stmt = (
         select(Card)
         .join(Review, Review.card_id == Card.id)
-        .where(Review.due <= datetime.now(timezone.utc).replace(tzinfo=None))
+        .where(Review.due <= datetime.now(timezone.utc).replace(tzinfo=None), Card.kind == "word")
         .order_by(Review.due)
         .limit(due_limit)
     )
@@ -56,6 +60,7 @@ def get_today(new_limit: int = 10, due_limit: int = 20, db: Session = Depends(ge
     error_first = db.execute(
         select(Card)
         .join(ErrorCard, ErrorCard.card_id == Card.id)
+        .where(Card.kind == "word")
         .order_by(ErrorCard.error_count.desc())
         .limit(10)
     ).scalars().all()
@@ -67,8 +72,8 @@ def get_today(new_limit: int = 10, due_limit: int = 20, db: Session = Depends(ge
     hard_first = db.execute(
         select(Card)
         .join(HardCard, HardCard.card_id == Card.id)
-        .where(Card.id.not_in(error_ids)) if error_ids else
-        select(Card).join(HardCard, HardCard.card_id == Card.id)
+        .where(Card.kind == "word", Card.id.not_in(error_ids)) if error_ids else
+        select(Card).join(HardCard, HardCard.card_id == Card.id).where(Card.kind == "word")
     ).scalars().all()
     hard_ids = {c.id for c in hard_first}
     if hard_ids:
