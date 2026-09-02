@@ -83,13 +83,19 @@ const BASE = "http://127.0.0.1:8001";
     if (await rateBtn.isVisible().catch(() => false)) {
       await rateBtn.click();
       await page.waitForTimeout(800);
-      step("评分已提交（面板仍打开无报错）", await page.locator(".story-word-panel").isVisible());
+      // 评分成功后面板自动关闭 + toast 提示（既有设计：评完即走）
+      step("评分提交后面板自动关闭", !(await page.locator(".story-word-panel").isVisible().catch(() => false)));
+      step("评分 toast 出现", await page.locator(".toast").isVisible().catch(() => false));
     } else {
       const addBtn = page.getByText("添加到词库", { exact: false });
       step("未学词显示「加入词库」入口", await addBtn.isVisible().catch(() => false));
     }
 
-    // 6. 中英模式切换
+    // 6. 中英模式切换（若抽屉还开着先关掉：遮罩会挡住页面交互）
+    if (await page.locator(".story-word-panel").isVisible().catch(() => false)) {
+      await page.locator(".story-word-panel-close").click();
+      await page.waitForTimeout(400);
+    }
     await page.locator(".mode-btn", { hasText: "中英" }).click();
     await page.waitForTimeout(400);
     step("切换中英对照模式", await page.locator(".story-pair").first().isVisible().catch(() => false));

@@ -456,7 +456,7 @@ body {
 
 /* 尊重减少动效偏好 */
 @media (prefers-reduced-motion: reduce) {
-  .card, .progress-fill, .btn, .result-badge, .bottom-nav { transition: none !important; animation: none !important; }
+  .card, .progress-fill, .btn, .result-badge, .bottom-nav, .story-word-panel, .story-word-backdrop { transition: none !important; animation: none !important; }
 }
 
 /* ============================================================
@@ -696,13 +696,29 @@ body {
 .story-word-row b { font-size: 16px; }
 .story-word-row span { color: var(--muted); }
 
-/* 故事内联词面板（替代模态弹窗，不打断阅读流） */
-.story-word-panel {
-  background: var(--sun-soft);
-  border-radius: 12px;
-  padding: 10px 14px;
-  margin: 6px 0 10px;
+/* 故事查词底部抽屉（点词即现，正文不动；旧内联面板要滚到全文底部才能看到） */
+.story-word-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(30, 42, 50, 0.35);
+  z-index: 90;
   animation: fade-in 0.15s ease;
+}
+.story-word-panel {
+  position: fixed;
+  left: 50%; bottom: 0;
+  transform: translateX(-50%);
+  width: 100%; max-width: 520px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 20px 20px 0 0;
+  box-shadow: var(--shadow);
+  padding: 14px 20px calc(16px + env(safe-area-inset-bottom));
+  z-index: 100;
+  animation: sheet-up 0.22s cubic-bezier(0.32, 0.72, 0, 1);
+}
+@keyframes sheet-up {
+  from { transform: translateX(-50%) translateY(100%); }
+  to { transform: translateX(-50%) translateY(0); }
 }
 .story-word-panel-head {
   display: flex;

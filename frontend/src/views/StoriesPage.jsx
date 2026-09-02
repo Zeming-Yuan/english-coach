@@ -196,8 +196,23 @@ function StoryRead({ story, onBack }) {
           </div>
         ))}
 
-        {/* 词面板 */}
-        {activeWord && (
+        <div className="story-tap-tip">👆 点击任意英文单词查释义 · 点击 🔊 朗读整句</div>
+      </div>
+
+      {/* 词表 */}
+      <div className="story-read-words">
+        <h3 className="lesson-section">本故事目标词</h3>
+        {story.words.map((w) => (
+          <div key={w.id} className="story-word-row">
+            <b>{escapeHtml(w.word)}</b> <span>{escapeHtml(w.phonetic || "")}</span> <span>{escapeHtml(w.meaning || "")}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* 查词底部抽屉：点词即现，不随内容滚动（旧内联面板要滚到全文底部才能看到） */}
+      {activeWord && (
+        <>
+          <div className="story-word-backdrop" onClick={closePanel} />
           <div className="story-word-panel">
             <div className="story-word-panel-head">
               <span className="story-word-panel-word">{activeWord.word}</span>
@@ -225,20 +240,8 @@ function StoryRead({ story, onBack }) {
               </button>
             )}
           </div>
-        )}
-
-        <div className="story-tap-tip">👆 点击任意英文单词查释义 · 点击 🔊 朗读整句</div>
-      </div>
-
-      {/* 词表 */}
-      <div className="story-read-words">
-        <h3 className="lesson-section">本故事目标词</h3>
-        {story.words.map((w) => (
-          <div key={w.id} className="story-word-row">
-            <b>{escapeHtml(w.word)}</b> <span>{escapeHtml(w.phonetic || "")}</span> <span>{escapeHtml(w.meaning || "")}</span>
-          </div>
-        ))}
-      </div>
+        </>
+      )}
     </section>
   );
 }
