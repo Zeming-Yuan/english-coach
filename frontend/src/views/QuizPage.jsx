@@ -173,7 +173,7 @@ export default function QuizPage({ onExit }) {
   if (!q) return null;
 
   return (
-    <section className="view view-center">
+    <section className="view view-practice">
       <div className="study-head">
         <span className="study-count">第 {qIdx + 1} / {total} 题</span>
       </div>
@@ -276,7 +276,10 @@ export default function QuizPage({ onExit }) {
           </>
         )}
 
-        {/* 按钮 */}
+      </div>
+
+      {/* 主操作：钉在首屏底部，不随题目内容滚动 */}
+      <div className="practice-actions">
         {phase === "input" && (
           <>
             <button className="btn btn-primary btn-wide" onClick={confirmAnswer} disabled={q.type === "choice" && !selected}>

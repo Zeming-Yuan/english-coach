@@ -150,7 +150,7 @@ export default function SpellingPage({ onExit, singleCard }) {
   const diffLabels = { 1: "教过：首字母已提示", 2: "提示：空格数提醒", 3: "独立：完全靠自己" };
 
   return (
-    <section className="view view-center">
+    <section className="view view-practice">
       <div className="page-head">
         <button className="btn btn-ghost btn-small" onClick={onExit}>← 返回</button>
       </div>
@@ -196,6 +196,10 @@ export default function SpellingPage({ onExit, singleCard }) {
             {feedback.correct ? "✅ 正确！" : `❌ 正确拼写：${feedback.expected}`}
           </div>
         )}
+      </div>
+
+      {/* 主操作：钉在首屏底部，不随内容滚动 */}
+      <div className="practice-actions">
         <button className="btn btn-ghost btn-small spelling-skip" onClick={feedback ? nextCard : skip}>
           {feedback ? "下一题 →" : "跳过这题 →"}
         </button>

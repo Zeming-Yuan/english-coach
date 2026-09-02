@@ -169,7 +169,7 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
   };
 
   return (
-    <section className="view">
+    <section className="view view-practice">
       <div className="study-head">
         <button className="btn btn-ghost btn-small" onClick={onExit}>← 退出</button>
         <span className="study-count">{idx + 1} / {total}</span>
@@ -227,7 +227,7 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
             {isSentence && showSentenceCn && card.example_cn && (
               <div className="front-sentence-cn">{card.example_cn}</div>
             )}
-            <button className="speak-btn" title="朗读" style={{ position: "absolute", top: 14, right: 16 }} onClick={(e) => { e.stopPropagation(); speak(isSentence ? (card.example || card.word) : card.word); }}>🔊</button>
+            <button className="speak-btn" title="朗读" onClick={(e) => { e.stopPropagation(); speak(isSentence ? (card.example || card.word) : card.word); }}>🔊</button>
             <span className="flip-hint">先回想 3 秒 · 点这翻面对照</span>
           </div>
           <div className="card-face card-back">
@@ -274,9 +274,9 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
         </div>
       </div>
 
-      {/* 评分按钮 */}
-      {flipped && (
-        <div className="rating-area">
+      {/* 评分按钮：包裹层常驻占位（高度已在 CSS 预留），翻面后按钮永远在首屏 */}
+      <div className="rating-area">
+        {flipped && (
           <div className="rating-buttons">
             {[1, 2, 3, 4].map((r) => (
               <button key={r} className={`btn-rating rating-${r}`} onClick={() => rate(r)}>
@@ -285,8 +285,8 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
               </button>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </section>
   );
 }

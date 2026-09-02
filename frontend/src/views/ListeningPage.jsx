@@ -87,7 +87,7 @@ export default function ListeningPage({ onExit }) {
   if (!q) return null;
 
   return (
-    <section className="view view-center">
+    <section className="view view-practice">
       <div className="page-head">
         <button className="btn btn-ghost btn-small" onClick={onExit}>← 返回</button>
       </div>
@@ -123,6 +123,10 @@ export default function ListeningPage({ onExit }) {
             {feedback.correct ? "✅ 正确！" : `❌ 正确答案是：${feedback.correctWord}`}
           </div>
         )}
+      </div>
+
+      {/* 主操作：钉在首屏底部，不随内容滚动 */}
+      <div className="practice-actions">
         <button className="btn btn-ghost btn-small spelling-skip" disabled={!!feedback} onClick={feedback ? next : skip}>
           {feedback ? "下一题 →" : "跳过这题 →"}
         </button>

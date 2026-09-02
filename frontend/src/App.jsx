@@ -106,7 +106,7 @@ export default function App() {
   const isNavView = NAV_TABS[view] !== undefined;
 
   return (
-    <div className="app">
+    <div className={`app ${!isNavView ? "practice-mode" : ""}`}>
       {/* 顶栏 */}
       <header className="topbar">
         <div className="logo">
@@ -134,8 +134,8 @@ export default function App() {
       </main>
       </ErrorBoundary>
 
-      {/* 底部导航 */}
-      <nav className={`bottom-nav ${!isNavView ? "nav-locked" : ""}`}>
+      {/* 底部导航（练习视图时滑出屏幕） */}
+      <nav className={`bottom-nav ${!isNavView ? "nav-hidden" : ""}`}>
         {Object.entries(NAV_TABS).map(([key, label]) => (
           <button
             key={key}

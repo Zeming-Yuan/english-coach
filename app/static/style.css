@@ -118,9 +118,34 @@ body {
 .view-center {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
-  min-height: 55vh; gap: 18px; text-align: center;
+  min-height: 55vh;
+  min-height: 55dvh; /* 手机地址栏收起后按真实可视高度 */
+  gap: 18px; text-align: center;
 }
 [hidden] { display: none !important; }
+
+/* ---------- 一屏练习布局：头部/进度固定，内容区内部滚动，主操作钉在首屏 ---------- */
+.view-practice {
+  display: flex; flex-direction: column;
+  /* 88px = 顶栏(62) + .app 顶部内边距(20)，留 6px 余量 */
+  height: calc(100vh - 88px);
+  height: calc(100dvh - 88px);
+}
+.view-practice .study-head,
+.view-practice .page-head,
+.view-practice .spelling-head,
+.view-practice .spelling-difficulty { flex: none; }
+.view-practice .progress-track { flex: none; margin-bottom: 14px; }
+.view-practice .scene { flex: 1 1 auto; min-height: 0; }
+.view-practice .quiz-card,
+.view-practice .spelling-body,
+.view-practice .listening-body,
+.view-practice .mixed-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+.view-practice .practice-actions { flex: none; }
 
 .eyebrow {
   font-size: 14px; font-weight: 700; letter-spacing: 0.08em;
@@ -187,21 +212,24 @@ body {
 /* ---------- 签名卡片：翻面 ---------- */
 .scene {
   perspective: 1200px;
-  /* 学习区撑满视口并垂直居中，消除下方大片空白 */
-  min-height: calc(100vh - 190px);
   display: flex;
   align-items: center;
+  min-height: 240px;
 }
 .card {
   position: relative;
-  width: 100%; height: 320px;
+  width: 100%;
+  /* 纵向填满 .scene 剩余空间（由 .view-practice flex 决定），小屏自动收缩 */
+  height: 100%;
+  min-height: 280px;
+  max-height: 440px;
   transform-style: preserve-3d;
   transition: transform 0.55s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
   outline: none;
 }
-/* 句子卡（内容多）：更高 + 内部可滚动 */
-.card.card-tall { height: 420px; }
+/* 句子卡（内容多）：允许更高 + 内部可滚动 */
+.card.card-tall { max-height: 500px; }
 .card.flipped { transform: rotateY(180deg); }
 .card:focus-visible .card-face { box-shadow: 0 0 0 3px var(--mint), var(--shadow); }
 
@@ -308,7 +336,13 @@ body {
 }
 
 /* ---------- 评分区 ---------- */
-.rating-area { margin-top: 24px; }
+/* 包裹层常驻占位（StudyPage 翻面前也保留高度）：避免按钮出现时布局跳动，
+   并保证翻面后评分按钮永远在首屏内 */
+.rating-area {
+  flex: none;
+  margin-top: 14px;
+  min-height: 76px;
+}
 .rating-buttons {
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
 }
@@ -422,7 +456,7 @@ body {
 
 /* 尊重减少动效偏好 */
 @media (prefers-reduced-motion: reduce) {
-  .card, .progress-fill, .btn, .result-badge { transition: none !important; animation: none !important; }
+  .card, .progress-fill, .btn, .result-badge, .bottom-nav { transition: none !important; animation: none !important; }
 }
 
 /* ============================================================
@@ -439,6 +473,12 @@ body {
   padding: 6px 0 max(6px, env(safe-area-inset-bottom));
   gap: 4px;
   z-index: 10;
+  transition: transform 0.25s ease;
+}
+/* 练习态：导航滑出屏幕，把底部空间还给练习内容 */
+.bottom-nav.nav-hidden {
+  transform: translateX(-50%) translateY(105%);
+  pointer-events: none;
 }
 .nav-item {
   background: none; border: none; cursor: pointer;
@@ -454,6 +494,8 @@ body {
 .nav-item.nav-active { color: var(--mint); background: var(--mint-soft); }
 
 .app { padding-bottom: 90px; }
+/* 练习态导航已隐藏，底部留白清零（.view-practice 的高度预算已含 6px 余量） */
+.app.practice-mode { padding-bottom: 0; }
 
 /* 队列页 · 今日统计 */
 .today-stats {
@@ -878,8 +920,7 @@ body {
 }
 
 /* 导航锁定状态（学习/测验中禁止切换） */
-.bottom-nav.nav-locked .nav-item { opacity: 0.4; cursor: not-allowed; }
-.bottom-nav.nav-locked .nav-item.nav-active { opacity: 1; }
+/* （nav-locked 变暗锁定样式已废弃：练习视图直接滑出屏幕 nav-hidden） */
 
 /* ============================================================
    模态：故事点词评分

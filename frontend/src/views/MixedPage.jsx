@@ -166,7 +166,7 @@ export default function MixedPage({ onExit }) {
   })() : null;
 
   return (
-    <section className="view view-center">
+    <section className="view view-practice">
       <div className="page-head">
         <button className="btn btn-ghost btn-small" onClick={onExit}>← 返回</button>
       </div>
@@ -255,7 +255,10 @@ export default function MixedPage({ onExit }) {
           </div>
         )}
 
-        {/* 跳过 */}
+      </div>
+
+      {/* 主操作：钉在首屏底部，不随内容滚动 */}
+      <div className="practice-actions">
         <button className="btn btn-ghost btn-small spelling-skip" onClick={feedback ? nextItem : skip}>
           {feedback ? "下一题 →" : "跳过这题 →"}
         </button>
