@@ -65,7 +65,8 @@ def _validate(text: str) -> str:
         raise HTTPException(status_code=400, detail="Empty text")
     if len(text) > MAX_TEXT_LEN:
         raise HTTPException(status_code=400, detail="Text too long")
-    if not re.fullmatch(r"[A-Za-z0-9' ,.!?\-]+", text):
+    # 冒号放行：对话体例句带 "A:/B:" 前缀，拒绝会让对话句无法朗读且预热报 400
+    if not re.fullmatch(r"[A-Za-z0-9' ,.!?\-:]+", text):
         raise HTTPException(status_code=400, detail="Invalid characters")
     return text
 
