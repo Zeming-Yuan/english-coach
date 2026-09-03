@@ -1,4 +1,4 @@
-"""故事生成服务：从新词里挑 8 个 → DeepSeek 生成故事 → 入库。"""
+"""故事生成服务：从新词里挑 8 个 → LLM 生成故事 → 入库。"""
 
 import json
 
@@ -12,7 +12,7 @@ from app.models.review import Review
 from app.models.story import Story, StoryWord
 from app.services.model_router import Task, route
 
-client = OpenAI(api_key=settings.deepseek_api_key, base_url=settings.deepseek_base_url)
+client = OpenAI(api_key=settings.llm_api_key, base_url=settings.llm_base_url, timeout=30)
 
 SYSTEM_PROMPT = (
     "你是零基础英语老师。用以下单词编一篇简短的英语小故事（100词左右），"
@@ -58,7 +58,7 @@ def generate_story(db: Session, word_limit: int = 8) -> Story:
     )
     content = resp.choices[0].message.content
     if not content:
-        raise ValueError("DeepSeek API 返回空内容。")
+        raise ValueError("LLM 返回空内容。")
     data = json.loads(content)
     # 1. 创建故事：将 sentences 数组拼接为 content + content_cn
     sentences = data.get("sentences", [])

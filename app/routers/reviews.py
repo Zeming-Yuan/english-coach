@@ -1,5 +1,6 @@
 # 复习提交路由
 
+import threading
 from datetime import datetime, timezone
 from typing import Literal
 
@@ -12,7 +13,11 @@ from app.db import get_db
 from app.models.card import Card
 from app.models.review import Review
 from app.services.error_tracking import record_error
-from app.services.graduation import graduate_to_sentence, is_graduated
+from app.services.graduation import (
+    graduate_to_sentence,
+    is_graduated,
+    upgrade_sentence_card,
+)
 from app.services.scheduler import build_fsrs_card, schedule
 
 router = APIRouter()
@@ -65,13 +70,19 @@ def submit_review(req: ReviewRequest, db: Session = Depends(get_db)):
     )
     review.last_review = now
     review.rating = req.rating  # 记录评分（复习历史展示）
-    # 5. 毕业检查：词卡毕业则自动生成句子卡
+    # 5. 毕业检查：词卡毕业则先建例句兜底句卡（同步、毫秒级）
+    should_upgrade = False
     graduated_sentence = None
     if card.kind == "word" and is_graduated(review):
         graduated_sentence = graduate_to_sentence(card, db)
+        should_upgrade = True
     # 6. 错词追踪：rating<=2 加权，>=3 减权（错误增强效应）
     record_error(db, req.card_id, is_correct=req.rating >= 3)
     db.commit()
+    # 7. AI 复杂句生成放后台线程：复习提交秒回，学习流程不被 AI 卡住。
+    #    只有词卡毕业才启动；幂等（已有 AI 句卡则跳过，见 upgrade_sentence_card）。
+    if should_upgrade:
+        threading.Thread(target=upgrade_sentence_card, args=(card.id,), daemon=True).start()
     result = {"card_id": req.card_id, "next_due": new_card.due}
     if graduated_sentence:
         result["graduated"] = True

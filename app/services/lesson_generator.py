@@ -20,7 +20,7 @@ from app.models.card import Card
 from app.models.lesson import Lesson
 from app.services.model_router import Task, route
 
-client = OpenAI(api_key=settings.deepseek_api_key, base_url=settings.deepseek_base_url)
+client = OpenAI(api_key=settings.llm_api_key, base_url=settings.llm_base_url, timeout=30)
 
 LEVEL_DESCRIPTIONS = {
     1: "最基础的问候用词和自我介绍超高频词",
@@ -77,7 +77,7 @@ def generate_lesson(db: Session, level: int) -> Lesson:
     )
     content = resp.choices[0].message.content
     if not content:
-        raise ValueError("DeepSeek 返回空内容")
+        raise ValueError("LLM 返回空内容")
 
     data = json.loads(content)
 

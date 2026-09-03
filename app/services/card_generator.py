@@ -7,7 +7,7 @@ from app.config import settings
 from app.models.card import Card
 from app.services.model_router import Task, route
 
-client = OpenAI(api_key=settings.deepseek_api_key, base_url=settings.deepseek_base_url)
+client = OpenAI(api_key=settings.llm_api_key, base_url=settings.llm_base_url, timeout=30)
 
 SYSTEM_PROMPT = (
     "你是零基础英语老师。为每个单词生成学习卡片，包含以下字段：\n"
@@ -59,7 +59,7 @@ def regenerate_example(word: str) -> tuple[str, str, str]:
     )
     content = resp.choices[0].message.content
     if not content:
-        raise ValueError("DeepSeek 返回空内容")
+        raise ValueError("LLM 返回空内容")
     data = json.loads(content)
     return (
         data.get("example", ""),
@@ -69,7 +69,7 @@ def regenerate_example(word: str) -> tuple[str, str, str]:
 
 
 def generate_cards(words: list[str], db: Session) -> list[Card]:
-    """批量生成词卡：调 DeepSeek → 解析 JSON → 入库（已存在的单词跳过）。"""
+    """批量生成词卡：调 LLM → 解析 JSON → 入库（已存在的单词跳过）。"""
     existing = {w for (w,) in db.query(Card.word).filter(Card.word.in_(words)).all()}
     new_words = [w for w in words if w not in existing]
     if not new_words:
@@ -87,7 +87,7 @@ def generate_cards(words: list[str], db: Session) -> list[Card]:
     )
     content = resp.choices[0].message.content
     if not content:
-        raise ValueError("DeepSeek 返回空内容")
+        raise ValueError("LLM 返回空内容")
     cards = []
     data = json.loads(content)
     for c in data.get("cards", []):

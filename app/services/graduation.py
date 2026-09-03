@@ -1,4 +1,10 @@
-"""词毕业服务：判定词卡是否毕业，毕业则自动生成句子卡。"""
+"""词毕业服务：判定词卡是否毕业，毕业则生成句子卡。
+
+句子卡生成分两步（避免复习提交被 AI 调用卡住）：
+1. graduate_to_sentence：同步、无 AI。用词卡例句先建句子卡（毫秒级）。
+2. upgrade_sentence_card：后台线程执行。调 AI 把句子卡升级成更复杂的
+   阅读例句（对话体/意群切分/难度标记），失败则保留例句卡。
+"""
 
 import json
 
@@ -11,7 +17,11 @@ from app.models.card import Card
 from app.models.review import Review
 from app.services.model_router import Task, route
 
-client = OpenAI(api_key=settings.deepseek_api_key, base_url=settings.deepseek_base_url)
+client = OpenAI(
+    api_key=settings.llm_api_key,
+    base_url=settings.llm_base_url,
+    timeout=30,  # AI 调用一律限时 30s，防止默认 600s 拖住请求
+)
 
 
 def is_graduated(review: Review) -> bool:
@@ -21,12 +31,15 @@ def is_graduated(review: Review) -> bool:
 
 
 def graduate_to_sentence(card: Card, db: Session) -> Card | None:
-    """如果词卡毕业且尚未生成过句子卡，则用 AI 生成一个更复杂的句子卡。
+    """同步、无 AI：用词卡例句快速生成句子卡（毫秒级）。
 
     与词卡例句不同，句子卡要求：
     - 更长的句子（15-25 词）
     - 更多上下文和词汇
     - 有故事感或场景感
+    但满足这些要求的 AI 生成已移入 upgrade_sentence_card 后台执行，
+    这里只用例句兜底，确保 /api/reviews 秒回。
+    无例句时返回 None（由后台 AI 生成）。
     """
     # 检查是否已经有句子卡
     existing = (
@@ -37,7 +50,23 @@ def graduate_to_sentence(card: Card, db: Session) -> Card | None:
     if existing is not None:
         return None
 
-    # 用 AI 生成更复杂的句子（对话体优先 + 意群切分 + 难度标记）
+    if not card.example or not card.example_cn:
+        return None
+    sentence_card = Card(
+        word=card.word,
+        phonetic=card.phonetic,
+        meaning=card.example_cn,
+        example=card.example,
+        example_cn=card.example_cn,
+        kind="sentence",
+    )
+    db.add(sentence_card)
+    db.flush()
+    return sentence_card
+
+
+def _generate_ai_sentence(word: str) -> dict | None:
+    """调 AI 生成复杂句（对话体优先 + 意群切分 + 难度标记）。失败返回 None。"""
     try:
         resp = client.chat.completions.create(
             model=route(Task.BULK),
@@ -58,51 +87,83 @@ def graduate_to_sentence(card: Card, db: Session) -> Card | None:
                         '严格输出 JSON: {"example": "英文句子", "example_cn": "中文翻译", "chunks": [{"text": "意群", "role": "subject|predicate|adverbial"}...]}'
                     ),
                 },
-                {"role": "user", "content": card.word},
+                {"role": "user", "content": word},
             ],
             response_format={"type": "json_object"},
         )
         content = resp.choices[0].message.content
-        if content:
-            data = json.loads(content)
-            example = data.get("example", "")
-            example_cn = data.get("example_cn", "")
-            chunks = data.get("chunks") or []
-            if not isinstance(chunks, list):
-                chunks = []
+        if not content:
+            return None
+        return json.loads(content)
+    except Exception:  # noqa: BLE001 — AI 故障统一走兜底，不暴露
+        return None
+
+
+def upgrade_sentence_card(card_id: int) -> None:
+    """后台线程入口：为刚毕业的词卡生成 AI 复杂句卡（自建数据库会话）。
+
+    幂等：已有 AI 句卡（带意群切分）则跳过。AI 失败时回退例句兜底。
+    """
+    from app.db import SessionLocal
+
+    db = SessionLocal()
+    try:
+        card = db.get(Card, card_id)
+        if card is None or card.kind != "word":
+            return
+        existing = (
+            db.execute(select(Card).where(Card.word == card.word, Card.kind == "sentence"))
+            .scalars()
+            .first()
+        )
+        if existing is not None and (existing.chunks or existing.difficulty == "reading"):
+            return  # 已有 AI 句卡，无需升级
+
+        data = _generate_ai_sentence(card.word)
+        example = (data or {}).get("example", "")
+        if data and example:
+            chunks_raw = data.get("chunks") or []
+            if not isinstance(chunks_raw, list):
+                chunks_raw = []
             # 兼容两种格式：字符串数组 或 {text, role} 对象数组
             chunks = [
                 ch if isinstance(ch, dict) else {"text": ch, "role": None}
-                for ch in chunks
+                for ch in chunks_raw
             ]
-            if example:
-                sentence_card = Card(
+            if existing is not None:
+                # 升级轮廓句卡（保留原 id，前端已引用）
+                existing.example = example
+                existing.example_cn = data.get("example_cn", existing.example_cn)
+                existing.meaning = data.get("example_cn", existing.meaning)
+                existing.chunks = chunks or None
+                existing.difficulty = "reading"
+            else:
+                db.add(
+                    Card(
+                        word=card.word,
+                        phonetic=card.phonetic,
+                        meaning=data.get("example_cn", ""),
+                        example=example,
+                        example_cn=data.get("example_cn", ""),
+                        kind="sentence",
+                        chunks=chunks or None,
+                        difficulty="reading",
+                    )
+                )
+        elif existing is None and card.example:
+            # AI 失败且还没有轮廓句卡：用词卡例句兜底
+            db.add(
+                Card(
                     word=card.word,
                     phonetic=card.phonetic,
-                    meaning=example_cn,
-                    example=example,
-                    example_cn=example_cn,
+                    meaning=card.example_cn,
+                    example=card.example,
+                    example_cn=card.example_cn,
                     kind="sentence",
-                    chunks=chunks or None,
-                    difficulty="reading",
                 )
-                db.add(sentence_card)
-                db.flush()
-                return sentence_card
-    except Exception:
-        pass
-
-    # AI 失败则用词卡例句兜底
-    if not card.example:
-        return None
-    sentence_card = Card(
-        word=card.word,
-        phonetic=card.phonetic,
-        meaning=card.example_cn,
-        example=card.example,
-        example_cn=card.example_cn,
-        kind="sentence",
-    )
-    db.add(sentence_card)
-    db.flush()
-    return sentence_card
+            )
+        db.commit()
+    except Exception:  # noqa: BLE001 — 后台线程不得冒泡
+        db.rollback()
+    finally:
+        db.close()
