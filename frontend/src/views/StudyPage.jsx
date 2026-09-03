@@ -70,9 +70,10 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
     });
   }, [card, flipStartedAt, isSentence, exiting, done]);
 
-  // 评分
+  // 评分（提交完成前锁住按钮，防连点重复提交）
+  const submittingRef = useRef(false);
   const rate = useCallback(async (rating) => {
-    if (!card || done) return;
+    if (!card || done || submittingRef.current) return;
     const isLast = idx + 1 >= total;
     if (!isLast && exiting) return;
 
@@ -80,6 +81,7 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
     if (rating >= 3 && elapsed < 2) {
       showToast("这个评分是你回想后的吗？下次先想出声再翻面，记忆更准");
     }
+    submittingRef.current = true;
     try {
       const resp = await api("/api/reviews", {
         method: "POST",
@@ -87,6 +89,9 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
       });
       if (resp.graduated) setGraduated((g) => [...g, card.word]);
     } catch {}
+    finally {
+      submittingRef.current = false;
+    }
     const nextAnswered = answered + 1;
     setAnswered(nextAnswered);
 
