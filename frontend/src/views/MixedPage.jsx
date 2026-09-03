@@ -3,6 +3,7 @@ import { api } from "../lib/api.js";
 import { speak } from "../lib/tts.js";
 import { sfxSuccess, sfxFail } from "../lib/sfx.js";
 import { escapeHtml } from "../lib/utils.js";
+import SpellingBoard from "../components/SpellingBoard.jsx";
 
 /**
  * 混合练习视图：拼写/听写/选择随机交错。
@@ -14,29 +15,32 @@ export default function MixedPage({ onExit }) {
   const [wrongList, setWrongList] = useState([]);
   const [phase, setPhase] = useState("loading");
   const [feedback, setFeedback] = useState(null);
-  const [input, setInput] = useState("");
   const [selected, setSelected] = useState(null);
   const [done, setDone] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const [listeningData, quizData, todayData] = await Promise.all([
-        api("/api/listening?limit=2"),
-        api("/api/quiz?limit=6"),
+      const [listeningData, choiceData, todayData] = await Promise.all([
+        api("/api/listening?limit=3"),
+        api("/api/quiz/choice?limit=4"),
         api("/api/today"),
       ]);
       const result = [];
       // 听写
-      (listeningData.questions || []).slice(0, 2).forEach((q) => result.push({ type: "listen", q }));
+      (listeningData.questions || []).slice(0, 3).forEach((q) => result.push({ type: "listen", q }));
       // 选择
-      (quizData.questions || []).filter((q) => q.type === "choice").slice(0, 2).forEach((q) => result.push({ type: "choice", q }));
-      // 拼写
+      (choiceData.questions || []).slice(0, 4).forEach((q) => result.push({ type: "choice", q }));
+      // 拼写（随机抽 4 个，每轮不固定同一批）
       let spellPool = [...(todayData.error_cards || []), ...todayData.new_cards, ...todayData.due_cards].filter((c) => c.kind === "word");
       if (spellPool.length === 0) {
         const allData = await api("/api/cards");
         spellPool = allData.cards.filter((c) => c.kind === "word");
       }
-      spellPool.slice(0, 2).forEach((c) => result.push({ type: "spell", q: { card_id: c.id, word: c.word, meaning: c.meaning } }));
+      for (let i = spellPool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [spellPool[i], spellPool[j]] = [spellPool[j], spellPool[i]];
+      }
+      spellPool.slice(0, 4).forEach((c) => result.push({ type: "spell", q: { card_id: c.id, word: c.word, meaning: c.meaning } }));
       // 随机交错
       for (let i = result.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -91,13 +95,21 @@ export default function MixedPage({ onExit }) {
   }, [feedback, item, q]);
 
   const nextItem = useCallback(() => {
+    if (done) return;
     submittedRef.current = false;
     setFeedback(null);
-    setInput("");
     setSelected(null);
     if (idx + 1 < total) setIdx((i) => i + 1);
     else setDone(true);
-  }, [idx, total]);
+  }, [idx, total, done]);
+
+  // 反馈后自动切题：答对 0.9s（音效确认），答错 1.5s（看清正确答案）。
+  // 期间点"下一题 →"可立即切换（idx 变化会触发下面 effect 的 cleanup）。
+  useEffect(() => {
+    if (!feedback) return;
+    const t = setTimeout(() => nextItem(), feedback.correct ? 900 : 1500);
+    return () => clearTimeout(t);
+  }, [feedback, nextItem]);
 
   const skip = useCallback(() => {
     if (!q) return;
@@ -105,24 +117,15 @@ export default function MixedPage({ onExit }) {
     handleAnswer(false, expected, -1);
   }, [q, handleAnswer]);
 
-  // 拼写自动提交
+  // 反馈阶段 Enter → 下一题（拼写输入阶段 Enter 由 SpellingBoard 处理）
   useEffect(() => {
-    if (item?.type === "spell" && q && input.length === q.word.length && !feedback) {
-      const t = setTimeout(() => handleAnswer(input.toLowerCase() === q.word.toLowerCase(), q.word, input), 300);
-      return () => clearTimeout(t);
-    }
-  }, [input, item, q, feedback, handleAnswer]);
-
-  const handleKeyDown = useCallback((e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      if (item?.type === "spell" && input.length > 0 && !feedback) {
-        handleAnswer(input.toLowerCase() === q.word.toLowerCase(), q.word, input);
-      } else if (feedback) {
-        nextItem();
-      }
-    }
-  }, [item, input, feedback, q, handleAnswer, nextItem]);
+    if (!feedback) return;
+    const handler = (e) => {
+      if (e.key === "Enter") { e.preventDefault(); nextItem(); }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [feedback, nextItem]);
 
   if (phase === "loading") return <div className="story-empty">加载中…</div>;
   if (phase === "empty") return <div className="story-empty">题目不够，先去加几个词吧</div>;
@@ -153,17 +156,6 @@ export default function MixedPage({ onExit }) {
   }
   if (!item || !q) return null;
 
-  // 拼写格子
-  const spellBoxes = item.type === "spell" ? (() => {
-    const boxes = [];
-    for (let i = 0; i < q.word.length; i++) {
-      const ch = i < input.length ? input[i] : "";
-      const isC = ch && ch.toLowerCase() === q.word[i].toLowerCase();
-      const isW = ch && !isC;
-      boxes.push(<span key={i} className={`spelling-box ${isC ? "box-correct" : isW ? "box-wrong" : "box-pending"}`}>{ch || ""}</span>);
-    }
-    return boxes;
-  })() : null;
 
   return (
     <section className="view view-practice">
@@ -227,23 +219,17 @@ export default function MixedPage({ onExit }) {
           </>
         )}
 
-        {/* 拼写 */}
+        {/* 拼写（共用 SpellingBoard：输满自动提交 / Enter / 实时红绿） */}
         {item.type === "spell" && (
           <>
             <div className="mixed-type-label">⌨️ 拼写</div>
             <div className="spelling-meaning">{escapeHtml(q.meaning)}</div>
-            <div className="spelling-word-display">{spellBoxes}</div>
-            <input
-              className="spelling-input"
-              name="spelling-answer"
-              value={input}
-              onChange={(e) => setInput(e.target.value.slice(0, q.word.length))}
-              onKeyDown={handleKeyDown}
+            <SpellingBoard
+              key={q.card_id}
+              target={q.word}
+              onSubmit={(val) => handleAnswer(val.toLowerCase() === q.word.toLowerCase(), q.word, val)}
+              disabled={!!feedback}
               placeholder="输入英文单词…"
-              autoFocus
-              autoComplete="off"
-              autoCapitalize="off"
-              spellCheck={false}
             />
           </>
         )}

@@ -45,6 +45,7 @@ def get_quiz(limit: int = 5, db: Session = Depends(get_db)):
     selected = random.sample(cards, min(limit, len(cards)))
 
     # 2. 前 3 张 → cn2en，第 4 张 → choice，第 5 张 → fill
+    # note: 下发 word 供前端拼写格子实时红/绿着色（本地自用工具，无防作弊需求）
     questions = []
     for i, card in enumerate(selected[:3]):
         questions.append(
@@ -54,6 +55,7 @@ def get_quiz(limit: int = 5, db: Session = Depends(get_db)):
                 "prompt": card.meaning,
                 "card_id": card.id,
                 "word_length": len(card.word),
+                "word": card.word,
             }
         )
 
@@ -83,6 +85,7 @@ def get_quiz(limit: int = 5, db: Session = Depends(get_db)):
                     "prompt": make_fill_prompt(card.example, card.word),
                     "card_id": card.id,
                     "word_length": len(card.word),
+                    "word": card.word,
                     "hint": card.meaning,  # 中文释义：让用户知道要填哪个词
                 }
             )
@@ -101,6 +104,37 @@ def get_quiz(limit: int = 5, db: Session = Depends(get_db)):
                             "answer": rw["word"],
                         }
                     )
+    return {"questions": questions}
+
+
+@router.get("/quiz/choice")
+def get_choice_quiz(limit: int = 4, db: Session = Depends(get_db)):
+    """纯选择题（看中文选英文）：混合练习用，一次抽多道。
+
+    与 /quiz 不同：不掺 cn2en/fill/related，每张卡都是 choice 型，
+    这样混合练习可以独立控制选择题的数量。
+    """
+    cards = (
+        db.execute(select(Card).where(Card.kind == "word").order_by(Card.id))
+        .scalars()
+        .all()
+    )
+    selected = random.sample(cards, min(limit, len(cards)))
+    questions = []
+    for card in selected:
+        others = [c.word for c in cards if c.id != card.id]
+        distractors = random.sample(others, 3) if len(others) >= 3 else others
+        options = [card.word] + distractors
+        random.shuffle(options)
+        questions.append(
+            {
+                "id": f"choice-{card.id}",
+                "type": "choice",
+                "prompt": card.meaning,
+                "card_id": card.id,
+                "options": options,
+            }
+        )
     return {"questions": questions}
 
 

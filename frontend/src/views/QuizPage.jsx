@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { api } from "../lib/api.js";
 import { speak } from "../lib/tts.js";
 import { sfxSuccess, sfxFail } from "../lib/sfx.js";
 import { escapeHtml } from "../lib/utils.js";
+import SpellingBoard from "../components/SpellingBoard.jsx";
 
 /**
  * 测验视图：cn2en / choice / fill，逐题判分。
@@ -13,9 +14,7 @@ export default function QuizPage({ onExit }) {
   const [wrongList, setWrongList] = useState([]);
   const [phase, setPhase] = useState("loading"); // loading | input | feedback | result
   const [feedback, setFeedback] = useState(null);
-  const [input, setInput] = useState("");
   const [selected, setSelected] = useState(null);
-  const inputRef = useRef(null);
 
   useEffect(() => {
     api("/api/quiz?limit=5").then((d) => {
@@ -47,24 +46,11 @@ export default function QuizPage({ onExit }) {
     return boxes;
   };
 
-  // 确认答案
-  const confirmAnswer = useCallback(async () => {
-    if (!q) return;
-    const userInput = q.type === "choice" ? (selected || "") : input.trim();
+  // choice：点选项后点"确认"判分（拼写类由 SpellingBoard 输满自动提交）
+  const confirmChoice = useCallback(async () => {
+    if (!q || !selected) return;
+    const userInput = selected;
     setPhase("feedback");
-
-    // related 类型：直接比较答案
-    if (q.type === "related") {
-      const correct = userInput.toLowerCase() === (q.answer || "").toLowerCase();
-      if (correct) sfxSuccess(); else sfxFail();
-      speak(q.answer, null);
-      setFeedback({ correct, expected: q.answer, userInput });
-      if (!correct) {
-        setWrongList((w) => [...w, { question: q, user_input: userInput, expected: q.answer }]);
-      }
-      return;
-    }
-
     let result;
     try {
       result = await api("/api/typing/check", {
@@ -72,28 +58,49 @@ export default function QuizPage({ onExit }) {
         body: JSON.stringify({ card_id: q.card_id, user_input: userInput }),
       });
     } catch {
+      setPhase("input");
       return;
     }
-
     const correct = result.correct;
     if (correct) sfxSuccess(); else sfxFail();
     speak(result.expected, null);
-
-    setFeedback({
-      correct,
-      expected: result.expected,
-      userInput,
-    });
-
+    setFeedback({ correct, expected: result.expected, userInput });
     if (!correct) {
       setWrongList((w) => [...w, { question: q, user_input: userInput, expected: result.expected }]);
     }
-  }, [q, input, selected]);
+  }, [q, selected]);
+
+  // cn2en/fill/related：SpellingBoard 输满自动提交入口
+  const handleTypedSubmit = useCallback(async (userInput) => {
+    if (!q) throw new Error("no question");
+    setPhase("feedback");
+    let result;
+    if (q.type === "related") {
+      // related：答案在题面（q.answer），直接比较
+      result = { correct: userInput.toLowerCase() === (q.answer || "").toLowerCase(), expected: q.answer };
+    } else {
+      try {
+        result = await api("/api/typing/check", {
+          method: "POST",
+          body: JSON.stringify({ card_id: q.card_id, user_input: userInput }),
+        });
+      } catch (e) {
+        setPhase("input");
+        throw e; // 解锁 SpellingBoard，允许重试
+      }
+    }
+    const correct = result.correct;
+    if (correct) sfxSuccess(); else sfxFail();
+    speak(result.expected, null);
+    setFeedback({ correct, expected: result.expected, userInput });
+    if (!correct) {
+      setWrongList((w) => [...w, { question: q, user_input: userInput, expected: result.expected }]);
+    }
+  }, [q]);
 
   // 下一题
   const nextQuestion = useCallback(() => {
     setFeedback(null);
-    setInput("");
     setSelected(null);
     if (qIdx + 1 < total) {
       setQIdx((i) => i + 1);
@@ -102,15 +109,6 @@ export default function QuizPage({ onExit }) {
       setPhase("result");
     }
   }, [qIdx, total]);
-
-  // Enter 键（输入阶段挂在 input，反馈阶段挂在 document）
-  const handleKeyDown = useCallback((e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      if (phase === "input") confirmAnswer();
-      else if (phase === "feedback") nextQuestion();
-    }
-  }, [phase, confirmAnswer, nextQuestion]);
 
   // 反馈阶段文档级 Enter
   useEffect(() => {
@@ -189,25 +187,15 @@ export default function QuizPage({ onExit }) {
           {q.type === "related" && q.prompt}
         </div>
 
-        {/* cn2en / fill：格子 + 输入 */}
+        {/* cn2en / fill：格子 + 输入（共用 SpellingBoard：实时红绿/输满自动提交/Enter） */}
         {(q.type === "cn2en" || q.type === "fill") && phase === "input" && (
-          <>
-            <div className="spelling-word-display">
-              {renderBoxes(input, q.word_length || 5)}
-            </div>
-            <input
-              ref={inputRef}
-              className="spelling-input"
-              name="quiz-answer"
-              value={input}
-              onChange={(e) => setInput(e.target.value.slice(0, q.word_length || 5))}
-              onKeyDown={handleKeyDown}
-              placeholder={`输入英文单词（${q.word_length || "?"} 个字母）`}
-              autoFocus
-              autoComplete="off"
-              spellCheck={false}
-            />
-          </>
+          <SpellingBoard
+            key={q.id}
+            target={q.word || null}
+            maxLength={q.word_length || (q.word ? q.word.length : 5)}
+            onSubmit={handleTypedSubmit}
+            placeholder={`输入英文单词（${q.word_length || "?"} 个字母）`}
+          />
         )}
 
         {/* choice：选项 */}
@@ -233,25 +221,15 @@ export default function QuizPage({ onExit }) {
           </div>
         )}
 
-        {/* related：词族题（输入答案） */}
+        {/* related：词族题（输入答案，共用一个 SpellingBoard，实时红绿可用） */}
         {q.type === "related" && phase === "input" && (
-          <>
-            <div className="spelling-word-display">
-              {renderBoxes(input, (q.answer || "").length || 5)}
-            </div>
-            <input
-              ref={inputRef}
-              className="spelling-input"
-              name="quiz-answer"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="输入相关词…"
-              autoFocus
-              autoComplete="off"
-              spellCheck={false}
-            />
-          </>
+          <SpellingBoard
+            key={q.id}
+            target={q.answer || null}
+            maxLength={(q.answer || "").length || 5}
+            onSubmit={handleTypedSubmit}
+            placeholder="输入相关词…"
+          />
         )}
 
         {/* 反馈 */}
@@ -282,9 +260,11 @@ export default function QuizPage({ onExit }) {
       <div className="practice-actions">
         {phase === "input" && (
           <>
-            <button className="btn btn-primary btn-wide" onClick={confirmAnswer} disabled={q.type === "choice" && !selected}>
-              确认
-            </button>
+            {q.type === "choice" && (
+              <button className="btn btn-primary btn-wide" onClick={confirmChoice} disabled={!selected}>
+                确认
+              </button>
+            )}
             <button className="btn btn-ghost btn-small" style={{ marginTop: 14, width: "100%", justifyContent: "center" }} onClick={skipQuestion}>
               跳过这题 →
             </button>

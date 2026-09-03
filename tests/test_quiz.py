@@ -120,6 +120,25 @@ def test_quiz_score_unknown_card_skipped(client, db_session):
     assert resp.json()["correct"] == 0  # 卡不存在：跳过不计
 
 
+def test_choice_endpoint_returns_only_choice(client, db_session):
+    """/quiz/choice：全部是 choice 型，题数=limit，每题 4 个不重选项。"""
+    make_quiz_cards(db_session)
+    data = client.get("/api/quiz/choice?limit=3").json()
+    questions = data["questions"]
+    assert len(questions) == 3
+    assert all(q["type"] == "choice" for q in questions)
+    for q in questions:
+        assert len(q["options"]) == 4
+        assert len(set(q["options"])) == 4  # 无重复选项
+        answer = db_session.get(Card, q["card_id"]).word
+        assert answer in q["options"]  # 正确答案在选项中
+
+
+def test_choice_endpoint_empty_db(client, db_session):
+    data = client.get("/api/quiz/choice").json()
+    assert data["questions"] == []
+
+
 def test_quiz_excludes_sentence_cards(client, db_session):
     """测验只抽单词卡：句子卡不进入 cn2en/choice（释义是整句翻译）。"""
     db_session.add(Card(word="apple", meaning="苹果", kind="word"))

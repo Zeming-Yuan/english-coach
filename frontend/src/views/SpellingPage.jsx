@@ -3,6 +3,7 @@ import { api } from "../lib/api.js";
 import { speak } from "../lib/tts.js";
 import { sfxSuccess, sfxFail } from "../lib/sfx.js";
 import { storageGet, storageSet } from "../lib/utils.js";
+import SpellingBoard from "../components/SpellingBoard.jsx";
 
 /**
  * 拼写练习视图（Qwerty 风格 + 渐褪提示三档）。
@@ -13,15 +14,10 @@ export default function SpellingPage({ onExit, singleCard }) {
   const [idx, setIdx] = useState(0);
   const [correct, setCorrect] = useState(0);
   const [difficulty, setDifficulty] = useState(() => storageGet("spellingDiff", 2));
-  const [input, setInput] = useState("");
   const [feedback, setFeedback] = useState(null);
   const [done, setDone] = useState(false);
   const [phase, setPhase] = useState("loading");
   const inputRef = useRef(null);
-  // 防重锁：submit 的 feedback 守卫在 await 期间失效（网络往返几十到几百 ms），
-  // 输满自动提交的 300ms 定时器和快速连按 Enter 会双双穿过检查 → correct 多计。
-  // MixedPage 的 submittedRef 同款模式；feedback 落地后解锁。
-  const submittedRef = useRef(false);
 
   useEffect(() => {
     // 单词详情页跳转：只测一个词
@@ -56,42 +52,21 @@ export default function SpellingPage({ onExit, singleCard }) {
 
   useEffect(() => {
     if (phase === "ready" && card) {
-      setInput("");
       setFeedback(null);
-      setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [idx, phase, card?.id]);
 
-  const target = card?.word || "";
-  const boxes = [];
-  for (let i = 0; i < target.length; i++) {
-    const ch = i < input.length ? input[i] : "";
-    const isCorrect = ch && ch.toLowerCase() === target[i].toLowerCase();
-    const isWrong = ch && !isCorrect;
-    const isHint = difficulty === 1 && i === 0 && !ch;
-    boxes.push(
-      <span
-        key={i}
-        className={`spelling-box ${isCorrect ? "box-correct" : isWrong ? "box-wrong" : "box-pending"}`}
-        style={isHint ? { color: "var(--muted)" } : {}}
-      >
-        {isHint ? target[0] : ch || ""}
-      </span>
-    );
-  }
-
-  const submit = useCallback(async () => {
-    if (!card || feedback || submittedRef.current) return;
-    submittedRef.current = true;
+  // 提交（SpellingBoard 输满自动触发/Enter 触发；防重锁在组件内）
+  const handleSubmit = useCallback(async (userInput) => {
+    if (!card || feedback) return;
     let resp;
     try {
       resp = await api("/api/typing/check", {
         method: "POST",
-        body: JSON.stringify({ card_id: card.id, user_input: input }),
+        body: JSON.stringify({ card_id: card.id, user_input: userInput }),
       });
-    } catch {
-      submittedRef.current = false;
-      return;
+    } catch (e) {
+      throw e; // 解锁组件，允许重试
     }
     const ok = resp.correct;
     if (ok) sfxSuccess(); else sfxFail();
@@ -103,16 +78,10 @@ export default function SpellingPage({ onExit, singleCard }) {
       method: "POST",
       body: JSON.stringify({ card_id: card.id, rating: ok ? 3 : 1 }),
     }).catch(() => {});
-  }, [card, input, feedback]);
-
-  // feedback 提交后解锁防重锁（覆盖下一题/再来一轮/单卡重测所有路径）
-  useEffect(() => {
-    if (feedback) submittedRef.current = false;
-  }, [feedback]);
+  }, [card, feedback]);
 
   const nextCard = useCallback(() => {
     setFeedback(null);
-    setInput("");
     if (idx + 1 < total) {
       setIdx((i) => i + 1);
     } else {
@@ -120,21 +89,15 @@ export default function SpellingPage({ onExit, singleCard }) {
     }
   }, [idx, total]);
 
-  const handleKeyDown = useCallback((e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      if (input.length > 0 && !feedback) submit();
-      else if (feedback) nextCard();
-    }
-  }, [input, feedback, submit, nextCard]);
-
-  // 输满自动提交
+  // 反馈阶段 Enter → 下一题
   useEffect(() => {
-    if (input.length === target.length && target.length > 0 && !feedback) {
-      const t = setTimeout(() => submit(), 300);
-      return () => clearTimeout(t);
-    }
-  }, [input, target, feedback, submit]);
+    if (!feedback) return;
+    const handler = (e) => {
+      if (e.key === "Enter") { e.preventDefault(); nextCard(); }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [feedback, nextCard]);
 
   const skip = useCallback(() => {
     if (!card) return;
@@ -152,7 +115,7 @@ export default function SpellingPage({ onExit, singleCard }) {
           <div className="done-emoji">⌨️</div>
           <h2>拼写完成！</h2>
           <p className="done-detail">拼对 {correct}/{total} 词（{Math.round(correct / total * 100)} 分）</p>
-          <button className="btn btn-primary" onClick={() => { setIdx(0); setCorrect(0); setDone(false); setFeedback(null); setInput(""); }}>再来一轮</button>
+          <button className="btn btn-primary" onClick={() => { setIdx(0); setCorrect(0); setDone(false); setFeedback(null); }}>再来一轮</button>
           <button className="btn btn-ghost" style={{ marginTop: 8 }} onClick={onExit}>回到队列</button>
         </div>
       </section>
@@ -190,18 +153,13 @@ export default function SpellingPage({ onExit, singleCard }) {
       <div className="spelling-body">
         <div className="spelling-meaning">{card.meaning}</div>
         {card.phonetic && <div className="spelling-phonetic">{card.phonetic}</div>}
-        <div className="spelling-word-display">{boxes}</div>
-        <input
-          ref={inputRef}
-          className="spelling-input"
-          name="spelling-answer"
-          value={input}
-          onChange={(e) => setInput(e.target.value.slice(0, target.length))}
-          onKeyDown={handleKeyDown}
-          placeholder="在这里输入英文单词…"
-          autoComplete="off"
-          autoCapitalize="off"
-          spellCheck={false}
+        <SpellingBoard
+          key={card.id}
+          target={card.word}
+          onSubmit={handleSubmit}
+          showFirstHint={difficulty === 1}
+          disabled={!!feedback}
+          inputRef={inputRef}
         />
         <div className="spelling-hint">输入上面的英文单词 · {diffLabels[difficulty]}</div>
         {feedback && (
