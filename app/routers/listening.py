@@ -58,21 +58,29 @@ def get_listening(limit: int = 5, db: Session = Depends(get_db)):
             db.execute(select(Card).where(Card.kind == "word")).scalars().all()
         )
         pool = random.sample(all_word_cards, min(limit, len(all_word_cards)))
-        seen = {c.id for c in pool}
 
     selected = pool[:limit]
-
     if not selected:
         return {"questions": []}
 
-    # 2. 全库词卡（用于干扰项，排除已选中的）
+    # 2. 干扰项池：全库词卡中未选中的单词（按词去重，选中词本身也不占干扰位）。
+    #    注意只排除"选中"的卡——今日池里没入选的剩余词可以当干扰项，
+    #    否则词库 <20 词时选项只剩 3 个（旧逻辑 seen 放整个池）。
     all_words = db.execute(select(Card).where(Card.kind == "word")).scalars().all()
-    all_word_texts = [c.word for c in all_words if c.id not in seen]
+
+    def other_texts(sel: list[Card]) -> list[str]:
+        used = {c.word for c in sel}
+        return list({c.word for c in all_words if c.word not in used})
+
+    # 干扰项不足 3 个时，减少题目数量把词腾给干扰项（保证每题尽量 4 选项）
+    while len(selected) > 1 and len(other_texts(selected)) < 3:
+        selected = selected[:-1]
+    other_texts = other_texts(selected)
 
     # 3. 生成题目：每题 4 选项（1 正确 + 最多 3 干扰）
     questions = []
     for card in selected:
-        distractors = random.sample(all_word_texts, min(3, len(all_word_texts)))
+        distractors = random.sample(other_texts, min(3, len(other_texts)))
         options = [card.word] + distractors
         random.shuffle(options)
         correct_index = options.index(card.word)

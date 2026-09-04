@@ -56,6 +56,35 @@ def test_listening_due_cards(client, db_session):
     assert data["questions"][0]["word"] == "hello"
 
 
+def test_listening_small_library_full_options(client, db_session):
+    """小词库（如 16 词）下每题仍有 3 个干扰项（旧逻辑 seen 排除整个池只剩 2 个）。"""
+    for i in range(16):
+        db_session.add(Card(word=f"w{i:02}", meaning=f"词{i}", kind="word"))
+    db_session.commit()
+
+    resp = client.get("/api/listening?limit=5")
+    data = resp.json()
+    assert len(data["questions"]) == 5
+    for q in data["questions"]:
+        assert len(q["options"]) == 4
+        assert len(set(q["options"])) == 4  # 选项不重复
+        assert q["options"][q["correct_index"]] == q["word"]
+
+
+def test_listening_tiny_library_unique_options(client, db_session):
+    """极小词库（3 词）：题目数减少给干扰项腾词，选项不重复。"""
+    for w in ["apple", "banana", "cat"]:
+        db_session.add(Card(word=w, meaning=f"{w}的意思", kind="word"))
+    db_session.commit()
+
+    resp = client.get("/api/listening?limit=5")
+    data = resp.json()
+    assert len(data["questions"]) >= 1
+    for q in data["questions"]:
+        assert len(set(q["options"])) == len(q["options"])  # 无重复选项
+        assert q["options"][q["correct_index"]] == q["word"]
+
+
 def test_listening_only_word_kind(client, db_session):
     """句子卡不进听写题。"""
     db_session.add(Card(word="hello", meaning="你好", kind="word"))
