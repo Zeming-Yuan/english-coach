@@ -28,6 +28,19 @@ export function highlightWord(text, word) {
 }
 
 /**
+ * 清洗点选的词：去掉标点/whitespace 并小写（点词查义共享）。
+ */
+export function cleanToken(tok) {
+  return (tok || "").replace(/[^a-zA-Z'-]/g, "").toLowerCase();
+}
+
+/**
+ * 意群角色中文标签（悬浮提示）。
+ */
+export const ROLE_LABELS = { subject: "主语", predicate: "谓宾", adverbial: "状语" };
+export const roleLabel = (role) => (role && ROLE_LABELS[role]) || "意群";
+
+/**
  * 本地日期 YYYY-MM-DD。
  */
 export function todayStr() {

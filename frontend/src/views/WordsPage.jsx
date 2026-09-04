@@ -3,6 +3,8 @@ import { api } from "../lib/api.js";
 import { speak, prewarmTts } from "../lib/tts.js";
 import { escapeHtml } from "../lib/utils.js";
 import { showToast } from "../App.jsx";
+import ChunkChips from "../components/ChunkChips.jsx";
+import RatingButtons from "../components/RatingButtons.jsx";
 
 /**
  * 单词本视图：搜索/A-Z/快速查阅/详情/编辑/删除/记忆法/换例句/困难词。
@@ -287,22 +289,7 @@ function WordDetail({ cardId, onBack, allCards, setDetail }) {
             </div>
             {c.difficulty === "reading" && <span className="diff-chip">📖 阅读句</span>}
             {/* 意群切分（初学辅助）— 点击单块朗读，可跟读 */}
-            {Array.isArray(c.chunks) && c.chunks.length > 1 && (
-              <div className="front-chunks" style={{ marginTop: 10 }}>
-                {c.chunks.map((ch, i) => {
-                  const item = typeof ch === "string" ? { text: ch, role: null } : ch;
-                  const label = item.role === "subject" ? "主语" : item.role === "predicate" ? "谓宾" : item.role === "adverbial" ? "状语" : "意群";
-                  return (
-                    <span
-                      key={i}
-                      className={`chunk ${item.role ? `role-${item.role}` : `chip-${i % 3}`}`}
-                      title={`${label} · 点击朗读`}
-                      onClick={() => speak(item.text)}
-                    >{item.text}</span>
-                  );
-                })}
-              </div>
-            )}
+            <ChunkChips chunks={c.chunks} onSpeak={(t) => speak(t)} style={{ marginTop: 10 }} />
           </>
         ) : (
           <>
@@ -470,13 +457,7 @@ function WordDetail({ cardId, onBack, allCards, setDetail }) {
 
       {/* 评分 */}
       <div className="rating-area" style={{ marginTop: 20 }}>
-        <div className="rating-buttons">
-          {[1, 2, 3, 4].map((r) => (
-            <button key={r} className={`btn-rating rating-${r}`} onClick={() => rateCard(r)}>
-              {r}<span className="rating-label">{r === 1 ? "忘了" : r === 2 ? "模糊" : r === 3 ? "记得" : "太简单"}</span>
-            </button>
-          ))}
-        </div>
+        <RatingButtons onRate={rateCard} />
       </div>
 
       {/* 管理操作 */}

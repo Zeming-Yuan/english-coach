@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { api } from "../lib/api.js";
 import { speak } from "../lib/tts.js";
-import { escapeHtml } from "../lib/utils.js";
+import { cleanToken, escapeHtml } from "../lib/utils.js";
+import { useWordLookup } from "../lib/wordLookup.js";
 import { showToast } from "../App.jsx";
+import RatingButtons from "../components/RatingButtons.jsx";
 
 /**
  * 故事视图：列表/删除/阅读/整句朗读/点词弹卡。
@@ -74,37 +76,15 @@ export default function StoriesPage() {
 }
 
 function StoryRead({ story, onBack }) {
-  const [activeWord, setActiveWord] = useState(null);
-  const [lookupResult, setLookupResult] = useState(null);
   const [mode, setMode] = useState("bilingual"); // en | bilingual | cn
   const [addingWord, setAddingWord] = useState(false);
+  // 点词查义共享流程（清洗/已学判断/查词接口）
+  const { word: activeWord, result: lookupResult, open: handleWordClick, close: closePanel, markLearned } =
+    useWordLookup({ learnedWords: story.words });
 
   // 逐句拆分（\n 分隔），中英行一一对应
   const enLines = (story.content || "").split("\n").filter(Boolean);
   const cnLines = (story.content_cn || "").split("\n").filter(Boolean);
-
-  const handleWordClick = async (e, word) => {
-    e.stopPropagation();
-    const clean = word.replace(/[^a-zA-Z'-]/g, "").toLowerCase();
-    if (!clean || clean.length < 2) return;
-    // 先查已学过的词
-    const learned = story.words.find((w) => w.word.toLowerCase() === clean);
-    if (learned) {
-      setActiveWord(learned);
-      setLookupResult({ found: true, isLearned: true });
-      return;
-    }
-    // 未学过的词 → 调查词接口
-    setActiveWord({ word: clean, phonetic: null, meaning: null });
-    setLookupResult(null);
-    try {
-      const r = await api(`/api/lookup/${encodeURIComponent(clean)}`);
-      setActiveWord({ word: clean, phonetic: r.phonetic, meaning: r.meaning, card_id: r.card_id });
-      setLookupResult({ ...r, isLearned: false });
-    } catch {
-      setLookupResult({ found: false, isLearned: false });
-    }
-  };
 
   // 添加到词库
   const addToLibrary = async (word) => {
@@ -119,8 +99,7 @@ function StoryRead({ story, onBack }) {
         showToast(`✅ 「${word}」已加入词库`);
         // 更新 story.words 让按钮消失
         story.words = [...story.words, { id: r.cards[0].id, word: word, phonetic: r.cards[0].phonetic, meaning: r.cards[0].meaning }];
-        setActiveWord({ ...activeWord, id: r.cards[0].id });
-        setLookupResult({ found: true, isLearned: true, card_id: r.cards[0].id });
+        markLearned({ id: r.cards[0].id, word: word, phonetic: r.cards[0].phonetic, meaning: r.cards[0].meaning });
       } else {
         showToast(`「${word}」已在词库中`);
       }
@@ -134,11 +113,11 @@ function StoryRead({ story, onBack }) {
   const renderTokens = (text) => {
     return text.split(/(\s+)/).map((tok, i) => {
       if (/^\s+$/.test(tok)) return tok;
-      const clean = tok.replace(/[^a-zA-Z'-]/g, "").toLowerCase();
+      const clean = cleanToken(tok);
       const isLearned = story.words.some((w) => w.word.toLowerCase() === clean);
       if (clean.length > 1) {
         return (
-          <span key={i} className={isLearned ? "sw" : "story-clickable-word"} onClick={(e) => handleWordClick(e, tok)}>
+          <span key={i} className={isLearned ? "sw" : "story-clickable-word"} onClick={() => handleWordClick(tok)}>
             {tok}
           </span>
         );
@@ -151,15 +130,12 @@ function StoryRead({ story, onBack }) {
     if (!activeWord?.id) return;
     try {
       await api("/api/reviews", { method: "POST", body: JSON.stringify({ card_id: activeWord.id, rating }) });
-      setActiveWord(null);
-      setLookupResult(null);
+      closePanel();
       showToast(rating >= 3 ? "✅ 已标记记得" : "📌 已加入复习队列");
     } catch {}
   };
 
-  const closePanel = () => { setActiveWord(null); setLookupResult(null); };
-
-  const isLearnedWord = activeWord && (lookupResult?.isLearned || story.words.some((w) => w.word === activeWord.word));
+  const isLearnedWord = activeWord && (lookupResult.isLearned || story.words.some((w) => w.word === activeWord.word));
 
   return (
     <section className="view">
@@ -221,20 +197,16 @@ function StoryRead({ story, onBack }) {
             </div>
             {activeWord.phonetic && <div className="story-word-panel-phonetic">{activeWord.phonetic}</div>}
             <div className="story-word-panel-meaning">
-              {activeWord.meaning || (lookupResult?.found === false ? "暂无释义" : "查询中…")}
+              {activeWord.meaning || (lookupResult.status === "missing" ? "暂无释义" : "查询中…")}
             </div>
             {/* 已学过的词：显示评分 */}
             {isLearnedWord && activeWord.id && (
               <div className="story-word-panel-rating">
-                {[1, 2, 3, 4].map((r) => (
-                  <button key={r} className={`btn-rating rating-${r}`} onClick={() => rateWord(r)}>
-                    {r}<span className="rating-label">{r === 1 ? "忘了" : r === 2 ? "模糊" : r === 3 ? "记得" : "太简单"}</span>
-                  </button>
-                ))}
+                <RatingButtons onRate={rateWord} />
               </div>
             )}
             {/* 未学过的词：显示添加按钮 */}
-            {!isLearnedWord && lookupResult?.found !== false && (
+            {!isLearnedWord && lookupResult.status !== "missing" && (
               <button className="btn btn-primary btn-small" style={{ marginTop: 8 }} disabled={addingWord} onClick={() => addToLibrary(activeWord.word)}>
                 {addingWord ? "添加中…" : "📥 添加到词库"}
               </button>

@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "../lib/api.js";
 import { speak } from "../lib/tts.js";
-import { escapeHtml, highlightWord, storageGet, storageSet } from "../lib/utils.js";
+import { cleanToken, escapeHtml, highlightWord, storageGet, storageSet } from "../lib/utils.js";
 import { splitSentence } from "../lib/chunks.js";
+import { useWordLookup } from "../lib/wordLookup.js";
 import { showToast } from "../App.jsx";
-
-// 意群角色中文标签（悬浮提示）
-const ROLE_LABELS = { subject: "主语", predicate: "谓宾", adverbial: "状语" };
-const roleLabel = (role) => (role && ROLE_LABELS[role]) || "意群";
+import ChunkChips from "../components/ChunkChips.jsx";
+import RatingButtons from "../components/RatingButtons.jsx";
 
 /**
  * 闪卡学习视图。
@@ -32,8 +31,7 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
     storageSet("sentenceCnMode", cnMode);
   }, [cnMode]);
   // 词查询状态（必须放在所有条件 return 之前，hook 顺序不能变）
-  const [lookupWord, setLookupWord] = useState(null);
-  const [lookupResult, setLookupResult] = useState(null);
+  const { word: lookupWord, result: lookupResult, open: handleExampleWordClick, close: closeLookup } = useWordLookup();
 
   const total = queue.length;
   const card = idx < total ? queue[idx] : null;
@@ -141,33 +139,19 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
   const backExample = !isSentence && card.example ? highlightWord(card.example, card.word) : "";
   const contexts = Array.isArray(card.contexts) ? card.contexts : [];
 
-  // 意群切分：优先 AI chunks，兜底启发式。chunks 可能是 {text,role} 或纯字符串
+  // 意群切分：优先 AI chunks，兜底启发式（渲染共用 ChunkChips）
   const chunkList = isSentence
     ? (Array.isArray(card.chunks) && card.chunks.length > 0
-        ? card.chunks.map((ch) => typeof ch === "string" ? { text: ch, role: null } : ch)
+        ? card.chunks
         : splitSentence(card.example || "").map((t) => ({ text: t, role: null })))
     : [];
-
-  const handleExampleWordClick = async (e, word) => {
-    e.stopPropagation();
-    const clean = word.replace(/[^a-zA-Z'-]/g, "").toLowerCase();
-    if (!clean || clean.length < 2) return;
-    setLookupWord(clean);
-    setLookupResult(null);
-    try {
-      const r = await api(`/api/lookup/${encodeURIComponent(clean)}`);
-      setLookupResult(r);
-    } catch {
-      setLookupResult({ found: false });
-    }
-  };
 
   const renderClickableExample = (text) => {
     return text.split(/(\s+)/).map((tok, i) => {
       if (/^\s+$/.test(tok)) return tok;
-      const clean = tok.replace(/[^a-zA-Z'-]/g, "").toLowerCase();
+      const clean = cleanToken(tok);
       if (clean.length > 1) {
-        return <span key={i} className="example-clickable-word" onClick={(e) => handleExampleWordClick(e, tok)}>{tok}</span>;
+        return <span key={i} className="example-clickable-word" onClick={(e) => { e.stopPropagation(); handleExampleWordClick(tok); }}>{tok}</span>;
       }
       return <span key={i}>{tok}</span>;
     });
@@ -216,17 +200,8 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
                 <span className="diff-chip">📖 阅读句</span>}
             </div>
             {/* 句子卡：意群切分提示（初学友好）— 点击单块朗读，可跟读 */}
-            {isSentence && chunkList.length > 1 && (
-              <div className="front-chunks">
-                {chunkList.map((ch, i) => (
-                  <span
-                    key={i}
-                    className={`chunk ${ch.role ? `role-${ch.role}` : `chip-${i % 3}`}`}
-                    title={`${roleLabel(ch.role)} · 点击朗读`}
-                    onClick={(e) => { e.stopPropagation(); speak(ch.text); }}
-                  >{ch.text}</span>
-                ))}
-              </div>
+            {isSentence && (
+              <ChunkChips chunks={chunkList} onSpeak={(t) => speak(t)} />
             )}
             {/* 句子卡：正面显示中文翻译（初学友好，可在设置关闭） */}
             {isSentence && showSentenceCn && card.example_cn && (
@@ -249,12 +224,12 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
             {lookupWord && (
               <div className="back-lookup-panel" onClick={(e) => e.stopPropagation()}>
                 <div className="back-lookup-head">
-                  <b>{lookupWord}</b>
-                  <button className="speak-mini" onClick={() => speak(lookupWord)}>🔊</button>
-                  <button className="story-word-panel-close" onClick={() => { setLookupWord(null); setLookupResult(null); }}>✕</button>
+                  <b>{lookupWord.word}</b>
+                  <button className="speak-mini" onClick={() => speak(lookupWord.word)}>🔊</button>
+                  <button className="story-word-panel-close" onClick={closeLookup}>✕</button>
                 </div>
-                {lookupResult?.phonetic && <div className="back-lookup-phonetic">{lookupResult.phonetic}</div>}
-                <div className="back-lookup-meaning">{lookupResult?.meaning || (lookupResult?.found === false ? "暂无释义" : "查询中…")}</div>
+                {lookupWord.phonetic && <div className="back-lookup-phonetic">{lookupWord.phonetic}</div>}
+                <div className="back-lookup-meaning">{lookupWord.meaning || (lookupResult.status === "missing" ? "暂无释义" : "查询中…")}</div>
               </div>
             )}
             {contexts.length > 0 && (
@@ -282,14 +257,7 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
       {/* 评分按钮：包裹层常驻占位（高度已在 CSS 预留），翻面后按钮永远在首屏 */}
       <div className="rating-area">
         {flipped && (
-          <div className="rating-buttons">
-            {[1, 2, 3, 4].map((r) => (
-              <button key={r} className={`btn-rating rating-${r}`} onClick={() => rate(r)}>
-                {r}
-                <span className="rating-label">{r === 1 ? "忘了" : r === 2 ? "模糊" : r === 3 ? "记得" : "太简单"}</span>
-              </button>
-            ))}
-          </div>
+          <RatingButtons onRate={rate} />
         )}
       </div>
     </section>
