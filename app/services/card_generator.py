@@ -1,13 +1,9 @@
 import json
 
-from openai import OpenAI
 from sqlalchemy.orm import Session
 
-from app.config import settings
 from app.models.card import Card
-from app.services.model_router import Task, route
-
-client = OpenAI(api_key=settings.llm_api_key, base_url=settings.llm_base_url, timeout=30)
+from app.services.llm import generate_json
 
 SYSTEM_PROMPT = (
     "你是零基础英语老师。为每个单词生成学习卡片，包含以下字段：\n"
@@ -35,32 +31,22 @@ SYSTEM_PROMPT = (
     '"chunks": [{"text": "意群", "role": "subject|predicate|adverbial"}...]}]}'
 )
 
+_REGENERATE_PROMPT = (
+    "你是零基础英语老师。为单词重新生成一个新例句和讲解。\n"
+    "【例句要求】必须是完整句子（至少 8 个单词），有具体场景、人物或动作。"
+    "禁止 'This is X' / 'I have X' / 'I like X' 式空泛句。"
+    "好例子：'The fat cat sat on my laptop while I was studying!'\n"
+    "【讲解要求】必须包含三要素，用 | 分隔：用法要点 | 常见搭配 | 易错提醒。"
+    "例：'可数名词，复数加s | a cat / cats / kitten(小猫) | 不要写成 catt'\n"
+    '严格输出 JSON: {"example": "...", "example_cn": "...", "explanation": "..."}'
+)
+
 
 def regenerate_example(word: str) -> tuple[str, str, str]:
     """为已有单词重新生成例句/翻译/讲解（换一个按钮，轻量）。"""
-    resp = client.chat.completions.create(
-        model=route(Task.BULK),
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "你是零基础英语老师。为单词重新生成一个新例句和讲解。\n"
-                    "【例句要求】必须是完整句子（至少 8 个单词），有具体场景、人物或动作。"
-                    "禁止 'This is X' / 'I have X' / 'I like X' 式空泛句。"
-                    "好例子：'The fat cat sat on my laptop while I was studying!'\n"
-                    "【讲解要求】必须包含三要素，用 | 分隔：用法要点 | 常见搭配 | 易错提醒。"
-                    "例：'可数名词，复数加s | a cat / cats / kitten(小猫) | 不要写成 catt'\n"
-                    '严格输出 JSON: {"example": "...", "example_cn": "...", "explanation": "..."}'
-                ),
-            },
-            {"role": "user", "content": word},
-        ],
-        response_format={"type": "json_object"},
-    )
-    content = resp.choices[0].message.content
-    if not content:
-        raise ValueError("LLM 返回空内容")
-    data = json.loads(content)
+    data = generate_json(_REGENERATE_PROMPT, word)
+    if data is None:
+        raise ValueError("LLM 失败")
     return (
         data.get("example", ""),
         data.get("example_cn", ""),
@@ -74,22 +60,10 @@ def generate_cards(words: list[str], db: Session) -> list[Card]:
     new_words = [w for w in words if w not in existing]
     if not new_words:
         return []  # 全部已存在：不调 API，白烧钱（教学点 12）
-    resp = client.chat.completions.create(
-        model=route(Task.BULK),
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": json.dumps({"words": new_words}, ensure_ascii=False),
-            },
-        ],
-        response_format={"type": "json_object"},
-    )
-    content = resp.choices[0].message.content
-    if not content:
-        raise ValueError("LLM 返回空内容")
+    data = generate_json(SYSTEM_PROMPT, json.dumps({"words": new_words}, ensure_ascii=False))
+    if data is None:
+        raise ValueError("LLM 失败")
     cards = []
-    data = json.loads(content)
     for c in data.get("cards", []):
         try:
             if not isinstance(c.get("contexts"), list):

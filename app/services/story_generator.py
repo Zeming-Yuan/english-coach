@@ -2,17 +2,13 @@
 
 import json
 
-from openai import OpenAI
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.config import settings
 from app.models.card import Card
 from app.models.review import Review
 from app.models.story import Story, StoryWord
-from app.services.model_router import Task, route
-
-client = OpenAI(api_key=settings.llm_api_key, base_url=settings.llm_base_url, timeout=30)
+from app.services.llm import generate_json
 
 SYSTEM_PROMPT = (
     "你是零基础英语老师。用以下单词编一篇简短的英语小故事（100词左右），"
@@ -45,21 +41,11 @@ def generate_story(db: Session, word_limit: int = 8) -> Story:
     if len(cards) < 3:
         raise ValueError(f"新词不足 ({len(cards)}) 个,至少需要 3 个。")
     words_payload = [c.word for c in cards]
-    resp = client.chat.completions.create(
-        model=route(Task.BULK),
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": json.dumps({"words": words_payload}, ensure_ascii=False),
-            },
-        ],
-        response_format={"type": "json_object"},
+    data = generate_json(
+        SYSTEM_PROMPT, json.dumps({"words": words_payload}, ensure_ascii=False)
     )
-    content = resp.choices[0].message.content
-    if not content:
-        raise ValueError("LLM 返回空内容。")
-    data = json.loads(content)
+    if data is None:
+        raise ValueError("LLM 失败。")
     # 1. 创建故事：将 sentences 数组拼接为 content + content_cn
     sentences = data.get("sentences", [])
     content = "\n".join(s.get("en", "") for s in sentences)

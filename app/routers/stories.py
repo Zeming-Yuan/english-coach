@@ -1,22 +1,16 @@
 """故事路由。"""
 
-import json
-
 from fastapi import APIRouter, Depends, HTTPException
-from openai import OpenAI
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.config import settings
 from app.db import get_db
 from app.models.card import Card
 from app.models.story import Story, StoryWord
-from app.services.model_router import Task, route
+from app.services.llm import generate_json
 from app.services.story_generator import generate_story
 
 router = APIRouter()
-
-client = OpenAI(api_key=settings.llm_api_key, base_url=settings.llm_base_url, timeout=30)
 
 
 @router.post("/stories/generate")
@@ -90,35 +84,24 @@ def delete_story(story_id: int, db: Session = Depends(get_db)):
     return {"deleted": story_id}
 
 
+_TRANSLATE_PROMPT = (
+    "你是专业翻译。将以下英文故事逐句翻译成中文。"
+    "保持原文句子顺序，每个英文句子对应一个中文翻译。"
+    "翻译要自然流畅，不要逐字硬译。"
+    '严格输出 JSON: {"title_cn": "...", "sentences": [{"en": "英文.", "cn": "中文."}, ...]}'
+)
+
+
 def _translate_story(story: Story, db: Session) -> None:
     """为旧故事补翻中文（逐句对照，原地更新数据库）。"""
-    try:
-        resp = client.chat.completions.create(
-            model=route(Task.BULK),
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "你是专业翻译。将以下英文故事逐句翻译成中文。"
-                        "保持原文句子顺序，每个英文句子对应一个中文翻译。"
-                        "翻译要自然流畅，不要逐字硬译。"
-                        '严格输出 JSON: {"title_cn": "...", "sentences": [{"en": "英文.", "cn": "中文."}, ...]}'
-                    ),
-                },
-                {"role": "user", "content": f"标题: {story.title}\n\n{story.content}"},
-            ],
-            response_format={"type": "json_object"},
-        )
-        content = resp.choices[0].message.content
-        if content:
-            data = json.loads(content)
-            story.title_cn = data.get("title_cn")
-            sentences = data.get("sentences", [])
-            if sentences:
-                story.content_cn = "\n".join(s.get("cn", "") for s in sentences)
-            db.commit()
-    except Exception:
-        pass  # 翻译失败不影响阅读
+    data = generate_json(_TRANSLATE_PROMPT, f"标题: {story.title}\n\n{story.content}")
+    if not data:
+        return  # 翻译失败不影响阅读
+    story.title_cn = data.get("title_cn")
+    sentences = data.get("sentences", [])
+    if sentences:
+        story.content_cn = "\n".join(s.get("cn", "") for s in sentences)
+    db.commit()
 
 
 def _story_to_dict(story: Story, db: Session) -> dict:

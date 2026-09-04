@@ -1,20 +1,14 @@
 """查词路由：故事阅读时点击任意英文单词查释义。"""
 
-import json
-
 from fastapi import APIRouter, Depends
-from openai import OpenAI
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.config import settings
 from app.db import get_db
 from app.models.card import Card
-from app.services.model_router import Task, route
+from app.services.llm import generate_json
 
 router = APIRouter()
-
-client = OpenAI(api_key=settings.llm_api_key, base_url=settings.llm_base_url, timeout=30)
 
 # 简单内存缓存（word → {phonetic, meaning}）
 _cache: dict[str, dict] = {}
@@ -46,30 +40,16 @@ def lookup_word(word: str, db: Session = Depends(get_db)):
             _cache[word_lower] = result
         return {**result, "word": word, "found": True, "card_id": card.id}
 
-    # 本地没有 → 调 AI 查词
-    try:
-        resp = client.chat.completions.create(
-            model=route(Task.BULK),
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "你是英语词典。给出发音和中文释义，简短。"
-                        '严格输出 JSON: {"phonetic": "...", "meaning": "..."}'
-                    ),
-                },
-                {"role": "user", "content": word_lower},
-            ],
-            response_format={"type": "json_object"},
-        )
-        content = resp.choices[0].message.content
-        if content:
-            data = json.loads(content)
-            result = {"phonetic": data.get("phonetic"), "meaning": data.get("meaning")}
-            if len(_cache) < _CACHE_MAX:
-                _cache[word_lower] = result
-            return {**result, "word": word, "found": True}
-    except Exception:
-        pass
+    # 本地没有 → 调 AI 查词（generate_json 失败返回 None，永不抛）
+    data = generate_json(
+        "你是英语词典。给出发音和中文释义，简短。"
+        '严格输出 JSON: {"phonetic": "...", "meaning": "..."}',
+        word_lower,
+    )
+    if data is not None:
+        result = {"phonetic": data.get("phonetic"), "meaning": data.get("meaning")}
+        if len(_cache) < _CACHE_MAX:
+            _cache[word_lower] = result
+        return {**result, "word": word, "found": True}
 
     return {"word": word, "phonetic": None, "meaning": None, "found": False}
