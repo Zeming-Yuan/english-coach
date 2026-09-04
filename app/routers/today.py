@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -9,24 +9,9 @@ from app.models.card import Card
 from app.models.error_card import ErrorCard
 from app.models.hard_card import HardCard
 from app.models.review import Review
+from app.services.card_payload import queue_payload
 
 router = APIRouter()
-
-
-def card_to_dict(card: Card) -> dict:
-    """将 Card ORM 对象转换为字典，便于 JSON 响应。"""
-    return {
-        "id": card.id,
-        "word": card.word,
-        "phonetic": card.phonetic,
-        "meaning": card.meaning,
-        "example": card.example,
-        "example_cn": card.example_cn,
-        "explanation": card.explanation,
-        "contexts": card.contexts,
-        "related_words": card.related_words,
-        "kind": card.kind,
-    }
 
 
 @router.get("/today")
@@ -46,7 +31,7 @@ def get_today(new_limit: int = 10, due_limit: int = 20, db: Session = Depends(ge
         .limit(new_limit)
     )
     new_cards = db.execute(stmt).scalars().all()
-    new_cards_dict = [card_to_dict(card) for card in new_cards]
+    new_cards_dict = [queue_payload(card) for card in new_cards]
     stmt = (
         select(Card)
         .join(Review, Review.card_id == Card.id)
@@ -55,7 +40,7 @@ def get_today(new_limit: int = 10, due_limit: int = 20, db: Session = Depends(ge
         .limit(due_limit)
     )
     due_cards = db.execute(stmt).scalars().all()
-    due_cards_dict = [card_to_dict(card) for card in due_cards]
+    due_cards_dict = [queue_payload(card) for card in due_cards]
     # 错词优先：有错词记录的卡排到队列最前面（错误增强效应）
     error_first = db.execute(
         select(Card)
@@ -80,7 +65,7 @@ def get_today(new_limit: int = 10, due_limit: int = 20, db: Session = Depends(ge
         new_cards_dict = [c for c in new_cards_dict if c["id"] not in hard_ids]
         due_cards_dict = [c for c in due_cards_dict if c["id"] not in hard_ids]
     return {
-        "error_cards": [card_to_dict(c) for c in list(error_first) + list(hard_first)],
+        "error_cards": [queue_payload(c) for c in list(error_first) + list(hard_first)],
         "new_cards": new_cards_dict,
         "due_cards": due_cards_dict,
         "recommended_goal": adaptive_limit,  # 自适应推荐（科学驱动）
@@ -196,7 +181,9 @@ def get_stats(db: Session = Depends(get_db)):
     ).scalar_one()
     total_cards = db.execute(select(func.count(Card.id))).scalar_one()
     graduated = db.execute(
-        select(func.count(Review.id)).where(Review.state == 2)
+        select(func.count(Review.id)).where(
+            or_(Review.state == 2, Review.review_count >= 3)
+        )
     ).scalar_one()
     return {
         "reviewed_today": reviewed_today,
@@ -328,6 +315,6 @@ def get_recommended(limit: int = 5, db: Session = Depends(get_db)):
     selected = candidates[:limit]
 
     return {
-        "recommended": [card_to_dict(card) for card, _, _ in selected],
+        "recommended": [queue_payload(card) for card, _, _ in selected],
         "total_candidates": len(candidates),
     }

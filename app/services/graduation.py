@@ -1,36 +1,41 @@
 """词毕业服务：判定词卡是否毕业，毕业则生成句子卡。
 
 句子卡生成分两步（避免复习提交被 AI 调用卡住）：
-1. graduate_to_sentence：同步、无 AI。用词卡例句先建句子卡（毫秒级）。
+1. ensure_sentence_card：同步、无 AI。用词卡例句先建句子卡（毫秒级）。
 2. upgrade_sentence_card：后台线程执行。调 AI 把句子卡升级成更复杂的
    阅读例句（对话体/意群切分/难度标记），失败则保留例句卡。
 """
 
-import json
-
-from openai import OpenAI
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.config import settings
 from app.models.card import Card
 from app.models.review import Review
-from app.services.model_router import Task, route
-
-client = OpenAI(
-    api_key=settings.llm_api_key,
-    base_url=settings.llm_base_url,
-    timeout=30,  # AI 调用一律限时 30s，防止默认 600s 拖住请求
-)
+from app.services.llm import generate_json
 
 
-def is_graduated(review: Review) -> bool:
-    """判定词卡是否毕业：FSRS state == 2 (Review) 或复习次数 >= 3。"""
+def is_graduated(review: Review | None) -> bool:
+    """判定词卡是否毕业：FSRS state == 2 (Review) 或复习次数 >= 3。
+
+    全库唯一毕业口径（复习提交、/api/stats 毕业生数、卡片 payload、
+    设置页重生成句卡都用它）。None 一律未毕业。
+    """
+    if review is None:
+        return False
     # State 枚举（py-fsrs）：0=New, 1=Learning, 2=Review, 3=Relearning
     return review.state == 2 or review.review_count >= 3
 
 
-def graduate_to_sentence(card: Card, db: Session) -> Card | None:
+def find_sentence_card(db: Session, word: str) -> Card | None:
+    """词 → 句子卡查询（全库统一，多处调用不再各写各的）。"""
+    return (
+        db.execute(select(Card).where(Card.word == word, Card.kind == "sentence"))
+        .scalars()
+        .first()
+    )
+
+
+def ensure_sentence_card(card: Card, db: Session) -> Card | None:
     """同步、无 AI：用词卡例句快速生成句子卡（毫秒级）。
 
     与词卡例句不同，句子卡要求：
@@ -41,13 +46,7 @@ def graduate_to_sentence(card: Card, db: Session) -> Card | None:
     这里只用例句兜底，确保 /api/reviews 秒回。
     无例句时返回 None（由后台 AI 生成）。
     """
-    # 检查是否已经有句子卡
-    existing = (
-        db.execute(select(Card).where(Card.word == card.word, Card.kind == "sentence"))
-        .scalars()
-        .first()
-    )
-    if existing is not None:
+    if find_sentence_card(db, card.word) is not None:
         return None
 
     if not card.example or not card.example_cn:
@@ -65,38 +64,24 @@ def graduate_to_sentence(card: Card, db: Session) -> Card | None:
     return sentence_card
 
 
+_AI_SENTENCE_PROMPT = (
+    "你是零基础英语老师。为目标单词生成一个用于阅读练习的句子。\n"
+    "【要求】\n"
+    "- 优先用对话体（A/B 两人简短来往，有应答、有场景），如：\n"
+    '  A: Look at that cloud! B: It looks like a giant rabbit.\n'
+    "- 若无对话体则用叙述句，15-25 词，有画面感和故事性\n"
+    "- 目标词必须出现在句中\n"
+    "- 用词可以比零基础稍难一点（有 1-2 个生词没关系）\n"
+    "- 同时提供自然的中文翻译\n"
+    "- 把英文句子按意群切分为 chunks（3-6 段，每段 2-6 词，逗号/连接词/介词短语处切分）\n"
+    "- 每块标注语法角色 role：subject（主语+修饰）/ predicate（谓语+宾语）/ adverbial（时间地点状语）\n"
+    '严格输出 JSON: {"example": "英文句子", "example_cn": "中文翻译", "chunks": [{"text": "意群", "role": "subject|predicate|adverbial"}...]}'
+)
+
+
 def _generate_ai_sentence(word: str) -> dict | None:
     """调 AI 生成复杂句（对话体优先 + 意群切分 + 难度标记）。失败返回 None。"""
-    try:
-        resp = client.chat.completions.create(
-            model=route(Task.BULK),
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "你是零基础英语老师。为目标单词生成一个用于阅读练习的句子。\n"
-                        "【要求】\n"
-                        "- 优先用对话体（A/B 两人简短来往，有应答、有场景），如：\n"
-                        '  A: Look at that cloud! B: It looks like a giant rabbit.\n'
-                        "- 若无对话体则用叙述句，15-25 词，有画面感和故事性\n"
-                        "- 目标词必须出现在句中\n"
-                        "- 用词可以比零基础稍难一点（有 1-2 个生词没关系）\n"
-                        "- 同时提供自然的中文翻译\n"
-                        "- 把英文句子按意群切分为 chunks（3-6 段，每段 2-6 词，逗号/连接词/介词短语处切分）\n"
-                        "- 每块标注语法角色 role：subject（主语+修饰）/ predicate（谓语+宾语）/ adverbial（时间地点状语）\n"
-                        '严格输出 JSON: {"example": "英文句子", "example_cn": "中文翻译", "chunks": [{"text": "意群", "role": "subject|predicate|adverbial"}...]}'
-                    ),
-                },
-                {"role": "user", "content": word},
-            ],
-            response_format={"type": "json_object"},
-        )
-        content = resp.choices[0].message.content
-        if not content:
-            return None
-        return json.loads(content)
-    except Exception:  # noqa: BLE001 — AI 故障统一走兜底，不暴露
-        return None
+    return generate_json(_AI_SENTENCE_PROMPT, word)
 
 
 def upgrade_sentence_card(card_id: int) -> None:
@@ -111,11 +96,7 @@ def upgrade_sentence_card(card_id: int) -> None:
         card = db.get(Card, card_id)
         if card is None or card.kind != "word":
             return
-        existing = (
-            db.execute(select(Card).where(Card.word == card.word, Card.kind == "sentence"))
-            .scalars()
-            .first()
-        )
+        existing = find_sentence_card(db, card.word)
         if existing is not None and (existing.chunks or existing.difficulty == "reading"):
             return  # 已有 AI 句卡，无需升级
 

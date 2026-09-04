@@ -12,6 +12,8 @@ from app.models.hard_card import HardCard
 from app.models.memo import Memo
 from app.models.review import Review
 from app.services.card_generator import generate_cards, regenerate_example
+from app.services.card_payload import card_payload
+from app.services.graduation import is_graduated
 
 router = APIRouter()
 
@@ -84,7 +86,7 @@ def delete_card(card_id: int, db: Session = Depends(get_db)):
 
 
 def card_to_dict(card: Card, db: Session) -> dict:
-    """Card → 字典（含复习状态）。"""
+    """Card → 全量载荷（含复习状态；比列表版多 3 次关联查询）。"""
     review = (
         db.execute(
             select(Review).where(Review.card_id == card.id).order_by(Review.id.desc())
@@ -102,46 +104,12 @@ def card_to_dict(card: Card, db: Session) -> dict:
         .scalars()
         .first()
     )
-    return {
-        "id": card.id,
-        "word": card.word,
-        "kind": card.kind,
-        "phonetic": card.phonetic,
-        "meaning": card.meaning,
-        "example": card.example,
-        "example_cn": card.example_cn,
-        "explanation": card.explanation,
-        "contexts": card.contexts,
-        "related_words": card.related_words,
-        "chunks": card.chunks,
-        "difficulty": card.difficulty,
-        "review_count": review.review_count if review else 0,
-        "graduated": review.state == 2 if review else False,
-        "error_count": error.error_count if error else 0,
-        "is_hard": hard is not None,
-    }
+    return card_payload(card, review=review, error=error, hard=hard is not None)
 
 
 def _card_to_dict_fast(card: Card, review: Review | None, error: ErrorCard | None, is_hard: bool) -> dict:
-    """Card → 字典（批量预加载版本，无额外查询）。"""
-    return {
-        "id": card.id,
-        "word": card.word,
-        "kind": card.kind,
-        "phonetic": card.phonetic,
-        "meaning": card.meaning,
-        "example": card.example,
-        "example_cn": card.example_cn,
-        "explanation": card.explanation,
-        "contexts": card.contexts,
-        "related_words": card.related_words,
-        "chunks": card.chunks,
-        "difficulty": card.difficulty,
-        "review_count": review.review_count if review else 0,
-        "graduated": review.state == 2 if review else False,
-        "error_count": error.error_count if error else 0,
-        "is_hard": is_hard,
-    }
+    """Card → 全量载荷（批量预加载版本，无额外查询）。"""
+    return card_payload(card, review=review, error=error, hard=is_hard)
 
 
 @router.post("/cards/generate")
@@ -254,8 +222,8 @@ def refresh_examples(limit: int = 10, db: Session = Depends(get_db)):
                 if sentence_card:
                     sentence_card.example = example
                     sentence_card.example_cn = example_cn
-        except Exception:
-            continue  # 单个失败不阻塞整批
+        except Exception:  # noqa: BLE001, S112 — 单个失败不阻塞整批
+            continue
 
     db.commit()
     return {
@@ -269,23 +237,32 @@ def refresh_examples(limit: int = 10, db: Session = Depends(get_db)):
 def regenerate_sentences(limit: int = 5, db: Session = Depends(get_db)):
     """为已毕业但没有句子卡的词重新生成句子卡（AI 生成更复杂的句子）。
 
-    找出 review_count >= 3 但没有对应句子卡的 word 类型卡，
-    调 graduate_to_sentence 生成，每批最多 limit 个。
+    按统一毕业口径（is_graduated：state==2 或复习 >=3 次）找词，
+    建兜底句卡并启动后台 AI 升级——与复习提交路径完全一致。
     """
-    from app.services.graduation import graduate_to_sentence
+    import threading as _threading
+
+    from app.services.graduation import (
+        ensure_sentence_card,
+        find_sentence_card,
+        is_graduated,
+        upgrade_sentence_card,
+    )
+
+    # 最新 review 按 card_id 收拢（id 升序，后者覆盖 = 取最新）
+    latest: dict[int, Review] = {}
+    for r in db.execute(select(Review).order_by(Review.id)).scalars().all():
+        latest[r.card_id] = r
 
     # 找已毕业但没有句子卡的词
-    graduated_words = db.execute(
-        select(Card).where(Card.kind == "word")
-    ).scalars().all()
-
     needs_sentence = []
-    for card in graduated_words:
-        # 检查是否已有句子卡
-        existing = db.execute(
-            select(Card).where(Card.word == card.word, Card.kind == "sentence")
-        ).scalars().first()
-        if existing is None:
+    for card in db.execute(select(Card).where(Card.kind == "word")).scalars().all():
+        review = latest.get(card.id)
+        if (
+            review is not None
+            and is_graduated(review)
+            and find_sentence_card(db, card.word) is None
+        ):
             needs_sentence.append(card)
 
     if not needs_sentence:
@@ -295,10 +272,13 @@ def regenerate_sentences(limit: int = 5, db: Session = Depends(get_db)):
     generated = 0
     for card in batch:
         try:
-            sentence = graduate_to_sentence(card, db)
+            sentence = ensure_sentence_card(card, db)
             if sentence:
                 generated += 1
-        except Exception:
+                _threading.Thread(
+                    target=upgrade_sentence_card, args=(card.id,), daemon=True
+                ).start()
+        except Exception:  # noqa: BLE001, S112 — 单个失败不阻塞整批
             continue
 
     db.commit()
@@ -358,7 +338,7 @@ def get_card_detail(card_id: int, db: Session = Depends(get_db)):
         "chunks": card.chunks,
         "difficulty": card.difficulty,
         "created_at": card.created_at.isoformat(),
-        "graduated": latest.state == 2 if latest else False,
+        "graduated": is_graduated(latest),
         "review_count": latest.review_count if latest else 0,
         "error_count": error.error_count if error else 0,
         "memo": memo.content if memo else None,

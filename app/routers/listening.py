@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models.card import Card
 from app.models.review import Review
-from app.services.error_tracking import record_error
+from app.services.review_submission import CardNotFoundError, submit_review
 
 router = APIRouter()
 
@@ -100,66 +100,20 @@ class ListeningScoreIn(BaseModel):
 
 @router.post("/listening/score")
 def score_listening(payload: ListeningScoreIn, db: Session = Depends(get_db)):
-    """听写评分：判断对错 + 提交 FSRS。"""
+    """听写评分：判分 + FSRS 写回 + 错词追踪 + 毕业策略（统一见 review_submission）。"""
     card = db.get(Card, payload.card_id)
     if card is None:
         raise HTTPException(status_code=404, detail="Card not found")
 
     correct = payload.selected_index == payload.correct_index
-
-    # FSRS 评分（复用 reviews 端点的逻辑）
-    from app.services.scheduler import build_fsrs_card, schedule
-
-    now = datetime.now(timezone.utc)
-    review = (
-        db.execute(
-            select(Review)
-            .where(Review.card_id == payload.card_id)
-            .order_by(Review.id.desc())
-        )
-        .scalars()
-        .first()
-    )
-
-    fsrs_card = build_fsrs_card(review)
-    new_card = schedule(fsrs_card, payload.rating, now)
-
-    if review:
-        review.state = new_card.state.value
-        review.step = new_card.step
-        review.due = new_card.due
-        review.stability = new_card.stability  # type: ignore[assignment]
-        review.difficulty = new_card.difficulty  # type: ignore[assignment]
-        review.elapsed_days = (
-            (now - review.last_review.replace(tzinfo=timezone.utc)).days
-            if review.last_review
-            else 0
-        )
-        review.last_review = now
-        review.review_count += 1
-        review.rating = payload.rating  # 记录评分（复习历史展示）
-    else:
-        review = Review(
-            card_id=payload.card_id,
-            state=new_card.state.value,
-            step=new_card.step,
-            due=new_card.due,
-            stability=new_card.stability,
-            difficulty=new_card.difficulty,
-            elapsed_days=0,
-            last_review=now,
-            review_count=1,
-            rating=payload.rating,
-        )
-        db.add(review)
-
-    # 错词追踪：答错加权，答对减权
-    record_error(db, payload.card_id, is_correct=correct)
-    db.commit()
+    try:
+        result = submit_review(db, payload.card_id, payload.rating, correct=correct)
+    except CardNotFoundError:
+        raise HTTPException(status_code=404, detail="Card not found")
 
     return {
         "correct": correct,
         "correct_word": card.word,
-        "graduated": review.state == 2,
-        "next_due": review.due.isoformat(),
+        "graduated": result.graduated,
+        "next_due": result.next_due.isoformat(),
     }

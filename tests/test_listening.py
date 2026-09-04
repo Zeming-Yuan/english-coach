@@ -2,6 +2,8 @@
 
 from datetime import datetime, timedelta, timezone
 
+from sqlalchemy import select
+
 from app.models.card import Card
 from app.models.review import Review
 
@@ -116,3 +118,41 @@ def test_listening_score_card_not_found(client):
         json={"card_id": 999, "selected_index": 0, "correct_index": 0, "rating": 3},
     )
     assert resp.status_code == 404
+
+
+def test_listening_score_graduates_triggers_sentence_card(client, db_session, monkeypatch):
+    """听写评分走统一提交域：毕业触发句子卡生成（旧版本漏掉这一步）。"""
+    from app.services import review_submission
+
+    monkeypatch.setattr(review_submission, "upgrade_sentence_card", lambda cid: None)
+    card = Card(
+        word="world",
+        meaning="世界",
+        example="The world is full of surprises.",
+        example_cn="世界充满惊喜。",
+        kind="word",
+    )
+    db_session.add(card)
+    db_session.commit()
+
+    last_resp = None
+    for _ in range(3):
+        resp = client.post(
+            "/api/listening/score",
+            json={
+                "card_id": card.id,
+                "selected_index": 1,
+                "correct_index": 1,
+                "rating": 3,
+            },
+        )
+        assert resp.status_code == 200
+        last_resp = resp.json()
+        if last_resp.get("graduated"):
+            break
+
+    assert last_resp["graduated"] is True
+    sentence = db_session.execute(
+        select(Card).where(Card.word == "world", Card.kind == "sentence")
+    ).scalars().first()
+    assert sentence is not None
