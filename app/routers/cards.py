@@ -11,9 +11,16 @@ from app.models.error_card import ErrorCard
 from app.models.hard_card import HardCard
 from app.models.memo import Memo
 from app.models.review import Review
+from app.models.review_baseline import ReviewBaseline
+from app.models.review_event import ReviewEvent
 from app.services.card_generator import generate_cards, regenerate_example
 from app.services.card_payload import card_payload
 from app.services.graduation import is_graduated
+from app.services.learning import (
+    get_card_events,
+    get_memory_state,
+    has_incomplete_history,
+)
 from app.services.llm_client import LLMNotConfigured
 
 router = APIRouter()
@@ -77,6 +84,10 @@ def delete_card(card_id: int, db: Session = Depends(get_db)):
     from app.models.story import StoryWord
 
     db.execute(Review.__table__.delete().where(Review.card_id == card_id))
+    db.execute(ReviewEvent.__table__.delete().where(ReviewEvent.card_id == card_id))
+    db.execute(
+        ReviewBaseline.__table__.delete().where(ReviewBaseline.card_id == card_id)
+    )
     db.execute(Memo.__table__.delete().where(Memo.card_id == card_id))
     db.execute(ErrorCard.__table__.delete().where(ErrorCard.card_id == card_id))
     db.execute(HardCard.__table__.delete().where(HardCard.card_id == card_id))
@@ -310,7 +321,7 @@ def get_card_detail(card_id: int, db: Session = Depends(get_db)):
         .all()
     )
 
-    latest = reviews[0] if reviews else None
+    latest = get_memory_state(db, card_id)
     history = [
         {
             "rating": r.rating,  # 用户评分 1-4（旧数据为 None）
@@ -349,4 +360,23 @@ def get_card_detail(card_id: int, db: Session = Depends(get_db)):
         "memo": memo.content if memo else None,
         "next_due": latest.due.isoformat() if latest else None,
         "review_history": history,
+        "memory_state": (
+            {
+                "state": latest.state,
+                "step": latest.step,
+                "due": latest.due.isoformat() if latest.due else None,
+                "stability": latest.stability,
+                "difficulty": latest.difficulty,
+                "elapsed_days": latest.elapsed_days,
+                "last_review": (
+                    latest.last_review.isoformat() if latest.last_review else None
+                ),
+                "review_count": latest.review_count,
+                "rating": latest.rating,
+            }
+            if latest
+            else None
+        ),
+        "learning_events": get_card_events(db, card_id),
+        "history_incomplete": has_incomplete_history(db, card_id),
     }

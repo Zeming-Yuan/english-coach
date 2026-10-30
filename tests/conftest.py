@@ -17,6 +17,7 @@ from sqlalchemy.pool import StaticPool
 
 from app.db import Base, get_db
 from app.main import app
+from app.models.card import Card
 from tests.support.ec_env import ECEnv
 
 
@@ -65,14 +66,39 @@ def db_session():
         engine.dispose()
 
 
+class _ObservingClient(TestClient):
+    """每个请求使用新 Session；请求结束后让观察 Session 的缓存失效。"""
+
+    observe_session = None
+
+    def request(self, *args, **kwargs):
+        try:
+            return super().request(*args, **kwargs)
+        finally:
+            if self.observe_session is not None:
+                # 学习写入由请求 Session 提交；观察 Session 需要重新读取。
+                # Card 可能已被请求删除，保持其已加载状态避免无关的刷新错误。
+                for obj in list(self.observe_session.identity_map.values()):
+                    if not isinstance(obj, Card):
+                        self.observe_session.expire(obj)
+
+
 @pytest.fixture()
 def client(db_session):
-    """用测试数据库覆盖依赖的 TestClient。"""
+    """用测试数据库覆盖依赖的 TestClient（每请求独立 Session）。"""
+    TestingSession = sessionmaker(
+        bind=db_session.get_bind(), autoflush=False, autocommit=False
+    )
 
     def override_get_db():
-        yield db_session
+        db = TestingSession()
+        try:
+            yield db
+        finally:
+            db.close()
 
     app.dependency_overrides[get_db] = override_get_db
-    with TestClient(app) as c:
+    with _ObservingClient(app) as c:
+        c.observe_session = db_session
         yield c
     app.dependency_overrides.clear()

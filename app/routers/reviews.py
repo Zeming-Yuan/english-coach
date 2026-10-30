@@ -1,33 +1,38 @@
-# 复习提交路由
+# 复习提交路由：薄适配，写事务与幂等见 app.services.learning
 
-from typing import Literal
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.services.review_submission import CardNotFoundError, submit_review
+from app.runtime import Runtime, get_runtime
+from app.schemas.learning import AttemptCommand
+from app.services.learning import CardNotFoundError, SubmissionConflictError
+from app.services.review_submission import submit_command
 
 router = APIRouter()
-
-
-class ReviewRequest(BaseModel):
-    """复习提交请求体——rating 只允许 1-4，非法自动 422"""
-
-    card_id: int
-    rating: Literal[1, 2, 3, 4]
+logger = logging.getLogger(__name__)
 
 
 @router.post("/reviews")
-def post_review(req: ReviewRequest, db: Session = Depends(get_db)):
-    """提交一次复习：FSRS 写回 + 错词追踪 + 毕业策略（统一见 review_submission）。"""
+def post_review(
+    req: AttemptCommand,
+    db: Session = Depends(get_db),
+    runtime: Runtime = Depends(get_runtime),
+):
+    """提交一次学习：判分、事件、FSRS 与错词同一事务保存。"""
     try:
-        result = submit_review(db, req.card_id, req.rating)
+        result = submit_command(db, req, runtime)
     except CardNotFoundError:
         raise HTTPException(status_code=404, detail="Card not found")
-    resp = {"card_id": result.card_id, "next_due": result.next_due}
-    if result.graduated:
-        resp["graduated"] = True
-        resp["sentence_card_id"] = result.sentence_card_id
-    return resp
+    except SubmissionConflictError:
+        raise HTTPException(
+            status_code=409,
+            detail="该提交标识已用于不同内容，请刷新后重试",
+        )
+    except Exception:
+        # 数据库故障：只返回通用失败，不泄露内部异常，也不假装已完成。
+        logger.exception("review submission failed")
+        raise HTTPException(status_code=500, detail="保存失败，请重试")
+    return result.model_dump()
