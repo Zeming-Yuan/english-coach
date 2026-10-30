@@ -9,11 +9,11 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models.card import Card
 from app.runtime import Runtime, get_runtime
-from app.schemas.learning import AttemptCommand
-from app.services.error_tracking import record_error
+from app.schemas.learning import AttemptCommand, TypingCheckIn
 from app.services.learning import (
     CardNotFoundError,
     SubmissionConflictError,
+    submit_attempt,
     submit_batch,
 )
 from app.services.questions import (
@@ -26,8 +26,6 @@ from app.services.scoring import make_fill_prompt, normalize
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
-
-
 def _choice_options(answer: str, candidates: list[str]) -> list[str]:
     """最多 4 个不重复选项；干扰不足时返回可判断的较小选项集。"""
     seen = {answer}
@@ -42,25 +40,35 @@ def _choice_options(answer: str, candidates: list[str]) -> list[str]:
     return options
 
 
-class TypingCheckIn(BaseModel):
-    card_id: int
-    user_input: str
-
-
 @router.post("/typing/check")
-def check_typing(payload: TypingCheckIn, db: Session = Depends(get_db)):
-    card = db.execute(select(Card).where(Card.id == payload.card_id)).scalars().first()
-    if card is None:
+def check_typing(
+    payload: TypingCheckIn,
+    db: Session = Depends(get_db),
+    runtime: Runtime = Depends(get_runtime),
+):
+    """输入题一次提交：判分、事件、错词与必要排期同一事务保存。"""
+    cmd = AttemptCommand(
+        **payload.model_dump(exclude={"user_input", "answer", "kind"}),
+        answer=None if payload.skipped else payload.user_input,
+        kind=payload.kind,
+    )
+    try:
+        result = submit_attempt(db, cmd, runtime)
+    except CardNotFoundError:
         raise HTTPException(status_code=404, detail="Card not found")
-    correct = normalize(payload.user_input) == normalize(card.word)
-    # 错词追踪：答错加权，答对减权（错误增强效应）
-    record_error(db, payload.card_id, is_correct=correct)
-    db.commit()
-    return {
-        "correct": correct,
-        "expected": normalize(card.word),
-        "normalized_answer": normalize(payload.user_input),
-    }
+    except SubmissionConflictError:
+        raise HTTPException(
+            status_code=409,
+            detail="该提交标识已用于不同内容，请刷新后重试",
+        )
+    except Exception:
+        # 数据库故障：只返回通用失败，不泄露内部异常，也不假装已完成。
+        logger.exception("typing submission failed")
+        raise HTTPException(status_code=500, detail="保存失败，请重试")
+
+    data = result.model_dump(mode="json")
+    data["normalized_answer"] = normalize(payload.user_input)
+    return data
 
 
 @router.get("/quiz")

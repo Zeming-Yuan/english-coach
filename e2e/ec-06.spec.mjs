@@ -240,7 +240,10 @@ test("EC-06 quiz-choice-save-then-feedback", async ({app, page}) => {
   await page.getByRole("button", {name: "重试保存"}).click();
   await expect(page.getByRole("status")).toContainText("已保存");
   const events = await cardEvents(app, ids);
-  expect(events).toHaveLength(1);
-  expect(events[0].source).toBe("quiz");
-  expect(events[0].scheduled).toBe(false);
+  // EC-05 起输入题跳过也会记录一次 correct=null 的事件；这里只要求选择题恰好一次。
+  expect(events.filter((event) => event.kind === "typed" && event.skipped)).toHaveLength(3);
+  const choiceEvents = events.filter((event) => event.kind === "choice");
+  expect(choiceEvents).toHaveLength(1);
+  expect(choiceEvents[0].source).toBe("quiz");
+  expect(choiceEvents[0].scheduled).toBe(false);
 });

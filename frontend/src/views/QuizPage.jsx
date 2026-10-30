@@ -73,8 +73,16 @@ export default function QuizPage({ onExit }) {
     },
     speakOnAnswer: true,
     autoAdvanceMs: null,
+    // EC-05 只迁移输入题（cn2en/fill）；choice/related 留给 EC-06。
+    typedAttempt: (item) =>
+      item.type === "cn2en" || item.type === "fill"
+        ? { source: "quiz", assistance: [] }
+        : null,
   });
-  const { phase, loadError, idx, item, q, total, feedback, stats, submit, skip, next, replay } = s;
+  const {
+    phase, loadError, idx, item, q, total, feedback, stats, submit, skip, next, replay,
+    saving, saveError, pendingResume, retry, resumePending,
+  } = s;
 
   const [selected, setSelected] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -214,6 +222,15 @@ export default function QuizPage({ onExit }) {
         <div className="progress-fill" style={{ width: `${(idx / total) * 100}%` }} />
       </div>
 
+      {pendingResume && !feedback && (
+        <div className="spelling-hint">
+          上次提交尚未确认保存
+          <button className="btn btn-ghost btn-small" onClick={resumePending}>
+            继续确认
+          </button>
+        </div>
+      )}
+
       <div className="quiz-card">
         <div className="quiz-prompt">
           {q.type === "cn2en" && `「${q.prompt}」用英语怎么说？`}
@@ -222,14 +239,14 @@ export default function QuizPage({ onExit }) {
           {q.type === "related" && q.prompt}
         </div>
 
-        {/* cn2en / fill：格子 + 输入（共用 SpellingBoard：实时红绿/输满自动提交/Enter） */}
+        {/* cn2en / fill：独立回忆输入，不显示目标词、长度格子或逐字正误 */}
         {(q.type === "cn2en" || q.type === "fill") && !feedback && (
           <SpellingBoard
             key={q.id}
-            target={q.word || null}
-            maxLength={q.word_length || (q.word ? q.word.length : 5)}
+            mode="independent"
             onSubmit={handleTypedSubmit}
-            placeholder={`输入英文单词（${q.word_length || "?"} 个字母）`}
+            placeholder="输入英文单词…"
+            disabled={saving}
           />
         )}
 
@@ -294,12 +311,21 @@ export default function QuizPage({ onExit }) {
                 "✅ 正确！"
               ) : (
                 <>
+                  {feedback.skipped && "已跳过 · "}
                   {feedback.userInput && <>❌ 你的答案：<b>{escapeHtml(feedback.userInput || "（空）")}</b><br /></>}
                   正确答案：<b className="right">{escapeHtml(feedback.expected || "")}</b>
                 </>
               )}
             </div>
           </>
+        )}
+        {saveError && (q.type === "cn2en" || q.type === "fill") && (
+          <div role="alert" className="quiz-feedback err">
+            保存未确认：{saveError}
+            <button className="btn btn-ghost btn-small" onClick={retry} disabled={saving}>
+              重试保存
+            </button>
+          </div>
         )}
 
       </div>
@@ -321,7 +347,7 @@ export default function QuizPage({ onExit }) {
               className="btn btn-ghost btn-small"
               style={{ marginTop: 14, width: "100%", justifyContent: "center" }}
               onClick={handleSkip}
-              disabled={submitting || Boolean(choiceError)}
+              disabled={submitting || Boolean(choiceError) || saving}
             >
               跳过这题 →
             </button>

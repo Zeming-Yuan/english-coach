@@ -15,7 +15,7 @@ from typing import Any
 
 from alembic.config import Config
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event, inspect, text
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
 from alembic import command
@@ -165,18 +165,11 @@ class ECEnv:
         """让下一次实际写事务的 before_commit 抛 OSError（先完成 seed 再启用）。"""
         self._fail_next_commit = True
 
-    def snapshot(self) -> dict[str, int]:
-        """EC-10 之前仅用于调试的行数快照，不作为验收依据。"""
-        with self.engine.connect() as conn:
-            tables = [
-                name
-                for name in inspect(conn).get_table_names()
-                if not name.startswith("sqlite_")
-            ]
-            return {
-                name: conn.execute(text(f'SELECT COUNT(*) FROM "{name}"')).scalar_one()
-                for name in tables
-            }
+    def snapshot(self) -> dict:
+        """业务语义快照：走完整备份接口，只剔除导出时间，供恢复行为比较。"""
+        payload = self.client.get("/api/export/backup").json()
+        payload.pop("exported_at", None)
+        return payload
 
     def restart(self) -> None:
         """在同一数据库上重建应用与客户端，保留时钟与已落库数据。

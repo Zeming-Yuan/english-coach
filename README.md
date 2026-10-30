@@ -7,10 +7,10 @@
 | 科学原理 | 落地功能 |
 |---|---|
 | **间隔重复 / 遗忘曲线** | FSRS（py-fsrs）按个人记忆状态排下次复习，desired-retention 思想：近 7 天正确率自动调每日新词量（5/10/15） |
-| **提取练习 (Retrieval)** | 拼写练习（Qwerty 式逐字反馈）、听写 4 选 1、测验逐题判分 |
+| **提取练习 (Retrieval)** | 拼写练习（独立回忆或提示辅助）、听写 4 选 1、测验逐题判分 |
 | **生成效应 (Generation)** | 释义 → 主动拼写英文，比被动识别记忆深 |
 | **错误增强 (Errorful Learning)** | 答错词加权入库（error_cards），优先重现，连续对 2 次减权 |
-| **渐褪提示 (Fading Scaffolding)** | 拼写三档：教过（首字母）→ 提示（空格数）→ 独立（自由回忆） |
+| **渐褪提示 (Fading Scaffolding)** | 拼写三档：提示首字母 → 提示长度 → 独立回忆；请求提示后不冒充独立掌握 |
 | **可理解输入 (i+1)** | 句子意群切分（3-6 词一块）+ 语法角色语义配色 + 逐块点读跟读，先"读得下来"再"看得懂" |
 | **脚手架递减 (Fading)** | 中文翻译智能档：复习 <3 次自动显示，≥3 次自动隐藏；也可设置常显/隐藏 |
 | **元认知校准 (JOL)** | 翻面前"先回想 3 秒"引导 + 过快翻面提醒，破除流畅性错觉 |
@@ -43,7 +43,9 @@
 - 词毕业：复习 3 次 → 例句自动转句子卡（对话体、阅读句）继续学
 
 **产出型练习**
-- 拼写练习（三档难度、逐字绿/红校验、回车提交、音效）
+- 拼写练习（提示首字母 / 提示长度 / 独立回忆三档；独立输入不提前显示答案，回车提交）
+  - 独立答对/答错才更新 FSRS；请求任一首字母、长度或逐字反馈后，本题按带提示记录且不排期
+  - 跳过保存为“未作答”事件（正误为空），不增加错词，也不更新排期
 - 听写练习（播发音 4 选 1）
 - 测验（中译英×3 + 选词 + 填空，逐题判分、错题汇总可点进详情）
 - 混合练习（三题型随机交错 + 完成页错题列表）
@@ -66,7 +68,7 @@
 - 🏅 成绩单分享卡（canvas 生成，可存图进简历）
 
 **数据与设置**
-- 💾 全量备份 JSON 导出 + 📥 恢复导入（词库/复习/记忆法/错词）
+- 💾 设置 → 备份与恢复：下载 V2 版本化完整备份（词卡全部字段、当前记忆状态、学习事件、迁移基线、记忆法、错词、困难词、课程、故事及关联）；不包含 API 密钥、环境配置、语音缓存和浏览器偏好。旧格式恢复导入保留
 - 🎴 Anki CSV 导出（UTF-8 BOM，无缝沉淀到你现有的 Anki 复习流）
 - ⚙️ 设置：发音速度 / 每日新词量 / 中文翻译档位（智能/常显/隐藏）/ 暗色模式
 - 新用户 5 分钟闭环：生成词后"马上学一学"不等明天
@@ -115,6 +117,13 @@ python -m uvicorn app.main:app --reload --port 8001
 > **升级前的学习历史**：旧版只保存每张卡最后一次复习状态，无法还原逐次作答。升级会保存
 > 旧行的原始基线，词卡详情只展示最后一次可知活动与累计次数，并明确标注“历史记录不完整”；
 > 不会按累计次数补造过去日期或正确率。升级后产生的新评分逐条追加，不再覆盖旧记录。
+>
+> **保存确认与刷新恢复**：闪卡、课程、故事与词卡详情中的每次显式评分，只有服务端确认
+> 保存后才推进、关闭面板或增加完成数。保存失败会停留在当前题并保留本次评分，可
+> 「继续确认保存」重试同一次提交（不会重复排期或重复记事件）；刷新后若仍有未确认提交，
+> 首页会提示继续确认或明确放弃。浏览器本地存储不可写时，待确认请求只保留在内存中，并
+> 提示“本次操作尚未确认保存；刷新后可能需要重新核对”。应用不提供离线自动重放：未确认
+> 的评分不会被当作已完成。卡片已删除时保存返回 404，可明确放弃失效题。
 
 > 前端开发：`cd frontend && npm install && npm run dev`（Vite dev server，API 代理到 8001）
 > 生产构建：`cd frontend && npm run build`（输出到 `app/static/`，FastAPI 直接挂载）
@@ -151,12 +160,12 @@ npm --prefix frontend run build                        # 生产构建
 | 队列 | GET /api/today（含 error_cards 优先）、GET /api/stats /stats/history /stats/weekly |
 | 学习 | POST /api/reviews（FSRS + 错词加权） |
 | 词卡 | GET/POST/PUT/DELETE /api/cards/*、POST /api/cards/{id}/regenerate、/hard |
-| 练习 | GET /api/quiz、/quiz/choice、POST /api/typing/check、POST /api/quiz/score（批量原子）、GET /api/listening、POST /api/listening/score（识别不排期） |
+| 练习 | GET /api/quiz、/quiz/choice、POST /api/typing/check（判分+事件+排期一次提交）、POST /api/quiz/score（批量原子）、GET /api/listening、POST /api/listening/score（识别不排期） |
 | 课程 | GET /api/lessons*（AI 20 级逐课生成） |
 | 故事 | GET/POST/DELETE /api/stories* |
 | 记忆法 | GET/PUT /api/memos/{card_id} |
 | 发音 | GET /api/tts/audio/{word}（流式 + 缓存 + 预合成） |
-| 数据 | GET /api/export/cards、/api/export/anki、POST /api/import/cards |
+| 数据 | GET /api/export/backup（V2 完整备份）、GET /api/export/cards（旧版非完整）、/api/export/anki、POST /api/import/cards |
 
 ## 技术栈
 
