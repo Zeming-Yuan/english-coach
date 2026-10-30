@@ -103,6 +103,12 @@ export default function App() {
     return () => window.removeEventListener("quiz-single-word", handler);
   }, []);
 
+  // 入门词卡：首页空态与「加词」页共用同一个显式添加动作（无需 AI）
+  const addStarterCards = useCallback(
+    () => api("/api/cards/starter", { method: "POST" }),
+    []
+  );
+
   const isNavView = NAV_TABS[view] !== undefined;
 
   return (
@@ -119,10 +125,10 @@ export default function App() {
       {/* 内容区 */}
       <ErrorBoundary>
       <main className="stage">
-        {view === "queue" && <QueueView setView={setView} setStudyQueue={setStudyQueue} />}
+        {view === "queue" && <QueueView setView={setView} setStudyQueue={setStudyQueue} onAddStarter={addStarterCards} />}
         {view === "words" && <WordsPage />}
         {view === "stories" && <StoriesPage />}
-        {view === "add" && <AddPage onStartStudy={(cards) => { setStudyQueue(cards); setView("study"); }} />}
+        {view === "add" && <AddPage onAddStarter={addStarterCards} onGoWords={() => setView("words")} onStartStudy={(cards) => { setStudyQueue(cards); setView("study"); }} />}
         {view === "stats" && <StatsPage onBack={() => setView("queue")} />}
         {view === "settings" && <SettingsPage darkMode={darkMode} setDarkMode={setDarkMode} />}
         {view === "lessons" && <LessonsPage onExit={() => setView("queue")} />}
@@ -154,7 +160,7 @@ export default function App() {
 }
 
 /* ============ 队列页 ============ */
-function QueueView({ setView, setStudyQueue }) {
+function QueueView({ setView, setStudyQueue, onAddStarter }) {
   const [data, setData] = useState(null);
   const [stats, setStats] = useState(null);
   const [lessonData, setLessonData] = useState(null);
@@ -163,6 +169,8 @@ function QueueView({ setView, setStudyQueue }) {
   const [reloadKey, setReloadKey] = useState(0);
   const [loadError, setLoadError] = useState("");
   const [dailyGoal, setDailyGoal] = useState(() => storageGet("dailyGoal", 10));
+  const [starterLoading, setStarterLoading] = useState(false);
+  const [starterError, setStarterError] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -211,6 +219,25 @@ function QueueView({ setView, setStudyQueue }) {
       </div>
     );
   }
+
+  // 显式添加入门词卡：成功后直接进入现有闪卡流程；失败停留本页可重试
+  const startStarter = async () => {
+    setStarterLoading(true);
+    setStarterError("");
+    try {
+      const result = await onAddStarter();
+      if (result.cards.length > 0) {
+        setStudyQueue(result.cards);
+        setView("study");
+      } else {
+        setView("words");
+      }
+    } catch (error) {
+      setStarterError(error.message);
+    } finally {
+      setStarterLoading(false);
+    }
+  };
 
   const errorCount = (data.error_cards || []).length;
   const isEmpty = data.new_cards.length === 0 && data.due_cards.length === 0 && errorCount === 0;
@@ -291,6 +318,13 @@ function QueueView({ setView, setStudyQueue }) {
           <h2>欢迎来到 EnglishCoach</h2>
           <p>AI 会根据你的记忆安排每天学什么。<br />先加几个想学的词，马上开始！</p>
           <button className="btn btn-primary" onClick={() => setView("add")}>先加几个词</button>
+          <button className="btn btn-ghost" onClick={startStarter} disabled={starterLoading}>
+            {starterLoading ? "正在添加…" : "体验入门词卡"}
+          </button>
+          <p className="add-hint">无需 AI：加入 10 张已核对释义、音标和例句的入门词卡</p>
+          {starterError && (
+            <p role="alert" className="err">添加失败：{starterError}，请重试</p>
+          )}
         </div>
       )}
 
