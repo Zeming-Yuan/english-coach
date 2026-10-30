@@ -113,10 +113,23 @@ python -m uvicorn app.main:app --reload --port 8001
 ## 测试
 
 ```bash
-python -m pytest                 # 后端测试
-node e2e_test.js                 # E2E（需 npx playwright + Edge）
-node e2e_story.js                # 故事流程 E2E
+# 后端回归：自带占位配置与隔离数据库，不要求真实密钥
+python -m pytest
+
+# 浏览器验收（首次需安装前端依赖与 Playwright Chromium）
+npm --prefix frontend install
+npm --prefix frontend exec -- playwright install chromium-headless-shell
+
+npm --prefix frontend run test:e2e -- --ticket EC-01   # 只跑本票已交付场景
+npm --prefix frontend run test:e2e                     # 全部已交付场景
+npm --prefix frontend run build                        # 生产构建
 ```
+
+- 每次 E2E 使用本次运行独有的临时数据库、端口与构建目录；结束时关闭测试进程。
+- `--ticket` 只接受 `EC-NN` 形式；未知票号或没有匹配用例会以非零状态退出，不能当作通过。
+- 失败诊断（trace、截图、错误上下文）位于 `e2e/test-results/`，已加入 gitignore。
+- 旧的 `node e2e_test.js` / `node e2e_story.js` 依赖本机 Edge，仅保留作手工调试；自动验收以
+  `npm --prefix frontend run test:e2e` 为准。
 
 ## API 概览
 

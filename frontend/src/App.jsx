@@ -160,6 +160,7 @@ function QueueView({ setView, setStudyQueue }) {
   const [lessonData, setLessonData] = useState(null);
   const [recommended, setRecommended] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
   const [dailyGoal, setDailyGoal] = useState(() => storageGet("dailyGoal", 10));
 
   useEffect(() => {
@@ -188,10 +189,25 @@ function QueueView({ setView, setStudyQueue }) {
       }
     }
     load();
-  }, []);
+  }, [reloadKey]);
 
   if (loading) return <div className="story-empty">加载中…</div>;
-  if (!data) return <div className="story-empty">加载失败</div>;
+  if (!data) {
+    return (
+      <div className="story-empty">
+        <p>加载失败</p>
+        <button
+          className="btn btn-primary"
+          onClick={() => {
+            setLoading(true);
+            setReloadKey((key) => key + 1);
+          }}
+        >
+          重试
+        </button>
+      </div>
+    );
+  }
 
   const errorCount = (data.error_cards || []).length;
   const isEmpty = data.new_cards.length === 0 && data.due_cards.length === 0 && errorCount === 0;

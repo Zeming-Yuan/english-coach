@@ -1,0 +1,5 @@
+{
+  "settings": {"llm_api_key": "test-placeholder"},
+  "external": {"llm": "unavailable"},
+  "tables": {}
+}
