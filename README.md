@@ -155,7 +155,7 @@ npm --prefix frontend run build                        # 生产构建
 | 故事 | GET/POST/DELETE /api/stories* |
 | 记忆法 | GET/PUT /api/memos/{card_id} |
 | 发音 | GET /api/tts/audio/{word}（流式 + 缓存 + 预合成） |
-| 数据 | GET /api/export/cards、/api/export/anki、POST /api/import/cards |
+| 数据 | GET /api/export/backup（V2 完整备份）、GET /api/export/cards（旧版非完整）、/api/export/anki、POST /api/import/cards |
 
 ## 技术栈
 

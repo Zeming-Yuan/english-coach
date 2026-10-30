@@ -3,6 +3,7 @@
 测试 seam：真实 FastAPI → Alembic 迁移建立的隔离 SQLite。
 """
 
+import json
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -18,7 +19,16 @@ TOP_LEVEL_KEYS = {
     "version",
     "exported_at",
     "learning_timezone",
-    *(name for name, _model in BACKUP_COLLECTIONS),
+    "cards",
+    "reviews",
+    "learning_events",
+    "review_baselines",
+    "memos",
+    "errors",
+    "hard_cards",
+    "lessons",
+    "stories",
+    "story_words",
 }
 
 
@@ -162,7 +172,13 @@ def test_backup_exports_every_model_column_and_association(ec):
     assert [event["card_id"] for event in data["learning_events"]] == [word_id]
     assert data["learning_events"][0]["submission_id"]
     assert data["learning_events"][0]["command_json"]
-    assert data["learning_events"][0]["response"]
+    event_response = data["learning_events"][0]["response"]
+    assert event_response["card_id"] == word_id
+    if event_response.get("sentence_card_id") is not None:
+        assert event_response["sentence_card_id"] in {word_id, sentence_id}
+    serialized = json.dumps(data)
+    assert "llm_api_key" not in serialized
+    assert "LLM_API_KEY" not in serialized
     assert [memo["card_id"] for memo in data["memos"]] == [sentence_id]
     assert [error["card_id"] for error in data["errors"]] == [word_id]
     assert [hard["card_id"] for hard in data["hard_cards"]] == [word_id]

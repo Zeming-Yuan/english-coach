@@ -1,4 +1,4 @@
-"""导出/导入路由：全量备份 JSON + Anki CSV + 恢复导入。"""
+"""导出/导入路由：V2 完整备份 + 旧版卡片 JSON（非完整）+ Anki CSV + 恢复导入。"""
 
 import csv
 import io
