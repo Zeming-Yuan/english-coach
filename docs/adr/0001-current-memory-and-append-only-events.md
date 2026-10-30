@@ -39,6 +39,16 @@
 - 旧库升级会为每张卡保留全部旧行快照，数据库体积随旧行数增加；这是可追溯性的代价。
 - 旧历史只能展示最后可知活动与累计次数，界面必须诚实标注「历史不完整」。
 
+## 输入题、提示与排期映射
+
+- `POST /api/typing/check` 是输入题的薄适配器，经 `submit_attempt` 一次事务完成判分、
+  事件、错词与必要排期；不再由页面先判分再另发 `/api/reviews`。
+- 独立输入（`kind=typed`、`source` 非 `legacy`、`assistance` 为空）答对采用 FSRS 3、
+  答错采用 1；空答案按答错处理，只有 `skipped=true` 才记录 `correct=null`。
+- 任一提示（首字母、长度、逐字反馈、答案朗读、答案可见）或 `source=legacy` 的输入
+  只保存客观结果，不更新 FSRS；跳过同样不更新，也不增加错词权重。
+- 同一 `submission_id` 的回放返回原事件，不重复判分、排期或改错词；同标识不同答案 409。
+
 ## 界面与兼容字段
 
 - 词卡详情新增 `memory_state`、`learning_events`、`history_incomplete`；

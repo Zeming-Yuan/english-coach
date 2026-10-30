@@ -7,10 +7,10 @@
 | 科学原理 | 落地功能 |
 |---|---|
 | **间隔重复 / 遗忘曲线** | FSRS（py-fsrs）按个人记忆状态排下次复习，desired-retention 思想：近 7 天正确率自动调每日新词量（5/10/15） |
-| **提取练习 (Retrieval)** | 拼写练习（Qwerty 式逐字反馈）、听写 4 选 1、测验逐题判分 |
+| **提取练习 (Retrieval)** | 拼写练习（独立回忆或提示辅助）、听写 4 选 1、测验逐题判分 |
 | **生成效应 (Generation)** | 释义 → 主动拼写英文，比被动识别记忆深 |
 | **错误增强 (Errorful Learning)** | 答错词加权入库（error_cards），优先重现，连续对 2 次减权 |
-| **渐褪提示 (Fading Scaffolding)** | 拼写三档：教过（首字母）→ 提示（空格数）→ 独立（自由回忆） |
+| **渐褪提示 (Fading Scaffolding)** | 拼写三档：提示首字母 → 提示长度 → 独立回忆；请求提示后不冒充独立掌握 |
 | **可理解输入 (i+1)** | 句子意群切分（3-6 词一块）+ 语法角色语义配色 + 逐块点读跟读，先"读得下来"再"看得懂" |
 | **脚手架递减 (Fading)** | 中文翻译智能档：复习 <3 次自动显示，≥3 次自动隐藏；也可设置常显/隐藏 |
 | **元认知校准 (JOL)** | 翻面前"先回想 3 秒"引导 + 过快翻面提醒，破除流畅性错觉 |
@@ -43,7 +43,9 @@
 - 词毕业：复习 3 次 → 例句自动转句子卡（对话体、阅读句）继续学
 
 **产出型练习**
-- 拼写练习（三档难度、逐字绿/红校验、回车提交、音效）
+- 拼写练习（提示首字母 / 提示长度 / 独立回忆三档；独立输入不提前显示答案，回车提交）
+  - 独立答对/答错才更新 FSRS；请求任一首字母、长度或逐字反馈后，本题按带提示记录且不排期
+  - 跳过保存为“未作答”事件（正误为空），不增加错词，也不更新排期
 - 听写练习（播发音 4 选 1）
 - 测验（中译英×3 + 选词 + 填空，逐题判分、错题汇总可点进详情）
 - 混合练习（三题型随机交错 + 完成页错题列表）
@@ -150,7 +152,7 @@ npm --prefix frontend run build                        # 生产构建
 | 队列 | GET /api/today（含 error_cards 优先）、GET /api/stats /stats/history /stats/weekly |
 | 学习 | POST /api/reviews（FSRS + 错词加权） |
 | 词卡 | GET/POST/PUT/DELETE /api/cards/*、POST /api/cards/{id}/regenerate、/hard |
-| 练习 | GET /api/quiz、POST /api/typing/check、GET/POST /api/listening* |
+| 练习 | GET /api/quiz、POST /api/typing/check（判分+事件+排期一次提交）、GET/POST /api/listening* |
 | 课程 | GET /api/lessons*（AI 20 级逐课生成） |
 | 故事 | GET/POST/DELETE /api/stories* |
 | 记忆法 | GET/PUT /api/memos/{card_id} |

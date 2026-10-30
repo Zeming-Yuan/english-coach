@@ -50,6 +50,16 @@ class AttemptCommand(BaseModel):
         return self
 
 
+class TypingCheckIn(AttemptCommand):
+    """输入题提交：user_input 是用户拼写，kind 固定 typed。
+
+    兼容旧调用：未提供 source/submission_id 时按 legacy 记录，不排期。
+    """
+
+    kind: Literal["typed"] = "typed"
+    user_input: str
+
+
 class AttemptResult(BaseModel):
     """一次学习提交的已保存结果；重试返回同一份缓存。"""
 
