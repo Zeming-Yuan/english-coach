@@ -66,6 +66,120 @@ def _first_scheduled_day(events: list[EventDict]) -> dict[int, str]:
     return {card_id: value[2] for card_id, value in first.items()}
 
 
+def _objective_rows(events: list[EventDict], predicate) -> list[EventDict]:
+    return [
+        event
+        for event in events
+        if event["source"] != "legacy"
+        and not event["skipped"]
+        and predicate(event)
+        and event["correct"] is not None
+    ]
+
+
+def _metric(successes: int, count: int) -> dict[str, int | None]:
+    return {
+        "successes": successes,
+        "count": count,
+        "percent": round(successes / count * 100) if count else None,
+    }
+
+
+def metric(events: list[EventDict], category: str) -> dict[str, int | None]:
+    """按题型分类的可靠指标；无有效样本返回 percent=None。"""
+    if category == "self_report":
+        rows = [
+            event
+            for event in events
+            if event["source"] != "legacy"
+            and not event["skipped"]
+            and event["kind"] == "self_rating"
+            and (event["self_rating"] is not None or event["fsrs_rating"] is not None)
+        ]
+        successes = sum(
+            1
+            for event in rows
+            if (
+                event["self_rating"]
+                if event["self_rating"] is not None
+                else event["fsrs_rating"]
+            )
+            >= 3
+        )
+        return _metric(successes, len(rows))
+    if category == "retrieval":
+        rows = _objective_rows(
+            events,
+            lambda event: event["kind"] == "typed" and not event["assistance"],
+        )
+    elif category == "assisted":
+        rows = _objective_rows(
+            events,
+            lambda event: event["kind"] == "typed" and bool(event["assistance"]),
+        )
+    elif category == "recognition":
+        rows = _objective_rows(
+            events, lambda event: event["kind"] in ("choice", "related")
+        )
+    else:
+        raise ValueError(f"unknown metric category: {category}")
+    return _metric(sum(1 for event in rows if event["correct"] is True), len(rows))
+
+
+def review_pass_rate(events: list[EventDict]) -> dict[str, int | None]:
+    """可排期事件的复习通过率：1–2 分需强化，3–4 分通过。"""
+    rows = [
+        event
+        for event in events
+        if event["source"] != "legacy"
+        and not event["skipped"]
+        and event["scheduled"]
+        and event["fsrs_rating"] is not None
+    ]
+    return _metric(
+        sum(1 for event in rows if event["fsrs_rating"] >= 3),
+        len(rows),
+    )
+
+
+def adaptive_new_limit(
+    events: list[EventDict], today: str, base: int = 10
+) -> tuple[int, float | None, int]:
+    """近 7 个学习日、同卡同日首条可排期事件决定新词建议。
+
+    样本不足 20 不自动上调；错误率 >30% 仍可下调到 5。无样本时沿用 base。
+    """
+    start = (datetime.fromisoformat(today).date() - timedelta(days=6)).isoformat()
+    first: dict[tuple[int, str], EventDict] = {}
+    for event in sorted(
+        events, key=lambda item: (item["occurred_at"], item["event_id"])
+    ):
+        eligible_kind = event["kind"] == "self_rating" or (
+            event["kind"] == "typed" and not event["assistance"]
+        )
+        if (
+            not event["scheduled"]
+            or event["source"] == "legacy"
+            or not eligible_kind
+            or event["fsrs_rating"] is None
+            or not start <= event["learning_day"] <= today
+        ):
+            continue
+        first.setdefault((event["card_id"], event["learning_day"]), event)
+
+    sample = list(first.values())
+    if not sample:
+        return base, None, 0
+    error = sum(event["fsrs_rating"] <= 2 for event in sample) / len(sample)
+    if error > 0.30:
+        limit = 5
+    elif len(sample) >= 20 and error < 0.15:
+        limit = 15
+    else:
+        limit = 10
+    return limit, error, len(sample)
+
+
 def history_days(
     events: list[EventDict], start: str, end: str
 ) -> list[dict[str, int | str]]:
