@@ -181,8 +181,11 @@ def get_stats(db: Session = Depends(get_db)):
     ).scalar_one()
     total_cards = db.execute(select(func.count(Card.id))).scalar_one()
     graduated = db.execute(
-        select(func.count(Review.id)).where(
-            or_(Review.state == 2, Review.review_count >= 3)
+        select(func.count(Review.id))
+        .join(Card, Review.card_id == Card.id)
+        .where(
+            Card.kind == "word",
+            or_(Review.state == 2, Review.review_count >= 3),
         )
     ).scalar_one()
     return {

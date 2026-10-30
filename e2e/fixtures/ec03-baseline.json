@@ -1,0 +1,21 @@
+{
+  "tables": {
+    "cards": [
+      {"id": 1, "word": "apple", "kind": "word", "meaning": "苹果"}
+    ],
+    "review_baselines": [
+      {
+        "id": "11111111-1111-1111-1111-111111111111",
+        "card_id": 1,
+        "source_review_id": 1,
+        "source_kind": "migration",
+        "raw": {"id": 1, "card_id": 1, "review_count": 2},
+        "selected": true,
+        "captured_at": "2026-10-30T12:00:00+00:00",
+        "last_activity": "2026-10-28T12:00:00+00:00",
+        "cumulative_count": 2,
+        "source_fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      }
+    ]
+  }
+}
