@@ -497,7 +497,7 @@ function WordDetail({ cardId, onBack, allCards, setDetail }) {
         <h3 className="lesson-section">学习记录</h3>
         {c.history_incomplete && (
           <div className="story-empty" style={{ textAlign: "left", fontSize: 13 }}>
-            历史记录不完整：升级前的评分无法逐次还原，只保留最后可知活动与累计次数。
+            部分历史记录不完整：未分类或升级前的评分无法逐次还原，只保留最后可知活动与累计次数。
             {c.memory_state?.last_review && (
               <div>
                 最后可知活动：

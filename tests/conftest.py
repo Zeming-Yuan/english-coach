@@ -1,4 +1,4 @@
-"""pytest 公共夹具：每个测试用独立的内存 SQLite，互不污染。"""
+"""pytest 公共夹具：每个测试用独立 SQLite 文件库，互不污染。"""
 
 import os
 
@@ -13,7 +13,6 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import StaticPool
 
 from app.db import Base, get_db
 from app.main import app
@@ -49,12 +48,12 @@ def ec_factory(tmp_path):
 
 
 @pytest.fixture()
-def db_session():
-    """内存数据库会话（每个测试独立）。"""
+def db_session(tmp_path):
+    """独立文件库会话；请求 Session 与观察 Session 使用不同连接。"""
+    db_path = tmp_path / "test.db"
     engine = create_engine(
-        "sqlite://",
+        f"sqlite:///{db_path.as_posix()}",
         connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
     )
     Base.metadata.create_all(bind=engine)
     TestingSession = sessionmaker(bind=engine, autoflush=False, autocommit=False)

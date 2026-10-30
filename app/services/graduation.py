@@ -100,7 +100,31 @@ def upgrade_sentence_card(card_id: int) -> None:
         if existing is not None and (existing.chunks or existing.difficulty == "reading"):
             return  # 已有 AI 句卡，无需升级
 
+        snapshot = (
+            card.word,
+            card.kind,
+            card.created_at,
+            card.example,
+            card.example_cn,
+        )
         data = _generate_ai_sentence(card.word)
+
+        # AI 期间卡片可能被编辑、删除或随恢复被替换：过期结果直接丢弃。
+        db.refresh(card)
+        if (
+            card.word,
+            card.kind,
+            card.created_at,
+            card.example,
+            card.example_cn,
+        ) != snapshot:
+            return
+        existing = find_sentence_card(db, card.word)
+        if existing is not None:
+            db.refresh(existing)
+            if existing.chunks or existing.difficulty == "reading":
+                return  # 另一后台任务已升级，避免覆盖
+
         example = (data or {}).get("example", "")
         if data and example:
             chunks_raw = data.get("chunks") or []

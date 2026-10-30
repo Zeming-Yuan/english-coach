@@ -30,6 +30,7 @@ from app.schemas.learning import AttemptCommand, AttemptResult
 from app.services.error_tracking import record_error
 from app.services.graduation import (
     ensure_sentence_card,
+    find_sentence_card,
     is_graduated,
     upgrade_sentence_card,
 )
@@ -113,6 +114,23 @@ def classify_attempt(cmd: AttemptCommand, expected: str) -> tuple[bool | None, i
     ):
         return correct, 3 if correct else 1
     return correct, None
+
+
+def select_current_review(reviews: list[Review]) -> Review | None:
+    """在已加载的多行中选当前状态：last_review 最新（None 最后），再取 id 最大。
+
+    批量读取（列表页、重生成句卡）必须复用这条规则，不能另按 id 选行。
+    """
+    if not reviews:
+        return None
+    return max(
+        reviews,
+        key=lambda review: (
+            review.last_review is not None,
+            review.last_review or datetime.min,  # noqa: DTZ901 — 旧表为 naive UTC
+            review.id,
+        ),
+    )
 
 
 def get_memory_state(db: Session, card_id: int) -> Review | None:
@@ -285,16 +303,17 @@ def _apply_attempt_in_transaction(
             is_correct = (fsrs_rating or cmd.rating or 0) >= 3
         record_error(db, card.id, is_correct=is_correct)
 
-    graduated = False
+    # 毕业/句卡字段表达真实当前状态，而不是“本题新建了兜底卡”。
+    graduated = bool(review is not None and is_graduated(review))
     sentence_card_id = None
-    graduated_now = (
-        scheduled and card.kind == "word" and review is not None and is_graduated(review)
-    )
-    if graduated_now:
+    created_sentence = False
+    if graduated and card.kind == "word":
         sentence = ensure_sentence_card(card, db)
         if sentence is not None:
-            graduated = True
-            sentence_card_id = sentence.id
+            created_sentence = True
+        else:
+            sentence = find_sentence_card(db, card.word)
+        sentence_card_id = sentence.id if sentence is not None else None
 
     event_id = str(uuid4())
     result = AttemptResult(
@@ -340,7 +359,7 @@ def _apply_attempt_in_transaction(
         )
     )
     db.flush()
-    if graduated_now:
+    if created_sentence:
         db.info[UPGRADE_INFO_KEY] = card.id
     return result
 

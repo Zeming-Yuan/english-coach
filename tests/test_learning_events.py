@@ -22,6 +22,11 @@ from alembic import command
 from app.schemas.learning import AttemptCommand
 from app.services.learning import classify_attempt
 
+
+def _dt(*args) -> datetime:
+    """旧 reviews 表使用 naive UTC，测试前置数据保持一致。"""
+    return datetime(*args)  # noqa: DTZ001
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -327,3 +332,118 @@ def test_delete_card_clears_new_references(ec):
 def test_classify_attempt_contract(command, expected, result):
     cmd = AttemptCommand(**command)
     assert classify_attempt(cmd, expected) == result
+
+
+def test_current_state_prefers_last_review_over_id(ec):
+    """旧库多行时，详情与列表都必须按 last_review 选当前状态，而不是 id。"""
+    from app.models.review import Review
+
+    card_id = ec.seed_card()
+    db = ec.SessionLocal()
+    try:
+        db.add(
+            Review(
+                card_id=card_id,
+                state=1,
+                step=0,
+                due=_dt(2026, 10, 30),
+                stability=2.5,
+                difficulty=5.0,
+                elapsed_days=0,
+                review_count=7,
+                last_review=_dt(2026, 10, 29, 12, 0),
+            )
+        )
+        db.commit()
+        db.add(
+            Review(
+                card_id=card_id,
+                state=1,
+                step=0,
+                due=_dt(2026, 10, 30),
+                stability=2.5,
+                difficulty=5.0,
+                elapsed_days=0,
+                review_count=2,
+                last_review=_dt(2026, 10, 28, 12, 0),
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    detail = ec.client.get(f"/api/cards/{card_id}").json()
+    assert detail["memory_state"]["review_count"] == 7
+    listed = ec.client.get("/api/cards").json()["cards"][0]
+    assert listed["review_count"] == 7
+
+
+def test_graduated_reports_current_state_on_later_attempts(ec):
+    """已毕业卡再评时 graduated/sentence_card_id 仍是真实当前状态。"""
+    from app.models.review import Review
+
+    card_id = ec.seed_card(
+        "apple",
+        example="The fat cat sat on my laptop.",
+        example_cn="胖猫坐在我的笔记本上。",
+    )
+    sentence_id = ec.seed_card(
+        "apple",
+        kind="sentence",
+        example="The fat cat sat on my laptop.",
+        example_cn="胖猫坐在我的笔记本上。",
+    )
+    db = ec.SessionLocal()
+    try:
+        db.add(
+            Review(
+                card_id=card_id,
+                state=2,
+                step=0,
+                due=_dt(2026, 10, 30),
+                stability=5.0,
+                difficulty=5.0,
+                elapsed_days=0,
+                review_count=3,
+                last_review=_dt(2026, 10, 29),
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    first = ec.client.post(
+        "/api/reviews",
+        json={"card_id": card_id, "rating": 1, "submission_id": str(uuid4())},
+    )
+    assert first.status_code == 200
+    assert first.json()["graduated"] is True
+    assert first.json()["sentence_card_id"] == sentence_id
+
+    second = ec.client.post(
+        "/api/reviews",
+        json={"card_id": card_id, "rating": 1, "submission_id": str(uuid4())},
+    )
+    assert second.status_code == 200
+    assert second.json()["graduated"] is True
+    assert second.json()["sentence_card_id"] == sentence_id
+
+
+def test_downgrade_keeps_events_and_upgrade_is_idempotent(ec):
+    """降级不得删除已追加事件；再次升级跳过 DDL 且数据不变。"""
+    card_id = ec.seed_card()
+    response = ec.client.post(
+        "/api/reviews",
+        json={"card_id": card_id, "rating": 3, "submission_id": str(uuid4())},
+    )
+    assert response.status_code == 200
+
+    config = Config(str(ROOT / "alembic.ini"))
+    config.set_main_option("sqlalchemy.url", ec.database_url)
+    command.downgrade(config, "b1c2d3e4f501")
+    with ec.engine.connect() as conn:
+        assert conn.execute(text("SELECT COUNT(*) FROM review_events")).scalar_one() == 1
+
+    command.upgrade(config, "head")
+    with ec.engine.connect() as conn:
+        assert conn.execute(text("SELECT COUNT(*) FROM review_events")).scalar_one() == 1

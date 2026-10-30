@@ -95,6 +95,10 @@ def _capture_legacy_baselines() -> None:
 
 
 def upgrade() -> None:
+    # 本迁移的 downgrade 不删除已追加的事件/基线；重复升级到本版本时跳过 DDL。
+    existing = set(sa.inspect(op.get_bind()).get_table_names())
+    if {"review_events", "review_baselines"} <= existing:
+        return
     op.create_table(
         "review_events",
         sa.Column("id", sa.String(length=36), nullable=False),
@@ -168,13 +172,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index(
-        "ix_review_baselines_source_fingerprint", table_name="review_baselines"
-    )
-    op.drop_index("ix_review_baselines_card_id", table_name="review_baselines")
-    op.drop_table("review_baselines")
-    op.drop_index("ix_review_events_learning_day", table_name="review_events")
-    op.drop_index("ix_review_events_occurred_at", table_name="review_events")
-    op.drop_index("ix_review_events_card_id", table_name="review_events")
-    op.drop_index("ix_review_events_submission_id", table_name="review_events")
-    op.drop_table("review_events")
+    """加法式迁移：降级不回滚已追加的学习事件/基线。
+
+    规格要求“不得降级时删除新事件”；保留表与数据，前版应用可继续读取
+    兼容的 Review 当前状态。再次 upgrade 时上面的 existing 检查会跳过 DDL。
+    """
+    return None

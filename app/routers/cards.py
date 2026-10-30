@@ -20,6 +20,7 @@ from app.services.learning import (
     get_card_events,
     get_memory_state,
     has_incomplete_history,
+    select_current_review,
 )
 from app.services.llm_client import LLMNotConfigured
 
@@ -99,13 +100,7 @@ def delete_card(card_id: int, db: Session = Depends(get_db)):
 
 def card_to_dict(card: Card, db: Session) -> dict:
     """Card → 全量载荷（含复习状态；比列表版多 3 次关联查询）。"""
-    review = (
-        db.execute(
-            select(Review).where(Review.card_id == card.id).order_by(Review.id.desc())
-        )
-        .scalars()
-        .first()
-    )
+    review = get_memory_state(db, card.id)
     error = (
         db.execute(select(ErrorCard).where(ErrorCard.card_id == card.id))
         .scalars()
@@ -177,11 +172,13 @@ def list_cards(db: Session = Depends(get_db)):
     hards = db.execute(
         select(HardCard).where(HardCard.card_id.in_(card_ids))
     ).scalars().all()
-    # 构建查找表：每个 card_id 取最新 review
-    review_map: dict[int, Review] = {}
+    # 构建查找表：每个 card_id 按全库统一规则选当前状态
+    grouped: dict[int, list[Review]] = {}
     for r in reviews:
-        if r.card_id not in review_map or r.id > review_map[r.card_id].id:
-            review_map[r.card_id] = r
+        grouped.setdefault(r.card_id, []).append(r)
+    review_map = {
+        card_id: select_current_review(rows) for card_id, rows in grouped.items()
+    }
     error_map = {e.card_id: e for e in errors}
     hard_set = {h.card_id for h in hards}
 
@@ -264,10 +261,13 @@ def regenerate_sentences(limit: int = 5, db: Session = Depends(get_db)):
         upgrade_sentence_card,
     )
 
-    # 最新 review 按 card_id 收拢（id 升序，后者覆盖 = 取最新）
-    latest: dict[int, Review] = {}
-    for r in db.execute(select(Review).order_by(Review.id)).scalars().all():
-        latest[r.card_id] = r
+    # 当前状态按全库统一规则收拢（last_review 最新，再 id）
+    grouped: dict[int, list[Review]] = {}
+    for r in db.execute(select(Review)).scalars().all():
+        grouped.setdefault(r.card_id, []).append(r)
+    latest = {
+        card_id: select_current_review(rows) for card_id, rows in grouped.items()
+    }
 
     # 找已毕业但没有句子卡的词
     needs_sentence = []
