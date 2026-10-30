@@ -222,6 +222,7 @@ def get_stats(db: Session = Depends(get_db), runtime: Runtime = Depends(get_runt
         "total_cards": total_cards,
         "graduated": graduated,
         "history_incomplete": history_incomplete,
+        "learning_timezone": runtime.learning_timezone,
     }
 
 
