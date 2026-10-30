@@ -48,7 +48,27 @@
 - 界面能显示轨迹不代表旧数据已补全；历史不完整提示必须由 `history_incomplete`
   显式条件驱动，不能在新库上无条件出现。
 
+## EC-06 补充：识别题不排期与可验证题目上下文
+
+1. **识别练习只记事件、不更新 FSRS。** 看中文选词、听力四选一与相关词选择以
+   `correct` 记录客观结果，`fsrs_rating` 为空、`scheduled=false`，不写 `reviews`；
+   跳过记录 `correct=null`。客户端另传的自评分或下标不能覆盖该策略。
+2. **题目上下文由服务端签名。** `app.services.questions.issue_question` 用应用启动
+   生成的密钥对 `card_id/kind/options/expected/expires_at` 做 HMAC；提交只接受选项
+   文本，服务端按验签后的 `expected` 判分。默认有效期 24 小时，密钥不进入备份。
+3. **失效与篡改可区分。** 过期或服务重启（密钥变化）返回 409，提示重新加载题目；
+   签名损坏、上下文与提交不匹配或答案不在选项中返回 422。缺失卡片返回 404。
+   旧版只传 `selected_index/correct_index` 的调用无法验证题目上下文，不再受理。
+4. **回放优先于过期。** 同一 `submission_id` 若与原事件保存的 token 相同，使用
+   `command_json` 中已验业务上下文比对指纹并返回缓存结果，不因 24 小时过期而失败；
+   换 token 必须重新验签。同标识不同内容仍返回 409。
+5. **批量原子。** `POST /api/quiz/score` 在单次 `run_write` 中先全量校验（卡片、
+   上下文、答案、幂等冲突），再逐项追加事件；任一项失败整批回滚。每项使用独立
+   `submission_id`，响应保留 `total/correct/score/details`。
+
 ## 回退
 
 撤回事件展示或新入口适配时，保留 `review_events`、`review_baselines` 与已追加事件，
 不删除新增数据；旧读取路径继续使用 `reviews` 的当前状态。不得用旧快照覆盖新进度。
+关闭选择入口时保留签名题目协议与识别事件，不退回信任客户端下标的判分方式，
+也不把已记录的识别结果重新转换成 FSRS 复习。

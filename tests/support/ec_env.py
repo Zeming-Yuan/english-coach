@@ -179,8 +179,12 @@ class ECEnv:
             }
 
     def restart(self) -> None:
-        """在同一数据库上重建应用与客户端，保留时钟与已落库数据。"""
+        """在同一数据库上重建应用与客户端，保留时钟与已落库数据。
+
+        题目签名密钥随 Runtime 重新生成，模拟进程重启后旧 token 失效。
+        """
         self.client.close()
+        self.runtime = Runtime(self.clock, self.settings.learning_timezone)
         self.app = self._build_app()
         self.client = TestClient(self.app, raise_server_exceptions=False)
 
