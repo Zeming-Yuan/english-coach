@@ -92,3 +92,70 @@ test("EC-04 deleted-card-can-be-abandoned", async ({app, page}) => {
   await expect(page.locator(".study-done")).toHaveCount(0);
   expect((await (await app.request.get("/api/cards")).json()).cards).toHaveLength(0);
 });
+
+test("EC-04 detail-rating-stays-on-failure", async ({app, page}) => {
+  const [id] = await app.seedCards([{word: "apple", meaning: "苹果"}]);
+  await page.goto(app.baseURL);
+  await page.getByRole("button", {name: /单词本/}).click();
+  await page.locator(".word-item", {hasText: "apple"}).first().click();
+  await page.route("**/api/reviews", (route) => route.abort("failed"), {times: 1});
+  await page.getByTestId("rate-good").click();
+  await expect(page.getByRole("alert")).toContainText("尚未确认保存");
+  await expect(page.getByTestId("learning-event")).toHaveCount(0);
+
+  await page.getByRole("button", {name: "继续确认保存", exact: true}).click();
+  await expect(page.getByTestId("learning-event")).toHaveCount(1);
+  await expect
+    .poll(async () => (await (await app.request.get("/api/cards/" + id)).json()).learning_events.length)
+    .toBe(1);
+});
+
+test("EC-04 lesson-rating-stays-on-failure", async ({appFactory, page}) => {
+  const instance = await appFactory({fixture: "ec04-lesson.json"});
+  await page.goto(instance.baseURL);
+  await page.getByRole("button", {name: /继续 →/}).click();
+  await page.locator(".lesson-list-item").first().click();
+  await page.getByRole("button", {name: "猜不到"}).click();
+  await page.route("**/api/reviews", (route) => route.abort("failed"), {times: 1});
+  await page.getByTestId("rate-good").click();
+  await expect(page.getByRole("alert")).toContainText("尚未确认保存");
+  await expect(page.locator(".word-mastered")).toHaveCount(0);
+
+  await page.getByRole("button", {name: "继续确认保存", exact: true}).click();
+  await expect(page.locator(".word-mastered")).toHaveCount(1);
+  await expect
+    .poll(async () => (await (await instance.request.get("/api/cards/1")).json()).learning_events.length)
+    .toBe(1);
+});
+
+test("EC-04 story-rating-stays-on-failure", async ({appFactory, page}) => {
+  const instance = await appFactory({fixture: "ec04-story.json"});
+  await page.goto(instance.baseURL);
+  await page.getByRole("button", {name: /故事/}).click();
+  await page.locator(".story-item-main").first().click();
+  await page.locator(".sw", {hasText: "apple"}).first().click();
+  await page.route("**/api/reviews", (route) => route.abort("failed"), {times: 1});
+  await page.getByTestId("rate-good").click();
+  await expect(page.getByRole("alert")).toContainText("尚未确认保存");
+  await expect(page.locator(".story-word-panel")).toBeVisible();
+
+  await page.getByRole("button", {name: "继续确认保存", exact: true}).click();
+  await expect(page.locator(".story-word-panel")).toHaveCount(0);
+  await expect
+    .poll(async () => (await (await instance.request.get("/api/cards/1")).json()).learning_events.length)
+    .toBe(1);
+});
+
+test("EC-04 ai-upgrade-failure-does-not-block", async ({appFactory, page}) => {
+  const instance = await appFactory({fixture: "ec04-graduating.json"});
+  await page.goto(instance.baseURL);
+  await page.getByRole("button", {name: "开始今天的学习", exact: true}).click();
+  await page.locator(".flip-hint").first().click();
+  await page.locator(".rating-3").click();
+  await expect(page.locator(".study-done")).toBeVisible();
+
+  const card = await (await instance.request.get("/api/cards/1")).json();
+  expect(card.learning_events).toHaveLength(1);
+  expect(card.graduated).toBe(true);
+  expect(card.sentence_card_id).not.toBeNull();
+});
