@@ -71,7 +71,7 @@ def test_import_roundtrip(client, db_session):
 
 def test_import_dedup_by_word(client, db_session):
     """按 word 去重：多次导入不双份。"""
-    payload = {"cards": [{"word": "banana", "meaning": "香蕉", "kind": "word"}]}
+    payload = {"cards": [{"id": 1, "word": "banana", "meaning": "香蕉", "kind": "word"}]}
     client.post("/api/import/cards", json=payload)
     client.post("/api/import/cards", json=payload)
     cards = db_session.query(Card).filter_by(word="banana").all()
