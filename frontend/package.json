@@ -6,13 +6,15 @@
     "dev": "vite",
     "clean": "node -e \"const fs=require('fs'),p='../app/static/assets/';fs.readdirSync(p).filter(f=>f.startsWith('index-')&&f.endsWith('.js')).forEach(f=>fs.unlinkSync(p+f))\"",
     "build": "npm run clean && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:e2e": "node ../e2e/run.mjs"
   },
   "dependencies": {
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@vitejs/plugin-react": "^4.6.0",
     "vite": "^7.0.0"
   }

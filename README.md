@@ -76,13 +76,16 @@
 # 1. 创建虚拟环境并安装依赖
 python -m venv .venv
 source .venv/Scripts/activate        # Windows Git Bash（PowerShell 用 .venv\Scripts\Activate.ps1）
+# Linux / macOS：source .venv/bin/activate
 pip install -r requirements.txt
 
-# 2. 配置（复制模板并填入 DeepSeek API key）
+# 2. 配置（复制模板；LLM_API_KEY 可留空，本地功能照常可用）
 cp .env.example .env
-# 编辑 .env：DEEPSEEK_API_KEY=sk-xxx
+# 编辑 .env：LLM_API_KEY=sk-xxx（可选）、LLM_BASE_URL、DATABASE_URL、LEARNING_TIMEZONE
 
-# 3. 初始化数据库
+# 3. 初始化/升级数据库
+#    - 迁移与应用读取同一个 DATABASE_URL
+#    - 已有库升级前会自动生成副本：<库文件名>.bak-<UTC 时间戳>（与库同目录）
 python -m alembic upgrade head
 
 # 4. 启动（8001 是专有端口；8000 常被 WSL 占用）
@@ -90,6 +93,17 @@ python -m uvicorn app.main:app --reload --port 8001
 
 # 5. 浏览器打开 http://localhost:8001
 ```
+
+> **从旧配置迁移**：旧版模板使用 `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL`，现已统一为
+> `LLM_API_KEY` / `LLM_BASE_URL`。若同时存在新旧变量，应用会明确报“配置冲突”；
+> 若只有旧变量，会提示改用新名称。错误信息不会输出密钥值。
+>
+> **没有 AI 密钥时**：首页、已有词卡、复习与备份等本地功能可用；调用 AI 生成词卡、
+> 课程或故事时返回 HTTP 503，并提示配置 `LLM_API_KEY`。旧故事的自动补翻属于可选增强，
+> AI 未配置时仍按原文展示。
+>
+> **数据库不可写**时迁移会说明具体地址与原因（隐藏口令），不会静默失败。升级前备份
+> 使用 SQLite backup API 并做完整性校验，校验失败即停止迁移。
 
 > 前端开发：`cd frontend && npm install && npm run dev`（Vite dev server，API 代理到 8001）
 > 生产构建：`cd frontend && npm run build`（输出到 `app/static/`，FastAPI 直接挂载）
@@ -99,10 +113,23 @@ python -m uvicorn app.main:app --reload --port 8001
 ## 测试
 
 ```bash
-python -m pytest                 # 后端测试
-node e2e_test.js                 # E2E（需 npx playwright + Edge）
-node e2e_story.js                # 故事流程 E2E
+# 后端回归：自带占位配置与隔离数据库，不要求真实密钥
+python -m pytest
+
+# 浏览器验收（首次需安装前端依赖与 Playwright Chromium）
+npm --prefix frontend install
+npm --prefix frontend exec -- playwright install chromium-headless-shell
+
+npm --prefix frontend run test:e2e -- --ticket EC-01   # 只跑本票已交付场景
+npm --prefix frontend run test:e2e                     # 全部已交付场景
+npm --prefix frontend run build                        # 生产构建
 ```
+
+- 每次 E2E 使用本次运行独有的临时数据库、端口与构建目录；结束时关闭测试进程。
+- `--ticket` 只接受 `EC-NN` 形式；未知票号或没有匹配用例会以非零状态退出，不能当作通过。
+- 失败诊断（trace、截图、错误上下文）位于 `e2e/test-results/`，已加入 gitignore。
+- 旧的 `node e2e_test.js` / `node e2e_story.js` 依赖本机 Edge，仅保留作手工调试；自动验收以
+  `npm --prefix frontend run test:e2e` 为准。
 
 ## API 概览
 
@@ -122,7 +149,7 @@ node e2e_story.js                # 故事流程 E2E
 
 ## 技术栈
 
-FastAPI · SQLAlchemy 2.0 · SQLite · Alembic · DeepSeek API（OpenAI 兼容协议，deepseek-v4-flash / v4-pro 双模型路由）· py-fsrs（FSRS 间隔重复）· edge-tts（英音合成）· **React 19 + Vite**（Web Audio API 音效）· pytest · ruff · Playwright E2E
+FastAPI · SQLAlchemy 2.0 · SQLite · Alembic · LLM API（OpenAI 兼容协议，默认小米 MiMo 双模型路由）· py-fsrs（FSRS 间隔重复）· edge-tts（英音合成）· **React 19 + Vite**（Web Audio API 音效）· pytest · ruff · Playwright E2E
 
 ## 目录结构
 

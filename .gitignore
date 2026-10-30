@@ -33,6 +33,8 @@ logs/
 # ---- Node / E2E ----
 node_modules/
 e2e_*.png
+e2e/test-results/
+e2e/playwright-report/
 
 # ---- 一次性调试脚本（跑完即弃，不入库） ----
 *_check.js

@@ -8,6 +8,7 @@
 端点只负责：解析请求体 → 调用 submit_review → 组装响应。
 """
 
+import contextvars
 import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -101,7 +102,11 @@ def submit_review(
     # 4. AI 复杂句升级放后台线程：复习提交秒回，学习流程不被 AI 卡住。
     #    只有词卡毕业才启动；幂等（已有 AI 句卡则跳过，见 upgrade_sentence_card）。
     if card.kind == "word" and is_graduated(review):
-        threading.Thread(target=upgrade_sentence_card, args=(card.id,), daemon=True).start()
+        # 复制请求上下文，让后台线程沿用本应用实例的 AI 配置（ContextVar）。
+        ctx = contextvars.copy_context()
+        threading.Thread(
+            target=ctx.run, args=(upgrade_sentence_card, card.id), daemon=True
+        ).start()
     return ReviewResult(
         card_id=card.id,
         next_due=new_card.due,
