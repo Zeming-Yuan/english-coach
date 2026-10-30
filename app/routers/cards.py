@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -15,6 +15,7 @@ from app.services.card_generator import generate_cards, regenerate_example
 from app.services.card_payload import card_payload
 from app.services.graduation import is_graduated
 from app.services.llm_client import LLMNotConfigured
+from app.services.starter_cards import load_starter_cards, starter_card_rows
 
 router = APIRouter()
 
@@ -123,6 +124,28 @@ def generate(req: GenerateCardsIn, db: Session = Depends(get_db)):
     return {
         "generated": len(cards),
         "skipped": len(req.words) - len(cards),
+        "cards": [card_to_dict(c, db) for c in cards],
+    }
+
+
+@router.post("/cards/starter")
+def add_starter_cards(db: Session = Depends(get_db)):
+    """显式添加内置入门词卡：已存在的单词卡跳过，不改写用户内容。
+
+    存在检查与插入在同一写事务内：SQLite 用 BEGIN IMMEDIATE 串行化并发点击，
+    失败整体回滚（EC-03 的统一写事务模块落地后由它接管）。
+    """
+    rows = starter_card_rows()
+    db.execute(text("BEGIN IMMEDIATE"))
+    try:
+        cards = load_starter_cards(db, rows)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    return {
+        "generated": len(cards),
+        "skipped": len(rows) - len(cards),
         "cards": [card_to_dict(c, db) for c in cards],
     }
 

@@ -9,6 +9,7 @@
   - **兜底句卡**：同步用词卡例句建的基础句卡（毫秒级，无 AI）
   - **阅读句**（`difficulty="reading"`）：后台 AI 升级后的复杂句（对话体优先 + 意群切分）；带 AI 生成的 `chunks`
 - **意群**（`chunks`）：`{text, role}` 数组，`role ∈ subject | predicate | adverbial`；缺省前端启发式切分兜底
+- **入门词卡**（starter cards）：随应用分发的 10 张固定词卡（`app/data/starter_cards.json`），只在用户显式点击时按 word+kind 幂等添加，不由 AI 生成，也不自动给老用户填充
 
 ## 运行与配置
 
