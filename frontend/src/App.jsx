@@ -366,9 +366,12 @@ function QueueView({ setView, setStudyQueue, onAddStarter }) {
                   : `还剩 ${target - done} 张`}
                 {data.error_rate !== null && data.error_rate !== undefined && (
                   <span style={{ marginLeft: 8, fontSize: 10, opacity: 0.7 }}>
-                    （近7天正确率 ${100 - data.error_rate}%）
+                    （近7天复习通过率 {100 - data.error_rate}%）
                   </span>
                 )}
+              </span>
+              <span className="goal-sub" data-testid="new-word-limit">
+                新词建议 {adaptiveGoal} 个 · 有效样本 {data.sample_count ?? 0}
               </span>
               <select
                 className="goal-daily-set"

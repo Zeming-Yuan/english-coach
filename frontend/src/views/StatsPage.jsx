@@ -10,6 +10,7 @@ export default function StatsPage({ onBack }) {
   const [stats, setStats] = useState(null);
   const [history, setHistory] = useState(null);
   const [weekly, setWeekly] = useState(null);
+  const [today, setToday] = useState(null);
   const [loading, setLoading] = useState(true);
   const canvasRef = useRef(null);
   const [tooltip, setTooltip] = useState(null);
@@ -27,10 +28,12 @@ export default function StatsPage({ onBack }) {
       api("/api/stats"),
       api("/api/stats/history?days=365"),
       api("/api/stats/weekly").catch(() => null),
-    ]).then(([s, h, w]) => {
+      api("/api/today").catch(() => null),
+    ]).then(([s, h, w, t]) => {
       setStats(s);
       setHistory(h);
       setWeekly(w);
+      setToday(t);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
@@ -204,13 +207,38 @@ export default function StatsPage({ onBack }) {
         </p>
       )}
 
-      {/* 本周正确率 */}
+      {/* 分类指标：自评与客观题分开解释 */}
+      <div className="metrics-panel" style={{ marginTop: 14 }}>
+        <h3 className="lesson-section">练习指标</h3>
+        {[
+          ["retrieval", "独立提取正确率"],
+          ["assisted", "辅助练习正确率"],
+          ["recognition", "识别练习正确率"],
+          ["self_report", "自评通过率"],
+        ].map(([key, label]) => {
+          const value = stats.metrics?.[key];
+          return (
+            <p key={key} data-testid={`${key === "self_report" ? "self-report" : key}-metric`}>
+              {label}：{value?.percent === null || value?.percent === undefined ? "暂无数据" : value.percent + "%"}
+              {value && value.count > 0 && `（${value.successes}/${value.count}）`}
+            </p>
+          );
+        })}
+        {today && (
+          <p data-testid="new-word-limit">
+            新词建议 {today.recommended_goal} 个 · 有效样本 {today.sample_count}
+          </p>
+        )}
+        <p className="add-hint">独立、辅助与识别按客观作答统计；自评只表示主观通过率，不是客观正确率。</p>
+      </div>
+
+      {/* 本周复习通过率 */}
       {weekly && (
         <div className="weekly-accuracy">
-          <h3 className="lesson-section">本周正确率 <span className="week-acc" style={{ color: weekly.this_week >= 80 ? "#137A62" : weekly.this_week >= 60 ? "#B8860B" : "var(--coral)" }}>{weekly.this_week !== null ? weekly.this_week + "%" : "（暂无）"}</span></h3>
+          <h3 className="lesson-section">本周复习通过率 <span className="week-acc" style={{ color: weekly.this_week >= 80 ? "#137A62" : weekly.this_week >= 60 ? "#B8860B" : "var(--coral)" }}>{weekly.this_week !== null ? weekly.this_week + "%" : "（暂无）"}</span></h3>
           <div className="week-bars">
             {weekly.weeks.map((w, i) => (
-              <div key={i} className="week-bar-wrap" title={`${w.start}：${w.total} 题 · 正确率 ${w.accuracy === null ? "-" : w.accuracy + "%"}`}>
+              <div key={i} className="week-bar-wrap" title={`${w.start}：${w.total} 题 · 复习通过率 ${w.accuracy === null ? "-" : w.accuracy + "%"}`}>
                 <div className="week-bar" style={{ height: w.accuracy === null ? 2 : w.accuracy * 0.5, background: w.accuracy === null ? "var(--line)" : w.accuracy >= 80 ? "var(--mint)" : w.accuracy >= 60 ? "var(--sun)" : "var(--coral)" }} />
               </div>
             ))}
