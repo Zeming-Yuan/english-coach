@@ -34,6 +34,11 @@ from app.services.graduation import (
     find_sentence_card,
     upgrade_sentence_card,
 )
+from app.services.questions import (
+    InvalidQuestionToken,
+    business_context,
+    verify_question,
+)
 from app.services.scheduler import build_fsrs_card, schedule
 from app.services.scoring import normalize
 from app.services.write_transaction import run_write
@@ -219,6 +224,60 @@ def _memory_summary(fsrs_card) -> dict:
     }
 
 
+def _event_by_submission(db: Session, submission_id: str) -> ReviewEvent | None:
+    return (
+        db.execute(
+            select(ReviewEvent).where(ReviewEvent.submission_id == submission_id)
+        )
+        .scalars()
+        .first()
+    )
+
+
+def _stored_question(existing: ReviewEvent | None, cmd: AttemptCommand) -> dict | None:
+    """已保存的原 token 使用持久化上下文，重启/过期后仍可安全回放。"""
+    if existing is None or cmd.question_token is None:
+        return None
+    command_json = existing.command_json or {}
+    if command_json.get("question_token") != cmd.question_token:
+        return None
+    stored = command_json.get("question")
+    return stored if isinstance(stored, dict) else None
+
+
+def _resolve_verified_question(
+    db: Session,
+    cmd: AttemptCommand,
+    runtime: Runtime,
+    existing: ReviewEvent | None = None,
+) -> dict | None:
+    """验签题目上下文；回放优先使用事件里保存的已验上下文。
+
+    跳过记录不需要判分，因此不要求题目上下文仍然有效。
+    """
+    if cmd.skipped or cmd.question_token is None:
+        return None
+    stored = _stored_question(existing, cmd)
+    if stored is not None:
+        return stored
+    return verify_question(
+        cmd.question_token, runtime.question_secret, runtime.clock.now()
+    )
+
+
+def _validate_verified_question(cmd: AttemptCommand, verified: dict | None) -> None:
+    if verified is None:
+        return
+    if verified.get("card_id") != cmd.card_id or verified.get("kind") != cmd.kind:
+        raise InvalidQuestionToken("题目上下文与提交不匹配，请重新加载题目")
+    options = verified.get("options") or []
+    answer = cmd.answer
+    if answer is None or not any(
+        normalize(answer) == normalize(str(option)) for option in options
+    ):
+        raise InvalidQuestionToken("答案不在选项中，请重新加载题目")
+
+
 def _apply_attempt_in_transaction(
     db: Session,
     cmd: AttemptCommand,
@@ -231,15 +290,17 @@ def _apply_attempt_in_transaction(
     if cmd.submission_id is None:
         cmd = cmd.model_copy(update={"submission_id": uuid4()})
     submission_id = str(cmd.submission_id)
-    fingerprint = canonical_attempt(cmd, verified_question=verified_question)
 
-    existing = (
-        db.execute(
-            select(ReviewEvent).where(ReviewEvent.submission_id == submission_id)
-        )
-        .scalars()
-        .first()
+    existing = _event_by_submission(db, submission_id)
+    # 回放先比对已验证业务上下文，成功旧提交不因 24 小时过期再失败；
+    # 新提交或换 token 的提交必须重新验签。
+    verified = verified_question or _resolve_verified_question(
+        db, cmd, runtime, existing
     )
+    if verified is not None:
+        verified = business_context(verified)
+    fingerprint = canonical_attempt(cmd, verified_question=verified)
+
     if existing is not None:
         if existing.fingerprint != fingerprint:
             raise SubmissionConflictError(submission_id)
@@ -248,11 +309,12 @@ def _apply_attempt_in_transaction(
     card = db.get(Card, cmd.card_id)
     if card is None:
         raise CardNotFoundError(cmd.card_id)
+    _validate_verified_question(cmd, verified)
 
     expected: str | None = None
     if cmd.kind != "self_rating":
-        if verified_question and verified_question.get("expected") is not None:
-            expected = str(verified_question["expected"])
+        if verified and verified.get("expected") is not None:
+            expected = str(verified["expected"])
         elif card.kind == "word":
             expected = card.word
         else:
@@ -330,7 +392,7 @@ def _apply_attempt_in_transaction(
         sentence_card_id=sentence_card_id,
     )
     command_json = {
-        **_command_payload(cmd, verified_question),
+        **_command_payload(cmd, verified),
         "submission_id": submission_id,
         "question_token": cmd.question_token,
     }
@@ -380,6 +442,56 @@ def apply_attempt_in_transaction(
     )
 
 
+def submit_batch(
+    db: Session,
+    commands: list[AttemptCommand],
+    runtime: Runtime,
+) -> list[AttemptResult]:
+    """批量识别提交：先全量校验，再在单次写事务里逐项保存。
+
+    任意一项无效或冲突时整批回滚；每项拥有独立 submission_id 与幂等结果。
+    """
+    if not commands:
+        return []
+
+    def operation(session: Session) -> list[AttemptResult]:
+        prepared: list[tuple[AttemptCommand, dict | None]] = []
+        for command in commands:
+            cmd = command
+            if cmd.submission_id is None:
+                cmd = cmd.model_copy(update={"submission_id": uuid4()})
+            if not cmd.skipped:
+                if not cmd.question_token:
+                    raise InvalidQuestionToken(
+                        "缺少题目上下文，请重新加载题目"
+                    )
+                if cmd.kind not in ("choice", "related"):
+                    raise InvalidQuestionToken(
+                        "批量判分只接受选择题提交，请重新加载题目"
+                    )
+            existing = _event_by_submission(session, str(cmd.submission_id))
+            verified = _resolve_verified_question(session, cmd, runtime, existing)
+            if verified is not None:
+                verified = business_context(verified)
+            if existing is not None and existing.fingerprint != canonical_attempt(
+                cmd, verified_question=verified
+            ):
+                raise SubmissionConflictError(str(cmd.submission_id))
+            card = session.get(Card, cmd.card_id)
+            if card is None:
+                raise CardNotFoundError(cmd.card_id)
+            _validate_verified_question(cmd, verified)
+            prepared.append((cmd, verified))
+        return [
+            _apply_attempt_in_transaction(
+                session, cmd, runtime, verified_question=verified
+            )
+            for cmd, verified in prepared
+        ]
+
+    return run_write(db, operation)
+
+
 def submit_attempt(
     db: Session,
     cmd: AttemptCommand,
@@ -391,7 +503,6 @@ def submit_attempt(
     """唯一原子业务入口：幂等回放/409、404、判分、事件、排期与错词。"""
     if cmd.submission_id is None:
         cmd = cmd.model_copy(update={"submission_id": uuid4()})
-    fingerprint = canonical_attempt(cmd)
     try:
         result = run_write(
             db,
@@ -401,16 +512,15 @@ def submit_attempt(
         )
     except IntegrityError:
         # 并发同标识提交：唯一约束挡住后回读已保存结果
-        existing = (
-            db.execute(
-                select(ReviewEvent).where(
-                    ReviewEvent.submission_id == str(cmd.submission_id)
-                )
-            )
-            .scalars()
-            .first()
-        )
-        if existing is None or existing.fingerprint != fingerprint:
+        existing = _event_by_submission(db, str(cmd.submission_id))
+        if existing is None:
+            raise
+        verified = _resolve_verified_question(db, cmd, runtime, existing)
+        if verified is not None:
+            verified = business_context(verified)
+        if existing.fingerprint != canonical_attempt(
+            cmd, verified_question=verified
+        ):
             raise
         result = AttemptResult.model_validate(existing.response)
 

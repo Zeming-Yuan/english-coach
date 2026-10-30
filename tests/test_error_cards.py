@@ -54,17 +54,26 @@ def test_typing_check_correct_no_error(client, db_session):
 
 def test_listening_wrong_weights(client, db_session):
     """听写答错 → 错词入库。"""
-    card = _add_word(db_session)
-    client.post(
+    from uuid import uuid4
+
+    _add_word(db_session)
+    for word in ["book", "cat", "dog"]:
+        _add_word(db_session, word)
+    question = client.get("/api/listening?limit=1").json()["questions"][0]
+    wrong = next(option for option in question["options"] if option != question["word"])
+    resp = client.post(
         "/api/listening/score",
         json={
-            "card_id": card.id,
-            "selected_index": 0,
-            "correct_index": 3,
-            "rating": 1,
+            "card_id": question["card_id"],
+            "answer": wrong,
+            "question_token": question["question_token"],
+            "source": "listening",
+            "kind": "choice",
+            "submission_id": str(uuid4()),
         },
     )
-    row = db_session.query(ErrorCard).filter_by(card_id=card.id).first()
+    assert resp.status_code == 200
+    row = db_session.query(ErrorCard).filter_by(card_id=question["card_id"]).first()
     assert row is not None
 
 

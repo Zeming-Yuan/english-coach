@@ -1,11 +1,42 @@
 """听写练习 API 测试。"""
 
 from datetime import datetime, timedelta, timezone
+from uuid import uuid4
 
 from sqlalchemy import select
 
 from app.models.card import Card
 from app.models.review import Review
+
+
+def _seed_words(db, words=("apple", "book", "cat", "dog")):
+    for word in words:
+        db.add(Card(word=word, meaning=f"{word}的意思", kind="word"))
+    db.commit()
+
+
+def _listening_question(client):
+    return client.get("/api/listening?limit=1").json()["questions"][0]
+
+
+def _listening_payload(question, answer=None, **overrides):
+    payload = {
+        "card_id": question["card_id"],
+        "question_token": question["question_token"],
+        "source": "listening",
+        "kind": "choice",
+        "submission_id": str(uuid4()),
+    }
+    if answer is not None:
+        payload["answer"] = answer
+    payload.update(overrides)
+    return payload
+
+
+def _wrong_answer(question):
+    return next(
+        option for option in question["options"] if option != question["word"]
+    )
 
 
 def test_listening_empty(client):
@@ -48,12 +79,30 @@ def test_listening_due_cards(client, db_session):
             review_count=1,
         )
     )
+    # 干扰项来自全库词卡；给它们未来排期，避免进入今日队列
+    for word in ["apple", "book", "cat"]:
+        extra = Card(word=word, meaning=word, kind="word")
+        db_session.add(extra)
+        db_session.flush()
+        db_session.add(
+            Review(
+                card_id=extra.id,
+                state=1,
+                due=now + timedelta(days=30),
+                stability=2.5,
+                difficulty=0.3,
+                elapsed_days=0,
+                last_review=now - timedelta(days=1),
+                review_count=1,
+            )
+        )
     db_session.commit()
 
     resp = client.get("/api/listening")
     data = resp.json()
     assert len(data["questions"]) == 1
     assert data["questions"][0]["word"] == "hello"
+    assert data["questions"][0]["question_token"]
 
 
 def test_listening_small_library_full_options(client, db_session):
@@ -89,6 +138,8 @@ def test_listening_only_word_kind(client, db_session):
     """句子卡不进听写题。"""
     db_session.add(Card(word="hello", meaning="你好", kind="word"))
     db_session.add(Card(word="I am fine", meaning="我很好", kind="sentence"))
+    for word in ["apple", "book", "cat"]:
+        db_session.add(Card(word=word, meaning=word, kind="word"))
     db_session.commit()
 
     resp = client.get("/api/listening")
@@ -98,90 +149,69 @@ def test_listening_only_word_kind(client, db_session):
 
 
 def test_listening_score_correct(client, db_session):
-    """听写评分：选对 + FSRS 记录。"""
-    card = Card(word="world", meaning="世界", kind="word")
-    db_session.add(card)
-    db_session.commit()
+    """听写评分：服务端选对；识别题不排期。"""
+    _seed_words(db_session, ("world", "apple", "book", "cat"))
+    question = _listening_question(client)
 
     resp = client.post(
         "/api/listening/score",
-        json={
-            "card_id": card.id,
-            "selected_index": 2,
-            "correct_index": 2,
-            "rating": 3,
-        },
+        json=_listening_payload(question, question["word"]),
     )
     assert resp.status_code == 200
     data = resp.json()
     assert data["correct"] is True
-    assert data["correct_word"] == "world"
-    assert data["next_due"] is not None
+    assert data["correct_word"] == question["word"]
+    assert data["scheduled"] is False
+    assert data["next_due"] is None
+    assert data["graduated"] is False
 
 
 def test_listening_score_wrong(client, db_session):
-    """听写评分：选错。"""
-    card = Card(word="hello", meaning="你好", kind="word")
-    db_session.add(card)
-    db_session.commit()
+    """听写评分：服务端选错，不写 FSRS。"""
+    _seed_words(db_session, ("hello", "apple", "book", "cat"))
+    question = _listening_question(client)
 
     resp = client.post(
         "/api/listening/score",
-        json={
-            "card_id": card.id,
-            "selected_index": 0,
-            "correct_index": 3,
-            "rating": 1,
-        },
+        json=_listening_payload(question, _wrong_answer(question)),
     )
     assert resp.status_code == 200
     data = resp.json()
     assert data["correct"] is False
     assert data["correct_word"] == "hello"
+    assert data["scheduled"] is False
 
 
-def test_listening_score_card_not_found(client):
+def test_listening_score_card_not_found(client, db_session):
     """不存在的卡 → 404。"""
+    _seed_words(db_session)
+    question = _listening_question(client)
     resp = client.post(
         "/api/listening/score",
-        json={"card_id": 999, "selected_index": 0, "correct_index": 0, "rating": 3},
+        json=_listening_payload(question, question["word"], card_id=999),
     )
     assert resp.status_code == 404
 
 
-def test_listening_score_graduates_triggers_sentence_card(client, db_session, monkeypatch):
-    """听写评分走统一提交域：毕业触发句子卡生成（旧版本漏掉这一步）。"""
-    from app.services import review_submission
-
-    monkeypatch.setattr(review_submission, "upgrade_sentence_card", lambda cid: None)
-    card = Card(
-        word="world",
-        meaning="世界",
-        example="The world is full of surprises.",
-        example_cn="世界充满惊喜。",
-        kind="word",
+def test_listening_repeated_correct_answers_never_graduate(client, db_session):
+    """识别练习不更新 FSRS，因此多次答对也不毕业、不生成句子卡。"""
+    _seed_words(
+        db_session, ("world", "apple", "book", "cat")
     )
-    db_session.add(card)
-    db_session.commit()
+    question = _listening_question(client)
 
-    last_resp = None
     for _ in range(3):
         resp = client.post(
             "/api/listening/score",
-            json={
-                "card_id": card.id,
-                "selected_index": 1,
-                "correct_index": 1,
-                "rating": 3,
-            },
+            json=_listening_payload(question, question["word"]),
         )
         assert resp.status_code == 200
-        last_resp = resp.json()
-        if last_resp.get("graduated"):
-            break
+        assert resp.json()["graduated"] is False
 
-    assert last_resp["graduated"] is True
+    detail = client.get(f"/api/cards/{question['card_id']}").json()
+    assert detail["memory_state"] is None
+    assert len(detail["learning_events"]) == 3
     sentence = db_session.execute(
         select(Card).where(Card.word == "world", Card.kind == "sentence")
     ).scalars().first()
-    assert sentence is not None
+    assert sentence is None

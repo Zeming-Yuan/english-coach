@@ -1,4 +1,4 @@
-from sqlalchemy import select
+from uuid import uuid4
 
 from app.models.card import Card
 
@@ -79,26 +79,52 @@ def test_quiz_empty_db(client, db_session):
     assert data.json()["questions"] == []
 
 
+def _choice_questions(client, limit=5):
+    return client.get(f"/api/quiz/choice?limit={limit}").json()["questions"]
+
+
+def _quiz_answer(question, answer, **overrides):
+    payload = {
+        "card_id": question["card_id"],
+        "answer": answer,
+        "question_token": question["question_token"],
+        "source": "quiz",
+        "kind": "choice",
+        "submission_id": str(uuid4()),
+    }
+    payload.update(overrides)
+    return payload
+
+
+def _wrong_option(question, expected):
+    return next(option for option in question["options"] if option != expected)
+
+
 def test_quiz_score_three_of_five(client, db_session):
     make_quiz_cards(db_session)
-    cards = db_session.execute(select(Card).order_by(Card.id)).scalars().all()
-    answers = [
-        {"card_id": c.id, "user_input": c.word if i < 3 else "wrong"}
-        for i, c in enumerate(cards)
-    ]
+    questions = _choice_questions(client)
+    answers = []
+    for i, question in enumerate(questions):
+        expected = db_session.get(Card, question["card_id"]).word
+        answer = expected if i < 3 else _wrong_option(question, expected)
+        answers.append(_quiz_answer(question, answer))
     resp = client.post("/api/quiz/score", json={"answers": answers})
     data = resp.json()
     assert data["total"] == 5
     assert data["correct"] == 3
     assert data["score"] == 60
+    assert len(data["details"]) == 5
+    assert data["details"][0]["committed"] is True
+    assert data["details"][0]["scheduled"] is False
 
 
 def test_quiz_score_case_and_punctuation_ok(client, db_session):
     make_quiz_cards(db_session)
-    card = db_session.execute(select(Card)).scalars().first()
+    question = _choice_questions(client, limit=1)[0]
+    expected = db_session.get(Card, question["card_id"]).word
     resp = client.post(
         "/api/quiz/score",
-        json={"answers": [{"card_id": card.id, "user_input": "Apple,"}]},
+        json={"answers": [_quiz_answer(question, expected.upper() + ",")]},
     )
     assert resp.json()["correct"] == 1
 
@@ -110,14 +136,14 @@ def test_quiz_score_empty_answers(client):
     assert data["score"] == 0  # 除零保护
 
 
-def test_quiz_score_unknown_card_skipped(client, db_session):
+def test_quiz_score_unknown_card_is_not_found(client, db_session):
     make_quiz_cards(db_session)
+    question = _choice_questions(client, limit=1)[0]
     resp = client.post(
         "/api/quiz/score",
-        json={"answers": [{"card_id": 999, "user_input": "apple"}]},
+        json={"answers": [_quiz_answer(question, question["options"][0], card_id=999)]},
     )
-    assert resp.json()["total"] == 1
-    assert resp.json()["correct"] == 0  # 卡不存在：跳过不计
+    assert resp.status_code == 404
 
 
 def test_choice_endpoint_returns_only_choice(client, db_session):

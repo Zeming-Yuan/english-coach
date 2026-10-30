@@ -49,6 +49,7 @@
 - 听写练习（播发音 4 选 1）
 - 测验（中译英×3 + 选词 + 填空，逐题判分、错题汇总可点进详情）
 - 混合练习（三题型随机交错 + 完成页错题列表）
+- 识别练习（听写 4 选 1、测验选择题、相关词选择）由服务端按签名题目上下文判分并记录识别事件，**不更新 FSRS 排期**。题目上下文默认 24 小时有效：页面停留过久或服务重启后提交会返回 409 并要求重新加载题目；篡改上下文或提交选项外答案返回 422，刷新题目即可继续。
 
 **内容与记忆**
 - 故事模式：AI 用已学词编故事，整句朗读 + 点词弹卡评分
@@ -159,7 +160,7 @@ npm --prefix frontend run build                        # 生产构建
 | 队列 | GET /api/today（含 error_cards 优先）、GET /api/stats /stats/history /stats/weekly |
 | 学习 | POST /api/reviews（FSRS + 错词加权） |
 | 词卡 | GET/POST/PUT/DELETE /api/cards/*、POST /api/cards/{id}/regenerate、/hard |
-| 练习 | GET /api/quiz、POST /api/typing/check（判分+事件+排期一次提交）、GET/POST /api/listening* |
+| 练习 | GET /api/quiz、/quiz/choice、POST /api/typing/check（判分+事件+排期一次提交）、POST /api/quiz/score（批量原子）、GET /api/listening、POST /api/listening/score（识别不排期） |
 | 课程 | GET /api/lessons*（AI 20 级逐课生成） |
 | 故事 | GET/POST/DELETE /api/stories* |
 | 记忆法 | GET/PUT /api/memos/{card_id} |
