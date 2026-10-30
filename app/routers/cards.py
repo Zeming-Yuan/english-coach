@@ -243,6 +243,7 @@ def regenerate_sentences(limit: int = 5, db: Session = Depends(get_db)):
     按统一毕业口径（is_graduated：state==2 或复习 >=3 次）找词，
     建兜底句卡并启动后台 AI 升级——与复习提交路径完全一致。
     """
+    import contextvars as _contextvars
     import threading as _threading
 
     from app.services.graduation import (
@@ -278,8 +279,9 @@ def regenerate_sentences(limit: int = 5, db: Session = Depends(get_db)):
             sentence = ensure_sentence_card(card, db)
             if sentence:
                 generated += 1
+                ctx = _contextvars.copy_context()
                 _threading.Thread(
-                    target=upgrade_sentence_card, args=(card.id,), daemon=True
+                    target=ctx.run, args=(upgrade_sentence_card, card.id), daemon=True
                 ).start()
         except Exception:  # noqa: BLE001, S112 — 单个失败不阻塞整批
             continue

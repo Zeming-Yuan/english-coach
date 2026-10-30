@@ -106,6 +106,36 @@ def test_ec_envs_keep_their_own_llm_client(ec, ec_factory):
     assert second.json()["detail"] == "instance-b"
 
 
+def test_copied_context_carries_llm_binding_into_threads():
+    """后台线程通过 copy_context 继承请求所属实例的 AI 配置。"""
+    import contextvars
+    import threading
+
+    from app.services import llm
+    from app.services.llm_client import LLMNotConfigured
+
+    class LabelledClient:
+        @property
+        def chat(self):
+            raise LLMNotConfigured("thread-bound")
+
+    token = llm.bind_llm_client(LabelledClient())
+    seen: list[str] = []
+
+    def target():
+        try:
+            llm.generate_json("system")
+        except LLMNotConfigured as exc:
+            seen.append(str(exc))
+
+    ctx = contextvars.copy_context()
+    thread = threading.Thread(target=ctx.run, args=(target,))
+    thread.start()
+    thread.join()
+    llm.reset_llm_client(token)
+    assert seen == ["thread-bound"]
+
+
 def test_refresh_examples_reports_unconfigured_ai(ec):
     """批量刷新不能把“AI 未配置”伪装成刷新 0 条。"""
     ec.seed_card("apple", example="short", explanation="no separator")

@@ -61,6 +61,15 @@ def main() -> None:
 
     control_file = Path(args.control_file)
 
+    def _record_external_call(name: str) -> None:
+        """把替身被调用的次数写进控制文件，供浏览器测试断言。"""
+        try:
+            control = json.loads(control_file.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            control = {}
+        control["external_calls"] = [*control.get("external_calls", []), name]
+        control_file.write_text(json.dumps(control), encoding="utf-8")
+
     @event.listens_for(Session, "before_commit")
     def _maybe_fail_commit(_session) -> None:
         try:
@@ -90,6 +99,7 @@ def main() -> None:
         class _FailingLLMClient:
             @property
             def chat(self):
+                _record_external_call(mode)
                 if mode == "timeout":
                     raise TimeoutError("simulated LLM timeout")
                 raise ConnectionError("simulated LLM unavailable")

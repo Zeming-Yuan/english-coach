@@ -183,6 +183,10 @@ async function startApp({fixture = null} = {}) {
       },
       setTime: async (iso) => writeControl(controlFile, {now: iso}),
       failCommitOnce: async () => writeControl(controlFile, {fail_commit_once: true}),
+      externalCalls: async () => {
+        const control = JSON.parse(fs.readFileSync(controlFile, "utf8"));
+        return control.external_calls || [];
+      },
       close: async () => {
         await request.dispose();
         await stopChild(child);

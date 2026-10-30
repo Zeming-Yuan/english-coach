@@ -55,18 +55,15 @@ def main() -> None:
             cards = json.loads(Path(args.cards_file).read_text(encoding="utf-8"))
             rows = [{"meaning": "苹果", "kind": "word", **card} for card in cards]
             load_fixture(engine, {"tables": {"cards": rows}})
-            ids: list[int] = []
+            # 按插入顺序返回真实 ID（load_fixture 逐行插入）。
             with engine.connect() as conn:
-                for row in rows:
-                    ids.append(
-                        conn.execute(
-                            text(
-                                "SELECT id FROM cards WHERE word = :word AND kind = :kind "
-                                "ORDER BY id DESC LIMIT 1"
-                            ),
-                            {"word": row["word"], "kind": row["kind"]},
-                        ).scalar_one()
+                ids = [
+                    row[0]
+                    for row in conn.execute(
+                        text("SELECT id FROM cards ORDER BY id DESC LIMIT :n"),
+                        {"n": len(rows)},
                     )
+                ][::-1]
             print(json.dumps({"ids": ids}))
     finally:
         engine.dispose()
