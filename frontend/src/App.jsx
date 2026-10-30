@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, Component } from "reac
 import { api } from "./lib/api.js";
 import { storageGet, storageSet } from "./lib/utils.js";
 import { setTtsRate } from "./lib/tts.js";
+import { loadPending, sendPending, clearPending } from "./lib/learning.js";
 import StudyPage from "./views/StudyPage.jsx";
 import QuizPage from "./views/QuizPage.jsx";
 import SpellingPage from "./views/SpellingPage.jsx";
@@ -50,6 +51,82 @@ function Toast() {
   );
 }
 
+/* ============ 待确认保存恢复（EC-04） ============ */
+const PENDING_PREFIX = "ec.pending.";
+
+function pendingScopes() {
+  try {
+    const scopes = [];
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(PENDING_PREFIX)) {
+        scopes.push(key.slice(PENDING_PREFIX.length));
+      }
+    }
+    return scopes;
+  } catch {
+    // storage 不可用：内存 pending 由仍挂载的页面自行提示，刷新后无从恢复。
+    return [];
+  }
+}
+
+function PendingRecovery({ onConfirmed }) {
+  const [entries, setEntries] = useState(() =>
+    pendingScopes()
+      .map((scope) => ({ scope, pending: loadPending(scope) }))
+      .filter((entry) => entry.pending),
+  );
+  const [busyScope, setBusyScope] = useState(null);
+  const [error, setError] = useState("");
+
+  if (entries.length === 0) return null;
+
+  const confirm = async (entry) => {
+    setBusyScope(entry.scope);
+    setError("");
+    try {
+      const result = await sendPending(entry.pending);
+      if (result.committed !== true) throw new Error("尚未确认保存");
+      clearPending(entry.scope);
+      setEntries((list) => list.filter((item) => item.scope !== entry.scope));
+      showToast("已确认保存这条学习记录");
+      onConfirmed();
+    } catch (e) {
+      setError("继续确认失败：" + (e?.message || e));
+    } finally {
+      setBusyScope(null);
+    }
+  };
+
+  const abandon = (entry) => {
+    clearPending(entry.scope);
+    setEntries((list) => list.filter((item) => item.scope !== entry.scope));
+  };
+
+  return (
+    <div className="pending-recovery">
+      {entries.map((entry) => (
+        <div key={entry.scope} className="pending-recovery-item">
+          <p role="status">有一条学习记录尚未确认保存；刷新后可能需要重新核对。</p>
+          <div className="save-state-actions">
+            <button
+              className="btn btn-primary btn-small"
+              disabled={busyScope === entry.scope}
+              onClick={() => confirm(entry)}
+            >
+              继续确认保存
+            </button>
+            <button className="btn btn-ghost btn-small" onClick={() => abandon(entry)}>
+              放弃这条待确认
+            </button>
+          </div>
+        </div>
+      ))}
+      {error && <p role="alert" className="err">{error}</p>}
+    </div>
+  );
+}
+
 /* ============ 错误边界 ============ */
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -85,6 +162,7 @@ export default function App() {
   const [studyQueue, setStudyQueue] = useState([]);
   const [singleCard, setSingleCard] = useState(null);
   const [navLocked, setNavLocked] = useState(false);
+  const [queueVersion, setQueueVersion] = useState(0);
   const [darkMode, setDarkMode] = useState(() => storageGet("darkMode", false));
 
   // 设置初始化
@@ -126,7 +204,8 @@ export default function App() {
       {/* 内容区 */}
       <ErrorBoundary>
       <main className="stage">
-        {view === "queue" && <QueueView setView={setView} setStudyQueue={setStudyQueue} onAddStarter={addStarterCards} />}
+        <PendingRecovery onConfirmed={() => setQueueVersion((v) => v + 1)} />
+        {view === "queue" && <QueueView key={queueVersion} setView={setView} setStudyQueue={setStudyQueue} onAddStarter={addStarterCards} />}
         {view === "words" && <WordsPage />}
         {view === "stories" && <StoriesPage />}
         {view === "add" && <AddPage onAddStarter={addStarterCards} onGoWords={() => setView("words")} onStartStudy={(cards) => { setStudyQueue(cards); setView("study"); }} />}
