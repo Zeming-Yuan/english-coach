@@ -15,15 +15,20 @@ from app.services.llm import generate_json
 
 
 def is_graduated(review: Review | None) -> bool:
-    """判定词卡是否毕业：FSRS state == 2 (Review) 或复习次数 >= 3。
+    """判定记忆状态是否达到毕业门槛：FSRS state == 2 或复习次数 >= 3。
 
-    全库唯一毕业口径（复习提交、/api/stats 毕业生数、卡片 payload、
-    设置页重生成句卡都用它）。None 一律未毕业。
+    None 一律未毕业。调用方通常应先确认卡片是 word 类型；需要连同卡型
+    一起判断时使用 card_is_graduated。
     """
     if review is None:
         return False
     # State 枚举（py-fsrs）：0=New, 1=Learning, 2=Review, 3=Relearning
     return review.state == 2 or review.review_count >= 3
+
+
+def card_is_graduated(card: Card, review: Review | None) -> bool:
+    """全库唯一毕业口径：只有单词卡会毕业，句子卡永不毕业。"""
+    return card.kind == "word" and is_graduated(review)
 
 
 def find_sentence_card(db: Session, word: str) -> Card | None:
@@ -100,7 +105,31 @@ def upgrade_sentence_card(card_id: int) -> None:
         if existing is not None and (existing.chunks or existing.difficulty == "reading"):
             return  # 已有 AI 句卡，无需升级
 
+        snapshot = (
+            card.word,
+            card.kind,
+            card.created_at,
+            card.example,
+            card.example_cn,
+        )
         data = _generate_ai_sentence(card.word)
+
+        # AI 期间卡片可能被编辑、删除或随恢复被替换：过期结果直接丢弃。
+        db.refresh(card)
+        if (
+            card.word,
+            card.kind,
+            card.created_at,
+            card.example,
+            card.example_cn,
+        ) != snapshot:
+            return
+        existing = find_sentence_card(db, card.word)
+        if existing is not None:
+            db.refresh(existing)
+            if existing.chunks or existing.difficulty == "reading":
+                return  # 另一后台任务已升级，避免覆盖
+
         example = (data or {}).get("example", "")
         if data and example:
             chunks_raw = data.get("chunks") or []

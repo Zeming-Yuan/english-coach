@@ -1,26 +1,43 @@
-"""听写练习路由：播发音 → 4 选 1。"""
+"""听写练习路由：播发音 → 4 选 1；服务端按签名题目上下文判分。"""
 
+import logging
 import random
-from datetime import datetime, timezone
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models.card import Card
 from app.models.review import Review
-from app.services.review_submission import CardNotFoundError, submit_review
+from app.runtime import Runtime, get_runtime
+from app.schemas.learning import AttemptCommand
+from app.services.learning import (
+    CardNotFoundError,
+    SubmissionConflictError,
+    submit_attempt,
+)
+from app.services.questions import (
+    InvalidQuestionToken,
+    QuestionTokenExpired,
+    QuestionTokenStale,
+    issue_question,
+)
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.get("/listening")
-def get_listening(limit: int = 5, db: Session = Depends(get_db)):
+def get_listening(
+    limit: int = 5,
+    db: Session = Depends(get_db),
+    runtime: Runtime = Depends(get_runtime),
+):
     """从今日队列（新词 + 到期卡）抽词，生成听写题。"""
     # 1. 取今日队列（复用 today 的逻辑）
-    now = datetime.now(timezone.utc)
+    now = runtime.clock.now()
     new_cards = (
         db.execute(
             select(Card)
@@ -77,51 +94,73 @@ def get_listening(limit: int = 5, db: Session = Depends(get_db)):
         selected = selected[:-1]
     other_texts = other_texts(selected)
 
-    # 3. 生成题目：每题 4 选项（1 正确 + 最多 3 干扰）
+    # 3. 生成题目：每题 4 选项（1 正确 + 最多 3 干扰）；无法形成选择时不出假题。
     questions = []
     for card in selected:
         distractors = random.sample(other_texts, min(3, len(other_texts)))
         options = [card.word] + distractors
+        if len(options) < 2:
+            continue
         random.shuffle(options)
-        correct_index = options.index(card.word)
+        issued = issue_question(
+            card,
+            "choice",
+            options,
+            card.word,
+            runtime.question_secret,
+            now=runtime.clock.now(),
+        )
         questions.append(
             {
                 "card_id": card.id,
                 "word": card.word,
                 "meaning": card.meaning,
                 "options": options,
-                "correct_index": correct_index,
+                # 旧字段仅兼容展示；判分使用签名题目上下文，不采信客户端下标。
+                "correct_index": options.index(card.word),
+                "question_token": issued["token"],
             }
         )
 
     return {"questions": questions}
 
 
-class ListeningScoreIn(BaseModel):
-    """听写评分请求体。"""
+class ListeningScoreIn(AttemptCommand):
+    """听写选择提交：answer 为选项文本，服务端按签名上下文判分。"""
 
-    card_id: int
-    selected_index: int
-    correct_index: int
-    rating: int = Field(default=3, ge=1, le=4)  # FSRS 评分 1-4
+    source: Literal["listening"] = "listening"
+    kind: Literal["choice"] = "choice"
 
 
 @router.post("/listening/score")
-def score_listening(payload: ListeningScoreIn, db: Session = Depends(get_db)):
-    """听写评分：判分 + FSRS 写回 + 错词追踪 + 毕业策略（统一见 review_submission）。"""
-    card = db.get(Card, payload.card_id)
-    if card is None:
-        raise HTTPException(status_code=404, detail="Card not found")
-
-    correct = payload.selected_index == payload.correct_index
+def score_listening(
+    payload: ListeningScoreIn,
+    db: Session = Depends(get_db),
+    runtime: Runtime = Depends(get_runtime),
+):
+    """识别题：判分 + 事件 + 错词一次提交；不更新 FSRS。"""
+    if not payload.skipped and not payload.question_token:
+        raise HTTPException(
+            status_code=422, detail="缺少题目上下文，请重新加载题目"
+        )
     try:
-        result = submit_review(db, payload.card_id, payload.rating, correct=correct)
+        result = submit_attempt(db, payload, runtime)
     except CardNotFoundError:
         raise HTTPException(status_code=404, detail="Card not found")
+    except (QuestionTokenExpired, QuestionTokenStale) as error:
+        raise HTTPException(status_code=409, detail=str(error))
+    except InvalidQuestionToken as error:
+        raise HTTPException(status_code=422, detail=str(error))
+    except SubmissionConflictError:
+        raise HTTPException(
+            status_code=409, detail="该提交标识已用于不同内容，请重新加载题目"
+        )
+    except Exception:
+        logger.exception("listening submission failed")
+        raise HTTPException(status_code=500, detail="保存失败，请重试")
 
+    card = db.get(Card, result.card_id)
     return {
-        "correct": correct,
-        "correct_word": card.word,
-        "graduated": result.graduated,
-        "next_due": result.next_due.isoformat(),
+        **result.model_dump(),
+        "correct_word": card.word if card is not None else result.expected,
     }

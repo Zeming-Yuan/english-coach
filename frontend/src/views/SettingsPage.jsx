@@ -5,9 +5,9 @@ import { setTtsRate } from "../lib/tts.js";
 import { showToast } from "../App.jsx";
 
 /**
- * 设置视图：发音速度/每日新词量/暗色模式/刷新例句。
+ * 设置视图：发音速度/每日完成目标/暗色模式/刷新例句。
  */
-export default function SettingsPage({ darkMode, setDarkMode }) {
+export default function SettingsPage({ darkMode, setDarkMode, onOpenBackup }) {
   const [rate, setRate] = useState(() => storageGet("ttsRate", 0.9));
   const [daily, setDaily] = useState(() => storageGet("dailyGoal", 10));
   const [cnMode, setCnMode] = useState(() => storageGet("sentenceCnMode", "auto"));
@@ -39,13 +39,16 @@ export default function SettingsPage({ darkMode, setDarkMode }) {
           </div>
         </div>
         <div className="settings-row">
-          <span className="settings-label">最低保底</span>
+          <span className="settings-label">最低完成目标</span>
           <div className="diff-group">
             {[5, 10, 15, 20].map((n) => (
               <button key={n} className={`diff-btn ${daily === n ? "diff-active" : ""}`} onClick={() => updateDaily(n)}>{n}</button>
             ))}
           </div>
         </div>
+        <p className="add-hint" style={{ margin: "0 0 12px" }}>
+          这是每日完成目标，不等于新词配额；新词建议由近期复习表现单独调节，提高目标不会抵消下调。
+        </p>
         <div className="settings-row">
           <span className="settings-label">暗色模式</span>
           <button className="btn btn-ghost btn-small" onClick={() => { setDarkMode(!darkMode); storageSet("darkMode", !darkMode); }}>
@@ -108,6 +111,11 @@ export default function SettingsPage({ darkMode, setDarkMode }) {
           }}>
             {regenerating ? "生成中…" : "📝 生成句子卡（每次5个）"}
           </button>
+        </div>
+        <div className="settings-row" style={{ flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
+          <span className="settings-label">数据备份</span>
+          <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>下载数据库全部学习内容的版本化备份</p>
+          <button className="btn btn-ghost btn-small" onClick={onOpenBackup}>备份与恢复</button>
         </div>
       </div>
     </section>

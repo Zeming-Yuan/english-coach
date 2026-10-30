@@ -7,10 +7,10 @@
 | 科学原理 | 落地功能 |
 |---|---|
 | **间隔重复 / 遗忘曲线** | FSRS（py-fsrs）按个人记忆状态排下次复习，desired-retention 思想：近 7 天正确率自动调每日新词量（5/10/15） |
-| **提取练习 (Retrieval)** | 拼写练习（Qwerty 式逐字反馈）、听写 4 选 1、测验逐题判分 |
+| **提取练习 (Retrieval)** | 拼写练习（独立回忆或提示辅助）、听写 4 选 1、测验逐题判分 |
 | **生成效应 (Generation)** | 释义 → 主动拼写英文，比被动识别记忆深 |
 | **错误增强 (Errorful Learning)** | 答错词加权入库（error_cards），优先重现，连续对 2 次减权 |
-| **渐褪提示 (Fading Scaffolding)** | 拼写三档：教过（首字母）→ 提示（空格数）→ 独立（自由回忆） |
+| **渐褪提示 (Fading Scaffolding)** | 拼写三档：提示首字母 → 提示长度 → 独立回忆；请求提示后不冒充独立掌握 |
 | **可理解输入 (i+1)** | 句子意群切分（3-6 词一块）+ 语法角色语义配色 + 逐块点读跟读，先"读得下来"再"看得懂" |
 | **脚手架递减 (Fading)** | 中文翻译智能档：复习 <3 次自动显示，≥3 次自动隐藏；也可设置常显/隐藏 |
 | **元认知校准 (JOL)** | 翻面前"先回想 3 秒"引导 + 过快翻面提醒，破除流畅性错觉 |
@@ -43,10 +43,13 @@
 - 词毕业：复习 3 次 → 例句自动转句子卡（对话体、阅读句）继续学
 
 **产出型练习**
-- 拼写练习（三档难度、逐字绿/红校验、回车提交、音效）
+- 拼写练习（提示首字母 / 提示长度 / 独立回忆三档；独立输入不提前显示答案，回车提交）
+  - 独立答对/答错才更新 FSRS；请求任一首字母、长度或逐字反馈后，本题按带提示记录且不排期
+  - 跳过保存为“未作答”事件（正误为空），不增加错词，也不更新排期
 - 听写练习（播发音 4 选 1）
 - 测验（中译英×3 + 选词 + 填空，逐题判分、错题汇总可点进详情）
 - 混合练习（三题型随机交错 + 完成页错题列表）
+- 识别练习（听写 4 选 1、测验选择题、相关词选择）由服务端按签名题目上下文判分并记录识别事件，**不更新 FSRS 排期**。题目上下文默认 24 小时有效：页面停留过久或服务重启后提交会返回 409 并要求重新加载题目；篡改上下文或提交选项外答案返回 422，刷新题目即可继续。
 
 **内容与记忆**
 - 故事模式：AI 用已学词编故事，整句朗读 + 点词弹卡评分
@@ -55,17 +58,21 @@
 
 **单词本**
 - 搜索（词/释义/例句中文）+ 相关性排序（完全匹配>前缀>包含>释义>例句）+ A-Z 排序导航 + 右键快速查阅
-- 详情页：意群切分/难度标签/复习历史（评分标签）/毕业状态/错词数/困难词标记/例句发音
+- 详情页：意群切分/难度标签/学习记录（逐次评分轨迹，升级前旧数据标注“历史记录不完整”）/毕业状态/错词数/困难词标记/例句发音
 - 编辑/删除词卡（AI 生成错了可纠正）；句子长句自动换行不截断
 
 **学习统计**
 - 今日目标环（每日目标可设 5/10/15/20）、🔥 streak、错词入口
-- 本周正确率 + 8 周趋势柱状
-- GitHub 风格热力图（最近一年，hover 显示日期）
+- 今日完成词（按卡去重）、练习次数、跳过数分列；同一张卡跨天活动保留
+- 学习日按 `LEARNING_TIMEZONE`（默认 `Asia/Shanghai`）归属，事件写入时固定，改设置不重写历史
+- 指标分列：独立提取 / 辅助练习 / 识别练习 / 自评通过率；无有效样本显示“暂无数据”，自评不冒充客观正确率
+- 新词建议单独计算（近 7 学习日、同卡同日首答）；提高每日完成目标不会抬高新词配额
+- 本周复习通过率 + 8 周趋势柱状
+- GitHub 风格热力图（最近一年，hover 显示日期与学习时区）；存在旧基线时标注“部分旧历史不可还原”
 - 🏅 成绩单分享卡（canvas 生成，可存图进简历）
 
 **数据与设置**
-- 💾 全量备份 JSON 导出 + 📥 恢复导入（词库/复习/记忆法/错词）
+- 💾 设置 → 备份与恢复：下载 V2 版本化完整备份（词卡全部字段、当前记忆状态、学习事件、迁移基线、记忆法、错词、困难词、课程、故事及关联）；不包含 API 密钥、环境配置、语音缓存和浏览器偏好。旧格式恢复导入保留
 - 🎴 Anki CSV 导出（UTF-8 BOM，无缝沉淀到你现有的 Anki 复习流）
 - ⚙️ 设置：发音速度 / 每日新词量 / 中文翻译档位（智能/常显/隐藏）/ 暗色模式
 - 新用户 5 分钟闭环：生成词后"马上学一学"不等明天
@@ -76,13 +83,16 @@
 # 1. 创建虚拟环境并安装依赖
 python -m venv .venv
 source .venv/Scripts/activate        # Windows Git Bash（PowerShell 用 .venv\Scripts\Activate.ps1）
+# Linux / macOS：source .venv/bin/activate
 pip install -r requirements.txt
 
-# 2. 配置（复制模板并填入 DeepSeek API key）
+# 2. 配置（复制模板；LLM_API_KEY 可留空，本地功能照常可用）
 cp .env.example .env
-# 编辑 .env：DEEPSEEK_API_KEY=sk-xxx
+# 编辑 .env：LLM_API_KEY=sk-xxx（可选）、LLM_BASE_URL、DATABASE_URL、LEARNING_TIMEZONE
 
-# 3. 初始化数据库
+# 3. 初始化/升级数据库
+#    - 迁移与应用读取同一个 DATABASE_URL
+#    - 已有库升级前会自动生成副本：<库文件名>.bak-<UTC 时间戳>（与库同目录）
 python -m alembic upgrade head
 
 # 4. 启动（8001 是专有端口；8000 常被 WSL 占用）
@@ -91,18 +101,59 @@ python -m uvicorn app.main:app --reload --port 8001
 # 5. 浏览器打开 http://localhost:8001
 ```
 
+> **从旧配置迁移**：旧版模板使用 `DEEPSEEK_API_KEY` / `DEEPSEEK_BASE_URL`，现已统一为
+> `LLM_API_KEY` / `LLM_BASE_URL`。若同时存在新旧变量，应用会明确报“配置冲突”；
+> 若只有旧变量，会提示改用新名称。错误信息不会输出密钥值。
+>
+> **没有 AI 密钥时**：首页、已有词卡、复习与备份等本地功能可用；调用 AI 生成词卡、
+> 课程或故事时返回 HTTP 503，并提示配置 `LLM_API_KEY`。旧故事的自动补翻属于可选增强，
+> AI 未配置时仍按原文展示。
+>
+> **体验入门词卡**：首页空态或「加词」页的「体验入门词卡」按钮会一次性加入 10 张
+> 随应用分发的入门词卡（已核对音标、中文释义、完整例句及中文），无需 AI 即可开始学习。
+> 该操作是显式的：只添加尚不存在的单词卡，同词自定义内容与句子卡保持原样，重复点击
+> 不会重复创建；升级或首次打开应用都不会自动给词库填充内容。内容核对记录见
+> `app/data/README.md`。
+>
+> **数据库不可写**时迁移会说明具体地址与原因（隐藏口令），不会静默失败。升级前备份
+> 使用 SQLite backup API 并做完整性校验，校验失败即停止迁移。
+>
+> **升级前的学习历史**：旧版只保存每张卡最后一次复习状态，无法还原逐次作答。升级会保存
+> 旧行的原始基线，词卡详情只展示最后一次可知活动与累计次数，并明确标注“历史记录不完整”；
+> 不会按累计次数补造过去日期或正确率。升级后产生的新评分逐条追加，不再覆盖旧记录。
+>
+> **保存确认与刷新恢复**：闪卡、课程、故事与词卡详情中的每次显式评分，只有服务端确认
+> 保存后才推进、关闭面板或增加完成数。保存失败会停留在当前题并保留本次评分，可
+> 「继续确认保存」重试同一次提交（不会重复排期或重复记事件）；刷新后若仍有未确认提交，
+> 首页会提示继续确认或明确放弃。浏览器本地存储不可写时，待确认请求只保留在内存中，并
+> 提示“本次操作尚未确认保存；刷新后可能需要重新核对”。应用不提供离线自动重放：未确认
+> 的评分不会被当作已完成。卡片已删除时保存返回 404，可明确放弃失效题。
+
 > 前端开发：`cd frontend && npm install && npm run dev`（Vite dev server，API 代理到 8001）
 > 生产构建：`cd frontend && npm run build`（输出到 `app/static/`，FastAPI 直接挂载）
 
-> 首次使用：进「加词」页输入几个单词（如 `apple, banana, teacher`）→ 点"马上学一学"立即开练；或从「开始零基础课程」走 20 级递进。
+> 首次使用：点首页「体验入门词卡」零配置开始第一轮学习；或进「加词」页输入几个单词（如 `apple, banana, teacher`）→ 点"马上学一学"立即开练；或从「开始零基础课程」走 20 级递进。
 
 ## 测试
 
 ```bash
-python -m pytest                 # 后端测试
-node e2e_test.js                 # E2E（需 npx playwright + Edge）
-node e2e_story.js                # 故事流程 E2E
+# 后端回归：自带占位配置与隔离数据库，不要求真实密钥
+python -m pytest
+
+# 浏览器验收（首次需安装前端依赖与 Playwright Chromium）
+npm --prefix frontend install
+npm --prefix frontend exec -- playwright install chromium-headless-shell
+
+npm --prefix frontend run test:e2e -- --ticket EC-01   # 只跑本票已交付场景
+npm --prefix frontend run test:e2e                     # 全部已交付场景
+npm --prefix frontend run build                        # 生产构建
 ```
+
+- 每次 E2E 使用本次运行独有的临时数据库、端口与构建目录；结束时关闭测试进程。
+- `--ticket` 只接受 `EC-NN` 形式；未知票号或没有匹配用例会以非零状态退出，不能当作通过。
+- 失败诊断（trace、截图、错误上下文）位于 `e2e/test-results/`，已加入 gitignore。
+- 旧的 `node e2e_test.js` / `node e2e_story.js` 依赖本机 Edge，仅保留作手工调试；自动验收以
+  `npm --prefix frontend run test:e2e` 为准。
 
 ## API 概览
 
@@ -113,16 +164,16 @@ node e2e_story.js                # 故事流程 E2E
 | 队列 | GET /api/today（含 error_cards 优先）、GET /api/stats /stats/history /stats/weekly |
 | 学习 | POST /api/reviews（FSRS + 错词加权） |
 | 词卡 | GET/POST/PUT/DELETE /api/cards/*、POST /api/cards/{id}/regenerate、/hard |
-| 练习 | GET /api/quiz、POST /api/typing/check、GET/POST /api/listening* |
+| 练习 | GET /api/quiz、/quiz/choice、POST /api/typing/check（判分+事件+排期一次提交）、POST /api/quiz/score（批量原子）、GET /api/listening、POST /api/listening/score（识别不排期） |
 | 课程 | GET /api/lessons*（AI 20 级逐课生成） |
 | 故事 | GET/POST/DELETE /api/stories* |
 | 记忆法 | GET/PUT /api/memos/{card_id} |
 | 发音 | GET /api/tts/audio/{word}（流式 + 缓存 + 预合成） |
-| 数据 | GET /api/export/cards、/api/export/anki、POST /api/import/cards |
+| 数据 | GET /api/export/backup（V2 完整备份）、GET /api/export/cards（旧版非完整）、/api/export/anki、POST /api/import/cards |
 
 ## 技术栈
 
-FastAPI · SQLAlchemy 2.0 · SQLite · Alembic · DeepSeek API（OpenAI 兼容协议，deepseek-v4-flash / v4-pro 双模型路由）· py-fsrs（FSRS 间隔重复）· edge-tts（英音合成）· **React 19 + Vite**（Web Audio API 音效）· pytest · ruff · Playwright E2E
+FastAPI · SQLAlchemy 2.0 · SQLite · Alembic · LLM API（OpenAI 兼容协议，默认小米 MiMo 双模型路由）· py-fsrs（FSRS 间隔重复）· edge-tts（英音合成）· **React 19 + Vite**（Web Audio API 音效）· pytest · ruff · Playwright E2E
 
 ## 目录结构
 

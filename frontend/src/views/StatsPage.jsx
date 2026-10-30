@@ -10,12 +10,13 @@ export default function StatsPage({ onBack }) {
   const [stats, setStats] = useState(null);
   const [history, setHistory] = useState(null);
   const [weekly, setWeekly] = useState(null);
+  const [today, setToday] = useState(null);
   const [loading, setLoading] = useState(true);
   const canvasRef = useRef(null);
   const [tooltip, setTooltip] = useState(null);
 
   const showTooltip = useCallback((e, date, reviews) => {
-    setTooltip({ x: e.clientX + 12, y: e.clientY + 14, text: `${date} · ${reviews} 次复习` });
+    setTooltip({ x: e.clientX + 12, y: e.clientY + 14, text: `${date} · ${reviews} 次作答` });
   }, []);
   const moveTooltip = useCallback((e) => {
     setTooltip((t) => t ? { ...t, x: Math.min(e.clientX + 12, window.innerWidth - 160), y: e.clientY + 14 } : null);
@@ -27,10 +28,12 @@ export default function StatsPage({ onBack }) {
       api("/api/stats"),
       api("/api/stats/history?days=365"),
       api("/api/stats/weekly").catch(() => null),
-    ]).then(([s, h, w]) => {
+      api("/api/today").catch(() => null),
+    ]).then(([s, h, w, t]) => {
       setStats(s);
       setHistory(h);
       setWeekly(w);
+      setToday(t);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
@@ -162,6 +165,8 @@ export default function StatsPage({ onBack }) {
                 key={i}
                 className={`cal-cell cal-l${getLevel(d.reviews)}`}
                 style={{ gridRow: row + 2, gridColumn: col + 2 }}
+                data-date={d.date}
+                data-count={d.reviews}
                 onMouseEnter={(e) => showTooltip(e, d.date, d.reviews)}
                 onMouseMove={moveTooltip}
                 onMouseLeave={hideTooltip}
@@ -188,17 +193,52 @@ export default function StatsPage({ onBack }) {
       <div className="stats-grid">
         <div className="stats-card"><span className="stats-card-value">{stats.total_cards}</span><span className="stats-card-label">累计词汇</span></div>
         <div className="stats-card"><span className="stats-card-value">{stats.graduated}</span><span className="stats-card-label">已毕业</span></div>
-        <div className="stats-card"><span className="stats-card-value">{stats.streak}</span><span className="stats-card-label">连续天数</span></div>
-        <div className="stats-card"><span className="stats-card-value">{stats.reviewed_today}</span><span className="stats-card-label">今日已学</span></div>
+        <div className="stats-card"><span className="stats-card-value" data-testid="streak">{stats.streak}</span><span className="stats-card-label">连续天数</span></div>
+        <div className="stats-card"><span className="stats-card-value">{stats.reviewed_today}</span><span className="stats-card-label">今日完成</span></div>
       </div>
 
-      {/* 本周正确率 */}
+      <div className="today-stats" style={{ marginTop: 12 }}>
+        今日完成 <b>{stats.reviewed_today}</b> 词 · 练习 <b>{stats.attempted_today}</b> 次 ·
+        跳过 <b>{stats.skipped_today}</b> 次
+      </div>
+      {stats.history_incomplete && (
+        <p role="note" className="add-hint">
+          部分旧历史不可还原，图表只展示可确认的记录；旧数据最后活动另见词卡详情。
+        </p>
+      )}
+
+      {/* 分类指标：自评与客观题分开解释 */}
+      <div className="metrics-panel" style={{ marginTop: 14 }}>
+        <h3 className="lesson-section">练习指标</h3>
+        {[
+          ["retrieval", "独立提取正确率"],
+          ["assisted", "辅助练习正确率"],
+          ["recognition", "识别练习正确率"],
+          ["self_report", "自评通过率"],
+        ].map(([key, label]) => {
+          const value = stats.metrics?.[key];
+          return (
+            <p key={key} data-testid={`${key === "self_report" ? "self-report" : key}-metric`}>
+              {label}：{value?.percent === null || value?.percent === undefined ? "暂无数据" : value.percent + "%"}
+              {value && value.count > 0 && `（${value.successes}/${value.count}）`}
+            </p>
+          );
+        })}
+        {today && (
+          <p data-testid="new-word-limit">
+            新词建议 {today.recommended_goal} 个 · 有效样本 {today.sample_count}
+          </p>
+        )}
+        <p className="add-hint">独立、辅助与识别按客观作答统计；自评只表示主观通过率，不是客观正确率。</p>
+      </div>
+
+      {/* 本周复习通过率 */}
       {weekly && (
         <div className="weekly-accuracy">
-          <h3 className="lesson-section">本周正确率 <span className="week-acc" style={{ color: weekly.this_week >= 80 ? "#137A62" : weekly.this_week >= 60 ? "#B8860B" : "var(--coral)" }}>{weekly.this_week !== null ? weekly.this_week + "%" : "（暂无）"}</span></h3>
+          <h3 className="lesson-section">本周复习通过率 <span className="week-acc" style={{ color: weekly.this_week >= 80 ? "#137A62" : weekly.this_week >= 60 ? "#B8860B" : "var(--coral)" }}>{weekly.this_week !== null ? weekly.this_week + "%" : "（暂无）"}</span></h3>
           <div className="week-bars">
             {weekly.weeks.map((w, i) => (
-              <div key={i} className="week-bar-wrap" title={`${w.start}：${w.total} 题 · 正确率 ${w.accuracy === null ? "-" : w.accuracy + "%"}`}>
+              <div key={i} className="week-bar-wrap" title={`${w.start}：${w.total} 题 · 复习通过率 ${w.accuracy === null ? "-" : w.accuracy + "%"}`}>
                 <div className="week-bar" style={{ height: w.accuracy === null ? 2 : w.accuracy * 0.5, background: w.accuracy === null ? "var(--line)" : w.accuracy >= 80 ? "var(--mint)" : w.accuracy >= 60 ? "var(--sun)" : "var(--coral)" }} />
               </div>
             ))}
@@ -224,6 +264,9 @@ export default function StatsPage({ onBack }) {
       {tooltip && (
         <div className="cal-tooltip" style={{ left: tooltip.x, top: tooltip.y }}>
           {tooltip.text}
+          <span style={{ display: "block", opacity: 0.75 }}>
+            学习日按 {stats.learning_timezone || "Asia/Shanghai"} 归属
+          </span>
         </div>
       )}
     </section>

@@ -40,7 +40,8 @@ def lookup_word(word: str, db: Session = Depends(get_db)):
             _cache[word_lower] = result
         return {**result, "word": word, "found": True, "card_id": card.id}
 
-    # 本地没有 → 调 AI 查词（generate_json 失败返回 None，永不抛）
+    # 本地没有 → 调 AI 查词（普通生成失败返回 None；未配置时抛
+    # LLMNotConfigured，由应用映射为 503）
     data = generate_json(
         "你是英语词典。给出发音和中文释义，简短。"
         '严格输出 JSON: {"phonetic": "...", "meaning": "..."}',

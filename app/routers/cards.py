@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -11,9 +11,19 @@ from app.models.error_card import ErrorCard
 from app.models.hard_card import HardCard
 from app.models.memo import Memo
 from app.models.review import Review
+from app.models.review_baseline import ReviewBaseline
+from app.models.review_event import ReviewEvent
 from app.services.card_generator import generate_cards, regenerate_example
 from app.services.card_payload import card_payload
-from app.services.graduation import is_graduated
+from app.services.graduation import card_is_graduated
+from app.services.learning import (
+    get_card_events,
+    get_memory_state,
+    has_incomplete_history,
+    select_current_review,
+)
+from app.services.llm_client import LLMNotConfigured
+from app.services.starter_cards import load_starter_cards, starter_card_rows
 
 router = APIRouter()
 
@@ -76,6 +86,10 @@ def delete_card(card_id: int, db: Session = Depends(get_db)):
     from app.models.story import StoryWord
 
     db.execute(Review.__table__.delete().where(Review.card_id == card_id))
+    db.execute(ReviewEvent.__table__.delete().where(ReviewEvent.card_id == card_id))
+    db.execute(
+        ReviewBaseline.__table__.delete().where(ReviewBaseline.card_id == card_id)
+    )
     db.execute(Memo.__table__.delete().where(Memo.card_id == card_id))
     db.execute(ErrorCard.__table__.delete().where(ErrorCard.card_id == card_id))
     db.execute(HardCard.__table__.delete().where(HardCard.card_id == card_id))
@@ -87,13 +101,7 @@ def delete_card(card_id: int, db: Session = Depends(get_db)):
 
 def card_to_dict(card: Card, db: Session) -> dict:
     """Card → 全量载荷（含复习状态；比列表版多 3 次关联查询）。"""
-    review = (
-        db.execute(
-            select(Review).where(Review.card_id == card.id).order_by(Review.id.desc())
-        )
-        .scalars()
-        .first()
-    )
+    review = get_memory_state(db, card.id)
     error = (
         db.execute(select(ErrorCard).where(ErrorCard.card_id == card.id))
         .scalars()
@@ -122,6 +130,28 @@ def generate(req: GenerateCardsIn, db: Session = Depends(get_db)):
     return {
         "generated": len(cards),
         "skipped": len(req.words) - len(cards),
+        "cards": [card_to_dict(c, db) for c in cards],
+    }
+
+
+@router.post("/cards/starter")
+def add_starter_cards(db: Session = Depends(get_db)):
+    """显式添加内置入门词卡：已存在的单词卡跳过，不改写用户内容。
+
+    存在检查与插入在同一写事务内：SQLite 用 BEGIN IMMEDIATE 串行化并发点击，
+    失败整体回滚（EC-03 的统一写事务模块落地后由它接管）。
+    """
+    rows = starter_card_rows()
+    db.execute(text("BEGIN IMMEDIATE"))
+    try:
+        cards = load_starter_cards(db, rows)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    return {
+        "generated": len(cards),
+        "skipped": len(rows) - len(cards),
         "cards": [card_to_dict(c, db) for c in cards],
     }
 
@@ -165,11 +195,13 @@ def list_cards(db: Session = Depends(get_db)):
     hards = db.execute(
         select(HardCard).where(HardCard.card_id.in_(card_ids))
     ).scalars().all()
-    # 构建查找表：每个 card_id 取最新 review
-    review_map: dict[int, Review] = {}
+    # 构建查找表：每个 card_id 按全库统一规则选当前状态
+    grouped: dict[int, list[Review]] = {}
     for r in reviews:
-        if r.card_id not in review_map or r.id > review_map[r.card_id].id:
-            review_map[r.card_id] = r
+        grouped.setdefault(r.card_id, []).append(r)
+    review_map = {
+        card_id: select_current_review(rows) for card_id, rows in grouped.items()
+    }
     error_map = {e.card_id: e for e in errors}
     hard_set = {h.card_id for h in hards}
 
@@ -222,6 +254,8 @@ def refresh_examples(limit: int = 10, db: Session = Depends(get_db)):
                 if sentence_card:
                     sentence_card.example = example
                     sentence_card.example_cn = example_cn
+        except LLMNotConfigured:
+            raise  # AI 未配置是整批不可用，不能伪装成“刷新了 0 条”
         except Exception:  # noqa: BLE001, S112 — 单个失败不阻塞整批
             continue
 
@@ -237,22 +271,25 @@ def refresh_examples(limit: int = 10, db: Session = Depends(get_db)):
 def regenerate_sentences(limit: int = 5, db: Session = Depends(get_db)):
     """为已毕业但没有句子卡的词重新生成句子卡（AI 生成更复杂的句子）。
 
-    按统一毕业口径（is_graduated：state==2 或复习 >=3 次）找词，
+    按统一毕业口径（card_is_graduated：word 且 state==2 或复习 >=3 次）找词，
     建兜底句卡并启动后台 AI 升级——与复习提交路径完全一致。
     """
+    import contextvars as _contextvars
     import threading as _threading
 
     from app.services.graduation import (
         ensure_sentence_card,
         find_sentence_card,
-        is_graduated,
         upgrade_sentence_card,
     )
 
-    # 最新 review 按 card_id 收拢（id 升序，后者覆盖 = 取最新）
-    latest: dict[int, Review] = {}
-    for r in db.execute(select(Review).order_by(Review.id)).scalars().all():
-        latest[r.card_id] = r
+    # 当前状态按全库统一规则收拢（last_review 最新，再 id）
+    grouped: dict[int, list[Review]] = {}
+    for r in db.execute(select(Review)).scalars().all():
+        grouped.setdefault(r.card_id, []).append(r)
+    latest = {
+        card_id: select_current_review(rows) for card_id, rows in grouped.items()
+    }
 
     # 找已毕业但没有句子卡的词
     needs_sentence = []
@@ -260,7 +297,7 @@ def regenerate_sentences(limit: int = 5, db: Session = Depends(get_db)):
         review = latest.get(card.id)
         if (
             review is not None
-            and is_graduated(review)
+            and card_is_graduated(card, review)
             and find_sentence_card(db, card.word) is None
         ):
             needs_sentence.append(card)
@@ -275,8 +312,9 @@ def regenerate_sentences(limit: int = 5, db: Session = Depends(get_db)):
             sentence = ensure_sentence_card(card, db)
             if sentence:
                 generated += 1
+                ctx = _contextvars.copy_context()
                 _threading.Thread(
-                    target=upgrade_sentence_card, args=(card.id,), daemon=True
+                    target=ctx.run, args=(upgrade_sentence_card, card.id), daemon=True
                 ).start()
         except Exception:  # noqa: BLE001, S112 — 单个失败不阻塞整批
             continue
@@ -305,7 +343,7 @@ def get_card_detail(card_id: int, db: Session = Depends(get_db)):
         .all()
     )
 
-    latest = reviews[0] if reviews else None
+    latest = get_memory_state(db, card_id)
     history = [
         {
             "rating": r.rating,  # 用户评分 1-4（旧数据为 None）
@@ -338,10 +376,29 @@ def get_card_detail(card_id: int, db: Session = Depends(get_db)):
         "chunks": card.chunks,
         "difficulty": card.difficulty,
         "created_at": card.created_at.isoformat(),
-        "graduated": is_graduated(latest),
+        "graduated": card_is_graduated(card, latest),
         "review_count": latest.review_count if latest else 0,
         "error_count": error.error_count if error else 0,
         "memo": memo.content if memo else None,
         "next_due": latest.due.isoformat() if latest else None,
         "review_history": history,
+        "memory_state": (
+            {
+                "state": latest.state,
+                "step": latest.step,
+                "due": latest.due.isoformat() if latest.due else None,
+                "stability": latest.stability,
+                "difficulty": latest.difficulty,
+                "elapsed_days": latest.elapsed_days,
+                "last_review": (
+                    latest.last_review.isoformat() if latest.last_review else None
+                ),
+                "review_count": latest.review_count,
+                "rating": latest.rating,
+            }
+            if latest
+            else None
+        ),
+        "learning_events": get_card_events(db, card_id),
+        "history_incomplete": has_incomplete_history(db, card_id),
     }

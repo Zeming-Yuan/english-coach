@@ -1,0 +1,533 @@
+"""统一学习提交模块：判分、追加事件、FSRS、错词与幂等回放。
+
+所有写入入口最终汇聚到 submit_attempt / apply_attempt_in_transaction：
+- 路由不在进入写模块前查询数据库；
+- run_write 持有 BEGIN IMMEDIATE，事件、排期、错词同一事务提交；
+- submission_id 唯一；同标识同内容返回缓存，不同内容返回 409；
+- 旧调用自动生成随机 submission_id，不承诺跨请求幂等。
+"""
+
+from __future__ import annotations
+
+import contextvars
+import hashlib
+import json
+import threading
+from datetime import datetime, timezone
+from uuid import uuid4
+from zoneinfo import ZoneInfo
+
+from sqlalchemy import literal_column, select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from app.models.card import Card
+from app.models.review import Review
+from app.models.review_baseline import ReviewBaseline
+from app.models.review_event import ReviewEvent
+from app.runtime import Runtime
+from app.schemas.learning import AttemptCommand, AttemptResult
+from app.services.error_tracking import record_error
+from app.services.graduation import (
+    card_is_graduated,
+    ensure_sentence_card,
+    find_sentence_card,
+    upgrade_sentence_card,
+)
+from app.services.questions import (
+    InvalidQuestionToken,
+    business_context,
+    verify_question,
+)
+from app.services.scheduler import build_fsrs_card, schedule
+from app.services.scoring import normalize
+from app.services.write_transaction import run_write
+
+UPGRADE_INFO_KEY = "learning:upgrade_card_id"
+
+
+class CardNotFoundError(LookupError):
+    """卡不存在（端点映射 404）。"""
+
+
+class SubmissionConflictError(RuntimeError):
+    """同一提交标识已用于不同内容（端点映射 409）。"""
+
+    def __init__(self, submission_id: str):
+        super().__init__(f"submission_id 已用于其他内容：{submission_id}")
+        self.submission_id = submission_id
+
+
+def _utc_iso(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc).isoformat()
+
+
+def _command_payload(
+    cmd: AttemptCommand, verified_question: dict | None = None
+) -> dict:
+    """指纹与 command_json 共用的规范化业务字段（不含服务端时间/随机 ID）。"""
+    return {
+        "card_id": cmd.card_id,
+        "source": cmd.source,
+        "kind": cmd.kind,
+        "answer": cmd.answer,
+        "rating": cmd.rating,
+        "assistance": sorted(cmd.assistance),
+        "skipped": cmd.skipped,
+        "stage": cmd.stage,
+        "session_id": str(cmd.session_id) if cmd.session_id else None,
+        "question": verified_question,
+    }
+
+
+def canonical_attempt(
+    cmd: AttemptCommand, *, verified_question: dict | None = None
+) -> str:
+    """对验证后的业务内容排序 JSON 取 SHA256；不含时间、event_id 与题目签名。"""
+    payload = _command_payload(cmd, verified_question)
+    encoded = json.dumps(
+        payload,
+        sort_keys=True,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        default=str,
+    )
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def classify_attempt(cmd: AttemptCommand, expected: str) -> tuple[bool | None, int | None]:
+    """返回 (客观正误, 实际采用的 FSRS 评分)。
+
+    - 跳过：均为空，不伪造答错；
+    - 自评：正误为空，评分用用户选择；
+    - 无辅助的 typed：答对 3 / 答错 1；带辅助、选择题不排期；
+    - legacy 未分类事件不进入可靠指标，typed 也不排期。
+    """
+    if cmd.skipped:
+        return None, None
+    if cmd.kind == "self_rating":
+        return None, cmd.rating
+    correct = normalize(cmd.answer or "") == normalize(expected)
+    if (
+        cmd.kind == "typed"
+        and not cmd.assistance
+        and cmd.source != "legacy"
+    ):
+        return correct, 3 if correct else 1
+    return correct, None
+
+
+def select_current_review(reviews: list[Review]) -> Review | None:
+    """在已加载的多行中选当前状态：last_review 最新（None 最后），再取 id 最大。
+
+    批量读取（列表页、重生成句卡）必须复用这条规则，不能另按 id 选行。
+    """
+    if not reviews:
+        return None
+    return max(
+        reviews,
+        key=lambda review: (
+            review.last_review is not None,
+            review.last_review or datetime.min,  # noqa: DTZ901 — 旧表为 naive UTC
+            review.id,
+        ),
+    )
+
+
+def get_memory_state(db: Session, card_id: int) -> Review | None:
+    """选择当前记忆状态：最新有效复习时间，再按记录顺序（id）。
+
+    兼容旧库同卡多行；迁移基线与运行期读取使用同一规则。
+    """
+    return (
+        db.execute(
+            select(Review)
+            .where(Review.card_id == card_id)
+            .order_by(
+                Review.last_review.is_(None),
+                Review.last_review.desc(),
+                Review.id.desc(),
+            )
+        )
+        .scalars()
+        .first()
+    )
+
+
+def _event_payload(event: ReviewEvent) -> dict:
+    return {
+        "event_id": event.id,
+        "card_id": event.card_id,
+        "source": event.source,
+        "kind": event.kind,
+        "stage": event.stage,
+        "occurred_at": _utc_iso(event.occurred_at),
+        "learning_day": event.learning_day,
+        "learning_timezone": event.learning_timezone,
+        "answer": event.answer,
+        "correct": event.correct,
+        "skipped": event.skipped,
+        "scheduled": event.scheduled,
+        "assistance": list(event.assistance or []),
+        "self_rating": event.self_rating,
+        "fsrs_rating": event.fsrs_rating,
+        "before": event.before,
+        "after": event.after,
+        "session_id": event.session_id,
+    }
+
+
+def get_card_events(db: Session, card_id: int) -> list[dict]:
+    """按提交先后返回真实事件；不包含迁移基线。"""
+    events = (
+        db.execute(
+            select(ReviewEvent)
+            .where(ReviewEvent.card_id == card_id)
+            .order_by(
+                ReviewEvent.occurred_at.asc(),
+                literal_column("review_events.rowid").asc(),
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return [_event_payload(event) for event in events]
+
+
+def has_incomplete_history(db: Session, card_id: int) -> bool:
+    """有迁移基线或未分类旧事件时，历史不能被当作完整逐次记录。"""
+    baseline = db.execute(
+        select(ReviewBaseline.id).where(ReviewBaseline.card_id == card_id).limit(1)
+    ).first()
+    if baseline is not None:
+        return True
+    legacy = db.execute(
+        select(ReviewEvent.id)
+        .where(ReviewEvent.card_id == card_id, ReviewEvent.source == "legacy")
+        .limit(1)
+    ).first()
+    return legacy is not None
+
+
+def _memory_summary(fsrs_card) -> dict:
+    return {
+        "state": int(fsrs_card.state),
+        "step": fsrs_card.step,
+        "due": _utc_iso(fsrs_card.due),
+        "stability": fsrs_card.stability,
+        "difficulty": fsrs_card.difficulty,
+        "last_review": _utc_iso(fsrs_card.last_review),
+    }
+
+
+def _event_by_submission(db: Session, submission_id: str) -> ReviewEvent | None:
+    return (
+        db.execute(
+            select(ReviewEvent).where(ReviewEvent.submission_id == submission_id)
+        )
+        .scalars()
+        .first()
+    )
+
+
+def _stored_question(existing: ReviewEvent | None, cmd: AttemptCommand) -> dict | None:
+    """已保存的原 token 使用持久化上下文，重启/过期后仍可安全回放。"""
+    if existing is None or cmd.question_token is None:
+        return None
+    command_json = existing.command_json or {}
+    if command_json.get("question_token") != cmd.question_token:
+        return None
+    stored = command_json.get("question")
+    return stored if isinstance(stored, dict) else None
+
+
+def _resolve_verified_question(
+    db: Session,
+    cmd: AttemptCommand,
+    runtime: Runtime,
+    existing: ReviewEvent | None = None,
+) -> dict | None:
+    """验签题目上下文；回放优先使用事件里保存的已验上下文。
+
+    跳过记录不需要判分，因此不要求题目上下文仍然有效。
+    """
+    if cmd.skipped or cmd.question_token is None:
+        return None
+    stored = _stored_question(existing, cmd)
+    if stored is not None:
+        return stored
+    return verify_question(
+        cmd.question_token, runtime.question_secret, runtime.clock.now()
+    )
+
+
+def _validate_verified_question(cmd: AttemptCommand, verified: dict | None) -> None:
+    if verified is None:
+        return
+    if verified.get("card_id") != cmd.card_id or verified.get("kind") != cmd.kind:
+        raise InvalidQuestionToken("题目上下文与提交不匹配，请重新加载题目")
+    options = verified.get("options") or []
+    answer = cmd.answer
+    if answer is None or not any(
+        normalize(answer) == normalize(str(option)) for option in options
+    ):
+        raise InvalidQuestionToken("答案不在选项中，请重新加载题目")
+
+
+def _apply_attempt_in_transaction(
+    db: Session,
+    cmd: AttemptCommand,
+    runtime: Runtime,
+    *,
+    verified_question: dict | None = None,
+    correct_override: bool | None = None,
+) -> AttemptResult:
+    db.info.pop(UPGRADE_INFO_KEY, None)
+    if cmd.submission_id is None:
+        cmd = cmd.model_copy(update={"submission_id": uuid4()})
+    submission_id = str(cmd.submission_id)
+
+    existing = _event_by_submission(db, submission_id)
+    # 回放先比对已验证业务上下文，成功旧提交不因 24 小时过期再失败；
+    # 新提交或换 token 的提交必须重新验签。
+    verified = verified_question or _resolve_verified_question(
+        db, cmd, runtime, existing
+    )
+    if verified is not None:
+        verified = business_context(verified)
+    fingerprint = canonical_attempt(cmd, verified_question=verified)
+
+    if existing is not None:
+        if existing.fingerprint != fingerprint:
+            raise SubmissionConflictError(submission_id)
+        return AttemptResult.model_validate(existing.response)
+
+    card = db.get(Card, cmd.card_id)
+    if card is None:
+        raise CardNotFoundError(cmd.card_id)
+    _validate_verified_question(cmd, verified)
+
+    expected: str | None = None
+    if cmd.kind != "self_rating":
+        if verified and verified.get("expected") is not None:
+            expected = str(verified["expected"])
+        elif card.kind == "word":
+            expected = card.word
+        else:
+            expected = card.example or card.word
+
+    correct, fsrs_rating = classify_attempt(cmd, expected or "")
+    if correct_override is not None:
+        correct = correct_override
+
+    now = runtime.clock.now().astimezone(timezone.utc)
+    learning_day = now.astimezone(ZoneInfo(runtime.learning_timezone)).date().isoformat()
+
+    review = get_memory_state(db, card.id)
+    was_graduated = card_is_graduated(card, review)
+    fsrs_card = build_fsrs_card(review)
+    before = _memory_summary(fsrs_card)
+    scheduled = fsrs_rating is not None and not cmd.skipped
+    after = before
+    next_due = _utc_iso(review.due) if review is not None else None
+
+    if scheduled:
+        new_card = schedule(fsrs_card, fsrs_rating, now)
+        after = _memory_summary(new_card)
+        if review is None:
+            review = Review(card_id=card.id, review_count=1)
+            db.add(review)
+        else:
+            review.review_count += 1
+        review.state = new_card.state.value
+        review.step = new_card.step
+        review.due = new_card.due
+        review.stability = new_card.stability  # type: ignore[assignment]
+        review.difficulty = new_card.difficulty  # type: ignore[assignment]
+        review.elapsed_days = (
+            (now - review.last_review.replace(tzinfo=timezone.utc)).days
+            if review.last_review
+            else 0
+        )
+        review.last_review = now
+        review.rating = fsrs_rating
+        next_due = _utc_iso(new_card.due)
+
+    if not cmd.skipped:
+        if correct_override is not None:
+            is_correct = correct_override
+        elif correct is not None:
+            is_correct = correct
+        else:
+            is_correct = (fsrs_rating or cmd.rating or 0) >= 3
+        record_error(db, card.id, is_correct=is_correct)
+
+    # 毕业/句卡字段表达真实当前状态；newly_graduated 只用于“本次刚毕业”的反馈。
+    graduated = card_is_graduated(card, review)
+    newly_graduated = graduated and not was_graduated
+    sentence_card_id = None
+    created_sentence = False
+    if graduated:
+        sentence = ensure_sentence_card(card, db)
+        if sentence is not None:
+            created_sentence = True
+        else:
+            sentence = find_sentence_card(db, card.word)
+        sentence_card_id = sentence.id if sentence is not None else None
+
+    event_id = str(uuid4())
+    result = AttemptResult(
+        event_id=event_id,
+        card_id=card.id,
+        correct=correct,
+        expected=normalize(expected) if expected is not None else None,
+        scheduled=scheduled,
+        next_due=next_due,
+        graduated=graduated,
+        newly_graduated=newly_graduated,
+        sentence_card_id=sentence_card_id,
+    )
+    command_json = {
+        **_command_payload(cmd, verified),
+        "submission_id": submission_id,
+        "question_token": cmd.question_token,
+    }
+    command_json["expected"] = expected
+    db.add(
+        ReviewEvent(
+            id=event_id,
+            submission_id=submission_id,
+            card_id=card.id,
+            source=cmd.source,
+            kind=cmd.kind,
+            stage=cmd.stage,
+            occurred_at=now.replace(tzinfo=None),
+            learning_day=learning_day,
+            learning_timezone=runtime.learning_timezone,
+            answer=cmd.answer,
+            correct=correct,
+            skipped=cmd.skipped,
+            scheduled=scheduled,
+            assistance=list(cmd.assistance),
+            self_rating=cmd.rating if cmd.kind == "self_rating" else None,
+            fsrs_rating=fsrs_rating if scheduled else None,
+            before=before if scheduled else None,
+            after=after if scheduled else None,
+            fingerprint=fingerprint,
+            command_json=command_json,
+            response=result.model_dump(),
+            session_id=str(cmd.session_id) if cmd.session_id else None,
+        )
+    )
+    db.flush()
+    if created_sentence:
+        db.info[UPGRADE_INFO_KEY] = card.id
+    return result
+
+
+def apply_attempt_in_transaction(
+    db: Session,
+    cmd: AttemptCommand,
+    runtime: Runtime,
+    *,
+    verified_question: dict | None = None,
+) -> AttemptResult:
+    """由已在 run_write 内的调用者使用；不自行 commit，避免嵌套事务。"""
+    return _apply_attempt_in_transaction(
+        db, cmd, runtime, verified_question=verified_question
+    )
+
+
+def submit_batch(
+    db: Session,
+    commands: list[AttemptCommand],
+    runtime: Runtime,
+) -> list[AttemptResult]:
+    """批量识别提交：先全量校验，再在单次写事务里逐项保存。
+
+    任意一项无效或冲突时整批回滚；每项拥有独立 submission_id 与幂等结果。
+    """
+    if not commands:
+        return []
+
+    def operation(session: Session) -> list[AttemptResult]:
+        prepared: list[tuple[AttemptCommand, dict | None]] = []
+        for command in commands:
+            cmd = command
+            if cmd.submission_id is None:
+                cmd = cmd.model_copy(update={"submission_id": uuid4()})
+            if not cmd.skipped:
+                if not cmd.question_token:
+                    raise InvalidQuestionToken(
+                        "缺少题目上下文，请重新加载题目"
+                    )
+                if cmd.kind not in ("choice", "related"):
+                    raise InvalidQuestionToken(
+                        "批量判分只接受选择题提交，请重新加载题目"
+                    )
+            existing = _event_by_submission(session, str(cmd.submission_id))
+            verified = _resolve_verified_question(session, cmd, runtime, existing)
+            if verified is not None:
+                verified = business_context(verified)
+            if existing is not None and existing.fingerprint != canonical_attempt(
+                cmd, verified_question=verified
+            ):
+                raise SubmissionConflictError(str(cmd.submission_id))
+            card = session.get(Card, cmd.card_id)
+            if card is None:
+                raise CardNotFoundError(cmd.card_id)
+            _validate_verified_question(cmd, verified)
+            prepared.append((cmd, verified))
+        return [
+            _apply_attempt_in_transaction(
+                session, cmd, runtime, verified_question=verified
+            )
+            for cmd, verified in prepared
+        ]
+
+    return run_write(db, operation)
+
+
+def submit_attempt(
+    db: Session,
+    cmd: AttemptCommand,
+    runtime: Runtime,
+    *,
+    correct_override: bool | None = None,
+    upgrade=None,
+) -> AttemptResult:
+    """唯一原子业务入口：幂等回放/409、404、判分、事件、排期与错词。"""
+    if cmd.submission_id is None:
+        cmd = cmd.model_copy(update={"submission_id": uuid4()})
+    try:
+        result = run_write(
+            db,
+            lambda session: _apply_attempt_in_transaction(
+                session, cmd, runtime, correct_override=correct_override
+            ),
+        )
+    except IntegrityError:
+        # 并发同标识提交：唯一约束挡住后回读已保存结果
+        existing = _event_by_submission(db, str(cmd.submission_id))
+        if existing is None:
+            raise
+        verified = _resolve_verified_question(db, cmd, runtime, existing)
+        if verified is not None:
+            verified = business_context(verified)
+        if existing.fingerprint != canonical_attempt(
+            cmd, verified_question=verified
+        ):
+            raise
+        result = AttemptResult.model_validate(existing.response)
+
+    upgrade_card_id = db.info.pop(UPGRADE_INFO_KEY, None)
+    if upgrade_card_id is not None:
+        # commit 之后才启动 AI；后台线程沿用本应用实例的 LLM 绑定。
+        target = upgrade or upgrade_sentence_card
+        ctx = contextvars.copy_context()
+        threading.Thread(target=ctx.run, args=(target, upgrade_card_id), daemon=True).start()
+    return result

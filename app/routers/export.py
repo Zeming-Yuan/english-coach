@@ -1,14 +1,14 @@
-"""导出/导入路由：全量备份 JSON + Anki CSV + 恢复导入。"""
+"""导出/导入路由：V2 完整备份 + 旧版卡片 JSON（非完整）+ Anki CSV + 恢复导入。"""
 
 import csv
 import io
 import json
-from datetime import datetime, timezone
+import logging
+from pathlib import Path
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
-from sqlalchemy import delete, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -16,105 +16,96 @@ from app.models.card import Card
 from app.models.error_card import ErrorCard
 from app.models.memo import Memo
 from app.models.review import Review
-from app.services.card_payload import backup_payload, card_from_backup
+from app.runtime import Runtime, get_runtime
+from app.schemas.backup import BackupValidationError, UnsupportedBackupError
+from app.services.backup import export_backup
+from app.services.card_payload import backup_payload
+from app.services.restore import (
+    AmbiguousTargetError,
+    RevisionConflictError,
+    preview_legacy_restore,
+    restore_legacy_backup,
+)
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
-def _parse_dt(v):
-    """解析 ISO 日期（容错 None/非法）。"""
-    if not v:
-        return None
+def _safety_directory(db: Session) -> Path:
+    """恢复前备份目录与应用数据库同目录，测试不会写到用户 data/。"""
+    database = db.get_bind().url.database
+    if database and database != ":memory:":
+        return Path(database).parent / "backups"
+    return Path("./data/backups")
+
+
+def _restore_error(error: Exception) -> HTTPException:
+    if isinstance(error, BackupValidationError):
+        return HTTPException(status_code=422, detail=error.issues)
+    if isinstance(error, (UnsupportedBackupError, AmbiguousTargetError)):
+        return HTTPException(status_code=422, detail=str(error))
+    if isinstance(error, RevisionConflictError):
+        return HTTPException(status_code=409, detail=str(error))
+    logger.exception("legacy restore failed")
+    return HTTPException(status_code=500, detail="恢复失败，原数据未改变")
+
+
+@router.post("/import/preview")
+def preview_import(
+    payload: dict,
+    db: Session = Depends(get_db),
+    runtime: Runtime = Depends(get_runtime),
+):
+    """只读预览旧版部分恢复的范围与影响。"""
     try:
-        return datetime.fromisoformat(str(v).replace("Z", "+00:00")).replace(
-            tzinfo=None
-        )
-    except ValueError:
-        return None
-
-
-class ImportIn(BaseModel):
-    """导入备份请求体（与 /api/export/cards 输出同构）。"""
-
-    cards: list[dict] = []
-    reviews: list[dict] = []
-    memos: list[dict] = []
-    errors: list[dict] = []
+        return preview_legacy_restore(db, payload, runtime)
+    except Exception as error:  # 统一映射为结构化错误
+        raise _restore_error(error) from error
 
 
 @router.post("/import/cards")
-def import_cards(payload: ImportIn, db: Session = Depends(get_db)):
-    """导入备份：按 word 去重，缺失卡重建，复习/记忆法/错词回写。"""
-    # 先校验 payload 有内容
-    if not payload.cards:
-        return {"imported_words": 0, "requests": 0}
-    # 清空关联表（全量恢复语义）
-    db.execute(delete(Review))
-    db.execute(delete(Memo))
-    db.execute(delete(ErrorCard))
-    # 词卡：按 word 复用已有卡或重建（列表按 word 去重）
-    word_to_id = {}
-    new_words = 0
-    seen = set()
-    for c in payload.cards:
-        w = (c.get("word") or "").strip()
-        if not w or w in seen:
-            continue
-        seen.add(w)
-        existing = db.execute(
-            select(Card).where(Card.word == w, Card.kind == c.get("kind", "word"))
-        ).scalars().first()
-        if existing:
-            word_to_id[w] = existing.id
-            continue
-        card = card_from_backup(c)
-        word_to_id.pop(w, None)
-        db.add(card)
-        db.flush()
-        word_to_id[w] = card.id
-        new_words += 1
-    db.commit()  # 卡片就位
+def import_cards(
+    payload: dict,
+    db: Session = Depends(get_db),
+    runtime: Runtime = Depends(get_runtime),
+):
+    """旧版部分恢复：先校验，再在单一事务中写入；失败不改变原数据。"""
+    if "backup" in payload:
+        backup = payload.get("backup")
+        expected_revision = payload.get("expected_revision")
+        if not isinstance(backup, dict):
+            raise HTTPException(status_code=422, detail="backup 必须是对象")
+    else:
+        backup = payload
+        expected_revision = None
+    try:
+        return restore_legacy_backup(
+            db, backup, expected_revision, runtime, _safety_directory(db)
+        )
+    except Exception as error:  # 统一映射为结构化错误
+        raise _restore_error(error) from error
 
-    # 复习记录回写（old card_id → new id 映射由 word 兜底：按 review.card_id 查旧卡名）
-    old_id_to_word = {c.get("id"): c.get("word") for c in payload.cards}
-    for r in payload.reviews:
-        word = old_id_to_word.get(r.get("card_id"))
-        if not word or word not in word_to_id:
-            continue
-        due = _parse_dt(r.get("due")) or datetime.now(timezone.utc).replace(
-            tzinfo=None
-        )
-        db.add(
-            Review(
-                card_id=word_to_id[word],
-                state=int(r.get("state", 0)),
-                step=r.get("step"),
-                due=due,
-                stability=float(r.get("stability", 1.0)),
-                difficulty=float(r.get("difficulty", 1.0)),
-                elapsed_days=int(r.get("elapsed_days", 0)),
-                last_review=_parse_dt(r.get("last_review")),
-                review_count=int(r.get("review_count", 1)),
-                rating=r.get("rating"),
-            )
-        )
-    for m in payload.memos:
-        word = old_id_to_word.get(m.get("card_id"))
-        if word and word in word_to_id and m.get("content"):
-            db.add(Memo(card_id=word_to_id[word], content=m["content"]))
-    for e in payload.errors:
-        word = old_id_to_word.get(e.get("card_id"))
-        if word and word in word_to_id:
-            db.add(
-                ErrorCard(card_id=word_to_id[word], error_count=int(e.get("error_count", 1)))
-            )
-    db.commit()
-    return {"imported_words": new_words, "requests": len(payload.cards)}
+
+@router.get("/export/backup")
+def export_backup_endpoint(
+    db: Session = Depends(get_db),
+    runtime: Runtime = Depends(get_runtime),
+):
+    """完整 V2 备份：版本、导出时间、学习时区与全部学习内容及关联。"""
+    payload = export_backup(db, runtime)
+    raw = json.dumps(payload, ensure_ascii=False, indent=1).encode("utf-8")
+    return StreamingResponse(
+        iter([raw]),
+        media_type="application/json",
+        headers={
+            "Content-Disposition": 'attachment; filename="english-coach-backup.json"'
+        },
+    )
 
 
 @router.get("/export/cards")
 def export_cards(db: Session = Depends(get_db)):
-    """全量备份：词卡 + 复习记录 + 记忆法 + 错词。"""
+    """旧导出格式：词卡 + 复习记录 + 记忆法 + 错词（兼容保留，非完整备份）。"""
     cards = db.execute(select(Card).order_by(Card.id)).scalars().all()
     reviews = db.execute(select(Review).order_by(Review.card_id)).scalars().all()
     memos = db.execute(select(Memo)).scalars().all()

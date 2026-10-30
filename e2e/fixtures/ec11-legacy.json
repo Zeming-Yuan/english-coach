@@ -1,0 +1,36 @@
+{
+  "cards": [
+    {
+      "id": 1,
+      "word": "apple",
+      "kind": "word",
+      "phonetic": "/ˈæpəl/",
+      "meaning": "苹果",
+      "example": "The red apple rolled off the table.",
+      "example_cn": "红苹果从桌上滚了下来。"
+    },
+    {
+      "id": 2,
+      "word": "apple",
+      "kind": "sentence",
+      "meaning": "一天一苹果。",
+      "example": "An apple a day keeps the doctor away.",
+      "example_cn": "一天一苹果，医生远离我。"
+    }
+  ],
+  "reviews": [
+    {
+      "card_id": 1,
+      "state": 2,
+      "due": "2026-10-30T00:00:00",
+      "stability": 3.0,
+      "difficulty": 5.0,
+      "elapsed_days": 1,
+      "last_review": "2026-10-29T00:00:00",
+      "review_count": 2,
+      "rating": 3
+    }
+  ],
+  "memos": [{"card_id": 2, "content": "这句话我读过"}],
+  "errors": [{"card_id": 1, "error_count": 2}]
+}

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, Component } from "reac
 import { api } from "./lib/api.js";
 import { storageGet, storageSet } from "./lib/utils.js";
 import { setTtsRate } from "./lib/tts.js";
+import { loadPending, sendPending, clearPending } from "./lib/learning.js";
 import StudyPage from "./views/StudyPage.jsx";
 import QuizPage from "./views/QuizPage.jsx";
 import SpellingPage from "./views/SpellingPage.jsx";
@@ -12,7 +13,9 @@ import StoriesPage from "./views/StoriesPage.jsx";
 import AddPage from "./views/AddPage.jsx";
 import StatsPage from "./views/StatsPage.jsx";
 import SettingsPage from "./views/SettingsPage.jsx";
+import BackupPage from "./views/BackupPage.jsx";
 import LessonsPage from "./views/LessonsPage.jsx";
+import { useStarterCards } from "./hooks/useStarterCards.js";
 
 /* ============ 视图路由 ============ */
 const NAV_TABS = { queue: "队列", words: "单词本", stories: "故事", add: "加词" };
@@ -45,6 +48,82 @@ function Toast() {
           {data.actionLabel}
         </button>
       )}
+    </div>
+  );
+}
+
+/* ============ 待确认保存恢复（EC-04） ============ */
+const PENDING_PREFIX = "ec.pending.";
+
+function pendingScopes() {
+  try {
+    const scopes = [];
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(PENDING_PREFIX)) {
+        scopes.push(key.slice(PENDING_PREFIX.length));
+      }
+    }
+    return scopes;
+  } catch {
+    // storage 不可用：内存 pending 由仍挂载的页面自行提示，刷新后无从恢复。
+    return [];
+  }
+}
+
+function PendingRecovery({ onConfirmed }) {
+  const [entries, setEntries] = useState(() =>
+    pendingScopes()
+      .map((scope) => ({ scope, pending: loadPending(scope) }))
+      .filter((entry) => entry.pending),
+  );
+  const [busyScope, setBusyScope] = useState(null);
+  const [error, setError] = useState("");
+
+  if (entries.length === 0) return null;
+
+  const confirm = async (entry) => {
+    setBusyScope(entry.scope);
+    setError("");
+    try {
+      const result = await sendPending(entry.pending);
+      if (result.committed !== true) throw new Error("尚未确认保存");
+      clearPending(entry.scope);
+      setEntries((list) => list.filter((item) => item.scope !== entry.scope));
+      showToast("已确认保存这条学习记录");
+      onConfirmed();
+    } catch (e) {
+      setError("继续确认失败：" + (e?.message || e));
+    } finally {
+      setBusyScope(null);
+    }
+  };
+
+  const abandon = (entry) => {
+    clearPending(entry.scope);
+    setEntries((list) => list.filter((item) => item.scope !== entry.scope));
+  };
+
+  return (
+    <div className="pending-recovery">
+      {entries.map((entry) => (
+        <div key={entry.scope} className="pending-recovery-item">
+          <p role="status">有一条学习记录尚未确认保存；刷新后可能需要重新核对。</p>
+          <div className="save-state-actions">
+            <button
+              className="btn btn-primary btn-small"
+              disabled={busyScope === entry.scope}
+              onClick={() => confirm(entry)}
+            >
+              继续确认保存
+            </button>
+            <button className="btn btn-ghost btn-small" onClick={() => abandon(entry)}>
+              放弃这条待确认
+            </button>
+          </div>
+        </div>
+      ))}
+      {error && <p role="alert" className="err">{error}</p>}
     </div>
   );
 }
@@ -84,6 +163,7 @@ export default function App() {
   const [studyQueue, setStudyQueue] = useState([]);
   const [singleCard, setSingleCard] = useState(null);
   const [navLocked, setNavLocked] = useState(false);
+  const [queueVersion, setQueueVersion] = useState(0);
   const [darkMode, setDarkMode] = useState(() => storageGet("darkMode", false));
 
   // 设置初始化
@@ -103,6 +183,12 @@ export default function App() {
     return () => window.removeEventListener("quiz-single-word", handler);
   }, []);
 
+  // 入门词卡：首页空态与「加词」页共用同一个显式添加动作（无需 AI）
+  const addStarterCards = useCallback(
+    () => api("/api/cards/starter", { method: "POST" }),
+    []
+  );
+
   const isNavView = NAV_TABS[view] !== undefined;
 
   return (
@@ -113,18 +199,20 @@ export default function App() {
           <span className="logo-mark">E</span>
           <span className="logo-text">EnglishCoach</span>
         </div>
-        <button className="settings-btn" title="设置" onClick={() => setView(view === "settings" ? "queue" : "settings")}>⚙️</button>
+        <button className="settings-btn" title="设置" aria-label="设置" onClick={() => setView(view === "settings" ? "queue" : "settings")}>⚙️</button>
       </header>
 
       {/* 内容区 */}
       <ErrorBoundary>
       <main className="stage">
-        {view === "queue" && <QueueView setView={setView} setStudyQueue={setStudyQueue} />}
+        <PendingRecovery onConfirmed={() => setQueueVersion((v) => v + 1)} />
+        {view === "queue" && <QueueView key={queueVersion} setView={setView} setStudyQueue={setStudyQueue} onAddStarter={addStarterCards} />}
         {view === "words" && <WordsPage />}
         {view === "stories" && <StoriesPage />}
-        {view === "add" && <AddPage onStartStudy={(cards) => { setStudyQueue(cards); setView("study"); }} />}
+        {view === "add" && <AddPage onAddStarter={addStarterCards} onGoWords={() => setView("words")} onStartStudy={(cards) => { setStudyQueue(cards); setView("study"); }} />}
         {view === "stats" && <StatsPage onBack={() => setView("queue")} />}
-        {view === "settings" && <SettingsPage darkMode={darkMode} setDarkMode={setDarkMode} />}
+        {view === "settings" && <SettingsPage darkMode={darkMode} setDarkMode={setDarkMode} onOpenBackup={() => setView("backup")} />}
+        {view === "backup" && <BackupPage onBack={() => setView("settings")} />}
         {view === "lessons" && <LessonsPage onExit={() => setView("queue")} />}
         {view === "study" && <StudyPage queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} />}
         {view === "quiz" && <QuizPage onExit={() => setView("queue")} />}
@@ -154,13 +242,20 @@ export default function App() {
 }
 
 /* ============ 队列页 ============ */
-function QueueView({ setView, setStudyQueue }) {
+function QueueView({ setView, setStudyQueue, onAddStarter }) {
   const [data, setData] = useState(null);
   const [stats, setStats] = useState(null);
   const [lessonData, setLessonData] = useState(null);
   const [recommended, setRecommended] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [loadError, setLoadError] = useState("");
   const [dailyGoal, setDailyGoal] = useState(() => storageGet("dailyGoal", 10));
+  const {
+    loading: starterLoading,
+    error: starterError,
+    addStarter: requestStarter,
+  } = useStarterCards(onAddStarter);
 
   useEffect(() => {
     async function load() {
@@ -183,15 +278,45 @@ function QueueView({ setView, setStudyQueue }) {
         } catch {}
       } catch (e) {
         console.error("加载队列失败", e);
+        setLoadError(e?.message || String(e));
       } finally {
         setLoading(false);
       }
     }
     load();
-  }, []);
+  }, [reloadKey]);
 
   if (loading) return <div className="story-empty">加载中…</div>;
-  if (!data) return <div className="story-empty">加载失败</div>;
+  if (!data) {
+    return (
+      <div className="story-empty">
+        <p>加载失败：{loadError || "未知错误"}</p>
+        <button
+          className="btn btn-primary"
+          onClick={() => {
+            setLoading(true);
+            setLoadError("");
+            setReloadKey((key) => key + 1);
+          }}
+        >
+          重试
+        </button>
+      </div>
+    );
+  }
+
+  // 显式添加入门词卡：成功后直接进入现有闪卡流程；失败停留本页可重试
+  const addStarter = async () => {
+    const result = await requestStarter();
+    if (!result) return;
+    if (result.cards.length > 0) {
+      setStudyQueue(result.cards);
+      setView("study");
+    } else {
+      showToast("入门词卡已存在，已为你打开单词本");
+      setView("words");
+    }
+  };
 
   const errorCount = (data.error_cards || []).length;
   const isEmpty = data.new_cards.length === 0 && data.due_cards.length === 0 && errorCount === 0;
@@ -241,9 +366,12 @@ function QueueView({ setView, setStudyQueue }) {
                   : `还剩 ${target - done} 张`}
                 {data.error_rate !== null && data.error_rate !== undefined && (
                   <span style={{ marginLeft: 8, fontSize: 10, opacity: 0.7 }}>
-                    （近7天正确率 ${100 - data.error_rate}%）
+                    （近7天复习通过率 {100 - data.error_rate}%）
                   </span>
                 )}
+              </span>
+              <span className="goal-sub" data-testid="new-word-limit">
+                新词建议 {adaptiveGoal} 个 · 有效样本 {data.sample_count ?? 0}
               </span>
               <select
                 className="goal-daily-set"
@@ -272,6 +400,13 @@ function QueueView({ setView, setStudyQueue }) {
           <h2>欢迎来到 EnglishCoach</h2>
           <p>AI 会根据你的记忆安排每天学什么。<br />先加几个想学的词，马上开始！</p>
           <button className="btn btn-primary" onClick={() => setView("add")}>先加几个词</button>
+          <button className="btn btn-ghost" onClick={addStarter} disabled={starterLoading}>
+            {starterLoading ? "正在添加…" : "体验入门词卡"}
+          </button>
+          <p className="add-hint">无需 AI：加入 10 张已核对释义、音标和例句的入门词卡</p>
+          {starterError && (
+            <p role="alert" className="err">添加失败：{starterError}，请重试</p>
+          )}
         </div>
       )}
 
@@ -345,7 +480,10 @@ function QueueView({ setView, setStudyQueue }) {
       {stats && (
         <div className="today-stats" style={{ cursor: "pointer" }} onClick={() => setView("stats")}>
           {stats.streak > 0 && <span className="streak-badge">🔥 <b>{stats.streak}</b> 天连续</span>}
-          <span>今日已学 <b>{stats.reviewed_today}</b> 张 · 累计 <b>{stats.total_cards}</b> 词</span>
+          <span>
+            今日完成 <b>{stats.reviewed_today}</b> 词 · 练习 <b>{stats.attempted_today}</b> 次 ·
+            跳过 <b>{stats.skipped_today}</b> 次 · 累计 <b>{stats.total_cards}</b> 词
+          </span>
         </div>
       )}
 

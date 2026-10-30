@@ -9,19 +9,38 @@ from app.models.card import Card
 from app.models.error_card import ErrorCard
 from app.models.hard_card import HardCard
 from app.models.review import Review
+from app.models.review_baseline import ReviewBaseline
+from app.models.review_event import ReviewEvent
+from app.runtime import Runtime, get_runtime
 from app.services.card_payload import queue_payload
+from app.services.statistics import (
+    adaptive_new_limit,
+    history_days,
+    learning_day,
+    metric,
+    review_pass_rate,
+    summary_for_day,
+)
 
 router = APIRouter()
 
 
 @router.get("/today")
-def get_today(new_limit: int = 10, due_limit: int = 20, db: Session = Depends(get_db)):
+def get_today(
+    new_limit: int = 10,
+    due_limit: int = 20,
+    db: Session = Depends(get_db),
+    runtime: Runtime = Depends(get_runtime),
+):
     # 决策（2026-09-02）：句子卡退出复习队列，只留单词卡。
     # 依据：词库 <200 词时 AI 例句含大量未学词（违反 i+1），整句提取负载淹没问题词；
     # 语境复现职责由故事页承担（自定节奏、无评分压力）。
     # 句子卡数据保留在 cards 表，词库过 200 词后可评估恢复。
-    # 难度自适应：近 7 天正确率自动调新词量（desired-retention 思想）
-    adaptive_limit, error_rate = _adaptive_new_limit(db, new_limit)
+    # 新词建议只看近 7 个学习日、同卡同日首条可排期事件；每日完成目标不参与。
+    today = learning_day(runtime.clock.now(), runtime.learning_timezone)
+    adaptive_limit, error_rate, sample_count = adaptive_new_limit(
+        _event_rows(db), today, base=new_limit
+    )
     new_limit = adaptive_limit
     stmt = (
         select(Card)
@@ -68,87 +87,62 @@ def get_today(new_limit: int = 10, due_limit: int = 20, db: Session = Depends(ge
         "error_cards": [queue_payload(c) for c in list(error_first) + list(hard_first)],
         "new_cards": new_cards_dict,
         "due_cards": due_cards_dict,
-        "recommended_goal": adaptive_limit,  # 自适应推荐（科学驱动）
-        "error_rate": round(error_rate * 100) if error_rate is not None else None,  # 近7天错误率 %
+        "recommended_goal": adaptive_limit,  # 新词建议（只看可排期首答）
+        "error_rate": round(error_rate * 100) if error_rate is not None else None,
+        "sample_count": sample_count,
     }
 
 
 @router.get("/stats/weekly")
-def get_weekly_accuracy(db: Session = Depends(get_db)):
-    """近 8 周复习正确率：周维度趋势 + 本周正确率。
+def get_weekly_accuracy(
+    db: Session = Depends(get_db), runtime: Runtime = Depends(get_runtime)
+):
+    """近 8 周复习通过率；accuracy 是 review_pass_rate 的兼容别名。"""
+    today = learning_day(runtime.clock.now(), runtime.learning_timezone)
+    today_date = datetime.fromisoformat(today).date()
+    events = [
+        event
+        for event in _event_rows(db)
+        if event["source"] != "legacy"
+        and event["scheduled"]
+        and not event["skipped"]
+        and event["fsrs_rating"] is not None
+    ]
 
-    正确率口径：rating>=3 视为对，rating 为 null 的旧记录按 state 兜底
-    （state==2 视为错，否则为对）。无数据周返回 None。
-    """
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
-    reviews = db.execute(
-        select(Review).where(Review.last_review >= now - timedelta(days=56))
-    ).scalars().all()
+    def percent(rows):
+        if not rows:
+            return None
+        return round(sum(1 for row in rows if row["fsrs_rating"] >= 3) / len(rows) * 100)
 
-    def is_ok(r):
-        if r.rating is not None:
-            return r.rating >= 3
-        return r.state == 2  # 旧数据兜底：state==2(Review) 视为正确
-
+    monday = today_date - timedelta(days=today_date.weekday())
     weeks = []
     for i in range(7, -1, -1):
-        week_start = (now - timedelta(days=(now.weekday() + 7 * i))).replace(
-            hour=0, minute=0, second=0, microsecond=0
-        )
-        week_end = week_start + timedelta(days=7)
-        week_reviews = [
-            r
-            for r in reviews
-            if r.last_review is not None
-            and week_start <= r.last_review < week_end
+        start = monday - timedelta(days=7 * i)
+        end = start + timedelta(days=7)
+        rows = [
+            event
+            for event in events
+            if start.isoformat() <= event["learning_day"] < end.isoformat()
         ]
-        if week_reviews:
-            ok = sum(1 for r in week_reviews if is_ok(r))
-            weeks.append(
-                {
-                    "start": week_start.strftime("%Y-%m-%d"),
-                    "total": len(week_reviews),
-                    "accuracy": round(ok / len(week_reviews) * 100),
-                }
-            )
-        else:
-            weeks.append({"start": week_start.strftime("%Y-%m-%d"), "total": 0, "accuracy": None})
+        weeks.append(
+            {
+                "start": start.isoformat(),
+                "total": len(rows),
+                "accuracy": percent(rows),
+            }
+        )
 
-    # 本周正确率（前 7 天）
-    week_ago = now - timedelta(days=7)
-    recent = [r for r in reviews if r.last_review is not None and r.last_review >= week_ago]
-    this_week_accuracy = (
-        round(sum(1 for r in recent if is_ok(r)) / len(recent) * 100) if recent else None
-    )
-
-    return {"weeks": weeks, "this_week": this_week_accuracy}
-
-
-def _adaptive_new_limit(db: Session, base: int) -> tuple[int, float | None]:
-    """近 7 天复习正确率 → 新词量调节（desired-retention 思想）。
-
-    规则：
-    - 错误率 >30%（难）→ 新词量降到 5
-    - 错误率 <15%（简单）→ 新词量升到 15
-    - 中间保持 base（10）
-    返回 (推荐新词量, 错误率 0-1 或 None)。
-    """
-    from datetime import timedelta as _td
-
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
-    week_ago = now - _td(days=7)
-    reviews = db.execute(
-        select(Review).where(Review.last_review >= week_ago)
-    ).scalars().all()
-    if not reviews:
-        return base, None  # 数据不足
-    wrong = sum(1 for r in reviews if r.rating is not None and r.rating <= 2)
-    error_rate = wrong / len(reviews)
-    if error_rate > 0.3:
-        return 5, error_rate
-    if error_rate < 0.15:
-        return 15, error_rate
-    return base, error_rate
+    recent_start = (today_date - timedelta(days=6)).isoformat()
+    recent = [
+        event
+        for event in events
+        if recent_start <= event["learning_day"] <= today
+    ]
+    return {
+        "weeks": weeks,
+        "this_week": percent(recent),
+        "accuracy_kind": "review_pass_rate",
+    }
 
 
 @router.get("/errors")
@@ -171,105 +165,88 @@ def get_errors(db: Session = Depends(get_db)):
     return {"errors": result}
 
 
+def _event_rows(db: Session) -> list[dict]:
+    """统计读取的事件形状：只取聚合需要的字段。"""
+    rows = db.execute(
+        select(
+            ReviewEvent.id,
+            ReviewEvent.card_id,
+            ReviewEvent.learning_day,
+            ReviewEvent.skipped,
+            ReviewEvent.scheduled,
+            ReviewEvent.occurred_at,
+            ReviewEvent.source,
+            ReviewEvent.kind,
+            ReviewEvent.assistance,
+            ReviewEvent.correct,
+            ReviewEvent.fsrs_rating,
+            ReviewEvent.self_rating,
+        )
+    ).all()
+    return [
+        {
+            "event_id": row.id,
+            "card_id": row.card_id,
+            "learning_day": row.learning_day,
+            "skipped": row.skipped,
+            "scheduled": row.scheduled,
+            "occurred_at": row.occurred_at,
+            "source": row.source,
+            "kind": row.kind,
+            "assistance": list(row.assistance or []),
+            "correct": row.correct,
+            "fsrs_rating": row.fsrs_rating,
+            "self_rating": row.self_rating,
+        }
+        for row in rows
+    ]
+
+
 @router.get("/stats")
-def get_stats(db: Session = Depends(get_db)):
-    """学习统计：今日复习次数、词卡总数、连续学习天数。"""
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    reviewed_today = db.execute(
-        select(func.count(Review.id)).where(Review.last_review >= today_start)
-    ).scalar_one()
+def get_stats(db: Session = Depends(get_db), runtime: Runtime = Depends(get_runtime)):
+    """学习统计：今日完成词、练习次数、跳过数、连续天数与旧历史提示。"""
+    today = learning_day(runtime.clock.now(), runtime.learning_timezone)
+    events = _event_rows(db)
+    summary = summary_for_day(events, today)
     total_cards = db.execute(select(func.count(Card.id))).scalar_one()
     graduated = db.execute(
-        select(func.count(Review.id)).where(
-            or_(Review.state == 2, Review.review_count >= 3)
+        select(func.count(Review.id))
+        .join(Card, Review.card_id == Card.id)
+        .where(
+            Card.kind == "word",
+            or_(Review.state == 2, Review.review_count >= 3),
         )
     ).scalar_one()
+    history_incomplete = (
+        db.execute(select(ReviewBaseline.id).limit(1)).first() is not None
+    )
     return {
-        "reviewed_today": reviewed_today,
+        **summary,
         "total_cards": total_cards,
         "graduated": graduated,
-        "streak": _calc_streak(db, now, today_start),
+        "history_incomplete": history_incomplete,
+        "learning_timezone": runtime.learning_timezone,
+        "metrics": {
+            category: metric(events, category)
+            for category in ("retrieval", "assisted", "recognition", "self_report")
+        },
+        "review_pass_rate": review_pass_rate(events),
     }
 
 
 @router.get("/stats/history")
-def get_stats_history(days: int = 90, db: Session = Depends(get_db)):
-    """学习统计历史：最近 N 天每日复习数 + 新词数。"""
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
-    start = now - timedelta(days=days)
-
-    # 每日复习数（按 last_review 日期分组）
-    rows = db.execute(
-        select(
-            func.date(Review.last_review).label("date"),
-            func.count(Review.id).label("count"),
-        )
-        .where(Review.last_review >= start)
-        .group_by(func.date(Review.last_review))
-        .order_by(func.date(Review.last_review))
-    ).all()
-    review_map = {r.date: r.count for r in rows}
-
-    # 每日新词数（按 Review 创建时间，即首次复习）
-    new_rows = db.execute(
-        select(
-            func.date(Review.last_review).label("date"),
-            func.count(Review.id).label("count"),
-        )
-        .where(Review.last_review >= start, Review.review_count == 1)
-        .group_by(func.date(Review.last_review))
-        .order_by(func.date(Review.last_review))
-    ).all()
-    new_map = {r.date: r.count for r in new_rows}
-
-    # 构造每日数据（含 0 的天也返回）
-    result = []
-    for i in range(days + 1):
-        d = (now - timedelta(days=days - i)).strftime("%Y-%m-%d")
-        result.append(
-            {
-                "date": d,
-                "reviews": review_map.get(d, 0),
-                "new_cards": new_map.get(d, 0),
-            }
-        )
-
-    return {"days": result}
-
-
-def _calc_streak(db: Session, now: datetime, today_start: datetime) -> int:
-    """连续学习天数：从今天（或昨天）往回数有复习记录的连续天数。
-
-    多邻国规则：
-    - 今天学过 → streak 从今天开始算
-    - 今天没学但昨天学过 → streak 保留（今天还没断）
-    - 今天昨天都没学 → streak 归零
-    """
-    # 取所有复习过的（日期去重，日期 = last_review 的日期）
-    rows = (
-        db.execute(select(Review.last_review).where(Review.last_review.is_not(None)))
-        .scalars()
-        .all()
-    )
-    days = {r.date() for r in rows if r is not None}
-    if not days:
-        return 0
-
-    # 起点：今天或昨天
-    today = today_start.date()
-    if today in days:
-        cursor = today
-    elif (today - timedelta(days=1)) in days:
-        cursor = today - timedelta(days=1)
-    else:
-        return 0
-
-    streak = 0
-    while cursor in days:
-        streak += 1
-        cursor -= timedelta(days=1)
-    return streak
+def get_stats_history(
+    days: int = 90,
+    db: Session = Depends(get_db),
+    runtime: Runtime = Depends(get_runtime),
+):
+    """学习统计历史：按事件学习日聚合，缺失日期零填充。"""
+    today = learning_day(runtime.clock.now(), runtime.learning_timezone)
+    start = (datetime.fromisoformat(today).date() - timedelta(days=days)).isoformat()
+    events = [
+        event for event in _event_rows(db) if start <= event["learning_day"] <= today
+    ]
+    return {"days": history_days(events, start, today)}
 
 
 @router.get("/recommended")
