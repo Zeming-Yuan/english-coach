@@ -181,6 +181,69 @@ function searchRank(card, query) {
   return 5; // 其他字段（不该出现）
 }
 
+/* ============ 学习事件展示 ============ */
+const SOURCE_LABELS = {
+  study: "队列闪卡",
+  lesson: "课程",
+  story: "故事",
+  card_detail: "词卡详情",
+  spelling: "拼写",
+  quiz: "测验",
+  listening: "听力",
+  mixed: "混合",
+  reinforcement: "巩固",
+  legacy: "未分类",
+};
+const KIND_LABELS = {
+  self_rating: "自评",
+  typed: "拼写/填空",
+  choice: "选择",
+  related: "相关词",
+};
+const RATING_LABELS = { 1: "忘了", 2: "模糊", 3: "记得", 4: "太简单" };
+const ASSISTANCE_LABELS = {
+  first_letter: "首字母",
+  length: "字母数",
+  live_feedback: "逐字反馈",
+  answer_audio: "答案发音",
+  answer_visible: "提前显示答案",
+};
+
+function eventResult(event) {
+  if (event.skipped) return "跳过";
+  if (event.kind === "self_rating") {
+    return RATING_LABELS[event.self_rating] || "自评";
+  }
+  if (event.correct === true) return "答对";
+  if (event.correct === false) return "答错";
+  return "结果未知";
+}
+
+function LearningEventRow({ event }) {
+  const assistance = (event.assistance || []).map(
+    (item) => ASSISTANCE_LABELS[item] || item,
+  );
+  const when = event.occurred_at
+    ? new Date(event.occurred_at).toLocaleString()
+    : event.learning_day;
+  return (
+    <div className="tl-item tl-latest" data-testid="learning-event">
+      <div className={`tl-dot tl-rating-${event.self_rating || 3}`} />
+      <div className="tl-content">
+        <span className="tl-label">
+          {SOURCE_LABELS[event.source] || event.source} ·{" "}
+          {KIND_LABELS[event.kind] || event.kind} · {eventResult(event)}
+        </span>
+        <span className="tl-date">
+          {when}
+          {event.scheduled ? " · 已更新排期" : " · 未更新排期"}
+          {assistance.length > 0 ? ` · 提示：${assistance.join("、")}` : ""}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 /* ============ 单词详情子组件 ============ */
 function WordDetail({ cardId, onBack, allCards, setDetail }) {
   const [c, setCard] = useState(null);
@@ -428,31 +491,37 @@ function WordDetail({ cardId, onBack, allCards, setDetail }) {
         }}>📝 测这个词</button>
       )}
 
-      {/* 复习历史可视化时间线 */}
-      {c.review_history?.length > 0 && (
-        <div style={{ marginTop: 16 }}>
-          <h3 className="lesson-section">复习历史</h3>
-          <div className="timeline">
-            {[...c.review_history].reverse().map((r, i) => {
-              const date = r.last_review ? new Date(r.last_review).toLocaleDateString() : "-";
-              const ratingNames = { 1: "忘了", 2: "模糊", 3: "记得", 4: "太简单" };
-              const stateNames = { 0: "新词", 1: "学习中", 2: "重学", 3: "熟练" };
-              const label = r.rating ? ratingNames[r.rating] : stateNames[r.state] || "复习";
-              const ratingClass = r.rating ? `tl-rating-${r.rating}` : `tl-state-${r.state}`;
-              const isLast = i === c.review_history.length - 1;
-              return (
-                <div key={i} className={`tl-item ${isLast ? "tl-latest" : ""}`}>
-                  <div className={`tl-dot ${ratingClass}`} />
-                  {i < c.review_history.length - 1 && <div className={`tl-line ${ratingClass}`} />}
-                  <div className="tl-content">
-                    <span className="tl-label">{label}</span>
-                    <span className="tl-date">{date} · 第 {r.review_count} 次</span>
-                  </div>
-                </div>
-              );
-            })}
+      {/* 学习记录：只展示真实追加事件；旧基线不伪装成作答 */}
+      {(c.history_incomplete || c.learning_events?.length > 0 || c.memory_state) && (
+      <div style={{ marginTop: 16 }}>
+        <h3 className="lesson-section">学习记录</h3>
+        {c.history_incomplete && (
+          <div className="story-empty" style={{ textAlign: "left", fontSize: 13 }}>
+            历史记录不完整：升级前的评分无法逐次还原，只保留最后可知活动与累计次数。
+            {c.memory_state?.last_review && (
+              <div>
+                最后可知活动：
+                {new Date(c.memory_state.last_review).toLocaleString()} · 累计{" "}
+                {c.memory_state.review_count} 次
+              </div>
+            )}
           </div>
-        </div>
+        )}
+        {c.learning_events?.length > 0 ? (
+          <div className="timeline">
+            {[...c.learning_events].reverse().map((event) => (
+              <LearningEventRow key={event.event_id} event={event} />
+            ))}
+          </div>
+        ) : c.memory_state ? (
+          <div className="story-empty">
+            升级前累计复习 {c.memory_state.review_count} 次
+            {c.memory_state.last_review
+              ? ` · 最后可知活动 ${new Date(c.memory_state.last_review).toLocaleDateString()}`
+              : ""}
+          </div>
+        ) : null}
+      </div>
       )}
 
       {/* 评分 */}
