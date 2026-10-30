@@ -8,6 +8,7 @@ from app.db import get_db
 from app.models.card import Card
 from app.models.story import Story, StoryWord
 from app.services.llm import generate_json
+from app.services.llm_client import LLMNotConfigured
 from app.services.story_generator import generate_story
 
 router = APIRouter()
@@ -93,8 +94,16 @@ _TRANSLATE_PROMPT = (
 
 
 def _translate_story(story: Story, db: Session) -> None:
-    """为旧故事补翻中文（逐句对照，原地更新数据库）。"""
-    data = generate_json(_TRANSLATE_PROMPT, f"标题: {story.title}\n\n{story.content}")
+    """为旧故事补翻中文（逐句对照，原地更新数据库）。
+
+    补翻是可选的 AI 增强：未配置或调用失败时保留原文可读，绝不阻断。
+    """
+    try:
+        data = generate_json(
+            _TRANSLATE_PROMPT, f"标题: {story.title}\n\n{story.content}"
+        )
+    except LLMNotConfigured:
+        return
     if not data:
         return  # 翻译失败不影响阅读
     story.title_cn = data.get("title_cn")
