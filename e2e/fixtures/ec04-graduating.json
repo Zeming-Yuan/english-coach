@@ -1,0 +1,29 @@
+{
+  "tables": {
+    "cards": [
+      {
+        "id": 1,
+        "word": "apple",
+        "kind": "word",
+        "meaning": "苹果",
+        "example": "I eat an apple.",
+        "example_cn": "我吃一个苹果。"
+      }
+    ],
+    "reviews": [
+      {
+        "id": 1,
+        "card_id": 1,
+        "state": 1,
+        "step": 1,
+        "due": "2020-01-01T00:00:00",
+        "stability": 1.0,
+        "difficulty": 5.0,
+        "elapsed_days": 0,
+        "last_review": "2020-01-01T00:00:00",
+        "review_count": 2,
+        "rating": 3
+      }
+    ]
+  }
+}

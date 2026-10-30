@@ -7,7 +7,7 @@ import { showToast } from "../App.jsx";
 /**
  * 设置视图：发音速度/每日新词量/暗色模式/刷新例句。
  */
-export default function SettingsPage({ darkMode, setDarkMode }) {
+export default function SettingsPage({ darkMode, setDarkMode, onOpenBackup }) {
   const [rate, setRate] = useState(() => storageGet("ttsRate", 0.9));
   const [daily, setDaily] = useState(() => storageGet("dailyGoal", 10));
   const [cnMode, setCnMode] = useState(() => storageGet("sentenceCnMode", "auto"));
@@ -108,6 +108,11 @@ export default function SettingsPage({ darkMode, setDarkMode }) {
           }}>
             {regenerating ? "生成中…" : "📝 生成句子卡（每次5个）"}
           </button>
+        </div>
+        <div className="settings-row" style={{ flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
+          <span className="settings-label">数据备份</span>
+          <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>下载数据库全部学习内容的版本化备份</p>
+          <button className="btn btn-ghost btn-small" onClick={onOpenBackup}>备份与恢复</button>
         </div>
       </div>
     </section>

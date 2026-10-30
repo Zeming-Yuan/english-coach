@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { api } from "../lib/api.js";
 import { speak, prewarmTts } from "../lib/tts.js";
 import { escapeHtml } from "../lib/utils.js";
+import { useLearningAttempt } from "../hooks/useLearningAttempt.js";
 import { showToast } from "../App.jsx";
 import ChunkChips from "../components/ChunkChips.jsx";
 import RatingButtons from "../components/RatingButtons.jsx";
@@ -73,7 +74,7 @@ export default function WordsPage({ onBack }) {
 
   // 详情页
   if (detail) {
-    return <WordDetail cardId={detail} onBack={() => setDetail(null)} allCards={filtered} setDetail={setDetail} />;
+    return <WordDetail key={detail} cardId={detail} onBack={() => setDetail(null)} allCards={filtered} setDetail={setDetail} />;
   }
 
   // 点击关闭快速查阅
@@ -248,6 +249,7 @@ function LearningEventRow({ event }) {
 function WordDetail({ cardId, onBack, allCards, setDetail }) {
   const [c, setCard] = useState(null);
   const [loading, setLoading] = useState(true);
+  const attempt = useLearningAttempt("card_detail:" + cardId);
 
   // 找到当前词在列表中的位置，支持上/下一个导航
   const currentIndex = allCards ? allCards.findIndex((x) => x.id === cardId) : -1;
@@ -260,10 +262,31 @@ function WordDetail({ cardId, onBack, allCards, setDetail }) {
   }, [cardId]);
 
   const rateCard = async (rating) => {
+    if (!c || attempt.phase === "saving" || attempt.phase === "failed") return;
     try {
-      await api("/api/reviews", { method: "POST", body: JSON.stringify({ card_id: c.id, rating }) });
-      const updated = await api(`/api/cards/${c.id}`);
-      setCard(updated);
+      const result = await attempt.submit("/api/reviews", {
+        card_id: c.id,
+        rating,
+        source: "card_detail",
+        kind: "self_rating",
+        stage: "standalone",
+      });
+      if (result.committed !== true) return;
+      attempt.clear();
+      try {
+        setCard(await api(`/api/cards/${c.id}`));
+      } catch {}
+    } catch {}
+  };
+
+  const retryRating = async () => {
+    try {
+      const result = await attempt.retry();
+      if (result.committed !== true) return;
+      attempt.clear();
+      try {
+        setCard(await api(`/api/cards/${result.card_id}`));
+      } catch {}
     } catch {}
   };
 
@@ -526,7 +549,22 @@ function WordDetail({ cardId, onBack, allCards, setDetail }) {
 
       {/* 评分 */}
       <div className="rating-area" style={{ marginTop: 20 }}>
-        <RatingButtons onRate={rateCard} />
+        <RatingButtons
+          onRate={rateCard}
+          disabled={attempt.phase === "saving" || attempt.phase === "failed"}
+        />
+        {attempt.phase === "saving" && (
+          <p role="status" className="save-state">正在确认保存…</p>
+        )}
+        {attempt.phase === "failed" && (
+          <div role="alert" className="save-state save-state-error">
+            <p>{attempt.error}</p>
+            <div className="save-state-actions">
+              <button className="btn btn-primary btn-small" onClick={retryRating}>继续确认保存</button>
+              <button className="btn btn-ghost btn-small" onClick={attempt.clear}>放弃这条待确认</button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 管理操作 */}

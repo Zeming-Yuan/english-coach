@@ -4,6 +4,7 @@ import { speak } from "../lib/tts.js";
 import { cleanToken, escapeHtml, highlightWord, storageGet, storageSet } from "../lib/utils.js";
 import { splitSentence } from "../lib/chunks.js";
 import { useWordLookup } from "../lib/wordLookup.js";
+import { useLearningAttempt } from "../hooks/useLearningAttempt.js";
 import { showToast } from "../App.jsx";
 import ChunkChips from "../components/ChunkChips.jsx";
 import RatingButtons from "../components/RatingButtons.jsx";
@@ -26,6 +27,9 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
   const [done, setDone] = useState(false);
   // 中文翻译档位：auto=复习<3次显示，>=3次自动隐藏；on=常显；off=隐藏
   const [cnMode, setCnMode] = useState(() => storageGet("sentenceCnMode", "auto"));
+  // EC-13 之前自评会话使用独立 ID；接入每日会话后由外部传入。
+  const [sessionId] = useState(() => crypto.randomUUID());
+  const attempt = useLearningAttempt("study");
 
   useEffect(() => {
     storageSet("sentenceCnMode", cnMode);
@@ -68,32 +72,10 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
     });
   }, [card, flipStartedAt, isSentence, exiting, done]);
 
-  // 评分（提交完成前锁住按钮，防连点重复提交）
-  const submittingRef = useRef(false);
-  const rate = useCallback(async (rating) => {
-    if (!card || done || submittingRef.current) return;
-    const isLast = idx + 1 >= total;
-    if (!isLast && exiting) return;
-
-    const elapsed = (Date.now() - (flipStartedAt || Date.now())) / 1000;
-    if (rating >= 3 && elapsed < 2) {
-      showToast("这个评分是你回想后的吗？下次先想出声再翻面，记忆更准");
-    }
-    submittingRef.current = true;
-    try {
-      const resp = await api("/api/reviews", {
-        method: "POST",
-        body: JSON.stringify({ card_id: card.id, rating }),
-      });
-      if (resp.newly_graduated) setGraduated((g) => [...g, card.word]);
-    } catch {}
-    finally {
-      submittingRef.current = false;
-    }
-    const nextAnswered = answered + 1;
-    setAnswered(nextAnswered);
-
-    if (isLast) {
+  // 只有服务端确认保存才推进；失败停留当前题并保留同一提交标识。
+  const advance = useCallback(() => {
+    setAnswered((n) => n + 1);
+    if (idx + 1 >= total) {
       // 最后一张：直接完成
       setDone(true);
       return;
@@ -104,7 +86,49 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
       setExiting(false);
       setIdx((i) => i + 1);
     }, 320);
-  }, [card, idx, total, flipStartedAt, exiting, done, answered]);
+  }, [idx, total]);
+
+  const rate = useCallback(async (rating) => {
+    if (!card || done || exiting) return;
+    if (attempt.phase === "saving" || attempt.phase === "failed") return;
+    const isLast = idx + 1 >= total;
+    if (!isLast && exiting) return;
+
+    const elapsed = (Date.now() - (flipStartedAt || Date.now())) / 1000;
+    if (rating >= 3 && elapsed < 2) {
+      showToast("这个评分是你回想后的吗？下次先想出声再翻面，记忆更准");
+    }
+    try {
+      const result = await attempt.submit("/api/reviews", {
+        card_id: card.id,
+        rating,
+        source: "study",
+        kind: "self_rating",
+        session_id: sessionId,
+        stage: "standalone",
+      });
+      if (result.committed !== true) return;
+      if (result.newly_graduated) setGraduated((g) => [...g, card.word]);
+      attempt.clear();
+      advance();
+    } catch {
+      // 失败保留当前题与待确认请求，由 role=alert 提供继续确认/放弃。
+    }
+  }, [card, idx, total, flipStartedAt, exiting, done, attempt, sessionId, advance]);
+
+  const retrySave = useCallback(async () => {
+    try {
+      const result = await attempt.retry();
+      if (result.committed !== true) return;
+      attempt.clear();
+      if (!card || result.card_id !== card.id) {
+        showToast("已确认保存上一条学习记录");
+        return;
+      }
+      if (result.newly_graduated) setGraduated((g) => [...g, card.word]);
+      advance();
+    } catch {}
+  }, [attempt, card, advance]);
 
   // 完成态
   if (done) {
@@ -257,7 +281,22 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
       {/* 评分按钮：包裹层常驻占位（高度已在 CSS 预留），翻面后按钮永远在首屏 */}
       <div className="rating-area">
         {flipped && (
-          <RatingButtons onRate={rate} />
+          <RatingButtons
+            onRate={rate}
+            disabled={attempt.phase === "saving" || attempt.phase === "failed"}
+          />
+        )}
+        {attempt.phase === "saving" && (
+          <p role="status" className="save-state">正在确认保存…</p>
+        )}
+        {attempt.phase === "failed" && (
+          <div role="alert" className="save-state save-state-error">
+            <p>{attempt.error}</p>
+            <div className="save-state-actions">
+              <button className="btn btn-primary btn-small" onClick={retrySave}>继续确认保存</button>
+              <button className="btn btn-ghost btn-small" onClick={attempt.clear}>放弃这条待确认</button>
+            </div>
+          </div>
         )}
       </div>
     </section>

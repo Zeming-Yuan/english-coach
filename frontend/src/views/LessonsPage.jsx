@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { api } from "../lib/api.js";
 import { speak } from "../lib/tts.js";
 import { escapeHtml } from "../lib/utils.js";
+import { useLearningAttempt } from "../hooks/useLearningAttempt.js";
 import { showToast } from "../App.jsx";
 
 /**
@@ -120,17 +121,6 @@ function LessonDetail({ lesson, onBack, onNext }) {
   const dialogue = L.content.dialogue || [];
   const tips = L.content.tips || [];
 
-  const markMastered = async (word, cardId) => {
-    if (!cardId) return;
-    try {
-      await api("/api/reviews", {
-        method: "POST",
-        body: JSON.stringify({ card_id: cardId, rating: 3 }),
-      });
-      setMastered((s) => new Set(s).add(word));
-    } catch {}
-  };
-
   const revealWord = (word) => {
     setRevealed((s) => new Set(s).add(word));
   };
@@ -184,11 +174,10 @@ function LessonDetail({ lesson, onBack, onNext }) {
               </div>
               <button className="speak-mini" title="朗读" onClick={(e) => { e.stopPropagation(); speak(w.word); }}>🔊</button>
               {isRevealed && (
-                <button
-                  className="lesson-master-btn"
-                  title="记住了"
-                  onClick={(e) => { e.stopPropagation(); markMastered(w.word, L.card_ids?.[w.word]); }}
-                >✓</button>
+                <LessonMastery
+                  cardId={L.card_ids?.[w.word]}
+                  onMastered={() => setMastered((s) => new Set(s).add(w.word))}
+                />
               )}
             </div>
           );
@@ -216,5 +205,58 @@ function LessonDetail({ lesson, onBack, onNext }) {
         </button>
       </div>
     </section>
+  );
+}
+
+/* 课程内显式评分：保存确认后才标记已掌握，失败可继续确认同一提交。 */
+function LessonMastery({ cardId, onMastered }) {
+  const attempt = useLearningAttempt("lesson:" + cardId);
+
+  if (!cardId) return null;
+
+  const finish = (result) => {
+    if (result.committed !== true) return;
+    attempt.clear();
+    onMastered();
+  };
+
+  const submit = async () => {
+    if (attempt.phase === "saving" || attempt.phase === "failed") return;
+    try {
+      finish(await attempt.submit("/api/reviews", {
+        card_id: cardId,
+        rating: 3,
+        source: "lesson",
+        kind: "self_rating",
+        stage: "standalone",
+      }));
+    } catch {}
+  };
+
+  const retry = async () => {
+    try {
+      finish(await attempt.retry());
+    } catch {}
+  };
+
+  return (
+    <div className="lesson-mastery">
+      <button
+        className="lesson-master-btn"
+        title="记住了"
+        data-testid="rate-good"
+        disabled={attempt.phase === "saving" || attempt.phase === "failed"}
+        onClick={(e) => { e.stopPropagation(); submit(); }}
+      >✓</button>
+      {attempt.phase === "failed" && (
+        <div role="alert" className="save-state save-state-error">
+          <p>{attempt.error}</p>
+          <div className="save-state-actions">
+            <button className="btn btn-primary btn-small" onClick={retry}>继续确认保存</button>
+            <button className="btn btn-ghost btn-small" onClick={attempt.clear}>放弃这条待确认</button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

@@ -1,0 +1,19 @@
+{
+  "tables": {
+    "cards": [
+      {"id": 1, "word": "apple", "kind": "word", "meaning": "苹果"}
+    ],
+    "stories": [
+      {
+        "id": 1,
+        "title": "Apple Story",
+        "title_cn": "苹果故事",
+        "content": "An apple a day.",
+        "content_cn": "一天一苹果。"
+      }
+    ],
+    "story_words": [
+      {"id": 1, "story_id": 1, "card_id": 1}
+    ]
+  }
+}
