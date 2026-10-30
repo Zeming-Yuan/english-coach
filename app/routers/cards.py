@@ -14,6 +14,7 @@ from app.models.review import Review
 from app.services.card_generator import generate_cards, regenerate_example
 from app.services.card_payload import card_payload
 from app.services.graduation import is_graduated
+from app.services.llm_client import LLMNotConfigured
 
 router = APIRouter()
 
@@ -222,6 +223,8 @@ def refresh_examples(limit: int = 10, db: Session = Depends(get_db)):
                 if sentence_card:
                     sentence_card.example = example
                     sentence_card.example_cn = example_cn
+        except LLMNotConfigured:
+            raise  # AI 未配置是整批不可用，不能伪装成“刷新了 0 条”
         except Exception:  # noqa: BLE001, S112 — 单个失败不阻塞整批
             continue
 
@@ -240,6 +243,7 @@ def regenerate_sentences(limit: int = 5, db: Session = Depends(get_db)):
     按统一毕业口径（is_graduated：state==2 或复习 >=3 次）找词，
     建兜底句卡并启动后台 AI 升级——与复习提交路径完全一致。
     """
+    import contextvars as _contextvars
     import threading as _threading
 
     from app.services.graduation import (
@@ -275,8 +279,9 @@ def regenerate_sentences(limit: int = 5, db: Session = Depends(get_db)):
             sentence = ensure_sentence_card(card, db)
             if sentence:
                 generated += 1
+                ctx = _contextvars.copy_context()
                 _threading.Thread(
-                    target=upgrade_sentence_card, args=(card.id,), daemon=True
+                    target=ctx.run, args=(upgrade_sentence_card, card.id), daemon=True
                 ).start()
         except Exception:  # noqa: BLE001, S112 — 单个失败不阻塞整批
             continue

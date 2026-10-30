@@ -8,8 +8,9 @@ alembic>=1.13
 
 # 配置
 pydantic-settings>=2.0
+tzdata>=2024.1  # Windows 无系统 IANA 时区库，学习时区校验需要
 
-# AI（OpenAI 兼容协议，接 DeepSeek 等国内模型）
+# AI（OpenAI 兼容协议，当前：小米 MiMo Token Plan）
 openai>=1.50
 
 # 复习调度（FSRS 官方移植）

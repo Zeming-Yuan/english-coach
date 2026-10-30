@@ -34,7 +34,11 @@ def make_word_card(db, count=3):
 
 def test_get_story(client, db_session):
     """GET /api/stories/{id} 返回故事 + 关联词。"""
-    story = Story(title="Test Story", content="Once upon a time...")
+    story = Story(
+        title="Test Story",
+        content="Once upon a time...",
+        content_cn="从前……",  # 已有翻译：不触发可选 AI 补翻
+    )
     db_session.add(story)
     db_session.flush()
     cards = make_word_card(db_session, 2)
@@ -54,6 +58,22 @@ def test_get_story_not_found(client):
     """GET /api/stories/{id} 故事不存在返回 404。"""
     resp = client.get("/api/stories/999")
     assert resp.status_code == 404
+
+
+@patch("app.routers.stories.generate_json")
+def test_get_story_without_ai_stays_readable(mock_generate, client, db_session):
+    """AI 未配置时旧故事仍可读：补翻是可选项，不阻断已有内容。"""
+    from app.services.llm_client import LLMNotConfigured
+
+    mock_generate.side_effect = LLMNotConfigured("AI 未配置")
+    story = Story(title="Old Story", content="Once upon a time...")
+    db_session.add(story)
+    db_session.commit()
+
+    resp = client.get(f"/api/stories/{story.id}")
+    assert resp.status_code == 200
+    assert resp.json()["title"] == "Old Story"
+    assert resp.json()["content_cn"] is None
 
 
 @patch("app.services.story_generator.generate_json")

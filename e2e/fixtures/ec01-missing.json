@@ -1,0 +1,5 @@
+{
+  "settings": {"llm_api_key": ""},
+  "external": {"llm": "missing"},
+  "tables": {}
+}

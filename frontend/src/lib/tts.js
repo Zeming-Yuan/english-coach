@@ -7,7 +7,14 @@ let ttsVoice = null;
 let hasEnVoice = false;
 const audioCache = new Map();
 
+const hasSpeech = typeof window !== "undefined" && "speechSynthesis" in window;
+
 function pickVoice() {
+  if (!hasSpeech) {
+    ttsVoice = null;
+    hasEnVoice = false;
+    return;
+  }
   const voices = speechSynthesis.getVoices();
   ttsVoice =
     voices.find((v) => v.lang === "en-US" && v.localService) ||
@@ -16,7 +23,7 @@ function pickVoice() {
   hasEnVoice = voices.some((v) => v.lang.startsWith("en"));
 }
 
-if ("speechSynthesis" in window) {
+if (hasSpeech) {
   pickVoice();
   speechSynthesis.onvoiceschanged = pickVoice;
 }
@@ -34,7 +41,7 @@ export function setTtsRate(rate) {
  */
 export function speak(word, btn = null) {
   if (!word) return;
-  speechSynthesis.cancel();
+  if (hasSpeech) speechSynthesis.cancel();
 
   // 1. 在线音频
   const done = () => btn && btn.classList.remove("speaking");
@@ -61,7 +68,7 @@ function speakOnline(word, done, fallback) {
 }
 
 function speakLocal(word, done) {
-  if (!hasEnVoice) {
+  if (!hasSpeech || !hasEnVoice || typeof SpeechSynthesisUtterance === "undefined") {
     done();
     return;
   }
