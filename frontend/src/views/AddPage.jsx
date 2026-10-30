@@ -1,15 +1,34 @@
 import React, { useState, useRef } from "react";
 import { api } from "../lib/api.js";
 import { escapeHtml } from "../lib/utils.js";
+import { showToast } from "../App.jsx";
+import { useStarterCards } from "../hooks/useStarterCards.js";
 
 /**
- * 加词视图：AI 生成词卡 + 立即学一学。
+ * 加词视图：AI 生成词卡 + 入门词卡 + 立即学一学。
  */
-export default function AddPage({ onStartStudy }) {
+export default function AddPage({ onStartStudy, onAddStarter, onGoWords }) {
   const [input, setInput] = useState("");
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const {
+    loading: starterLoading,
+    error: starterError,
+    addStarter: requestStarter,
+  } = useStarterCards(onAddStarter);
   const resultRef = useRef(null);
+
+  // 与首页空态共用同一个添加动作；已有词卡时不打开空学习页
+  const addStarter = async () => {
+    const data = await requestStarter();
+    if (!data) return;
+    if (data.cards.length > 0) {
+      onStartStudy && onStartStudy(data.cards);
+    } else {
+      showToast("入门词卡已存在，已为你打开单词本");
+      onGoWords && onGoWords();
+    }
+  };
 
   const generate = async () => {
     const raw = input.trim();
@@ -35,6 +54,13 @@ export default function AddPage({ onStartStudy }) {
     <section className="view view-center">
       <div className="add-card">
         <h2 className="page-title">加词</h2>
+        <button className="btn btn-primary btn-wide" onClick={addStarter} disabled={starterLoading}>
+          {starterLoading ? "正在添加…" : "体验入门词卡"}
+        </button>
+        <p className="add-hint">无需 AI：加入 10 张已核对释义、音标和例句的入门词卡</p>
+        {starterError && (
+          <p role="alert" className="err">添加失败：{starterError}，请重试</p>
+        )}
         <p className="add-hint">输入想学的单词，用逗号或空格分隔，AI 帮你生成学习卡片</p>
         <textarea
           className="add-input"
