@@ -20,10 +20,10 @@ def starter_card_rows() -> list[dict]:
     return json.loads(DATA_FILE.read_text(encoding="utf-8"))
 
 
-def load_starter_cards(db: Session) -> list[Card]:
+def load_starter_cards(db: Session, rows: list[dict] | None = None) -> list[Card]:
     """只添加尚不存在的词卡，返回本次新增；已存在内容保持原样，不写回任何字段。"""
     added: list[Card] = []
-    for row in starter_card_rows():
+    for row in rows if rows is not None else starter_card_rows():
         existing = db.scalar(
             select(Card).where(Card.word == row["word"], Card.kind == "word")
         )

@@ -13,6 +13,7 @@ import AddPage from "./views/AddPage.jsx";
 import StatsPage from "./views/StatsPage.jsx";
 import SettingsPage from "./views/SettingsPage.jsx";
 import LessonsPage from "./views/LessonsPage.jsx";
+import { useStarterCards } from "./hooks/useStarterCards.js";
 
 /* ============ 视图路由 ============ */
 const NAV_TABS = { queue: "队列", words: "单词本", stories: "故事", add: "加词" };
@@ -169,8 +170,11 @@ function QueueView({ setView, setStudyQueue, onAddStarter }) {
   const [reloadKey, setReloadKey] = useState(0);
   const [loadError, setLoadError] = useState("");
   const [dailyGoal, setDailyGoal] = useState(() => storageGet("dailyGoal", 10));
-  const [starterLoading, setStarterLoading] = useState(false);
-  const [starterError, setStarterError] = useState("");
+  const {
+    loading: starterLoading,
+    error: starterError,
+    addStarter: requestStarter,
+  } = useStarterCards(onAddStarter);
 
   useEffect(() => {
     async function load() {
@@ -221,21 +225,15 @@ function QueueView({ setView, setStudyQueue, onAddStarter }) {
   }
 
   // 显式添加入门词卡：成功后直接进入现有闪卡流程；失败停留本页可重试
-  const startStarter = async () => {
-    setStarterLoading(true);
-    setStarterError("");
-    try {
-      const result = await onAddStarter();
-      if (result.cards.length > 0) {
-        setStudyQueue(result.cards);
-        setView("study");
-      } else {
-        setView("words");
-      }
-    } catch (error) {
-      setStarterError(error.message);
-    } finally {
-      setStarterLoading(false);
+  const addStarter = async () => {
+    const result = await requestStarter();
+    if (!result) return;
+    if (result.cards.length > 0) {
+      setStudyQueue(result.cards);
+      setView("study");
+    } else {
+      showToast("入门词卡已存在，已为你打开单词本");
+      setView("words");
     }
   };
 
@@ -318,7 +316,7 @@ function QueueView({ setView, setStudyQueue, onAddStarter }) {
           <h2>欢迎来到 EnglishCoach</h2>
           <p>AI 会根据你的记忆安排每天学什么。<br />先加几个想学的词，马上开始！</p>
           <button className="btn btn-primary" onClick={() => setView("add")}>先加几个词</button>
-          <button className="btn btn-ghost" onClick={startStarter} disabled={starterLoading}>
+          <button className="btn btn-ghost" onClick={addStarter} disabled={starterLoading}>
             {starterLoading ? "正在添加…" : "体验入门词卡"}
           </button>
           <p className="add-hint">无需 AI：加入 10 张已核对释义、音标和例句的入门词卡</p>

@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import { api } from "../lib/api.js";
 import { escapeHtml } from "../lib/utils.js";
 import { showToast } from "../App.jsx";
+import { useStarterCards } from "../hooks/useStarterCards.js";
 
 /**
  * 加词视图：AI 生成词卡 + 入门词卡 + 立即学一学。
@@ -10,26 +11,22 @@ export default function AddPage({ onStartStudy, onAddStarter, onGoWords }) {
   const [input, setInput] = useState("");
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [starterLoading, setStarterLoading] = useState(false);
-  const [starterError, setStarterError] = useState("");
+  const {
+    loading: starterLoading,
+    error: starterError,
+    addStarter: requestStarter,
+  } = useStarterCards(onAddStarter);
   const resultRef = useRef(null);
 
   // 与首页空态共用同一个添加动作；已有词卡时不打开空学习页
   const addStarter = async () => {
-    setStarterLoading(true);
-    setStarterError("");
-    try {
-      const data = await onAddStarter();
-      if (data.cards.length > 0) {
-        onStartStudy && onStartStudy(data.cards);
-      } else {
-        showToast("入门词卡已存在，已为你打开单词本");
-        onGoWords && onGoWords();
-      }
-    } catch (e) {
-      setStarterError(e.message);
-    } finally {
-      setStarterLoading(false);
+    const data = await requestStarter();
+    if (!data) return;
+    if (data.cards.length > 0) {
+      onStartStudy && onStartStudy(data.cards);
+    } else {
+      showToast("入门词卡已存在，已为你打开单词本");
+      onGoWords && onGoWords();
     }
   };
 

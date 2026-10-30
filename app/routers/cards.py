@@ -135,16 +135,17 @@ def add_starter_cards(db: Session = Depends(get_db)):
     存在检查与插入在同一写事务内：SQLite 用 BEGIN IMMEDIATE 串行化并发点击，
     失败整体回滚（EC-03 的统一写事务模块落地后由它接管）。
     """
+    rows = starter_card_rows()
     db.execute(text("BEGIN IMMEDIATE"))
     try:
-        cards = load_starter_cards(db)
+        cards = load_starter_cards(db, rows)
         db.commit()
     except Exception:
         db.rollback()
         raise
     return {
         "generated": len(cards),
-        "skipped": len(starter_card_rows()) - len(cards),
+        "skipped": len(rows) - len(cards),
         "cards": [card_to_dict(c, db) for c in cards],
     }
 
