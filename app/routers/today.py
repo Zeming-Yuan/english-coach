@@ -9,7 +9,11 @@ from app.models.card import Card
 from app.models.error_card import ErrorCard
 from app.models.hard_card import HardCard
 from app.models.review import Review
+from app.models.review_baseline import ReviewBaseline
+from app.models.review_event import ReviewEvent
+from app.runtime import Runtime, get_runtime
 from app.services.card_payload import queue_payload
+from app.services.statistics import history_days, learning_day, summary_for_day
 
 router = APIRouter()
 
@@ -171,14 +175,36 @@ def get_errors(db: Session = Depends(get_db)):
     return {"errors": result}
 
 
+def _event_rows(db: Session) -> list[dict]:
+    """统计读取的事件形状：只取聚合需要的字段。"""
+    rows = db.execute(
+        select(
+            ReviewEvent.id,
+            ReviewEvent.card_id,
+            ReviewEvent.learning_day,
+            ReviewEvent.skipped,
+            ReviewEvent.scheduled,
+            ReviewEvent.occurred_at,
+        )
+    ).all()
+    return [
+        {
+            "event_id": row.id,
+            "card_id": row.card_id,
+            "learning_day": row.learning_day,
+            "skipped": row.skipped,
+            "scheduled": row.scheduled,
+            "occurred_at": row.occurred_at,
+        }
+        for row in rows
+    ]
+
+
 @router.get("/stats")
-def get_stats(db: Session = Depends(get_db)):
-    """学习统计：今日复习次数、词卡总数、连续学习天数。"""
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
-    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    reviewed_today = db.execute(
-        select(func.count(Review.id)).where(Review.last_review >= today_start)
-    ).scalar_one()
+def get_stats(db: Session = Depends(get_db), runtime: Runtime = Depends(get_runtime)):
+    """学习统计：今日完成词、练习次数、跳过数、连续天数与旧历史提示。"""
+    today = learning_day(runtime.clock.now(), runtime.learning_timezone)
+    summary = summary_for_day(_event_rows(db), today)
     total_cards = db.execute(select(func.count(Card.id))).scalar_one()
     graduated = db.execute(
         select(func.count(Review.id))
@@ -188,91 +214,31 @@ def get_stats(db: Session = Depends(get_db)):
             or_(Review.state == 2, Review.review_count >= 3),
         )
     ).scalar_one()
+    history_incomplete = (
+        db.execute(select(ReviewBaseline.id).limit(1)).first() is not None
+    )
     return {
-        "reviewed_today": reviewed_today,
+        **summary,
         "total_cards": total_cards,
         "graduated": graduated,
-        "streak": _calc_streak(db, now, today_start),
+        "history_incomplete": history_incomplete,
+        "learning_timezone": runtime.learning_timezone,
     }
 
 
 @router.get("/stats/history")
-def get_stats_history(days: int = 90, db: Session = Depends(get_db)):
-    """学习统计历史：最近 N 天每日复习数 + 新词数。"""
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
-    start = now - timedelta(days=days)
-
-    # 每日复习数（按 last_review 日期分组）
-    rows = db.execute(
-        select(
-            func.date(Review.last_review).label("date"),
-            func.count(Review.id).label("count"),
-        )
-        .where(Review.last_review >= start)
-        .group_by(func.date(Review.last_review))
-        .order_by(func.date(Review.last_review))
-    ).all()
-    review_map = {r.date: r.count for r in rows}
-
-    # 每日新词数（按 Review 创建时间，即首次复习）
-    new_rows = db.execute(
-        select(
-            func.date(Review.last_review).label("date"),
-            func.count(Review.id).label("count"),
-        )
-        .where(Review.last_review >= start, Review.review_count == 1)
-        .group_by(func.date(Review.last_review))
-        .order_by(func.date(Review.last_review))
-    ).all()
-    new_map = {r.date: r.count for r in new_rows}
-
-    # 构造每日数据（含 0 的天也返回）
-    result = []
-    for i in range(days + 1):
-        d = (now - timedelta(days=days - i)).strftime("%Y-%m-%d")
-        result.append(
-            {
-                "date": d,
-                "reviews": review_map.get(d, 0),
-                "new_cards": new_map.get(d, 0),
-            }
-        )
-
-    return {"days": result}
-
-
-def _calc_streak(db: Session, now: datetime, today_start: datetime) -> int:
-    """连续学习天数：从今天（或昨天）往回数有复习记录的连续天数。
-
-    多邻国规则：
-    - 今天学过 → streak 从今天开始算
-    - 今天没学但昨天学过 → streak 保留（今天还没断）
-    - 今天昨天都没学 → streak 归零
-    """
-    # 取所有复习过的（日期去重，日期 = last_review 的日期）
-    rows = (
-        db.execute(select(Review.last_review).where(Review.last_review.is_not(None)))
-        .scalars()
-        .all()
-    )
-    days = {r.date() for r in rows if r is not None}
-    if not days:
-        return 0
-
-    # 起点：今天或昨天
-    today = today_start.date()
-    if today in days:
-        cursor = today
-    elif (today - timedelta(days=1)) in days:
-        cursor = today - timedelta(days=1)
-    else:
-        return 0
-
-    streak = 0
-    while cursor in days:
-        streak += 1
-        cursor -= timedelta(days=1)
-    return streak
+def get_stats_history(
+    days: int = 90,
+    db: Session = Depends(get_db),
+    runtime: Runtime = Depends(get_runtime),
+):
+    """学习统计历史：按事件学习日聚合，缺失日期零填充。"""
+    today = learning_day(runtime.clock.now(), runtime.learning_timezone)
+    start = (datetime.fromisoformat(today).date() - timedelta(days=days)).isoformat()
+    events = [
+        event for event in _event_rows(db) if start <= event["learning_day"] <= today
+    ]
+    return {"days": history_days(events, start, today)}
 
 
 @router.get("/recommended")

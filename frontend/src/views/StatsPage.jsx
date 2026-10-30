@@ -15,7 +15,7 @@ export default function StatsPage({ onBack }) {
   const [tooltip, setTooltip] = useState(null);
 
   const showTooltip = useCallback((e, date, reviews) => {
-    setTooltip({ x: e.clientX + 12, y: e.clientY + 14, text: `${date} · ${reviews} 次复习` });
+    setTooltip({ x: e.clientX + 12, y: e.clientY + 14, text: `${date} · ${reviews} 次作答` });
   }, []);
   const moveTooltip = useCallback((e) => {
     setTooltip((t) => t ? { ...t, x: Math.min(e.clientX + 12, window.innerWidth - 160), y: e.clientY + 14 } : null);
@@ -162,6 +162,8 @@ export default function StatsPage({ onBack }) {
                 key={i}
                 className={`cal-cell cal-l${getLevel(d.reviews)}`}
                 style={{ gridRow: row + 2, gridColumn: col + 2 }}
+                data-date={d.date}
+                data-count={d.reviews}
                 onMouseEnter={(e) => showTooltip(e, d.date, d.reviews)}
                 onMouseMove={moveTooltip}
                 onMouseLeave={hideTooltip}
@@ -188,9 +190,19 @@ export default function StatsPage({ onBack }) {
       <div className="stats-grid">
         <div className="stats-card"><span className="stats-card-value">{stats.total_cards}</span><span className="stats-card-label">累计词汇</span></div>
         <div className="stats-card"><span className="stats-card-value">{stats.graduated}</span><span className="stats-card-label">已毕业</span></div>
-        <div className="stats-card"><span className="stats-card-value">{stats.streak}</span><span className="stats-card-label">连续天数</span></div>
-        <div className="stats-card"><span className="stats-card-value">{stats.reviewed_today}</span><span className="stats-card-label">今日已学</span></div>
+        <div className="stats-card"><span className="stats-card-value" data-testid="streak">{stats.streak}</span><span className="stats-card-label">连续天数</span></div>
+        <div className="stats-card"><span className="stats-card-value">{stats.reviewed_today}</span><span className="stats-card-label">今日完成</span></div>
       </div>
+
+      <div className="today-stats" style={{ marginTop: 12 }}>
+        今日完成 <b>{stats.reviewed_today}</b> 词 · 练习 <b>{stats.attempted_today}</b> 次 ·
+        跳过 <b>{stats.skipped_today}</b> 次
+      </div>
+      {stats.history_incomplete && (
+        <p role="note" className="add-hint">
+          部分旧历史不可还原，图表只展示可确认的记录；旧数据最后活动另见词卡详情。
+        </p>
+      )}
 
       {/* 本周正确率 */}
       {weekly && (
@@ -224,6 +236,9 @@ export default function StatsPage({ onBack }) {
       {tooltip && (
         <div className="cal-tooltip" style={{ left: tooltip.x, top: tooltip.y }}>
           {tooltip.text}
+          <span style={{ display: "block", opacity: 0.75 }}>
+            学习日按 {stats.learning_timezone || "Asia/Shanghai"} 归属
+          </span>
         </div>
       )}
     </section>

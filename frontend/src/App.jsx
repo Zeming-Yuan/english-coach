@@ -477,7 +477,10 @@ function QueueView({ setView, setStudyQueue, onAddStarter }) {
       {stats && (
         <div className="today-stats" style={{ cursor: "pointer" }} onClick={() => setView("stats")}>
           {stats.streak > 0 && <span className="streak-badge">🔥 <b>{stats.streak}</b> 天连续</span>}
-          <span>今日已学 <b>{stats.reviewed_today}</b> 张 · 累计 <b>{stats.total_cards}</b> 词</span>
+          <span>
+            今日完成 <b>{stats.reviewed_today}</b> 词 · 练习 <b>{stats.attempted_today}</b> 次 ·
+            跳过 <b>{stats.skipped_today}</b> 次 · 累计 <b>{stats.total_cards}</b> 词
+          </span>
         </div>
       )}
 
