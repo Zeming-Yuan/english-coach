@@ -35,7 +35,8 @@ def sqlite_database_path(database_url: str) -> Path | None:
 def backup_sqlite_database(database_url: str) -> Path | None:
     """升级前用 SQLite backup API 建立可恢复副本，校验通过后才返回。
 
-    仅对已经初始化过 Alembic 的 SQLite 文件库执行；新库无需备份。
+    只对已经包含业务表的 SQLite 文件库执行；全新空库无需备份。
+    未打标（缺 alembic_version）的旧库也可能被升级流程检查，同样先备份。
     备份失败会抛 RuntimeError，调用方必须在迁移前停止。
     """
     db_path = sqlite_database_path(database_url)
@@ -46,10 +47,11 @@ def backup_sqlite_database(database_url: str) -> Path | None:
     except sqlite3.Error as exc:
         raise RuntimeError(f"升级前无法读取数据库 {db_path}：{exc}") from exc
     try:
-        initialized = source.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='alembic_version'"
+        has_tables = source.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' "
+            "AND name NOT LIKE 'sqlite_%' LIMIT 1"
         ).fetchone()
-        if initialized is None:
+        if has_tables is None:
             return None
         stamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S%f")
         target = db_path.with_name(f"{db_path.name}.bak-{stamp}")

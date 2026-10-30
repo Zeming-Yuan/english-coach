@@ -31,7 +31,7 @@ def main() -> None:
     os.environ["DEEPSEEK_API_KEY"] = ""
     os.environ["DEEPSEEK_BASE_URL"] = ""
 
-    from sqlalchemy import create_engine
+    from sqlalchemy import create_engine, text
 
     from app import models  # noqa: F401 — 注册全部模型表
     from e2e.support.fixture_loader import load_fixture
@@ -55,6 +55,19 @@ def main() -> None:
             cards = json.loads(Path(args.cards_file).read_text(encoding="utf-8"))
             rows = [{"meaning": "苹果", "kind": "word", **card} for card in cards]
             load_fixture(engine, {"tables": {"cards": rows}})
+            ids: list[int] = []
+            with engine.connect() as conn:
+                for row in rows:
+                    ids.append(
+                        conn.execute(
+                            text(
+                                "SELECT id FROM cards WHERE word = :word AND kind = :kind "
+                                "ORDER BY id DESC LIMIT 1"
+                            ),
+                            {"word": row["word"], "kind": row["kind"]},
+                        ).scalar_one()
+                    )
+            print(json.dumps({"ids": ids}))
     finally:
         engine.dispose()
 

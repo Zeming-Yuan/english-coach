@@ -27,8 +27,8 @@ from app.routers import (
     tts,
 )
 from app.runtime import Runtime, SystemClock
-from app.services.llm import configure_llm
-from app.services.llm_client import LLMNotConfigured
+from app.services.llm import bind_llm_client, reset_llm_client
+from app.services.llm_client import LazyLLMClient, LLMNotConfigured
 
 
 def create_app(
@@ -40,7 +40,6 @@ def create_app(
     """构建应用；测试可注入配置、运行时和静态目录。"""
     settings = settings or app_settings
     runtime = runtime or Runtime(SystemClock(), settings.learning_timezone)
-    configure_llm(settings)
 
     app = FastAPI(
         title="EnglishCoach",
@@ -49,6 +48,16 @@ def create_app(
     )
     app.state.settings = settings
     app.state.runtime = runtime
+    app.state.llm_client = LazyLLMClient(settings)
+
+    @app.middleware("http")
+    async def _bind_request_llm(request: Request, call_next):
+        """每个请求使用所属应用实例的 AI 配置，支持同进程多实例。"""
+        token = bind_llm_client(request.app.state.llm_client)
+        try:
+            return await call_next(request)
+        finally:
+            reset_llm_client(token)
 
     @app.exception_handler(LLMNotConfigured)
     async def _llm_not_configured(_request: Request, exc: LLMNotConfigured):

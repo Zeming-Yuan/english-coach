@@ -14,6 +14,7 @@ from app.models.review import Review
 from app.services.card_generator import generate_cards, regenerate_example
 from app.services.card_payload import card_payload
 from app.services.graduation import is_graduated
+from app.services.llm_client import LLMNotConfigured
 
 router = APIRouter()
 
@@ -222,6 +223,8 @@ def refresh_examples(limit: int = 10, db: Session = Depends(get_db)):
                 if sentence_card:
                     sentence_card.example = example
                     sentence_card.example_cn = example_cn
+        except LLMNotConfigured:
+            raise  # AI 未配置是整批不可用，不能伪装成“刷新了 0 条”
         except Exception:  # noqa: BLE001, S112 — 单个失败不阻塞整批
             continue
 

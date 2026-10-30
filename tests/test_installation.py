@@ -103,6 +103,87 @@ def test_stamped_missing_rating_repairs(tmp_path):
         engine.dispose()
 
 
+def test_upgraded_database_accepts_a_review(tmp_path):
+    """T03：升级后的旧库能真实提交一次学习并写回排期。"""
+    db_path = tmp_path / "upgrade.db"
+    url = f"sqlite:///{db_path.as_posix()}"
+    config = _migration_config(url)
+    command.upgrade(config, "a9f3e7d1c2b4")
+    engine = create_engine(url)
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("INSERT INTO cards (word, kind) VALUES ('apple', 'word')"))
+            conn.execute(
+                text(
+                    "INSERT INTO reviews "
+                    "(card_id, state, step, due, stability, difficulty, elapsed_days, review_count) "
+                    "VALUES (1, 1, 0, '2026-10-29 12:00:00', 2.5, 5.0, 0, 1)"
+                )
+            )
+    finally:
+        engine.dispose()
+
+    command.upgrade(config, "head")
+
+    from fastapi.testclient import TestClient
+    from sqlalchemy.orm import sessionmaker
+
+    from app.config import Settings
+    from app.db import get_db
+    from app.main import create_app
+    from app.runtime import Runtime, SystemClock
+
+    engine = create_engine(url, connect_args={"check_same_thread": False})
+    SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+    app = create_app(
+        settings=Settings(_env_file=None, database_url=url, llm_api_key=""),
+        runtime=Runtime(SystemClock()),
+    )
+
+    def override_get_db():
+        db = SessionLocal()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app.dependency_overrides[get_db] = override_get_db
+    try:
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.post("/api/reviews", json={"card_id": 1, "rating": 1})
+            assert response.status_code == 200, response.text
+            assert response.json()["card_id"] == 1
+            assert response.json()["next_due"]
+    finally:
+        engine.dispose()
+
+    engine = create_engine(url)
+    try:
+        with engine.connect() as conn:
+            rating, count = conn.execute(
+                text("SELECT rating, review_count FROM reviews WHERE card_id = 1")
+            ).one()
+            assert (rating, count) == (1, 2)
+    finally:
+        engine.dispose()
+
+
+def test_backup_covers_unstamped_database(tmp_path):
+    """没有 alembic_version 的旧库升级前同样保留副本。"""
+    from app.db import backup_sqlite_database
+
+    db_path = tmp_path / "unstamped.db"
+    with sqlite3.connect(db_path) as conn:
+        conn.execute("CREATE TABLE cards (id INTEGER PRIMARY KEY, word TEXT)")
+        conn.execute("INSERT INTO cards (word) VALUES ('apple')")
+
+    backup = backup_sqlite_database(f"sqlite:///{db_path.as_posix()}")
+    assert backup is not None
+    assert backup.exists()
+    with sqlite3.connect(backup) as conn:
+        assert conn.execute("SELECT word FROM cards").fetchone() == ("apple",)
+
+
 @pytest.mark.parametrize(
     ("env_update", "message"),
     [
@@ -156,8 +237,8 @@ def test_custom_database_target(tmp_path):
         LLM_API_KEY="test-placeholder",
         PYTHONPATH=str(ROOT),
     )
-    env.pop("DEEPSEEK_API_KEY", None)
-    env.pop("DEEPSEEK_BASE_URL", None)
+    env["DEEPSEEK_API_KEY"] = ""
+    env["DEEPSEEK_BASE_URL"] = ""
     script = (
         "from alembic import command\n"
         "from alembic.config import Config\n"
@@ -190,8 +271,8 @@ def test_explicit_migration_url_wins_over_settings(tmp_path):
         LLM_API_KEY="test-placeholder",
         PYTHONPATH=str(ROOT),
     )
-    env.pop("DEEPSEEK_API_KEY", None)
-    env.pop("DEEPSEEK_BASE_URL", None)
+    env["DEEPSEEK_API_KEY"] = ""
+    env["DEEPSEEK_BASE_URL"] = ""
     script = (
         "from alembic import command\n"
         "from alembic.config import Config\n"
@@ -250,7 +331,6 @@ def test_missing_llm_key_serves_local_api_and_reports_503():
     from app.db import Base, get_db
     from app.main import create_app
     from app.runtime import Runtime, SystemClock
-    from app.services import llm
 
     engine = create_engine(
         "sqlite://",
@@ -260,7 +340,6 @@ def test_missing_llm_key_serves_local_api_and_reports_503():
     Base.metadata.create_all(bind=engine)
     TestingSession = sessionmaker(bind=engine, autoflush=False, autocommit=False)
 
-    previous_client = llm.client
     try:
         app = create_app(
             settings=Settings(llm_api_key=""),
@@ -282,7 +361,6 @@ def test_missing_llm_key_serves_local_api_and_reports_503():
             assert response.status_code == 503
             assert "LLM_API_KEY" in response.json()["detail"]
     finally:
-        llm.client = previous_client
         engine.dispose()
 
 

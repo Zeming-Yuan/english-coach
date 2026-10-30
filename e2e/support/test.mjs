@@ -14,7 +14,11 @@ const requireFromFrontend = createRequire(path.join(root, "frontend", "package.j
 const {test: base, expect, request: apiRequest} = requireFromFrontend("@playwright/test");
 
 function pythonBin() {
-  const venv = process.env.EC_PYTHON || path.join(root, ".venv", "Scripts", "python.exe");
+  if (process.env.EC_PYTHON) return process.env.EC_PYTHON;
+  const venv =
+    process.platform === "win32"
+      ? path.join(root, ".venv", "Scripts", "python.exe")
+      : path.join(root, ".venv", "bin", "python");
   if (fs.existsSync(venv)) return venv;
   return process.env.PYTHON || "python";
 }
@@ -32,6 +36,7 @@ function runSeed(databasePath, {fixture = null, cardsFile = null, migrate = fals
   if (result.status !== 0) {
     throw new Error(`seed.py failed (${result.status})\n${result.stderr || result.stdout}`);
   }
+  return result;
 }
 
 async function waitForHealth(baseURL, child, getStderr) {
@@ -169,7 +174,9 @@ async function startApp({fixture = null} = {}) {
         const cardsFile = path.join(workDir, "cards.json");
         fs.writeFileSync(cardsFile, JSON.stringify(cards));
         try {
-          runSeed(databasePath, {cardsFile});
+          const result = runSeed(databasePath, {cardsFile});
+          const lines = result.stdout.trim().split(/\r?\n/);
+          return JSON.parse(lines[lines.length - 1] || "{}").ids || [];
         } finally {
           fs.rmSync(cardsFile, {force: true});
         }

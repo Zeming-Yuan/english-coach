@@ -28,11 +28,6 @@ class LazyLLMClient:
     def chat(self):
         return self._client().chat
 
-    def configure(self, settings: Settings) -> None:
-        """应用启动时切换配置；不保留旧客户端。"""
-        self._settings = settings
-        self._openai = None
-
     def _client(self) -> OpenAI:
         if not self._settings.llm_api_key:
             raise LLMNotConfigured(

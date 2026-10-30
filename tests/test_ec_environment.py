@@ -82,6 +82,38 @@ def test_ec_factory_gives_independent_databases(ec, ec_factory):
     }
 
 
+def test_ec_envs_keep_their_own_llm_client(ec, ec_factory):
+    """同进程多实例不能互相覆盖 AI 配置。"""
+    from app.services.llm_client import LLMNotConfigured
+
+    class LabelledClient:
+        def __init__(self, label: str):
+            self.label = label
+
+        @property
+        def chat(self):
+            raise LLMNotConfigured(self.label)
+
+    other = ec_factory()
+    ec.app.state.llm_client = LabelledClient("instance-a")
+    other.app.state.llm_client = LabelledClient("instance-b")
+
+    first = ec.client.post("/api/cards/generate", json={"words": ["apple"]})
+    second = other.client.post("/api/cards/generate", json={"words": ["banana"]})
+    assert first.status_code == 503
+    assert first.json()["detail"] == "instance-a"
+    assert second.status_code == 503
+    assert second.json()["detail"] == "instance-b"
+
+
+def test_refresh_examples_reports_unconfigured_ai(ec):
+    """批量刷新不能把“AI 未配置”伪装成刷新 0 条。"""
+    ec.seed_card("apple", example="short", explanation="no separator")
+    response = ec.client.post("/api/cards/refresh-examples")
+    assert response.status_code == 503
+    assert "LLM_API_KEY" in response.json()["detail"]
+
+
 def test_static_assets_work_when_started_from_other_cwd(tmp_path, monkeypatch):
     """从不同工作目录启动/请求，静态目录仍然有效（RF3）。"""
     monkeypatch.chdir(tmp_path)
@@ -107,6 +139,40 @@ def _run_e2e_runner(*args: str) -> subprocess.CompletedProcess:
     )
 
 
+def test_seed_script_reports_card_ids(tmp_path):
+    """E2E 的 seedCards 依赖 seed.py 输出真实卡片 ID。"""
+    import json
+    import os
+    import sys
+
+    db = tmp_path / "seed.db"
+    cards_file = tmp_path / "cards.json"
+    cards_file.write_text(
+        json.dumps([{"word": "apple"}, {"word": "banana", "kind": "word"}]),
+        encoding="utf-8",
+    )
+    env = {**os.environ, "PYTHONPATH": str(ROOT)}
+    script = ROOT / "e2e" / "support" / "seed.py"
+    subprocess.run(
+        [sys.executable, str(script), "--database", str(db), "--migrate"],
+        cwd=ROOT,
+        env=env,
+        check=True,
+        capture_output=True,
+    )
+    result = subprocess.run(
+        [sys.executable, str(script), "--database", str(db), "--cards-file", str(cards_file)],
+        cwd=ROOT,
+        env=env,
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+    ids = json.loads(result.stdout.strip().splitlines()[-1])["ids"]
+    assert len(ids) == 2
+    assert all(isinstance(card_id, int) for card_id in ids)
+
+
 def test_e2e_runner_rejects_invalid_ticket():
     result = _run_e2e_runner("--ticket", "EC-1")
     assert result.returncode != 0
@@ -121,3 +187,4 @@ def test_e2e_runner_missing_ticket_value_fails():
 def test_e2e_runner_unknown_ticket_has_no_matches():
     result = _run_e2e_runner("--ticket", "EC-99")
     assert result.returncode != 0
+    assert "No tests found" in result.stdout + result.stderr

@@ -24,7 +24,6 @@ from app.db import get_db
 from app.main import create_app
 from app.models.card import Card
 from app.runtime import Runtime
-from app.services import llm
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_NOW = "2026-10-30T12:00:00+00:00"
@@ -109,7 +108,6 @@ class ECEnv:
         self.SessionLocal = sessionmaker(
             bind=self.engine, class_=EnvSession, autoflush=False, autocommit=False
         )
-        self._previous_llm_client = llm.client
         self.app = self._build_app()
         self.client = TestClient(self.app, raise_server_exceptions=False)
 
@@ -190,6 +188,5 @@ class ECEnv:
         try:
             self.client.close()
         finally:
-            llm.client = self._previous_llm_client
             self.engine.dispose()
             shutil.rmtree(self.root, ignore_errors=True)

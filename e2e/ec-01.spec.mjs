@@ -18,5 +18,18 @@ for (const llmState of ["missing", "timeout", "unavailable"]) {
     await expect(page.getByRole("navigation")).toBeVisible();
     await expect(page.getByText("加载失败", {exact: true})).toHaveCount(0);
     await expect(page.getByRole("button", {name: "先加几个词"})).toBeVisible();
+
+    // AI 失败必须可观察，且不能把本地页面打挂
+    const response = await instance.request.post("/api/cards/generate", {
+      data: {words: ["apple"]},
+    });
+    if (llmState === "missing") {
+      expect(response.status()).toBe(503);
+      expect((await response.json()).detail).toContain("LLM_API_KEY");
+    } else {
+      expect(response.status()).toBeGreaterThanOrEqual(500);
+    }
+    await expect(page.getByRole("navigation")).toBeVisible();
+    await expect(page.getByText("加载失败", {exact: true})).toHaveCount(0);
   });
 }

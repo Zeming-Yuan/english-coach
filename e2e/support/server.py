@@ -44,7 +44,6 @@ def main() -> None:
     os.environ["LLM_BASE_URL"] = str(
         settings_payload.get("llm_base_url", "http://127.0.0.1:9/v1")
     )
-    os.environ["EC_EXTERNAL_LLM"] = str(external.get("llm", ""))
     # 空值覆盖用户 .env 中的旧配置，测试服务器不读取真实密钥
     os.environ["DEEPSEEK_API_KEY"] = ""
     os.environ["DEEPSEEK_BASE_URL"] = ""
@@ -82,6 +81,20 @@ def main() -> None:
         runtime=runtime,
         static_dir=Path(args.static_dir),
     )
+
+    # 外部 AI 替身：fixture 的 external.llm=timeout/unavailable 在适配处模拟失败，
+    # 不发起真实网络请求；应用其余部分仍是真实实现。
+    mode = str(external.get("llm", ""))
+    if mode in {"timeout", "unavailable"}:
+
+        class _FailingLLMClient:
+            @property
+            def chat(self):
+                if mode == "timeout":
+                    raise TimeoutError("simulated LLM timeout")
+                raise ConnectionError("simulated LLM unavailable")
+
+        app.state.llm_client = _FailingLLMClient()
 
     port = _free_port()
     print(json.dumps({"port": port, "databasePath": args.database}), flush=True)

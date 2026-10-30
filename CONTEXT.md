@@ -10,6 +10,11 @@
   - **阅读句**（`difficulty="reading"`）：后台 AI 升级后的复杂句（对话体优先 + 意群切分）；带 AI 生成的 `chunks`
 - **意群**（`chunks`）：`{text, role}` 数组，`role ∈ subject | predicate | adverbial`；缺省前端启发式切分兜底
 
+## 运行与配置
+
+- **运行环境**（Runtime，`app/runtime.py`）：一次应用运行的时钟 + 学习时区（默认 `Asia/Shanghai`）；生产用 `SystemClock`，测试注入 `MutableClock`，请求经 `get_runtime` 读 `app.state`，不使用全局时钟
+- **升级前备份**：Alembic 升级已有业务表的 SQLite 前，用 backup API 生成 `.bak-<时间戳>` 并通过 `integrity_check`，才继续迁移
+
 ## 记忆与调度
 
 - **复习记录**（`Review`）：FSRS 的入库形态（state/step/due/stability/difficulty/rating/review_count）
@@ -26,7 +31,7 @@
 ## 数据与复用
 
 - **卡片载荷**（CardPayload）：卡片对外形状的单一来源（`app/services/card_payload.py`）——队列版（轻量）/ 全量版（含毕业/错词/困难标记）/ 备份版（数据库列同构，导入导出对称）
-- **AI 调用**（`app/services/llm.py`）：`generate_json(system, user, task)` → `dict | None`；**None 契约**：永不抛异常，调用方决定兜底/报错；客户端/timeout/模型路由只在此处
+- **AI 调用**（`app/services/llm.py`）：`generate_json(system, user, task)` → `dict | None`；**None 契约**：网络/超时/解析失败返回 None，调用方决定兜底；唯一例外是未配置密钥时的 `LLMNotConfigured`，统一映射 503；客户端/timeout/模型路由只在此处，每个应用实例独立绑定
 
 ## 历史决策（勿再重提）
 
