@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "clean": "node -e \"const fs=require('fs'),p='../app/static/assets/';fs.readdirSync(p).filter(f=>f.startsWith('index-')&&f.endsWith('.js')).forEach(f=>fs.unlinkSync(p+f))\"",
+    "build": "npm run clean && vite build",
     "preview": "vite preview"
   },
   "dependencies": {

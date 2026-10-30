@@ -162,6 +162,7 @@ function LessonDetail({ lesson, onBack, onNext }) {
                   <div className="pretest-row">
                     <input
                       className="pretest-input"
+                      name={`pretest-${w.word}`}
                       placeholder="猜一下这个词的意思…"
                       value={guesses[w.word] || ""}
                       onChange={(e) => setGuesses((g) => ({ ...g, [w.word]: e.target.value }))}

@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -9,52 +9,43 @@ from app.models.card import Card
 from app.models.error_card import ErrorCard
 from app.models.hard_card import HardCard
 from app.models.review import Review
+from app.services.card_payload import queue_payload
 
 router = APIRouter()
 
 
-def card_to_dict(card: Card) -> dict:
-    """将 Card ORM 对象转换为字典，便于 JSON 响应。"""
-    return {
-        "id": card.id,
-        "word": card.word,
-        "phonetic": card.phonetic,
-        "meaning": card.meaning,
-        "example": card.example,
-        "example_cn": card.example_cn,
-        "explanation": card.explanation,
-        "contexts": card.contexts,
-        "kind": card.kind,
-    }
-
-
 @router.get("/today")
 def get_today(new_limit: int = 10, due_limit: int = 20, db: Session = Depends(get_db)):
+    # 决策（2026-09-02）：句子卡退出复习队列，只留单词卡。
+    # 依据：词库 <200 词时 AI 例句含大量未学词（违反 i+1），整句提取负载淹没问题词；
+    # 语境复现职责由故事页承担（自定节奏、无评分压力）。
+    # 句子卡数据保留在 cards 表，词库过 200 词后可评估恢复。
     # 难度自适应：近 7 天正确率自动调新词量（desired-retention 思想）
     adaptive_limit, error_rate = _adaptive_new_limit(db, new_limit)
     new_limit = adaptive_limit
     stmt = (
         select(Card)
         .outerjoin(Review, Review.card_id == Card.id)
-        .where(Review.id.is_(None))
+        .where(Review.id.is_(None), Card.kind == "word")
         .order_by(Card.id)
         .limit(new_limit)
     )
     new_cards = db.execute(stmt).scalars().all()
-    new_cards_dict = [card_to_dict(card) for card in new_cards]
+    new_cards_dict = [queue_payload(card) for card in new_cards]
     stmt = (
         select(Card)
         .join(Review, Review.card_id == Card.id)
-        .where(Review.due <= datetime.now(timezone.utc).replace(tzinfo=timezone.utc))
+        .where(Review.due <= datetime.now(timezone.utc).replace(tzinfo=None), Card.kind == "word")
         .order_by(Review.due)
         .limit(due_limit)
     )
     due_cards = db.execute(stmt).scalars().all()
-    due_cards_dict = [card_to_dict(card) for card in due_cards]
+    due_cards_dict = [queue_payload(card) for card in due_cards]
     # 错词优先：有错词记录的卡排到队列最前面（错误增强效应）
     error_first = db.execute(
         select(Card)
         .join(ErrorCard, ErrorCard.card_id == Card.id)
+        .where(Card.kind == "word")
         .order_by(ErrorCard.error_count.desc())
         .limit(10)
     ).scalars().all()
@@ -66,15 +57,15 @@ def get_today(new_limit: int = 10, due_limit: int = 20, db: Session = Depends(ge
     hard_first = db.execute(
         select(Card)
         .join(HardCard, HardCard.card_id == Card.id)
-        .where(Card.id.not_in(error_ids)) if error_ids else
-        select(Card).join(HardCard, HardCard.card_id == Card.id)
+        .where(Card.kind == "word", Card.id.not_in(error_ids)) if error_ids else
+        select(Card).join(HardCard, HardCard.card_id == Card.id).where(Card.kind == "word")
     ).scalars().all()
     hard_ids = {c.id for c in hard_first}
     if hard_ids:
         new_cards_dict = [c for c in new_cards_dict if c["id"] not in hard_ids]
         due_cards_dict = [c for c in due_cards_dict if c["id"] not in hard_ids]
     return {
-        "error_cards": [card_to_dict(c) for c in list(error_first) + list(hard_first)],
+        "error_cards": [queue_payload(c) for c in list(error_first) + list(hard_first)],
         "new_cards": new_cards_dict,
         "due_cards": due_cards_dict,
         "recommended_goal": adaptive_limit,  # 自适应推荐（科学驱动）
@@ -97,7 +88,7 @@ def get_weekly_accuracy(db: Session = Depends(get_db)):
     def is_ok(r):
         if r.rating is not None:
             return r.rating >= 3
-        return r.state != 2  # 旧数据兜底
+        return r.state == 2  # 旧数据兜底：state==2(Review) 视为正确
 
     weeks = []
     for i in range(7, -1, -1):
@@ -151,7 +142,7 @@ def _adaptive_new_limit(db: Session, base: int) -> tuple[int, float | None]:
     ).scalars().all()
     if not reviews:
         return base, None  # 数据不足
-    wrong = sum(1 for r in reviews if r.state == 2)
+    wrong = sum(1 for r in reviews if r.rating is not None and r.rating <= 2)
     error_rate = wrong / len(reviews)
     if error_rate > 0.3:
         return 5, error_rate
@@ -164,18 +155,17 @@ def _adaptive_new_limit(db: Session, base: int) -> tuple[int, float | None]:
 def get_errors(db: Session = Depends(get_db)):
     """错词本：记录在 error_cards 里的卡，按错误次数倒序。"""
     rows = db.execute(
-        select(ErrorCard)
+        select(ErrorCard, Card)
         .join(Card, Card.id == ErrorCard.card_id)
         .order_by(ErrorCard.error_count.desc(), ErrorCard.last_error_at)
-    ).scalars().all()
+    ).all()
     result = []
-    for r in rows:
-        c = db.get(Card, r.card_id)
+    for r, c in rows:
         result.append({
             "card_id": r.card_id,
             "error_count": r.error_count,
-            "word": c.word if c else "",
-            "meaning": c.meaning if c else "",
+            "word": c.word,
+            "meaning": c.meaning,
             "last_error_at": r.last_error_at.isoformat() if r.last_error_at else None,
         })
     return {"errors": result}
@@ -191,7 +181,9 @@ def get_stats(db: Session = Depends(get_db)):
     ).scalar_one()
     total_cards = db.execute(select(func.count(Card.id))).scalar_one()
     graduated = db.execute(
-        select(func.count(Review.id)).where(Review.state == 3)
+        select(func.count(Review.id)).where(
+            or_(Review.state == 2, Review.review_count >= 3)
+        )
     ).scalar_one()
     return {
         "reviewed_today": reviewed_today,
@@ -278,3 +270,51 @@ def _calc_streak(db: Session, now: datetime, today_start: datetime) -> int:
         streak += 1
         cursor -= timedelta(days=1)
     return streak
+
+
+@router.get("/recommended")
+def get_recommended(limit: int = 5, db: Session = Depends(get_db)):
+    """每日推荐词：基于遗忘曲线，推荐即将到期但未复习的词。
+
+    策略：
+    1. 优先推荐 due 在今天到明天之间到期的词（即将遗忘）
+    2. 其次推荐 review_count >= 2 但最近 3 天没复习的词（巩固期）
+    3. 排除已经在错误词/困难词列表里的（已有专门复习入口）
+    """
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    tomorrow = now + timedelta(days=1)
+    three_days_ago = now - timedelta(days=3)
+
+    # 已学过的词（有复习记录）
+    reviewed_cards = db.execute(
+        select(Card, Review)
+        .join(Review, Review.card_id == Card.id)
+        .where(Card.kind == "word")
+    ).all()
+
+    # 错误词/困难词 ID（已有专门入口，不重复推荐）
+    error_ids = {e.card_id for e in db.execute(select(ErrorCard)).scalars().all()}
+    hard_ids = {h.card_id for h in db.execute(select(HardCard)).scalars().all()}
+    exclude_ids = error_ids | hard_ids
+
+    candidates = []
+    for card, review in reviewed_cards:
+        if card.id in exclude_ids:
+            continue
+        # 即将到期（今天到明天）
+        if review.due and now <= review.due <= tomorrow:
+            candidates.append((card, review, 1))  # 优先级 1
+        # 巩固期：复习过 2+ 次但最近 3 天没复习
+        elif review.review_count >= 2 and (
+            review.last_review is None or review.last_review < three_days_ago
+        ):
+            candidates.append((card, review, 2))  # 优先级 2
+
+    # 按优先级排序，取前 limit 个
+    candidates.sort(key=lambda x: x[2])
+    selected = candidates[:limit]
+
+    return {
+        "recommended": [queue_payload(card) for card, _, _ in selected],
+        "total_candidates": len(candidates),
+    }

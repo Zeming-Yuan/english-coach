@@ -16,6 +16,7 @@ from app.models.card import Card
 from app.models.error_card import ErrorCard
 from app.models.memo import Memo
 from app.models.review import Review
+from app.services.card_payload import backup_payload, card_from_backup
 
 router = APIRouter()
 
@@ -44,6 +45,9 @@ class ImportIn(BaseModel):
 @router.post("/import/cards")
 def import_cards(payload: ImportIn, db: Session = Depends(get_db)):
     """导入备份：按 word 去重，缺失卡重建，复习/记忆法/错词回写。"""
+    # 先校验 payload 有内容
+    if not payload.cards:
+        return {"imported_words": 0, "requests": 0}
     # 清空关联表（全量恢复语义）
     db.execute(delete(Review))
     db.execute(delete(Memo))
@@ -63,16 +67,7 @@ def import_cards(payload: ImportIn, db: Session = Depends(get_db)):
         if existing:
             word_to_id[w] = existing.id
             continue
-        card = Card(
-            word=w,
-            phonetic=c.get("phonetic"),
-            meaning=c.get("meaning"),
-            example=c.get("example"),
-            example_cn=c.get("example_cn"),
-            contexts=c.get("contexts"),
-            kind=c.get("kind", "word"),
-            explanation=c.get("explanation"),
-        )
+        card = card_from_backup(c)
         word_to_id.pop(w, None)
         db.add(card)
         db.flush()
@@ -130,21 +125,7 @@ def export_cards(db: Session = Depends(get_db)):
 
     payload = {
         "exported_at": None,  # 占位
-        "cards": [
-            {
-                "id": c.id,
-                "word": c.word,
-                "phonetic": c.phonetic,
-                "meaning": c.meaning,
-                "example": c.example,
-                "example_cn": c.example_cn,
-                "contexts": c.contexts,
-                "kind": c.kind,
-                "explanation": c.explanation,
-                "created_at": dt(c.created_at),
-            }
-            for c in cards
-        ],
+        "cards": [backup_payload(c) for c in cards],
         "reviews": [
             {
                 "card_id": r.card_id,

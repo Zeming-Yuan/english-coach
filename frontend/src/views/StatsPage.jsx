@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "../lib/api.js";
 import { storageGet } from "../lib/utils.js";
+import { showToast } from "../App.jsx";
 
 /**
  * 学习统计视图：数字卡片/周正确率/热力图/导出。
@@ -56,9 +57,9 @@ export default function StatsPage({ onBack }) {
       const text = await file.text();
       const data = JSON.parse(text);
       const resp = await api("/api/import/cards", { method: "POST", body: JSON.stringify(data) });
-      window.dispatchEvent(new CustomEvent("toast-detail", { detail: { msg: `✅ 恢复完成：导入 ${resp.imported_words} 个新词` } }));
+      showToast(`✅ 恢复完成：导入 ${resp.imported_words} 个新词`);
     } catch (err) {
-      window.dispatchEvent(new CustomEvent("toast-detail", { detail: { msg: "恢复失败：" + err.message } }));
+      showToast("恢复失败：" + err.message);
     }
     e.target.value = "";
   };

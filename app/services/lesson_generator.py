@@ -10,17 +10,11 @@ level 设计（1-20，递进）：
 直接入库，学完自然进今日队列走 FSRS。对话存 lesson.content 供前端学习。
 """
 
-import json
-
-from openai import OpenAI
 from sqlalchemy.orm import Session
 
-from app.config import settings
 from app.models.card import Card
 from app.models.lesson import Lesson
-from app.services.model_router import Task, route
-
-client = OpenAI(api_key=settings.deepseek_api_key, base_url=settings.deepseek_base_url)
+from app.services.llm import generate_json
 
 LEVEL_DESCRIPTIONS = {
     1: "最基础的问候用词和自我介绍超高频词",
@@ -68,18 +62,9 @@ def generate_lesson(db: Session, level: int) -> Lesson:
     1. 词落 cards 表（已存在的词跳过，复用学习流）
     2. lesson 内容入库（含 title/words/dialogue/tips）
     """
-    resp = client.chat.completions.create(
-        model=route(Task.BULK),
-        messages=[
-            {"role": "system", "content": _level_prompt(level)},
-        ],
-        response_format={"type": "json_object"},
-    )
-    content = resp.choices[0].message.content
-    if not content:
-        raise ValueError("DeepSeek 返回空内容")
-
-    data = json.loads(content)
+    data = generate_json(_level_prompt(level))
+    if data is None:
+        raise ValueError("LLM 失败")
 
     # 1. 词落 cards（跳过已存在）
     words = data.get("words", [])

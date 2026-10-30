@@ -8,9 +8,9 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
-    # DeepSeek API（OpenAI 兼容协议）
-    deepseek_api_key: str = ""
-    deepseek_base_url: str = "https://api.deepseek.com"
+    # LLM API（OpenAI 兼容协议，当前：小米 MiMo Token Plan）
+    llm_api_key: str = ""
+    llm_base_url: str = "https://token-plan-cn.xiaomimimo.com/v1"
 
     # 数据库连接（默认本地 SQLite）
     database_url: str = "sqlite:///./data/english_coach.db"

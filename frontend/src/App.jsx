@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, Component } from "react";
 import { api } from "./lib/api.js";
 import { storageGet, storageSet } from "./lib/utils.js";
 import { setTtsRate } from "./lib/tts.js";
@@ -49,10 +49,40 @@ function Toast() {
   );
 }
 
+/* ============ 错误边界 ============ */
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+  componentDidCatch(error, info) {
+    console.error("[App] 渲染错误:", error, info);
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div style={{ padding: 20, fontFamily: "monospace", fontSize: 14 }}>
+          <h3>⚠️ 页面崩溃了</h3>
+          <p style={{ color: "#c00" }}>{String(this.state.error?.message || this.state.error)}</p>
+          <pre style={{ whiteSpace: "pre-wrap", maxHeight: 300, overflow: "auto", background: "#f5f5f5", padding: 10 }}>
+            {String(this.state.error?.stack || "")}
+          </pre>
+          <button className="btn btn-primary" onClick={() => this.setState({ error: null })}>重试</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 /* ============ 主应用 ============ */
 export default function App() {
   const [view, setView] = useState("queue");
   const [studyQueue, setStudyQueue] = useState([]);
+  const [singleCard, setSingleCard] = useState(null);
   const [navLocked, setNavLocked] = useState(false);
   const [darkMode, setDarkMode] = useState(() => storageGet("darkMode", false));
 
@@ -63,10 +93,20 @@ export default function App() {
     document.body.classList.toggle("dark", darkMode);
   }, [darkMode]);
 
+  // 监听"测这个词"事件（从单词详情页跳转）
+  useEffect(() => {
+    const handler = (e) => {
+      setSingleCard(e.detail.card);
+      setView("spelling");
+    };
+    window.addEventListener("quiz-single-word", handler);
+    return () => window.removeEventListener("quiz-single-word", handler);
+  }, []);
+
   const isNavView = NAV_TABS[view] !== undefined;
 
   return (
-    <div className="app">
+    <div className={`app ${!isNavView ? "practice-mode" : ""}`}>
       {/* 顶栏 */}
       <header className="topbar">
         <div className="logo">
@@ -77,6 +117,7 @@ export default function App() {
       </header>
 
       {/* 内容区 */}
+      <ErrorBoundary>
       <main className="stage">
         {view === "queue" && <QueueView setView={setView} setStudyQueue={setStudyQueue} />}
         {view === "words" && <WordsPage />}
@@ -87,13 +128,14 @@ export default function App() {
         {view === "lessons" && <LessonsPage onExit={() => setView("queue")} />}
         {view === "study" && <StudyPage queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} />}
         {view === "quiz" && <QuizPage onExit={() => setView("queue")} />}
-        {view === "spelling" && <SpellingPage onExit={() => setView("queue")} />}
+        {view === "spelling" && <SpellingPage onExit={() => { setView("queue"); setSingleCard(null); }} singleCard={singleCard} />}
         {view === "listening" && <ListeningPage onExit={() => setView("queue")} />}
         {view === "mixed" && <MixedPage onExit={() => setView("queue")} />}
       </main>
+      </ErrorBoundary>
 
-      {/* 底部导航 */}
-      <nav className={`bottom-nav ${!isNavView ? "nav-locked" : ""}`}>
+      {/* 底部导航（练习视图时滑出屏幕） */}
+      <nav className={`bottom-nav ${!isNavView ? "nav-hidden" : ""}`}>
         {Object.entries(NAV_TABS).map(([key, label]) => (
           <button
             key={key}
@@ -116,6 +158,7 @@ function QueueView({ setView, setStudyQueue }) {
   const [data, setData] = useState(null);
   const [stats, setStats] = useState(null);
   const [lessonData, setLessonData] = useState(null);
+  const [recommended, setRecommended] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dailyGoal, setDailyGoal] = useState(() => storageGet("dailyGoal", 10));
 
@@ -128,6 +171,11 @@ function QueueView({ setView, setStudyQueue }) {
         ]);
         setData(todayData);
         setStats(statsData);
+        // 推荐词（遗忘曲线）
+        try {
+          const rd = await api("/api/recommended?limit=5");
+          setRecommended(rd.recommended || []);
+        } catch {}
         // 课程入口
         try {
           const ld = await api("/api/lessons");
@@ -236,6 +284,27 @@ function QueueView({ setView, setStudyQueue }) {
           </div>
           <button className="btn btn-primary btn-small" onClick={() => {
             setStudyQueue(data.error_cards || []);
+            setView("study");
+          }}>复习 →</button>
+        </div>
+      )}
+
+      {/* 每日推荐词（遗忘曲线） */}
+      {recommended.length > 0 && (
+        <div className="lesson-entry" style={{ background: "linear-gradient(135deg, #FFF8F0, #FFF0F0)" }}>
+          <div className="lesson-entry-body">
+            <div className="lesson-entry-label">⏰ 推荐复习</div>
+            <div className="lesson-entry-sub">
+              {recommended.length} 个词即将遗忘 · 现在复习效果最好
+            </div>
+            <div className="recommended-words">
+              {recommended.map((c, i) => (
+                <span key={i} className="recommended-chip">{c.word}</span>
+              ))}
+            </div>
+          </div>
+          <button className="btn btn-primary btn-small" onClick={() => {
+            setStudyQueue(recommended);
             setView("study");
           }}>复习 →</button>
         </div>

@@ -4,14 +4,14 @@ import random
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models.card import Card
 from app.models.review import Review
-from app.services.error_tracking import record_error
+from app.services.review_submission import CardNotFoundError, submit_review
 
 router = APIRouter()
 
@@ -47,7 +47,7 @@ def get_listening(limit: int = 5, db: Session = Depends(get_db)):
     # 合并去重，取最多 limit 个
     seen = set()
     pool = []
-    for c in new_cards + due_cards:
+    for c in list(new_cards) + list(due_cards):
         if c.id not in seen:
             seen.add(c.id)
             pool.append(c)
@@ -58,21 +58,29 @@ def get_listening(limit: int = 5, db: Session = Depends(get_db)):
             db.execute(select(Card).where(Card.kind == "word")).scalars().all()
         )
         pool = random.sample(all_word_cards, min(limit, len(all_word_cards)))
-        seen = {c.id for c in pool}
 
     selected = pool[:limit]
-
     if not selected:
         return {"questions": []}
 
-    # 2. 全库词卡（用于干扰项，排除已选中的）
+    # 2. 干扰项池：全库词卡中未选中的单词（按词去重，选中词本身也不占干扰位）。
+    #    注意只排除"选中"的卡——今日池里没入选的剩余词可以当干扰项，
+    #    否则词库 <20 词时选项只剩 3 个（旧逻辑 seen 放整个池）。
     all_words = db.execute(select(Card).where(Card.kind == "word")).scalars().all()
-    all_word_texts = [c.word for c in all_words if c.id not in seen]
+
+    def other_texts(sel: list[Card]) -> list[str]:
+        used = {c.word for c in sel}
+        return list({c.word for c in all_words if c.word not in used})
+
+    # 干扰项不足 3 个时，减少题目数量把词腾给干扰项（保证每题尽量 4 选项）
+    while len(selected) > 1 and len(other_texts(selected)) < 3:
+        selected = selected[:-1]
+    other_texts = other_texts(selected)
 
     # 3. 生成题目：每题 4 选项（1 正确 + 最多 3 干扰）
     questions = []
     for card in selected:
-        distractors = random.sample(all_word_texts, min(3, len(all_word_texts)))
+        distractors = random.sample(other_texts, min(3, len(other_texts)))
         options = [card.word] + distractors
         random.shuffle(options)
         correct_index = options.index(card.word)
@@ -95,71 +103,25 @@ class ListeningScoreIn(BaseModel):
     card_id: int
     selected_index: int
     correct_index: int
-    rating: int = 3  # FSRS 评分，用户选对默认 3（记得）
+    rating: int = Field(default=3, ge=1, le=4)  # FSRS 评分 1-4
 
 
 @router.post("/listening/score")
 def score_listening(payload: ListeningScoreIn, db: Session = Depends(get_db)):
-    """听写评分：判断对错 + 提交 FSRS。"""
+    """听写评分：判分 + FSRS 写回 + 错词追踪 + 毕业策略（统一见 review_submission）。"""
     card = db.get(Card, payload.card_id)
     if card is None:
         raise HTTPException(status_code=404, detail="Card not found")
 
     correct = payload.selected_index == payload.correct_index
-
-    # FSRS 评分（复用 reviews 端点的逻辑）
-    from app.services.scheduler import build_fsrs_card, schedule
-
-    now = datetime.now(timezone.utc)
-    review = (
-        db.execute(
-            select(Review)
-            .where(Review.card_id == payload.card_id)
-            .order_by(Review.id.desc())
-        )
-        .scalars()
-        .first()
-    )
-
-    fsrs_card = build_fsrs_card(review)
-    new_card = schedule(fsrs_card, payload.rating, now)
-
-    if review:
-        review.state = new_card.state.value
-        review.step = new_card.step
-        review.due = new_card.due
-        review.stability = new_card.stability
-        review.difficulty = new_card.difficulty
-        review.elapsed_days = (
-            (now - review.last_review.replace(tzinfo=timezone.utc)).days
-            if review.last_review
-            else 0
-        )
-        review.last_review = now
-        review.review_count += 1
-        review.rating = payload.rating  # 记录评分（复习历史展示）
-    else:
-        review = Review(
-            card_id=payload.card_id,
-            state=new_card.state.value,
-            step=new_card.step,
-            due=new_card.due,
-            stability=new_card.stability,
-            difficulty=new_card.difficulty,
-            elapsed_days=0,
-            last_review=now,
-            review_count=1,
-            rating=payload.rating,
-        )
-        db.add(review)
-
-    # 错词追踪：答错加权，答对减权
-    record_error(db, payload.card_id, is_correct=correct)
-    db.commit()
+    try:
+        result = submit_review(db, payload.card_id, payload.rating, correct=correct)
+    except CardNotFoundError:
+        raise HTTPException(status_code=404, detail="Card not found")
 
     return {
         "correct": correct,
         "correct_word": card.word,
-        "graduated": review.state == 3,
-        "next_due": review.due.isoformat(),
+        "graduated": result.graduated,
+        "next_due": result.next_due.isoformat(),
     }

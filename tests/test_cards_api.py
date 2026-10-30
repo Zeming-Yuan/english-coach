@@ -28,26 +28,23 @@ def test_list_cards_with_review_state(client, db_session):
         assert c["graduated"] is False
 
 
-MOCK_GENERATE_RESPONSE = '{"cards": [{"word": "pear", "phonetic": "/per/", "meaning": "梨", "example": "I eat a pear.", "example_cn": "我吃一个梨。"}]}'
-
-
-@patch("app.services.card_generator.client")
-def test_generate_cards(mock_client, client, db_session):
-    """POST /api/cards/generate 生成词卡并返回。"""
-    mock_resp = type(
-        "Resp",
-        (),
+MOCK_GENERATE_DATA = {
+    "cards": [
         {
-            "choices": [
-                type(
-                    "Choice",
-                    (),
-                    {"message": type("Msg", (), {"content": MOCK_GENERATE_RESPONSE})()},
-                )()
-            ]
-        },
-    )()
-    mock_client.chat.completions.create.return_value = mock_resp
+            "word": "pear",
+            "phonetic": "/per/",
+            "meaning": "梨",
+            "example": "I eat a pear.",
+            "example_cn": "我吃一个梨。",
+        }
+    ]
+}
+
+
+@patch("app.services.card_generator.generate_json")
+def test_generate_cards(mock_generate, client, db_session):
+    """POST /api/cards/generate 生成词卡并返回。"""
+    mock_generate.return_value = MOCK_GENERATE_DATA
 
     resp = client.post("/api/cards/generate", json={"words": ["pear"]})
     assert resp.status_code == 200
@@ -68,29 +65,16 @@ def test_generate_cards_already_exists(client, db_session):
     db_session.add(Card(word="pear", meaning="梨", kind="word"))
     db_session.commit()
 
-    with patch("app.services.card_generator.client") as mock_client:
+    with patch("app.services.card_generator.generate_json") as mock_generate:
         # 如果走到 API 调用，这里返回空 cards —— 应被 existing 过滤拦截
-        mock_resp = type(
-            "Resp",
-            (),
-            {
-                "choices": [
-                    type(
-                        "Choice",
-                        (),
-                        {"message": type("Msg", (), {"content": '{"cards": []}'})()},
-                    )()
-                ]
-            },
-        )()
-        mock_client.chat.completions.create.return_value = mock_resp
+        mock_generate.return_value = {"cards": []}
         resp = client.post("/api/cards/generate", json={"words": ["pear"]})
 
     assert resp.status_code == 200
     assert resp.json()["generated"] == 0
     assert resp.json()["skipped"] == 1
     # generate_cards 对全新词调 API；已存在词直接跳过（不会 mock 到调用）
-    mock_client.chat.completions.create.assert_not_called()
+    mock_generate.assert_not_called()
 
 
 def test_get_card_detail_not_found(client):
@@ -150,7 +134,7 @@ def test_get_card_detail_with_reviews(client, db_session):
     db_session.add(
         Review(
             card_id=card.id,
-            state=3,
+            state=2,
             due=now + timedelta(days=7),
             stability=5.0,
             difficulty=0.2,

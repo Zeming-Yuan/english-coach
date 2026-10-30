@@ -76,3 +76,34 @@ def test_import_dedup_by_word(client, db_session):
     client.post("/api/import/cards", json=payload)
     cards = db_session.query(Card).filter_by(word="banana").all()
     assert len(cards) == 1
+
+
+def test_backup_preserves_json_fields(client, db_session):
+    """备份含 JSON 列（chunks/related_words/difficulty），导入对称回写（旧版漏掉）。"""
+    card = Card(
+        word="hello",
+        meaning="你好",
+        kind="word",
+        chunks=[{"text": "Hello there", "role": "subject"}],
+        related_words=[{"word": "hi", "meaning": "嗨"}],
+        difficulty="reading",
+    )
+    db_session.add(card)
+    db_session.commit()
+
+    data = client.get("/api/export/cards").json()
+    exported = data["cards"][0]
+    assert exported["chunks"] == [{"text": "Hello there", "role": "subject"}]
+    assert exported["related_words"] == [{"word": "hi", "meaning": "嗨"}]
+    assert exported["difficulty"] == "reading"
+
+    # 清空后导入并验证对称回写
+    db_session.query(Card).delete()
+    db_session.commit()
+    resp = client.post("/api/import/cards", json=data)
+    assert resp.status_code == 200
+    restored = db_session.query(Card).filter_by(word="hello").first()
+    assert restored is not None
+    assert restored.chunks == exported["chunks"]
+    assert restored.related_words == exported["related_words"]
+    assert restored.difficulty == "reading"

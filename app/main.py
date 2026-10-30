@@ -16,6 +16,7 @@ from app.routers import (
     health,
     lessons,
     listening,
+    lookup,
     memos,
     quiz,
     reviews,
@@ -42,12 +43,20 @@ app.include_router(lessons.router, prefix="/api", tags=["lessons"])
 app.include_router(listening.router, prefix="/api", tags=["listening"])
 app.include_router(memos.router, prefix="/api", tags=["memos"])
 app.include_router(export.router, prefix="/api", tags=["export"])
+app.include_router(lookup.router, prefix="/api", tags=["lookup"])
 
-# 前端静态文件
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+# 前端静态文件（防缓存：开发期保证加载最新构建）
+app.mount(
+    "/static",
+    StaticFiles(directory="app/static"),
+    name="static",
+)
 
 
 @app.get("/", include_in_schema=False)
 def index():
     """返回前端首页。"""
-    return FileResponse(Path("app/static/index.html"))
+    return FileResponse(
+        Path("app/static/index.html"),
+        headers={"Cache-Control": "no-store"},
+    )

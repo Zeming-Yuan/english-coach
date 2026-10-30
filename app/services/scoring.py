@@ -1,7 +1,7 @@
 def normalize(text: str) -> str:
-    """归一化判分：小写 + 只留字母数字和空白 + 收尾空格"""
+    """归一化判分：小写 + 只留 ASCII 字母数字和空白 + 收尾空格"""
     return "".join(
-        ch for ch in text.lower() if ch.isalnum() or ch in "'-" or ch.isspace()
+        ch for ch in text.lower() if (ch.isascii() and ch.isalnum()) or ch in "'-" or ch.isspace()
     ).strip()
 
 

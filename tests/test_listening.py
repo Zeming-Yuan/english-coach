@@ -2,6 +2,8 @@
 
 from datetime import datetime, timedelta, timezone
 
+from sqlalchemy import select
+
 from app.models.card import Card
 from app.models.review import Review
 
@@ -52,6 +54,35 @@ def test_listening_due_cards(client, db_session):
     data = resp.json()
     assert len(data["questions"]) == 1
     assert data["questions"][0]["word"] == "hello"
+
+
+def test_listening_small_library_full_options(client, db_session):
+    """小词库（如 16 词）下每题仍有 3 个干扰项（旧逻辑 seen 排除整个池只剩 2 个）。"""
+    for i in range(16):
+        db_session.add(Card(word=f"w{i:02}", meaning=f"词{i}", kind="word"))
+    db_session.commit()
+
+    resp = client.get("/api/listening?limit=5")
+    data = resp.json()
+    assert len(data["questions"]) == 5
+    for q in data["questions"]:
+        assert len(q["options"]) == 4
+        assert len(set(q["options"])) == 4  # 选项不重复
+        assert q["options"][q["correct_index"]] == q["word"]
+
+
+def test_listening_tiny_library_unique_options(client, db_session):
+    """极小词库（3 词）：题目数减少给干扰项腾词，选项不重复。"""
+    for w in ["apple", "banana", "cat"]:
+        db_session.add(Card(word=w, meaning=f"{w}的意思", kind="word"))
+    db_session.commit()
+
+    resp = client.get("/api/listening?limit=5")
+    data = resp.json()
+    assert len(data["questions"]) >= 1
+    for q in data["questions"]:
+        assert len(set(q["options"])) == len(q["options"])  # 无重复选项
+        assert q["options"][q["correct_index"]] == q["word"]
 
 
 def test_listening_only_word_kind(client, db_session):
@@ -116,3 +147,41 @@ def test_listening_score_card_not_found(client):
         json={"card_id": 999, "selected_index": 0, "correct_index": 0, "rating": 3},
     )
     assert resp.status_code == 404
+
+
+def test_listening_score_graduates_triggers_sentence_card(client, db_session, monkeypatch):
+    """听写评分走统一提交域：毕业触发句子卡生成（旧版本漏掉这一步）。"""
+    from app.services import review_submission
+
+    monkeypatch.setattr(review_submission, "upgrade_sentence_card", lambda cid: None)
+    card = Card(
+        word="world",
+        meaning="世界",
+        example="The world is full of surprises.",
+        example_cn="世界充满惊喜。",
+        kind="word",
+    )
+    db_session.add(card)
+    db_session.commit()
+
+    last_resp = None
+    for _ in range(3):
+        resp = client.post(
+            "/api/listening/score",
+            json={
+                "card_id": card.id,
+                "selected_index": 1,
+                "correct_index": 1,
+                "rating": 3,
+            },
+        )
+        assert resp.status_code == 200
+        last_resp = resp.json()
+        if last_resp.get("graduated"):
+            break
+
+    assert last_resp["graduated"] is True
+    sentence = db_session.execute(
+        select(Card).where(Card.word == "world", Card.kind == "sentence")
+    ).scalars().first()
+    assert sentence is not None

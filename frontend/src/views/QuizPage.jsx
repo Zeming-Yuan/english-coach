@@ -1,31 +1,26 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import { api } from "../lib/api.js";
 import { speak } from "../lib/tts.js";
-import { sfxSuccess, sfxFail } from "../lib/sfx.js";
 import { escapeHtml } from "../lib/utils.js";
+import { usePracticeSession } from "../lib/practiceSession.js";
+import { showToast } from "../App.jsx";
+import SpellingBoard from "../components/SpellingBoard.jsx";
 
 /**
- * 测验视图：cn2en / choice / fill，逐题判分。
+ * 测验视图：cn2en / choice / fill / related，逐题判分。
+ * 会话状态机在 usePracticeSession（判分/反馈/统计），这里只渲染题型 UI。
  */
 export default function QuizPage({ onExit }) {
-  const [questions, setQuestions] = useState([]);
-  const [qIdx, setQIdx] = useState(0);
-  const [wrongList, setWrongList] = useState([]);
-  const [phase, setPhase] = useState("loading"); // loading | input | feedback | result
-  const [feedback, setFeedback] = useState(null);
-  const [input, setInput] = useState("");
+  const s = usePracticeSession({
+    buildItems: async () =>
+      (await api("/api/quiz?limit=5")).questions.map((q) => ({ type: q.type, q })),
+    speakOnAnswer: true,
+    autoAdvanceMs: null,
+  });
+  const { phase, idx, item, q, total, feedback, stats, submit, skip, next, replay } = s;
+
   const [selected, setSelected] = useState(null);
-  const inputRef = useRef(null);
-
-  useEffect(() => {
-    api("/api/quiz?limit=5").then((d) => {
-      setQuestions(d.questions);
-      setPhase("input");
-    }).catch(() => setPhase("empty"));
-  }, []);
-
-  const q = questions[qIdx];
-  const total = questions.length;
+  useEffect(() => setSelected(null), [idx]);
 
   // cn2en/fill 格子渲染（feedback 阶段显示正确答案）
   const renderBoxes = (typed, wordLen, expected = null) => {
@@ -47,81 +42,23 @@ export default function QuizPage({ onExit }) {
     return boxes;
   };
 
-  // 确认答案
-  const confirmAnswer = useCallback(async () => {
-    if (!q) return;
-    const userInput = q.type === "choice" ? (selected || "") : input.trim();
-    setPhase("feedback");
-
-    let result;
+  // choice：点选项后点"确认"判分（拼写类由 SpellingBoard 输满自动提交）
+  const confirmChoice = async () => {
+    if (!q || !selected) return;
     try {
-      result = await api("/api/typing/check", {
-        method: "POST",
-        body: JSON.stringify({ card_id: q.card_id, user_input: userInput }),
-      });
+      await submit(selected);
     } catch {
-      return;
+      showToast("网络错误，请重试");
     }
+  };
 
-    const correct = result.correct;
-    if (correct) sfxSuccess(); else sfxFail();
-    speak(result.expected, null);
-
-    setFeedback({
-      correct,
-      expected: result.expected,
-      userInput,
-    });
-
-    if (!correct) {
-      setWrongList((w) => [...w, { question: q, user_input: userInput, expected: result.expected }]);
-    }
-  }, [q, input, selected]);
-
-  // 下一题
-  const nextQuestion = useCallback(() => {
-    setFeedback(null);
-    setInput("");
-    setSelected(null);
-    if (qIdx + 1 < total) {
-      setQIdx((i) => i + 1);
-      setPhase("input");
-    } else {
-      setPhase("result");
-    }
-  }, [qIdx, total]);
-
-  // Enter 键（输入阶段挂在 input，反馈阶段挂在 document）
-  const handleKeyDown = useCallback((e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      if (phase === "input") confirmAnswer();
-      else if (phase === "feedback") nextQuestion();
-    }
-  }, [phase, confirmAnswer, nextQuestion]);
-
-  // 反馈阶段文档级 Enter
-  useEffect(() => {
-    if (phase !== "feedback") return;
-    const handler = (e) => {
-      if (e.key === "Enter") { e.preventDefault(); nextQuestion(); }
-    };
-    document.addEventListener("keydown", handler);
-    return () => document.removeEventListener("keydown", handler);
-  }, [phase, nextQuestion]);
-
-  // 跳过
-  const skipQuestion = useCallback(() => {
-    if (!q) return;
-    setFeedback({ correct: false, expected: q.word || "", userInput: "", skipped: true });
-    setWrongList((w) => [...w, { question: q, user_input: "", expected: q.word || "" }]);
-    setPhase("feedback");
-  }, [q]);
+  // cn2en/fill/related：SpellingBoard 输满自动提交入口（失败由组件内部解锁重试）
+  const handleTypedSubmit = (userInput) => submit(userInput);
 
   // 结果页
-  if (phase === "result") {
-    const correctCount = total - wrongList.length;
-    const score = Math.round((correctCount / total) * 100);
+  if (phase === "done") {
+    const correctCount = total - stats.wrongList.length;
+    const score = total > 0 ? Math.round((correctCount / total) * 100) : 0;
     return (
       <section className="view view-center">
         <div className="result-badge">{score === 100 ? "🏆" : score >= 80 ? "🌟" : score >= 60 ? "👍" : "🙂"}</div>
@@ -130,16 +67,16 @@ export default function QuizPage({ onExit }) {
           <span className="big-label">分</span>
         </div>
         <div className="result-detail">
-          {wrongList.length === 0 ? (
+          {stats.wrongList.length === 0 ? (
             "全部答对！明天的复习不会再忘了 📚"
           ) : (
             <>
               答对 <span className="right">{correctCount}</span> / {total} 题。
               <div className="quiz-wrong-list">
                 <div className="quiz-wrong-title">❌ 错题回顾</div>
-                {wrongList.map((w, i) => (
+                {stats.wrongList.map((w, i) => (
                   <div key={i} className="quiz-wrong-item" style={{ cursor: "pointer" }}>
-                    <span className="quiz-wrong-meaning">{escapeHtml(w.question?.prompt || "")}</span>
+                    <span className="quiz-wrong-meaning">{escapeHtml(w.item?.q?.prompt || "")}</span>
                     <span className="quiz-wrong-expected">{escapeHtml(w.expected)} ›</span>
                   </div>
                 ))}
@@ -148,9 +85,7 @@ export default function QuizPage({ onExit }) {
             </>
           )}
         </div>
-        <button className="btn btn-ghost" onClick={() => { setQIdx(0); setWrongList([]); setPhase("loading"); api("/api/quiz?limit=5").then((d) => { setQuestions(d.questions); setPhase("input"); }); }}>
-          再测一次
-        </button>
+        <button className="btn btn-ghost" onClick={replay}>再测一次</button>
         <button className="btn btn-primary" onClick={onExit}>回到队列</button>
       </section>
     );
@@ -161,12 +96,12 @@ export default function QuizPage({ onExit }) {
   if (!q) return null;
 
   return (
-    <section className="view view-center">
+    <section className="view view-practice">
       <div className="study-head">
-        <span className="study-count">第 {qIdx + 1} / {total} 题</span>
+        <span className="study-count">第 {idx + 1} / {total} 题</span>
       </div>
       <div className="progress-track">
-        <div className="progress-fill" style={{ width: `${(qIdx / total) * 100}%` }} />
+        <div className="progress-fill" style={{ width: `${(idx / total) * 100}%` }} />
       </div>
 
       <div className="quiz-card">
@@ -174,36 +109,31 @@ export default function QuizPage({ onExit }) {
           {q.type === "cn2en" && `「${q.prompt}」用英语怎么说？`}
           {q.type === "choice" && `「${q.prompt}」是哪个单词？`}
           {q.type === "fill" && `填空：${q.prompt}${q.hint ? `（${q.hint}）` : ""}`}
+          {q.type === "related" && q.prompt}
         </div>
 
-        {/* cn2en / fill：格子 + 输入 */}
-        {(q.type === "cn2en" || q.type === "fill") && phase === "input" && (
-          <>
-            <div className="spelling-word-display">
-              {renderBoxes(input, q.word_length || 5)}
-            </div>
-            <input
-              ref={inputRef}
-              className="spelling-input"
-              value={input}
-              onChange={(e) => setInput(e.target.value.slice(0, q.word_length || 5))}
-              onKeyDown={handleKeyDown}
-              placeholder={`输入英文单词（${q.word_length || "?"} 个字母）`}
-              autoFocus
-              autoComplete="off"
-              spellCheck={false}
-            />
-          </>
+        {/* cn2en / fill：格子 + 输入（共用 SpellingBoard：实时红绿/输满自动提交/Enter） */}
+        {(q.type === "cn2en" || q.type === "fill") && !feedback && (
+          <SpellingBoard
+            key={q.id}
+            target={q.word || null}
+            maxLength={q.word_length || (q.word ? q.word.length : 5)}
+            onSubmit={handleTypedSubmit}
+            placeholder={`输入英文单词（${q.word_length || "?"} 个字母）`}
+          />
         )}
 
-        {/* choice：选项 */}
-        {q.type === "choice" && phase === "input" && (
+        {/* choice：选项（点选后确认） */}
+        {q.type === "choice" && !feedback && (
           <div className="quiz-options">
             {q.options?.map((opt) => (
-              <button
+              <div
                 key={opt}
+                role="button"
+                tabIndex={0}
                 className={`quiz-option ${selected === opt ? "selected" : ""}`}
                 onClick={() => setSelected(opt)}
+                onKeyDown={(e) => e.key === "Enter" && setSelected(opt)}
               >
                 {opt}
                 <button
@@ -211,13 +141,24 @@ export default function QuizPage({ onExit }) {
                   title="听发音"
                   onClick={(e) => { e.stopPropagation(); speak(opt); }}
                 >🔊</button>
-              </button>
+              </div>
             ))}
           </div>
         )}
 
+        {/* related：词族题（输入答案，共用一个 SpellingBoard，实时红绿可用） */}
+        {q.type === "related" && !feedback && (
+          <SpellingBoard
+            key={q.id}
+            target={q.answer || null}
+            maxLength={(q.answer || "").length || 5}
+            onSubmit={handleTypedSubmit}
+            placeholder="输入相关词…"
+          />
+        )}
+
         {/* 反馈 */}
-        {phase === "feedback" && feedback && (
+        {feedback && (
           <>
             {/* 错题高亮正确字母 */}
             {!feedback.correct && (q.type === "cn2en" || q.type === "fill") && (
@@ -238,20 +179,25 @@ export default function QuizPage({ onExit }) {
           </>
         )}
 
-        {/* 按钮 */}
-        {phase === "input" && (
+      </div>
+
+      {/* 主操作：钉在首屏底部，不随题目内容滚动 */}
+      <div className="practice-actions">
+        {!feedback && (
           <>
-            <button className="btn btn-primary btn-wide" onClick={confirmAnswer} disabled={q.type === "choice" && !selected}>
-              确认
-            </button>
-            <button className="btn btn-ghost btn-small" style={{ marginTop: 14, width: "100%", justifyContent: "center" }} onClick={skipQuestion}>
+            {q.type === "choice" && (
+              <button className="btn btn-primary btn-wide" onClick={confirmChoice} disabled={!selected}>
+                确认
+              </button>
+            )}
+            <button className="btn btn-ghost btn-small" style={{ marginTop: 14, width: "100%", justifyContent: "center" }} onClick={skip}>
               跳过这题 →
             </button>
           </>
         )}
-        {phase === "feedback" && (
-          <button className="btn btn-primary btn-wide" onClick={nextQuestion}>
-            {qIdx >= total - 1 ? "查看结果" : "下一题 →"}
+        {feedback && (
+          <button className="btn btn-primary btn-wide" onClick={next}>
+            {idx >= total - 1 ? "查看结果" : "下一题 →"}
           </button>
         )}
       </div>

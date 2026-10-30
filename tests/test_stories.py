@@ -5,6 +5,18 @@ from unittest.mock import patch
 from app.models.card import Card
 from app.models.story import Story, StoryWord
 
+MOCK_STORY_DATA = {
+    "title": "A Day at School",
+    "title_cn": "学校的一天",
+    "sentences": [
+        {"en": "Tom likes apple and banana.", "cn": "汤姆喜欢苹果和香蕉。"}
+    ],
+    "words": [
+        {"word": "apple", "phonetic": "/ˈæpəl/", "meaning": "苹果"},
+        {"word": "banana", "phonetic": "/bəˈnænə/", "meaning": "香蕉"},
+    ],
+}
+
 
 def make_word_card(db, count=3):
     """创建几张新词卡（无复习记录）。"""
@@ -44,28 +56,11 @@ def test_get_story_not_found(client):
     assert resp.status_code == 404
 
 
-MOCK_STORY_RESPONSE = '{"title":"A Day at School","story":"Tom likes apple and banana.","words":[{"word":"apple","phonetic":"/ˈæpəl/","meaning":"苹果"},{"word":"banana","phonetic":"/bəˈnænə/","meaning":"香蕉"}]}'
-
-
-@patch("app.services.story_generator.client")
-def test_generate_story(mock_client, client, db_session):
+@patch("app.services.story_generator.generate_json")
+def test_generate_story(mock_generate, client, db_session):
     """POST /api/stories/generate 生成故事并入库。"""
     make_word_card(db_session, 3)
-    # mock DeepSeek 返回
-    mock_resp = type(
-        "Resp",
-        (),
-        {
-            "choices": [
-                type(
-                    "Choice",
-                    (),
-                    {"message": type("Msg", (), {"content": MOCK_STORY_RESPONSE})()},
-                )()
-            ]
-        },
-    )()
-    mock_client.chat.completions.create.return_value = mock_resp
+    mock_generate.return_value = MOCK_STORY_DATA
     resp = client.post("/api/stories/generate")
     assert resp.status_code == 200
     data = resp.json()

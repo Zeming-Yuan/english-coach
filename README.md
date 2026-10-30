@@ -11,6 +11,8 @@
 | **生成效应 (Generation)** | 释义 → 主动拼写英文，比被动识别记忆深 |
 | **错误增强 (Errorful Learning)** | 答错词加权入库（error_cards），优先重现，连续对 2 次减权 |
 | **渐褪提示 (Fading Scaffolding)** | 拼写三档：教过（首字母）→ 提示（空格数）→ 独立（自由回忆） |
+| **可理解输入 (i+1)** | 句子意群切分（3-6 词一块）+ 语法角色语义配色 + 逐块点读跟读，先"读得下来"再"看得懂" |
+| **脚手架递减 (Fading)** | 中文翻译智能档：复习 <3 次自动显示，≥3 次自动隐藏；也可设置常显/隐藏 |
 | **元认知校准 (JOL)** | 翻面前"先回想 3 秒"引导 + 过快翻面提醒，破除流畅性错觉 |
 | **双重编码 (Dual Coding)** | AI 例句/故事强制"具体、有画面感、有情绪"（如 "The red apple rolled off the table into the dog's bowl."） |
 | **交错练习 (Interleaving)** | 混合练习：拼写/听写/选择随机交错 |
@@ -20,13 +22,25 @@
 | **情绪记忆锚点** | streak、目标环、音效反馈、成绩单分享卡 |
 | **睡眠巩固提醒** | 20 点后未学习时提示"睡前复习记忆最牢" |
 
+## 句子学习优化（v2 新增，初学友好）
+
+针对零基础"全英文句子看不懂"的痛点，句子卡全套脚手架：
+
+- **正面中文翻译**：句子卡正面直接显示中文（默认智能：复习 <3 次显示，≥3 次自动隐藏），不用翻面才能看懂
+- **意群切分**：长句切成 3-6 词的小块（AI 生成时切分 + 旧数据前端兜底），每块一个"呼吸单位"
+- **语法角色语义配色**：🟢 主语 / 🟡 谓宾 / 🟠 状语（AI 生成 role 标记，悬浮显示角色名）
+- **逐块点读跟读**：点击任意意群块单独朗读该段，跟读节奏；整句朗读/翻面对照保留
+- **难度分级标签**：词卡=基础句（basic），毕业句子卡=阅读句（reading，带 📖 标签）
+- **对话体句优先**：毕业句子生成优先 A/B 两人对话（有应答、有人物），正面渲染为气泡对话
+- **卡片布局自适应**：句子卡更高（420px），内容溢出可滚动不截断，学习区垂直居中
+
 ## 功能全景（79 课迭代）
 
 **核心学习**
 - 今日队列：新词 + FSRS 到期卡 + 错词/困难词优先重现
 - 课程式学习：AI 20 级递进（音标启蒙 → 高频词 → 简单句 → 场景对话）
-- 闪卡学习：翻面对照 + 自动发音 + 语境气泡 + 评分（忘了/模糊/记得/太简单）
-- 词毕业：复习 3 次 → 例句自动转句子卡继续学
+- 闪卡学习：翻面对照 + 自动发音 + 意群/中文辅助 + 评分（忘了/模糊/记得/太简单）
+- 词毕业：复习 3 次 → 例句自动转句子卡（对话体、阅读句）继续学
 
 **产出型练习**
 - 拼写练习（三档难度、逐字绿/红校验、回车提交、音效）
@@ -40,9 +54,9 @@
 - 自我记忆法（谐音/联想/小故事）
 
 **单词本**
-- 搜索（词/释义/例句中文）+ A-Z 侧边导航 + 右键快速查阅
-- 详情页：复习历史（评分标签）/毕业状态/错词数/困难词标记/例句发音
-- 编辑/删除词卡（AI 生成错了可纠正）
+- 搜索（词/释义/例句中文）+ 相关性排序（完全匹配>前缀>包含>释义>例句）+ A-Z 排序导航 + 右键快速查阅
+- 详情页：意群切分/难度标签/复习历史（评分标签）/毕业状态/错词数/困难词标记/例句发音
+- 编辑/删除词卡（AI 生成错了可纠正）；句子长句自动换行不截断
 
 **学习统计**
 - 今日目标环（每日目标可设 5/10/15/20）、🔥 streak、错词入口
@@ -53,7 +67,7 @@
 **数据与设置**
 - 💾 全量备份 JSON 导出 + 📥 恢复导入（词库/复习/记忆法/错词）
 - 🎴 Anki CSV 导出（UTF-8 BOM，无缝沉淀到你现有的 Anki 复习流）
-- ⚙️ 设置：发音速度 / 每日新词量 / 暗色模式
+- ⚙️ 设置：发音速度 / 每日新词量 / 中文翻译档位（智能/常显/隐藏）/ 暗色模式
 - 新用户 5 分钟闭环：生成词后"马上学一学"不等明天
 
 ## 快速开始
@@ -85,7 +99,7 @@ python -m uvicorn app.main:app --reload --port 8001
 ## 测试
 
 ```bash
-python -m pytest                 # 106 个后端测试
+python -m pytest                 # 后端测试
 node e2e_test.js                 # E2E（需 npx playwright + Edge）
 node e2e_story.js                # 故事流程 E2E
 ```
@@ -108,7 +122,7 @@ node e2e_story.js                # 故事流程 E2E
 
 ## 技术栈
 
-FastAPI · SQLAlchemy 2.0 · SQLite · Alembic · DeepSeek API（OpenAI 兼容协议，deepseek-v4-flash / v4-pro 双模型路由）· py-fsrs（FSRS 间隔重复）· edge-tts（英音合成）· **React 19 + Vite**（Web Audio API 音效）· pytest（108 测试）· ruff · Playwright E2E
+FastAPI · SQLAlchemy 2.0 · SQLite · Alembic · DeepSeek API（OpenAI 兼容协议，deepseek-v4-flash / v4-pro 双模型路由）· py-fsrs（FSRS 间隔重复）· edge-tts（英音合成）· **React 19 + Vite**（Web Audio API 音效）· pytest · ruff · Playwright E2E
 
 ## 目录结构
 
@@ -116,7 +130,7 @@ FastAPI · SQLAlchemy 2.0 · SQLite · Alembic · DeepSeek API（OpenAI 兼容�
 app/
   models/       SQLAlchemy 模型（Card/Review/Story/StoryWord/Lesson/Memo/ErrorCard/HardCard）
   routers/      API 路由（today/reviews/quiz/cards/listening/lessons/stories/memos/tts/export）
-  services/     业务层（生成器/FSRS/毕业/判分/错词追踪/模型路由）
+  services/     业务层（生成器/FSRS/毕业/判分/错词追踪/模型路由/意群生成）
   static/       构建产物（index.html + assets/），由 frontend/ 构建生成
 frontend/       React 19 + Vite 源码（views/组件、lib/共享层）
 tests/          pytest 测试
@@ -128,3 +142,4 @@ data/           SQLite 数据文件（不提交）
 - 分支：`main`（稳定）← `dev`（开发）← `feature/xxx`；提交用 Conventional Commits
 - 前端静态资源改动后：`index.html` 里 `?v=N` 版本号必须递增（防浏览器缓存）
 - `.env` 永不入库（安全红线）；模型名统一走 `app/services/model_router.py`
+- 卡片类型（kind）与难度（difficulty）由系统决定，AI 输出不能覆盖
