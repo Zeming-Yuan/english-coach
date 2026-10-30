@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models.card import Card
 from app.models.review import Review
+from app.runtime import Runtime, get_runtime
 from app.services.review_submission import CardNotFoundError, submit_review
 
 router = APIRouter()
@@ -107,7 +108,11 @@ class ListeningScoreIn(BaseModel):
 
 
 @router.post("/listening/score")
-def score_listening(payload: ListeningScoreIn, db: Session = Depends(get_db)):
+def score_listening(
+    payload: ListeningScoreIn,
+    db: Session = Depends(get_db),
+    runtime: Runtime = Depends(get_runtime),
+):
     """听写评分：判分 + FSRS 写回 + 错词追踪 + 毕业策略（统一见 review_submission）。"""
     card = db.get(Card, payload.card_id)
     if card is None:
@@ -115,7 +120,9 @@ def score_listening(payload: ListeningScoreIn, db: Session = Depends(get_db)):
 
     correct = payload.selected_index == payload.correct_index
     try:
-        result = submit_review(db, payload.card_id, payload.rating, correct=correct)
+        result = submit_review(
+            db, payload.card_id, payload.rating, correct=correct, runtime=runtime
+        )
     except CardNotFoundError:
         raise HTTPException(status_code=404, detail="Card not found")
 

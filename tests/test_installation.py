@@ -72,7 +72,7 @@ def test_stamped_missing_rating_repairs(tmp_path):
                 conn.execute(
                     text("SELECT version_num FROM alembic_version")
                 ).scalar_one()
-                == "b1c2d3e4f501"
+                == "b1c2d3e4f502"
             )
     finally:
         engine.dispose()
@@ -255,7 +255,7 @@ def test_custom_database_target(tmp_path):
                 conn.execute(
                     text("SELECT version_num FROM alembic_version")
                 ).scalar_one()
-                == "b1c2d3e4f501"
+                == "b1c2d3e4f502"
             )
     finally:
         engine.dispose()

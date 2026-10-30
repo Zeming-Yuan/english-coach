@@ -85,7 +85,7 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
         method: "POST",
         body: JSON.stringify({ card_id: card.id, rating }),
       });
-      if (resp.graduated) setGraduated((g) => [...g, card.word]);
+      if (resp.newly_graduated) setGraduated((g) => [...g, card.word]);
     } catch {}
     finally {
       submittingRef.current = false;
