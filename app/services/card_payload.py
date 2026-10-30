@@ -35,7 +35,7 @@ def card_payload(
     error=None,
     hard: bool = False,
 ) -> dict:
-    """全量载荷：含复习状态（毕业口径 is_graduated，全库唯一）。"""
+    """全量载荷：含复习状态（毕业口径 card_is_graduated，全库唯一）。"""
     return {
         "id": card.id,
         "word": card.word,

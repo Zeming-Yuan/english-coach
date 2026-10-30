@@ -22,7 +22,7 @@
 - **迁移基线**（`ReviewBaseline`）：升级前旧 Review 行的原始快照，`selected` 标出当前状态来源；不是作答事件，不纳入客观正确率
 - **学习提交**（LearningSubmission，`app/services/learning.py`）：所有评分入口的统一原子写模块——判分、事件、FSRS、错词与幂等回放；`run_write` 持有 `BEGIN IMMEDIATE`，路由不提交
 - **复习提交适配器**（ReviewSubmission，`app/services/review_submission.py`）：旧函数签名（闪卡/听写）与后台升级接缝，内部委托学习提交模块
-- **毕业**（Graduation）：词卡 → 句子卡的触发；**全库唯一口径** `is_graduated` = FSRS state==2 或 review_count>=3（`app/services/graduation.py`）；毕业 ≠ 已建句卡（兜底先行，AI 升级幂等）
+- **毕业**（Graduation）：词卡 → 句子卡的触发；**全库唯一口径** `card_is_graduated` = word 卡且（FSRS state==2 或 review_count>=3），句子卡永不毕业（`app/services/graduation.py`）；毕业 ≠ 已建句卡（兜底先行，AI 升级幂等）
 - **今日队列**（TodayQueue）：新课/到期卡/错词优先/困难词；句子卡**不进**队列（2026-09-02 决策，词库过 200 词可评估恢复）
 - **错词追踪**（ErrorCard）：答错加权、答对清权，错误增强效应
 
