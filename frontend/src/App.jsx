@@ -13,6 +13,7 @@ import StoriesPage from "./views/StoriesPage.jsx";
 import AddPage from "./views/AddPage.jsx";
 import StatsPage from "./views/StatsPage.jsx";
 import SettingsPage from "./views/SettingsPage.jsx";
+import BackupPage from "./views/BackupPage.jsx";
 import LessonsPage from "./views/LessonsPage.jsx";
 import { useStarterCards } from "./hooks/useStarterCards.js";
 
@@ -198,7 +199,7 @@ export default function App() {
           <span className="logo-mark">E</span>
           <span className="logo-text">EnglishCoach</span>
         </div>
-        <button className="settings-btn" title="设置" onClick={() => setView(view === "settings" ? "queue" : "settings")}>⚙️</button>
+        <button className="settings-btn" title="设置" aria-label="设置" onClick={() => setView(view === "settings" ? "queue" : "settings")}>⚙️</button>
       </header>
 
       {/* 内容区 */}
@@ -210,7 +211,8 @@ export default function App() {
         {view === "stories" && <StoriesPage />}
         {view === "add" && <AddPage onAddStarter={addStarterCards} onGoWords={() => setView("words")} onStartStudy={(cards) => { setStudyQueue(cards); setView("study"); }} />}
         {view === "stats" && <StatsPage onBack={() => setView("queue")} />}
-        {view === "settings" && <SettingsPage darkMode={darkMode} setDarkMode={setDarkMode} />}
+        {view === "settings" && <SettingsPage darkMode={darkMode} setDarkMode={setDarkMode} onOpenBackup={() => setView("backup")} />}
+        {view === "backup" && <BackupPage onBack={() => setView("settings")} />}
         {view === "lessons" && <LessonsPage onExit={() => setView("queue")} />}
         {view === "study" && <StudyPage queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} />}
         {view === "quiz" && <QuizPage onExit={() => setView("queue")} />}
