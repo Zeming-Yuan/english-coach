@@ -61,4 +61,5 @@ class AttemptResult(BaseModel):
     scheduled: bool = False
     next_due: str | None = None
     graduated: bool = False
+    newly_graduated: bool = False
     sentence_card_id: int | None = None

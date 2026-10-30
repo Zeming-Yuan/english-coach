@@ -266,6 +266,7 @@ def _apply_attempt_in_transaction(
     learning_day = now.astimezone(ZoneInfo(runtime.learning_timezone)).date().isoformat()
 
     review = get_memory_state(db, card.id)
+    was_graduated = bool(review is not None and is_graduated(review))
     fsrs_card = build_fsrs_card(review)
     before = _memory_summary(fsrs_card)
     scheduled = fsrs_rating is not None and not cmd.skipped
@@ -303,11 +304,14 @@ def _apply_attempt_in_transaction(
             is_correct = (fsrs_rating or cmd.rating or 0) >= 3
         record_error(db, card.id, is_correct=is_correct)
 
-    # 毕业/句卡字段表达真实当前状态，而不是“本题新建了兜底卡”。
-    graduated = bool(review is not None and is_graduated(review))
+    # 毕业/句卡字段表达真实当前状态；newly_graduated 只用于“本次刚毕业”的反馈。
+    graduated = card.kind == "word" and bool(
+        review is not None and is_graduated(review)
+    )
+    newly_graduated = graduated and not was_graduated
     sentence_card_id = None
     created_sentence = False
-    if graduated and card.kind == "word":
+    if graduated:
         sentence = ensure_sentence_card(card, db)
         if sentence is not None:
             created_sentence = True
@@ -324,6 +328,7 @@ def _apply_attempt_in_transaction(
         scheduled=scheduled,
         next_due=next_due,
         graduated=graduated,
+        newly_graduated=newly_graduated,
         sentence_card_id=sentence_card_id,
     )
     command_json = {

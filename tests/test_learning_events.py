@@ -418,6 +418,7 @@ def test_graduated_reports_current_state_on_later_attempts(ec):
     )
     assert first.status_code == 200
     assert first.json()["graduated"] is True
+    assert first.json()["newly_graduated"] is False
     assert first.json()["sentence_card_id"] == sentence_id
 
     second = ec.client.post(
@@ -426,7 +427,66 @@ def test_graduated_reports_current_state_on_later_attempts(ec):
     )
     assert second.status_code == 200
     assert second.json()["graduated"] is True
+    assert second.json()["newly_graduated"] is False
     assert second.json()["sentence_card_id"] == sentence_id
+
+
+def test_newly_graduated_only_on_the_transition(ec):
+    """newly_graduated 只在从未毕业变为毕业的那一次为 true。"""
+    from app.models.review import Review
+
+    card_id = ec.seed_card()
+    db = ec.SessionLocal()
+    try:
+        db.add(
+            Review(
+                card_id=card_id,
+                state=1,
+                step=0,
+                due=_dt(2026, 10, 30),
+                stability=2.5,
+                difficulty=5.0,
+                elapsed_days=0,
+                review_count=2,
+                last_review=_dt(2026, 10, 29),
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    first = ec.client.post(
+        "/api/reviews",
+        json={"card_id": card_id, "rating": 1, "submission_id": str(uuid4())},
+    )
+    assert first.status_code == 200
+    assert first.json()["graduated"] is True
+    assert first.json()["newly_graduated"] is True
+
+    second = ec.client.post(
+        "/api/reviews",
+        json={"card_id": card_id, "rating": 1, "submission_id": str(uuid4())},
+    )
+    assert second.status_code == 200
+    assert second.json()["graduated"] is True
+    assert second.json()["newly_graduated"] is False
+
+
+def test_sentence_cards_never_graduate(ec):
+    sentence_id = ec.seed_card(
+        "apple",
+        kind="sentence",
+        example="The fat cat sat on my laptop.",
+        example_cn="胖猫坐在我的笔记本上。",
+    )
+    for _ in range(3):
+        response = ec.client.post(
+            "/api/reviews",
+            json={"card_id": sentence_id, "rating": 3, "submission_id": str(uuid4())},
+        )
+        assert response.status_code == 200
+        assert response.json()["graduated"] is False
+        assert response.json()["newly_graduated"] is False
 
 
 def test_downgrade_keeps_events_and_upgrade_is_idempotent(ec):

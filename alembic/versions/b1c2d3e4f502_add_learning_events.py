@@ -94,11 +94,45 @@ def _capture_legacy_baselines() -> None:
     op.bulk_insert(baselines_table, baselines)
 
 
+_EVENT_INDEXES = (
+    ("ix_review_events_submission_id", ["submission_id"], True),
+    ("ix_review_events_card_id", ["card_id"], False),
+    ("ix_review_events_occurred_at", ["occurred_at"], False),
+    ("ix_review_events_learning_day", ["learning_day"], False),
+)
+_BASELINE_INDEXES = (
+    ("ix_review_baselines_card_id", ["card_id"], False),
+    ("ix_review_baselines_source_fingerprint", ["source_fingerprint"], True),
+)
+
+
+def _ensure_indexes() -> None:
+    """两表已存在时补齐缺失索引；不重建表、不动数据。"""
+    inspector = sa.inspect(op.get_bind())
+    for table, indexes in (
+        ("review_events", _EVENT_INDEXES),
+        ("review_baselines", _BASELINE_INDEXES),
+    ):
+        existing = {index["name"] for index in inspector.get_indexes(table)}
+        for name, columns, unique in indexes:
+            if name not in existing:
+                op.create_index(name, table, columns, unique=unique)
+
+
 def upgrade() -> None:
     # 本迁移的 downgrade 不删除已追加的事件/基线；重复升级到本版本时跳过 DDL。
     existing = set(sa.inspect(op.get_bind()).get_table_names())
     if {"review_events", "review_baselines"} <= existing:
+        _ensure_indexes()
         return
+    if ("review_events" in existing) != ("review_baselines" in existing):
+        missing = (
+            "review_baselines" if "review_events" in existing else "review_events"
+        )
+        raise RuntimeError(
+            f"数据库迁移处于半完成状态：缺少 {missing}。"
+            "请从升级前备份恢复后重新升级，不要手工补表。"
+        )
     op.create_table(
         "review_events",
         sa.Column("id", sa.String(length=36), nullable=False),
