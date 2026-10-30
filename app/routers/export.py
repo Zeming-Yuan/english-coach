@@ -16,6 +16,8 @@ from app.models.card import Card
 from app.models.error_card import ErrorCard
 from app.models.memo import Memo
 from app.models.review import Review
+from app.runtime import Runtime, get_runtime
+from app.services.backup import export_backup
 from app.services.card_payload import backup_payload, card_from_backup
 
 router = APIRouter()
@@ -112,9 +114,26 @@ def import_cards(payload: ImportIn, db: Session = Depends(get_db)):
     return {"imported_words": new_words, "requests": len(payload.cards)}
 
 
+@router.get("/export/backup")
+def export_backup_endpoint(
+    db: Session = Depends(get_db),
+    runtime: Runtime = Depends(get_runtime),
+):
+    """完整 V2 备份：版本、导出时间、学习时区与全部学习内容及关联。"""
+    payload = export_backup(db, runtime)
+    raw = json.dumps(payload, ensure_ascii=False, indent=1).encode("utf-8")
+    return StreamingResponse(
+        iter([raw]),
+        media_type="application/json",
+        headers={
+            "Content-Disposition": 'attachment; filename="english-coach-backup.json"'
+        },
+    )
+
+
 @router.get("/export/cards")
 def export_cards(db: Session = Depends(get_db)):
-    """全量备份：词卡 + 复习记录 + 记忆法 + 错词。"""
+    """旧导出格式：词卡 + 复习记录 + 记忆法 + 错词（兼容保留，非完整备份）。"""
     cards = db.execute(select(Card).order_by(Card.id)).scalars().all()
     reviews = db.execute(select(Review).order_by(Review.card_id)).scalars().all()
     memos = db.execute(select(Memo)).scalars().all()
