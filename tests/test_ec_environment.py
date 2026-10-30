@@ -136,6 +136,53 @@ def test_copied_context_carries_llm_binding_into_threads():
     assert seen == ["thread-bound"]
 
 
+def test_graduation_thread_uses_request_llm_binding(ec, monkeypatch):
+    """毕业后台线程必须继承当前请求所属实例的 LLM 客户端。"""
+    import threading
+    from datetime import datetime, timezone
+
+    from app.models.review import Review
+    from app.services import llm, review_submission
+
+    card_id = ec.seed_card(
+        "apple",
+        example="The fat cat sat on my laptop.",
+        example_cn="胖猫坐在我的笔记本上。",
+    )
+    db = ec.SessionLocal()
+    try:
+        db.add(
+            Review(
+                card_id=card_id,
+                state=1,
+                step=0,
+                due=datetime(2026, 10, 30, tzinfo=timezone.utc),
+                stability=2.5,
+                difficulty=5.0,
+                elapsed_days=0,
+                review_count=2,
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    sentinel = object()
+    seen: list[object] = []
+    done = threading.Event()
+
+    def fake_upgrade(_card_id: int) -> None:
+        seen.append(llm.current_llm_client())
+        done.set()
+
+    monkeypatch.setattr(review_submission, "upgrade_sentence_card", fake_upgrade)
+    ec.app.state.llm_client = sentinel
+    response = ec.client.post("/api/reviews", json={"card_id": card_id, "rating": 1})
+    assert response.status_code == 200
+    assert done.wait(5)
+    assert seen == [sentinel]
+
+
 def test_refresh_examples_reports_unconfigured_ai(ec):
     """批量刷新不能把“AI 未配置”伪装成刷新 0 条。"""
     ec.seed_card("apple", example="short", explanation="no separator")
@@ -178,7 +225,13 @@ def test_seed_script_reports_card_ids(tmp_path):
     db = tmp_path / "seed.db"
     cards_file = tmp_path / "cards.json"
     cards_file.write_text(
-        json.dumps([{"word": "apple"}, {"word": "banana", "kind": "word"}]),
+        json.dumps(
+            [
+                {"word": "apple"},
+                {"word": "apple"},
+                {"word": "banana", "kind": "word"},
+            ]
+        ),
         encoding="utf-8",
     )
     env = {**os.environ, "PYTHONPATH": str(ROOT)}
@@ -199,7 +252,8 @@ def test_seed_script_reports_card_ids(tmp_path):
         capture_output=True,
     )
     ids = json.loads(result.stdout.strip().splitlines()[-1])["ids"]
-    assert len(ids) == 2
+    assert len(ids) == 3
+    assert len(set(ids)) == 3
     assert all(isinstance(card_id, int) for card_id in ids)
 
 
