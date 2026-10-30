@@ -3,6 +3,7 @@ import { api } from "../lib/api.js";
 import { speak } from "../lib/tts.js";
 import { cleanToken, escapeHtml } from "../lib/utils.js";
 import { useWordLookup } from "../lib/wordLookup.js";
+import { useLearningAttempt } from "../hooks/useLearningAttempt.js";
 import { showToast } from "../App.jsx";
 import RatingButtons from "../components/RatingButtons.jsx";
 
@@ -126,15 +127,6 @@ function StoryRead({ story, onBack }) {
     });
   };
 
-  const rateWord = async (rating) => {
-    if (!activeWord?.id) return;
-    try {
-      await api("/api/reviews", { method: "POST", body: JSON.stringify({ card_id: activeWord.id, rating }) });
-      closePanel();
-      showToast(rating >= 3 ? "✅ 已标记记得" : "📌 已加入复习队列");
-    } catch {}
-  };
-
   const isLearnedWord = activeWord && (lookupResult.isLearned || story.words.some((w) => w.word === activeWord.word));
 
   return (
@@ -202,7 +194,20 @@ function StoryRead({ story, onBack }) {
             {/* 已学过的词：显示评分 */}
             {isLearnedWord && activeWord.id && (
               <div className="story-word-panel-rating">
-                <RatingButtons onRate={rateWord} />
+                <StoryRating
+                  key={activeWord.id}
+                  cardId={activeWord.id}
+                  onRated={(rating) => {
+                    closePanel();
+                    showToast(
+                      rating == null
+                        ? "已确认保存本次评分"
+                        : rating >= 3
+                          ? "✅ 已标记记得"
+                          : "📌 已加入复习队列",
+                    );
+                  }}
+                />
               </div>
             )}
             {/* 未学过的词：显示添加按钮 */}
@@ -215,5 +220,59 @@ function StoryRead({ story, onBack }) {
         </>
       )}
     </section>
+  );
+}
+
+/* 故事内已学词的显式评分：保存确认后才关闭面板并提示。 */
+function StoryRating({ cardId, onRated }) {
+  const attempt = useLearningAttempt("story:" + cardId);
+
+  const finish = (result, rating) => {
+    if (result.committed !== true) return;
+    attempt.clear();
+    onRated(rating);
+  };
+
+  const rate = async (rating) => {
+    if (attempt.phase === "saving" || attempt.phase === "failed") return;
+    try {
+      finish(
+        await attempt.submit("/api/reviews", {
+          card_id: cardId,
+          rating,
+          source: "story",
+          kind: "self_rating",
+          stage: "standalone",
+        }),
+        rating,
+      );
+    } catch {}
+  };
+
+  const retry = async () => {
+    try {
+      finish(await attempt.retry(), null);
+    } catch {}
+  };
+
+  return (
+    <>
+      <RatingButtons
+        onRate={rate}
+        disabled={attempt.phase === "saving" || attempt.phase === "failed"}
+      />
+      {attempt.phase === "saving" && (
+        <p role="status" className="save-state">正在确认保存…</p>
+      )}
+      {attempt.phase === "failed" && (
+        <div role="alert" className="save-state save-state-error">
+          <p>{attempt.error}</p>
+          <div className="save-state-actions">
+            <button className="btn btn-primary btn-small" onClick={retry}>继续确认保存</button>
+            <button className="btn btn-ghost btn-small" onClick={attempt.clear}>放弃这条待确认</button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

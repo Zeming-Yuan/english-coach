@@ -8,6 +8,7 @@ export default function RatingButtons({ onRate, disabled = false }) {
         <button
           key={r}
           className={`btn-rating rating-${r}`}
+          data-testid={r === 3 ? "rate-good" : undefined}
           disabled={disabled}
           onClick={() => onRate(r)}
         >
