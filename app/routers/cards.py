@@ -15,7 +15,7 @@ from app.models.review_baseline import ReviewBaseline
 from app.models.review_event import ReviewEvent
 from app.services.card_generator import generate_cards, regenerate_example
 from app.services.card_payload import card_payload
-from app.services.graduation import is_graduated
+from app.services.graduation import card_is_graduated
 from app.services.learning import (
     get_card_events,
     get_memory_state,
@@ -248,7 +248,7 @@ def refresh_examples(limit: int = 10, db: Session = Depends(get_db)):
 def regenerate_sentences(limit: int = 5, db: Session = Depends(get_db)):
     """为已毕业但没有句子卡的词重新生成句子卡（AI 生成更复杂的句子）。
 
-    按统一毕业口径（is_graduated：state==2 或复习 >=3 次）找词，
+    按统一毕业口径（card_is_graduated：word 且 state==2 或复习 >=3 次）找词，
     建兜底句卡并启动后台 AI 升级——与复习提交路径完全一致。
     """
     import contextvars as _contextvars
@@ -257,7 +257,6 @@ def regenerate_sentences(limit: int = 5, db: Session = Depends(get_db)):
     from app.services.graduation import (
         ensure_sentence_card,
         find_sentence_card,
-        is_graduated,
         upgrade_sentence_card,
     )
 
@@ -275,7 +274,7 @@ def regenerate_sentences(limit: int = 5, db: Session = Depends(get_db)):
         review = latest.get(card.id)
         if (
             review is not None
-            and is_graduated(review)
+            and card_is_graduated(card, review)
             and find_sentence_card(db, card.word) is None
         ):
             needs_sentence.append(card)
@@ -354,7 +353,7 @@ def get_card_detail(card_id: int, db: Session = Depends(get_db)):
         "chunks": card.chunks,
         "difficulty": card.difficulty,
         "created_at": card.created_at.isoformat(),
-        "graduated": is_graduated(latest),
+        "graduated": card_is_graduated(card, latest),
         "review_count": latest.review_count if latest else 0,
         "error_count": error.error_count if error else 0,
         "memo": memo.content if memo else None,

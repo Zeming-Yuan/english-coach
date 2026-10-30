@@ -488,6 +488,12 @@ def test_sentence_cards_never_graduate(ec):
         assert response.json()["graduated"] is False
         assert response.json()["newly_graduated"] is False
 
+    detail = ec.client.get(f"/api/cards/{sentence_id}").json()
+    assert detail["graduated"] is False
+    listed = ec.client.get("/api/cards").json()["cards"]
+    assert next(c for c in listed if c["id"] == sentence_id)["graduated"] is False
+    assert ec.client.get("/api/stats").json()["graduated"] == 0
+
 
 def test_downgrade_keeps_events_and_upgrade_is_idempotent(ec):
     """降级不得删除已追加事件；再次升级跳过 DDL 且数据不变。"""

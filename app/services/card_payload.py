@@ -9,7 +9,7 @@
 from datetime import datetime
 
 from app.models.card import Card
-from app.services.graduation import is_graduated
+from app.services.graduation import card_is_graduated
 
 
 def queue_payload(card: Card) -> dict:
@@ -50,7 +50,7 @@ def card_payload(
         "chunks": card.chunks,
         "difficulty": card.difficulty,
         "review_count": review.review_count if review else 0,
-        "graduated": is_graduated(review),
+        "graduated": card_is_graduated(card, review),
         "error_count": error.error_count if error else 0,
         "is_hard": hard,
     }

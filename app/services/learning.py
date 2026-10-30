@@ -29,9 +29,9 @@ from app.runtime import Runtime
 from app.schemas.learning import AttemptCommand, AttemptResult
 from app.services.error_tracking import record_error
 from app.services.graduation import (
+    card_is_graduated,
     ensure_sentence_card,
     find_sentence_card,
-    is_graduated,
     upgrade_sentence_card,
 )
 from app.services.scheduler import build_fsrs_card, schedule
@@ -266,7 +266,7 @@ def _apply_attempt_in_transaction(
     learning_day = now.astimezone(ZoneInfo(runtime.learning_timezone)).date().isoformat()
 
     review = get_memory_state(db, card.id)
-    was_graduated = bool(review is not None and is_graduated(review))
+    was_graduated = card_is_graduated(card, review)
     fsrs_card = build_fsrs_card(review)
     before = _memory_summary(fsrs_card)
     scheduled = fsrs_rating is not None and not cmd.skipped
@@ -305,9 +305,7 @@ def _apply_attempt_in_transaction(
         record_error(db, card.id, is_correct=is_correct)
 
     # 毕业/句卡字段表达真实当前状态；newly_graduated 只用于“本次刚毕业”的反馈。
-    graduated = card.kind == "word" and bool(
-        review is not None and is_graduated(review)
-    )
+    graduated = card_is_graduated(card, review)
     newly_graduated = graduated and not was_graduated
     sentence_card_id = None
     created_sentence = False
