@@ -16,7 +16,8 @@ venv/
 htmlcov/
 
 # ---- 数据 ----
-data/
+# 只忽略仓库根的运行时数据库目录；app/data/ 是随应用分发的固定内容
+/data/
 *.sqlite3
 *.db
 

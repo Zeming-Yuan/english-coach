@@ -1,0 +1,72 @@
+[
+  {
+    "word": "apple",
+    "phonetic": "/ˈæp.əl/",
+    "meaning": "苹果",
+    "example": "I eat an apple every morning.",
+    "example_cn": "我每天早上吃一个苹果。"
+  },
+  {
+    "word": "banana",
+    "phonetic": "/bəˈnɑː.nə/",
+    "meaning": "香蕉",
+    "example": "The monkey is eating a banana.",
+    "example_cn": "猴子正在吃香蕉。"
+  },
+  {
+    "word": "teacher",
+    "phonetic": "/ˈtiː.tʃə/",
+    "meaning": "老师",
+    "example": "My teacher is very kind.",
+    "example_cn": "我的老师非常和蔼。"
+  },
+  {
+    "word": "dog",
+    "phonetic": "/dɒɡ/",
+    "meaning": "狗",
+    "example": "The dog is running in the garden.",
+    "example_cn": "狗正在花园里跑。"
+  },
+  {
+    "word": "house",
+    "phonetic": "/haʊs/",
+    "meaning": "房子",
+    "example": "They live in a small house.",
+    "example_cn": "他们住在一所小房子里。"
+  },
+  {
+    "word": "book",
+    "phonetic": "/bʊk/",
+    "meaning": "书",
+    "example": "This book is very interesting.",
+    "example_cn": "这本书很有趣。"
+  },
+  {
+    "word": "water",
+    "phonetic": "/ˈwɔː.tə/",
+    "meaning": "水",
+    "example": "Please give me a glass of water.",
+    "example_cn": "请给我一杯水。"
+  },
+  {
+    "word": "hello",
+    "phonetic": "/həˈləʊ/",
+    "meaning": "你好",
+    "example": "Hello, nice to meet you.",
+    "example_cn": "你好，很高兴见到你。"
+  },
+  {
+    "word": "cat",
+    "phonetic": "/kæt/",
+    "meaning": "猫",
+    "example": "The cat is sleeping on the sofa.",
+    "example_cn": "猫正在沙发上睡觉。"
+  },
+  {
+    "word": "school",
+    "phonetic": "/skuːl/",
+    "meaning": "学校",
+    "example": "We go to school by bus.",
+    "example_cn": "我们坐公交车去学校。"
+  }
+]
