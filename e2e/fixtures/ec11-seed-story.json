@@ -1,0 +1,15 @@
+{
+  "tables": {
+    "stories": [
+      {
+        "id": 1,
+        "title": "Old story",
+        "content": "The zebra walked into the library.",
+        "created_at": "2026-10-01T00:00:00+00:00"
+      }
+    ],
+    "cards": [
+      {"id": 9, "word": "zebra", "kind": "word", "meaning": "斑马"}
+    ]
+  }
+}
