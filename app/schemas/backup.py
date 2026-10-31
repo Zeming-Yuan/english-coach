@@ -359,6 +359,7 @@ def validate_backup(payload: dict) -> ValidatedBackup:
 def _validate_full_graph(tables: dict, payload: dict) -> None:
     from app.schemas.learning import AttemptCommand, AttemptResult
     from app.services.learning import canonical_attempt
+    from app.services.scoring import normalize
 
     def reject(collection, index, field, reason):
         raise BackupValidationError(
@@ -443,6 +444,10 @@ def _validate_full_graph(tables: dict, payload: dict) -> None:
             expected = row["command_json"]["expected"]
             if expected is not None and not isinstance(expected, str):
                 raise ValueError("已验答案必须是文本或空值")
+            if result.expected != (
+                normalize(expected) if expected is not None else None
+            ):
+                raise ValueError("缓存答案与已验答案不匹配")
             if result.next_due is not None:
                 datetime.fromisoformat(result.next_due)
             for field in ("source", "kind", "stage", "answer", "skipped", "assistance"):

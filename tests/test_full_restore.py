@@ -792,3 +792,91 @@ def test_full_restore_success_keeps_legacy_request_count(ec, ec_factory, card_co
     assert data["mode"] == "full_replace"
     assert data["counts"]["cards"] == card_count
     assert data["safety_backup_path"]
+
+
+@pytest.mark.parametrize("boundary", ["preview", "execute"])
+@pytest.mark.parametrize(
+    "kind", ["typed", "typed_null", "choice", "self_rating", "skip"]
+)
+def test_full_restore_rejects_cache_answer_inconsistent_with_saved_command(
+    ec, ec_factory, boundary, kind
+):
+    cid = ec.seed_card()
+    command = {
+        "card_id": cid,
+        "source": "study",
+        "submission_id": str(uuid4()),
+    }
+    if kind.startswith("typed"):
+        command.update(kind="typed", answer="apple")
+    elif kind == "choice":
+        for word in ("pear", "orange", "banana"):
+            ec.seed_card(word)
+        question = ec.client.get("/api/listening?limit=1").json()["questions"][0]
+        command.update(
+            card_id=question["card_id"],
+            source="listening",
+            kind="choice",
+            answer=question["word"],
+            question_token=question["question_token"],
+        )
+    elif kind == "skip":
+        command.update(kind="self_rating", skipped=True)
+    else:
+        command.update(kind="self_rating", rating=1)
+    saved = ec.client.post("/api/reviews", json=command)
+    assert saved.status_code == 200, saved.text
+    backup = ec.client.get("/api/export/backup").json()
+    backup["learning_events"][0]["response"]["expected"] = (
+        None if kind == "typed_null" else "tampered answer"
+    )
+    target = ec_factory()
+    valid_target = _seed_full(target)
+    before = target.snapshot()
+    safety_before = {
+        path.name: path.read_bytes() for path in (target.root / "backups").glob("*")
+    }
+    preview = target.client.post("/api/import/preview", json=valid_target)
+    assert preview.status_code == 200, preview.text
+    if boundary == "preview":
+        result = target.client.post("/api/import/preview", json=backup)
+    else:
+        result = target.client.post(
+            "/api/import/cards",
+            json={
+                "backup": backup,
+                "expected_revision": preview.json()["expected_revision"],
+            },
+        )
+    assert result.status_code == 422, result.text
+    assert result.json()["detail"][0]["collection"] == "learning_events"
+    assert target.snapshot() == before
+    assert {
+        path.name: path.read_bytes() for path in (target.root / "backups").glob("*")
+    } == safety_before
+
+
+def test_full_restore_preserves_normalized_cached_answer_and_replay(ec, ec_factory):
+    cid = ec.seed_card("  Apple!  ")
+    command = {
+        "card_id": cid,
+        "source": "study",
+        "kind": "typed",
+        "answer": "apple",
+        "submission_id": str(uuid4()),
+    }
+    saved = ec.client.post("/api/reviews", json=command)
+    assert saved.status_code == 200, saved.text
+    backup = ec.client.get("/api/export/backup").json()
+    event = backup["learning_events"][0]
+    assert event["command_json"]["expected"] == "  Apple!  "
+    assert event["response"]["expected"] == "apple"
+    target = ec_factory()
+    restored = _confirmed_restore(target, backup)
+    assert restored.status_code == 200, restored.text
+    mapped = target.client.get("/api/cards").json()["cards"][0]["id"]
+    before = target.snapshot()
+    replay = target.client.post("/api/reviews", json={**command, "card_id": mapped})
+    assert replay.status_code == 200, replay.text
+    assert replay.json()["expected"] == "apple"
+    assert target.snapshot() == before
