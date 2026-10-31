@@ -331,12 +331,12 @@ def _apply_full_restore(session: Session, validated: ValidatedBackup) -> dict:
         "learning_events",
         "story_words",
     )
-    # Do not reuse live target identities: a delayed pre-restore AI request must
-    # never find its old card ID attached to restored content, even identical data.
+    # Cards use the durable native allocator, including across empty restores.
+    # Other integer identities only need remapping within this replacement.
     next_ids = {
         name: (session.scalar(select(func.max(model.id))) or 0) + 1
         for name, model in BACKUP_COLLECTIONS
-        if name not in ("learning_events", "review_baselines")
+        if name not in ("cards", "learning_events", "review_baselines")
     }
     for name in reversed(order):
         session.execute(delete(models[name]))
@@ -349,7 +349,7 @@ def _apply_full_restore(session: Session, validated: ValidatedBackup) -> dict:
                     row[key] = mapping[parent][row[key]]
             if name in ("learning_events", "review_baselines"):
                 row["id"] = source["id"]
-            else:
+            elif name != "cards":
                 row["id"] = next_ids[name]
                 next_ids[name] += 1
             if name == "learning_events":

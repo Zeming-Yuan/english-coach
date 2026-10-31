@@ -332,8 +332,11 @@ def test_signed_submission_replays_after_restore_without_source_secret(ec, ec_fa
     assert other.snapshot() == before
 
 
+@pytest.mark.parametrize(
+    "sequence", ["direct", "empty_then_full", "empty_restart_full"]
+)
 def test_response_started_before_restore_cannot_overwrite_restored_content(
-    ec, monkeypatch
+    ec, ec_factory, monkeypatch, sequence
 ):
     import json
     import threading
@@ -388,6 +391,11 @@ def test_response_started_before_restore_cannot_overwrite_restored_content(
     )
     assert entered.wait(5)
     backup = ec.client.get("/api/export/backup").json()
+    if sequence != "direct":
+        empty = ec_factory().client.get("/api/export/backup").json()
+        assert ec.client.post("/api/import/cards", json=empty).status_code == 200
+        if sequence == "empty_restart_full":
+            ec.restart()
     assert ec.client.post("/api/import/cards", json=backup).status_code == 200
     # Observe completion by the external connection lifecycle, without sleep races.
     from sqlalchemy import event

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from sqlalchemy import JSON, DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -16,6 +16,8 @@ class Card(Base):
     """单词卡片"""
 
     __tablename__ = "cards"
+    # Retire card identities even when a full restore leaves the table empty.
+    __table_args__: ClassVar[dict] = {"sqlite_autoincrement": True}
     id: Mapped[int] = mapped_column(primary_key=True)
     word: Mapped[str] = mapped_column(String(50), nullable=False)
     phonetic: Mapped[str] = mapped_column(String(50), nullable=True)
@@ -25,9 +27,15 @@ class Card(Base):
     contexts: Mapped[list | None] = mapped_column(JSON, nullable=True)
     kind: Mapped[str] = mapped_column(String(10), nullable=False, server_default="word")
     explanation: Mapped[str] = mapped_column(String(500), nullable=True)
-    related_words: Mapped[list | None] = mapped_column(JSON, nullable=True)  # 词族/近义词
-    chunks: Mapped[list | None] = mapped_column(JSON, nullable=True)  # 句子意群切分（初学友好）
-    difficulty: Mapped[str] = mapped_column(String(10), nullable=True)  # basic=基础句 / reading=阅读句
+    related_words: Mapped[list | None] = mapped_column(
+        JSON, nullable=True
+    )  # 词族/近义词
+    chunks: Mapped[list | None] = mapped_column(
+        JSON, nullable=True
+    )  # 句子意群切分（初学友好）
+    difficulty: Mapped[str] = mapped_column(
+        String(10), nullable=True
+    )  # basic=基础句 / reading=阅读句
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.now()
     )
