@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, or_, select
@@ -13,6 +13,7 @@ from app.models.review_baseline import ReviewBaseline
 from app.models.review_event import ReviewEvent
 from app.runtime import Runtime, get_runtime
 from app.services.card_payload import queue_payload
+from app.services.daily_session import build_daily_queue
 from app.services.statistics import (
     adaptive_new_limit,
     history_days,
@@ -54,36 +55,51 @@ def get_today(
     stmt = (
         select(Card)
         .join(Review, Review.card_id == Card.id)
-        .where(Review.due <= datetime.now(timezone.utc).replace(tzinfo=None), Card.kind == "word")
+        .where(
+            Review.due <= datetime.now(UTC).replace(tzinfo=None),
+            Card.kind == "word",
+        )
         .order_by(Review.due)
         .limit(due_limit)
     )
     due_cards = db.execute(stmt).scalars().all()
     due_cards_dict = [queue_payload(card) for card in due_cards]
     # 错词优先：有错词记录的卡排到队列最前面（错误增强效应）
-    error_first = db.execute(
-        select(Card)
-        .join(ErrorCard, ErrorCard.card_id == Card.id)
-        .where(Card.kind == "word")
-        .order_by(ErrorCard.error_count.desc())
-        .limit(10)
-    ).scalars().all()
+    error_first = (
+        db.execute(
+            select(Card)
+            .join(ErrorCard, ErrorCard.card_id == Card.id)
+            .where(Card.kind == "word")
+            .order_by(ErrorCard.error_count.desc())
+            .limit(10)
+        )
+        .scalars()
+        .all()
+    )
     error_ids = {c.id for c in error_first}
     if error_ids:
         new_cards_dict = [c for c in new_cards_dict if c["id"] not in error_ids]
         due_cards_dict = [c for c in due_cards_dict if c["id"] not in error_ids]
     # 困难词优先（自主增强）：并入 error_cards 列表尾部
-    hard_first = db.execute(
-        select(Card)
-        .join(HardCard, HardCard.card_id == Card.id)
-        .where(Card.kind == "word", Card.id.not_in(error_ids)) if error_ids else
-        select(Card).join(HardCard, HardCard.card_id == Card.id).where(Card.kind == "word")
-    ).scalars().all()
+    hard_first = (
+        db.execute(
+            select(Card)
+            .join(HardCard, HardCard.card_id == Card.id)
+            .where(Card.kind == "word", Card.id.not_in(error_ids))
+            if error_ids
+            else select(Card)
+            .join(HardCard, HardCard.card_id == Card.id)
+            .where(Card.kind == "word")
+        )
+        .scalars()
+        .all()
+    )
     hard_ids = {c.id for c in hard_first}
     if hard_ids:
         new_cards_dict = [c for c in new_cards_dict if c["id"] not in hard_ids]
         due_cards_dict = [c for c in due_cards_dict if c["id"] not in hard_ids]
     return {
+        **build_daily_queue(db, adaptive_limit, runtime, due_limit),
         "error_cards": [queue_payload(c) for c in list(error_first) + list(hard_first)],
         "new_cards": new_cards_dict,
         "due_cards": due_cards_dict,
@@ -112,7 +128,9 @@ def get_weekly_accuracy(
     def percent(rows):
         if not rows:
             return None
-        return round(sum(1 for row in rows if row["fsrs_rating"] >= 3) / len(rows) * 100)
+        return round(
+            sum(1 for row in rows if row["fsrs_rating"] >= 3) / len(rows) * 100
+        )
 
     monday = today_date - timedelta(days=today_date.weekday())
     weeks = []
@@ -134,9 +152,7 @@ def get_weekly_accuracy(
 
     recent_start = (today_date - timedelta(days=6)).isoformat()
     recent = [
-        event
-        for event in events
-        if recent_start <= event["learning_day"] <= today
+        event for event in events if recent_start <= event["learning_day"] <= today
     ]
     return {
         "weeks": weeks,
@@ -155,13 +171,17 @@ def get_errors(db: Session = Depends(get_db)):
     ).all()
     result = []
     for r, c in rows:
-        result.append({
-            "card_id": r.card_id,
-            "error_count": r.error_count,
-            "word": c.word,
-            "meaning": c.meaning,
-            "last_error_at": r.last_error_at.isoformat() if r.last_error_at else None,
-        })
+        result.append(
+            {
+                "card_id": r.card_id,
+                "error_count": r.error_count,
+                "word": c.word,
+                "meaning": c.meaning,
+                "last_error_at": r.last_error_at.isoformat()
+                if r.last_error_at
+                else None,
+            }
+        )
     return {"errors": result}
 
 
@@ -258,7 +278,7 @@ def get_recommended(limit: int = 5, db: Session = Depends(get_db)):
     2. 其次推荐 review_count >= 2 但最近 3 天没复习的词（巩固期）
     3. 排除已经在错误词/困难词列表里的（已有专门复习入口）
     """
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = datetime.now(UTC).replace(tzinfo=None)
     tomorrow = now + timedelta(days=1)
     three_days_ago = now - timedelta(days=3)
 

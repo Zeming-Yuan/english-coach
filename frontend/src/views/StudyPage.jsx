@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "../lib/api.js";
 import { speak } from "../lib/tts.js";
+import { loadPending } from "../lib/learning.js";
 import { cleanToken, escapeHtml, highlightWord, storageGet, storageSet } from "../lib/utils.js";
 import { splitSentence } from "../lib/chunks.js";
 import { useWordLookup } from "../lib/wordLookup.js";
@@ -15,21 +16,31 @@ import RatingButtons from "../components/RatingButtons.jsx";
  * onExit: () => void 返回队列
  * onToQuiz: () => void 进测验
  */
-export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
-  const [idx, setIdx] = useState(0);
+export default function StudyPage({ queue, session, recoveryVersion, onProgress, onAbort, onExit, onToQuiz, onToMixed }) {
+  const [standaloneIdx, setStandaloneIdx] = useState(0);
+  const idx = session ? session.index : standaloneIdx;
   const [flipped, setFlipped] = useState(false);
   const [graduated, setGraduated] = useState([]);
-  const [answered, setAnswered] = useState(0);
+  const [standaloneAnswered, setStandaloneAnswered] = useState(0);
+  const answered = session ? session.index : standaloneAnswered;
   const [flipStartedAt, setFlipStartedAt] = useState(null);
   const [memoText, setMemoText] = useState(null);
   const cardRef = useRef(null);
   const [exiting, setExiting] = useState(false);
-  const [done, setDone] = useState(false);
+  const [standaloneDone, setStandaloneDone] = useState(false);
+  const done = session ? session.complete === true : standaloneDone;
   // 中文翻译档位：auto=复习<3次显示，>=3次自动隐藏；on=常显；off=隐藏
   const [cnMode, setCnMode] = useState(() => storageGet("sentenceCnMode", "auto"));
-  // EC-13 之前自评会话使用独立 ID；接入每日会话后由外部传入。
-  const [sessionId] = useState(() => crypto.randomUUID());
+  // 每日主队列复用固定会话 ID；专项自评使用独立 ID。
+  const [sessionId] = useState(() => session?.id || crypto.randomUUID());
   const attempt = useLearningAttempt("study");
+
+  // A home recovery already in flight can finish after this screen mounts.
+  // The daily session owns progress; discard the hook's stale pending copy only
+  // after the shared pending record has actually been resolved.
+  useEffect(() => {
+    if (session && !loadPending("study")) attempt.clear();
+  }, [session?.id, idx, recoveryVersion, attempt.clear]);
 
   useEffect(() => {
     storageSet("sentenceCnMode", cnMode);
@@ -73,20 +84,25 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
   }, [card, flipStartedAt, isSentence, exiting, done]);
 
   // 只有服务端确认保存才推进；失败停留当前题并保留同一提交标识。
-  const advance = useCallback(() => {
-    setAnswered((n) => n + 1);
+  const advance = useCallback((command, result) => {
+    if (session) {
+      setFlipped(false);
+      onProgress(command, result);
+      return;
+    }
+    setStandaloneAnswered((n) => n + 1);
     if (idx + 1 >= total) {
       // 最后一张：直接完成
-      setDone(true);
+      setStandaloneDone(true);
       return;
     }
     // 非最后一张：动画后进下一题
     setExiting(true);
     setTimeout(() => {
       setExiting(false);
-      setIdx((i) => i + 1);
+      setStandaloneIdx((i) => i + 1);
     }, 320);
-  }, [idx, total]);
+  }, [idx, total, session, onProgress, card]);
 
   const rate = useCallback(async (rating) => {
     if (!card || done || exiting) return;
@@ -99,36 +115,39 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
       showToast("这个评分是你回想后的吗？下次先想出声再翻面，记忆更准");
     }
     try {
-      const result = await attempt.submit("/api/reviews", {
+      const command = {
         card_id: card.id,
         rating,
         source: "study",
         kind: "self_rating",
         session_id: sessionId,
-        stage: "standalone",
-      });
+        stage: session ? "main" : "standalone",
+      };
+      const result = await attempt.submit("/api/reviews", command);
       if (result.committed !== true) return;
       if (result.newly_graduated) setGraduated((g) => [...g, card.word]);
       attempt.clear();
-      advance();
+      advance(command, result);
     } catch {
       // 失败保留当前题与待确认请求，由 role=alert 提供继续确认/放弃。
     }
   }, [card, idx, total, flipStartedAt, exiting, done, attempt, sessionId, advance]);
 
   const retrySave = useCallback(async () => {
+    const command = loadPending("study")?.payload;
     try {
       const result = await attempt.retry();
       if (result.committed !== true) return;
       attempt.clear();
-      if (!card || result.card_id !== card.id) {
+      if (!card || result.card_id !== card.id || command?.card_id !== card.id ||
+          command.session_id !== sessionId || command.stage !== (session ? "main" : "standalone")) {
         showToast("已确认保存上一条学习记录");
         return;
       }
       if (result.newly_graduated) setGraduated((g) => [...g, card.word]);
-      advance();
+      advance(command, result);
     } catch {}
-  }, [attempt, card, advance]);
+  }, [attempt, card, advance, sessionId, session]);
 
   // 完成态
   if (done) {
@@ -136,10 +155,10 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
       <section className="view view-center">
         <div className="study-done">
           <div className="done-emoji">🎉</div>
-          <h2>今天的词都过了一遍</h2>
+          <h2>{session ? "本轮主队列已保存" : "今天的词都过了一遍"}</h2>
           <p className="done-detail">
             {graduated.length > 0 && `${graduated.length} 个词毕业了：${graduated.join("、")} — 例句已变成句子卡。`}
-            {answered} 张卡已复习，明天的队列会按你的记忆自动安排。
+            {session ? `${answered} 张卡已保存，可返回查看剩余到期任务。` : `${answered} 张卡已复习，明天的队列会按你的记忆自动安排。`}
           </p>
           <div className="done-actions">
             <button className="btn btn-primary" onClick={onToQuiz}>去做测验</button>
@@ -295,6 +314,7 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
             <div className="save-state-actions">
               <button className="btn btn-primary btn-small" onClick={retrySave}>继续确认保存</button>
               <button className="btn btn-ghost btn-small" onClick={attempt.clear}>放弃这条待确认</button>
+              {session && <button className="btn btn-ghost btn-small" onClick={() => { attempt.clear(); onAbort(); }}>退出本轮并重新加载</button>}
             </div>
           </div>
         )}
