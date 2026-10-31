@@ -1,6 +1,6 @@
 # EC-16 发行证据与聚合验收
 
-状态：EC-16 实现与定向验证中；父规格 AC01–AC15 的最终集成验收待执行。下表是可复核的行为映射，不是全套通过声明。只有最终合并后的未过滤 E2E、完整 pytest、生产构建和安全检查均有真实输出，才可声明整体交付。
+状态：EC-16 实现与定向验证已完成；父规格 AC01–AC15 的最终集成验收待执行。下表是可复核的行为映射，不是全套通过声明。只有最终合并后的未过滤 E2E、完整 pytest、生产构建和安全检查均有真实输出，才可声明整体交付。
 
 ## 命令与诊断
 
@@ -78,11 +78,14 @@
 | 受影响 Python 的 `ruff check` / `ruff format --check` | server、seed、readonly_server、contracts、test_release_coverage 五文件均 exit 0 |
 | `npm --prefix frontend audit --json` | total 0，exit 0；锁文件只更新 Vite 7.3.6→7.3.7、source-map-js 1.2.1→1.2.2 两项补丁 |
 | TTS 受影响组合 | 12 passed，exit 0；另有预热公共 UI 2 passed，exit 0 |
-| 配置的生产 `npm --prefix frontend run build` | 待源码提交后生成最终跟踪产物 |
+| 配置的生产 `npm --prefix frontend run build` | exit 0；从干净源码提交 `3cb67c956b3b104258e13e80ab8a51bcb61e4473` 生成最终跟踪产物，cache `?v=4` |
+| 生产静态资源 HTTP smoke | 真实隔离迁移库下首页/JS/今日队列均 200，JS 字节摘要与定向浏览器构建完全相同，exit 0 |
 
 定向报告 `ec-e2e-static-qxjIum` 实际状态为 passed；构建时间 `2026-10-31T05:49:06.210Z`，HEAD 为 `7d19ac103d7e2ec4be66aebe88d90ae740c40994` 且工作区有未提交实现，完整源码摘要为 `d31da2f8c6e9802f69685f89d01c137bf4a545decb0dde06c781663099b6faa7`。不能把该 HEAD 单独当作实现身份。构建使用 Vite 7.3.7，JS 摘要 `5ad4a472680735ef40d3f5fa10fcdf6f03c211e0e48fe4824876a15df2400504`；运行期间源码与 HEAD 均保持不变。本节验后填写的报告文字不改变行为。
 
 补充 JUnit 实际执行 installation 5、upgrade 2、concurrent 2、invalid 36、faults 3、ambiguous 1，各视口共 49 个具名参数用例，合计 98；无 missing/skipped/failure/error。完整同次 JSON/JUnit 与诊断副本保留在 `/tmp/english-coach-followup-2026-10-31/ec16-qualified-focused-results/`，命令输出为该目录同级 `ec16-qualified-focused-e2e.log`、`ec16-final-coverage-cli.log`、`ec16-final-verified-{ruff,format}.log`、`ec16-qualified-audit.log`。
+
+生产构建的干净源码摘要为 `03cbdcbc757b4204ccc248696b0cf90fa58a71999318c14e047a706f499edfd5`，构建开始于 `2026-10-31T05:55:11.603790Z`；生成的 JS、index、style、favicon 与 38 场景所用字节逐项相同。完整来源见外部 `ec16-production-build-provenance.json`，真实命令输出 `ec16-qualified-production-build.log` 与 `ec16-qualified-production-smoke-verified.log`。本节后续仅补充报告文字，生产输入与产物未改变。
 
 类型检查：N/A，项目没有 TypeScript/typecheck 脚本。
 
