@@ -21,7 +21,7 @@ def test_upgrade_preserves_graph_and_retired_card_ids_for_normal_inserts(tmp_pat
     config = Config(str(ROOT / "alembic.ini"))
     config.set_main_option("sqlalchemy.url", f"sqlite:///{database}")
     command.upgrade(config, "b1c2d3e4f502")
-    fixture = json.loads((ROOT / "e2e/fixtures/ec12-full.json").read_text())
+    fixture = json.loads((ROOT / "e2e/fixtures/ec12-full.json").read_text(encoding="utf-8"))
     engine = create_engine(f"sqlite:///{database}")
     try:
         load_fixture(engine, fixture)

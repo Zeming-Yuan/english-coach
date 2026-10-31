@@ -118,12 +118,14 @@ def test_release_runner_empty_ticket_fails_with_retained_diagnostics():
         ["node", "e2e/run.mjs", "--ticket", "EC-99"],
         check=False,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         capture_output=True,
         timeout=30,
     )
     assert result.returncode == 1
     directory = run_diagnostic(result.stdout)
-    evidence = json.loads((directory / "run.json").read_text())
+    evidence = json.loads((directory / "run.json").read_text(encoding="utf-8"))
     assert evidence["status"] == "failed"
     assert evidence["assets"]
     assert evidence["built_at"]
@@ -131,10 +133,16 @@ def test_release_runner_empty_ticket_fails_with_retained_diagnostics():
     assert "No tests found" in result.stdout + result.stderr
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="Windows terminates the process instead of delivering SIGTERM to Node",
+)
 def test_release_runner_interrupted_fails_with_retained_diagnostics():
     process = subprocess.Popen(
         ["node", "e2e/run.mjs", "--ticket", "EC-99"],
         text=True,
+        encoding="utf-8",
+        errors="replace",
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )
@@ -144,7 +152,7 @@ def test_release_runner_interrupted_fails_with_retained_diagnostics():
         process.send_signal(signal.SIGTERM)
         remaining, _ = process.communicate(timeout=15)
         assert process.returncode == 1, first + remaining
-        evidence = json.loads((directory / "run.json").read_text())
+        evidence = json.loads((directory / "run.json").read_text(encoding="utf-8"))
         assert evidence["status"] == "interrupted"
         assert "interrupted" in evidence["detail"]
     finally:
