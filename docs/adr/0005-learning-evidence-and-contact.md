@@ -44,9 +44,11 @@
    事件为空值，读取时显示 `history_incomplete`，不伪造当前证据。
 8. **所有进展入口共用同一标签。** `evidence_label` 固定为
    `独立回忆已有证据 / 仍需巩固 / 历史证据，待复测 / 历史依据不完整 /
-   独立证据不足`，未知状态降级为“独立证据不足”。词表与首页队列批量返回
-   `learning_evidence` 与 `progress_label`；统计返回
-   `evidence_counts / evidence_samples / evidence_latest_at`，不替代原有题型正确率。
+   独立证据不足`，未知状态降级为“独立证据不足”。词表批量返回
+   `learning_evidence` 与 `progress_label`；首页队列只返回 `progress_label` 与
+   聚合计数；统计返回
+   `evidence_counts / evidence_labels / evidence_samples / evidence_latest_at`，
+   不替代原有题型正确率。
    词表的“毕业”徽标改为“已解锁”，详情显示“句子练习已解锁”；分享图在导出时
    读取同一统计，绘制解锁数与独立证据样本/日期，不画 100% 掌握。句子卡不进入
    词卡的证据计数，避免永远“证据不足”的句子卡稀释统计。

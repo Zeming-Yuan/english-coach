@@ -412,6 +412,11 @@ def get_card_detail(
         .first()
     )
     memo = db.execute(select(Memo).where(Memo.card_id == card_id)).scalars().first()
+    hard = (
+        db.execute(select(HardCard).where(HardCard.card_id == card_id))
+        .scalars()
+        .first()
+    )
     history_incomplete = has_incomplete_history(db, card_id)
     evidence = evidence_summary(
         db, card_id, runtime, incomplete_history=history_incomplete
@@ -434,6 +439,7 @@ def get_card_detail(
         "graduated": card_is_graduated(card, latest),
         "review_count": latest.review_count if latest else 0,
         "error_count": error.error_count if error else 0,
+        "is_hard": hard is not None,
         "memo": memo.content if memo else None,
         "next_due": latest.due.isoformat() if latest else None,
         "review_history": history,

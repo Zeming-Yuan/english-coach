@@ -149,6 +149,15 @@ def test_el03_unlock_and_evidence_are_separate_dimensions(ec):
     assert detail["learning_evidence"]["recall"]["count"] == 2
 
 
+def test_el03_detail_keeps_hard_mark(ec):
+    card_id = ec.seed_card()
+    assert (
+        ec.client.post(f"/api/cards/{card_id}/hard").json()["is_hard"] is True
+    )
+    detail = ec.client.get(f"/api/cards/{card_id}").json()
+    assert detail["is_hard"] is True
+
+
 def test_el03_reading_is_not_learning(ec):
     ec.seed_card()
     before = ec.snapshot()
