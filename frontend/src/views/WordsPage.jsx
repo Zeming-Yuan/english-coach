@@ -106,7 +106,7 @@ export default function WordsPage({ onBack }) {
             const c = g.card;
             const badges = [];
             badges.push(c.kind === "sentence" ? "句子" : "词");
-            if (c.graduated) badges.push("毕业");
+            if (c.graduated) badges.push("已解锁");
             if (c.error_count > 0) badges.push(`错词×${c.error_count}`);
             return (
               <div key={c.id} className="word-item" onClick={() => setDetail(c.id)} onContextMenu={(e) => {
@@ -119,7 +119,7 @@ export default function WordsPage({ onBack }) {
                     <>
                       <div className="word-item-word">
                         {escapeHtml(c.example || c.word)}
-                        {badges.map((b, j) => <span key={j} className={`badge ${b === "句子" ? "badge-sentence" : b === "毕业" ? "badge-graduated" : b.startsWith("错词") ? "badge-error" : "badge-word"}`}>{b}</span>)}
+                        {badges.map((b, j) => <span key={j} className={`badge ${b === "句子" ? "badge-sentence" : b === "已解锁" ? "badge-graduated" : b.startsWith("错词") ? "badge-error" : "badge-word"}`}>{b}</span>)}
                       </div>
                       <div className="word-item-meaning">{escapeHtml(c.example_cn || "")} · 复习 {c.review_count} 次</div>
                     </>
@@ -127,10 +127,10 @@ export default function WordsPage({ onBack }) {
                     <>
                       <div className="word-item-word">
                         {escapeHtml(c.word)}
-                        {badges.map((b, j) => <span key={j} className={`badge ${b === "句子" ? "badge-sentence" : b === "毕业" ? "badge-graduated" : b.startsWith("错词") ? "badge-error" : "badge-word"}`}>{b}</span>)}
+                        {badges.map((b, j) => <span key={j} className={`badge ${b === "句子" ? "badge-sentence" : b === "已解锁" ? "badge-graduated" : b.startsWith("错词") ? "badge-error" : "badge-word"}`}>{b}</span>)}
                       </div>
                       {c.phonetic && <div className="word-item-phonetic">{escapeHtml(c.phonetic)}</div>}
-                      <div className="word-item-meaning">{escapeHtml(c.meaning || "")} · 复习 {c.review_count} 次</div>
+                      <div className="word-item-meaning">{escapeHtml(c.meaning || "")} · {c.progress_label || "独立证据不足"}</div>
                     </>
                   )}
                 </div>

@@ -35,6 +35,7 @@ def card_payload(
     error=None,
     hard: bool = False,
     revision: dict | None = None,
+    evidence: dict | None = None,
 ) -> dict:
     """全量载荷：含复习状态（毕业口径 card_is_graduated，全库唯一）。"""
     payload = {
@@ -57,6 +58,9 @@ def card_payload(
     }
     if revision is not None:
         payload["content_revision"] = revision
+    if evidence is not None:
+        payload["learning_evidence"] = evidence
+        payload["progress_label"] = evidence["progress_label"]
     return payload
 
 

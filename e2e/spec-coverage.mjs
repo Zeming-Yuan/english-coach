@@ -39,6 +39,11 @@ export const requirements = {
     "EL-02 meaning edit moves old evidence to history",
     "EL-02 weak evidence never reads as mastery",
   ],
+  EL03: [
+    "EL-03 visible evidence overview from today stats",
+    "EL-03 weak evidence reads the same on home, stats and list",
+    "EL-03 share report downloads with the exported state",
+  ],
 };
 export const projects = ["mobile", "desktop"];
 

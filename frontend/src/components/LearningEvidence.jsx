@@ -28,11 +28,13 @@ function dateText(value) {
 export default function LearningEvidence({ evidence }) {
   if (!evidence) return null;
   const { recall, retention, application, revision } = evidence;
+  const recallLabel =
+    evidence.progress_label || STATUS_TEXT[recall.status] || "独立证据不足";
   return (
     <div className="word-detail-status" data-testid="learning-evidence" role="status">
       <div className="status-item">
         <span className="status-label">独立回忆</span>
-        <span className="status-value">{STATUS_TEXT[recall.status] || recall.status}</span>
+        <span className="status-value">{recallLabel}</span>
       </div>
       <div className="status-item">
         <span className="status-label">独立样本</span>

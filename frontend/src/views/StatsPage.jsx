@@ -93,8 +93,19 @@ export default function StatsPage({ onBack }) {
     ctx.font = "700 13px sans-serif";
     ctx.fillStyle = "#7A8B94";
     ctx.fillText("累计词汇", 96, 144);
-    ctx.fillText("已毕业", 96, 274);
+    ctx.fillText("句子练习已解锁", 96, 274);
     ctx.fillText("连续天数", 96, 404);
+    ctx.textAlign = "center";
+    ctx.font = "700 11px sans-serif";
+    ctx.fillStyle = "#7A8B94";
+    const latest = stats.evidence_latest_at
+      ? new Date(stats.evidence_latest_at).toLocaleDateString()
+      : "暂无";
+    ctx.fillText(
+      `独立证据 ${stats.evidence_samples || 0} 个样本 · 最近 ${latest}`,
+      170,
+      352,
+    );
     ctx.strokeStyle = "#D9E2E6";
     ctx.beginPath();
     ctx.moveTo(30, 190); ctx.lineTo(310, 190);
@@ -192,7 +203,7 @@ export default function StatsPage({ onBack }) {
 
       <div className="stats-grid">
         <div className="stats-card"><span className="stats-card-value">{stats.total_cards}</span><span className="stats-card-label">累计词汇</span></div>
-        <div className="stats-card"><span className="stats-card-value">{stats.graduated}</span><span className="stats-card-label">已毕业</span></div>
+        <div className="stats-card"><span className="stats-card-value">{stats.graduated}</span><span className="stats-card-label">句子练习已解锁</span></div>
         <div className="stats-card"><span className="stats-card-value" data-testid="streak">{stats.streak}</span><span className="stats-card-label">连续天数</span></div>
         <div className="stats-card"><span className="stats-card-value">{stats.reviewed_today}</span><span className="stats-card-label">今日完成</span></div>
       </div>
@@ -200,6 +211,24 @@ export default function StatsPage({ onBack }) {
       <div className="today-stats" style={{ marginTop: 12 }}>
         今日完成 <b>{stats.reviewed_today}</b> 词 · 练习 <b>{stats.attempted_today}</b> 次 ·
         跳过 <b>{stats.skipped_today}</b> 次
+      </div>
+
+      <div data-testid="evidence-overview" style={{ marginTop: 12 }}>
+        <h3 className="lesson-section">学习证据</h3>
+        <p style={{ fontSize: 13 }}>
+          独立回忆已有证据 {stats.evidence_counts?.verified || 0} 张 ·
+          仍需巩固 {stats.evidence_counts?.weak || 0} 张 ·
+          历史证据待复测 {stats.evidence_counts?.stale || 0} 张 ·
+          独立证据不足 {stats.evidence_counts?.insufficient || 0} 张
+        </p>
+        <p style={{ fontSize: 12, color: "var(--muted)" }}>
+          历史依据不完整 {stats.evidence_counts?.history_incomplete || 0} 张 ·
+          独立样本 {stats.evidence_samples || 0} 次 ·
+          最近证据{" "}
+          {stats.evidence_latest_at
+            ? new Date(stats.evidence_latest_at).toLocaleDateString()
+            : "暂无"}
+        </p>
       </div>
       {stats.history_incomplete && (
         <p role="note" className="add-hint">

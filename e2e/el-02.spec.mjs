@@ -39,7 +39,7 @@ test("EL-02 independent cross-day answers show verified recall", async ({appFact
   await app.setTime("2026-10-02T01:00:00Z");
   await typeWord(app, id);
   await openDetail(page, app);
-  await expect(page.getByTestId("learning-evidence")).toContainText("已有独立证据");
+  await expect(page.getByTestId("learning-evidence")).toContainText("独立回忆已有证据");
   await expect(page.getByTestId("learning-evidence")).toContainText("2 次");
   await expect(page.getByTestId("learning-evidence")).toContainText("第 1 版");
 });
@@ -54,7 +54,7 @@ test("EL-02 new failure changes verified recall to weak", async ({appFactory, pa
   await app.setTime("2026-10-03T01:00:00Z");
   await typeWord(app, id, "wrong");
   await openDetail(page, app);
-  await expect(page.getByTestId("learning-evidence")).toContainText("待巩固");
+  await expect(page.getByTestId("learning-evidence")).toContainText("仍需巩固");
 });
 
 test("EL-02 assisted answers never become independent evidence", async ({appFactory, page}) => {
@@ -99,7 +99,7 @@ test("EL-02 weak evidence never reads as mastery", async ({appFactory, page}) =>
     await typeWord(app, id, "wrong");
   }
   await openDetail(page, app);
-  await expect(page.getByTestId("learning-evidence")).toContainText("待巩固");
+  await expect(page.getByTestId("learning-evidence")).toContainText("仍需巩固");
   await expect(page.getByText("句子练习已解锁").first()).toBeVisible();
   await expect(page.getByText(/100% 掌握/)).toHaveCount(0);
   await expect(page.locator(".mastery-bar-wrap")).toHaveCount(0);

@@ -480,6 +480,13 @@ function QueueView({ setView, setStudyQueue, dailySession, onStartDaily, onResum
             今日完成 <b>{stats.reviewed_today}</b> 词 · 练习 <b>{stats.attempted_today}</b> 次 ·
             跳过 <b>{stats.skipped_today}</b> 次 · 累计 <b>{stats.total_cards}</b> 词
           </span>
+          {data?.evidence_counts && (
+            <span style={{ display: "block", fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
+              学习证据：已有独立回忆 {data.evidence_counts.verified || 0} 张 · 仍需巩固{" "}
+              {data.evidence_counts.weak || 0} 张 · 独立证据不足{" "}
+              {data.evidence_counts.insufficient || 0} 张
+            </span>
+          )}
         </div>
       )}
 
