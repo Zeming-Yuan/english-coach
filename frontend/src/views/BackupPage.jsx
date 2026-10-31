@@ -1,7 +1,7 @@
 import React, { useRef, useState } from "react";
 
 /**
- * 备份与恢复：下载完整 V2 备份；旧版备份先预览，确认后原子部分恢复。
+ * 备份与恢复：下载完整 V2 备份；备份先预览，确认后原子恢复。
  */
 
 function formatDetail(detail, fallback) {
@@ -39,7 +39,7 @@ async function postJson(path, payload) {
   return data;
 }
 
-export default function BackupPage({ onBack }) {
+export default function BackupPage({ onBack, onRestored }) {
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
@@ -97,21 +97,27 @@ export default function BackupPage({ onBack }) {
         backup: candidate.backup,
         expected_revision: candidate.preview.expected_revision,
       });
+      if (!result || !["full_replace", "legacy_partial"].includes(result.mode)) {
+        throw new Error("恢复响应无效");
+      }
       setRestoreResult(result);
+      onRestored?.();
       setCandidate(null);
       setDone(false);
       if (inputRef.current) inputRef.current.value = "";
     } catch (e) {
-      if (e.status === 409) {
+      if (e.status === 409 || !e.status) {
         try {
           const preview = await postJson(
             "/api/import/preview",
             candidate.backup,
           );
           setCandidate({ backup: candidate.backup, preview });
-          setError("数据已有新变化，请核对影响范围后再次确认。");
+          setError(e.status === 409
+            ? "数据已有新变化，请核对影响范围后再次确认。"
+            : "恢复尚未确认：已重新读取影响预览，请先核对当前数据，再决定是否替换。您可以取消并返回查看。");
         } catch (previewError) {
-          setError("恢复失败：" + (previewError?.message || String(previewError)));
+          setError("恢复尚未确认，重新预览失败：" + (previewError?.message || String(previewError)));
           setCandidate(null);
         }
       } else {
@@ -127,6 +133,8 @@ export default function BackupPage({ onBack }) {
     setError("");
     if (inputRef.current) inputRef.current.value = "";
   };
+
+  const full = candidate?.preview.mode === "full_replace";
 
   return (
     <section className="view view-center">
@@ -162,17 +170,24 @@ export default function BackupPage({ onBack }) {
 
         {candidate && (
           <div style={{ marginTop: 14, padding: 12, background: "var(--card, #f5f7f6)", borderRadius: 10 }}>
-            <p style={{ margin: 0, fontWeight: 700 }}>旧版部分恢复</p>
-            <p style={{ fontSize: 13, margin: "6px 0" }}>
+            <p style={{ margin: 0, fontWeight: 700 }}>{full ? "全量恢复" : "旧版部分恢复"}</p>
+            {full ? <>
+              <p style={{ fontSize: 13, margin: "6px 0" }}>现有数据库学习内容将被备份替换。</p>
+              <p style={{ fontSize: 13 }}>备份包含 {candidate.preview.counts.cards} 张卡、{candidate.preview.counts.learning_events} 条学习事件；将替换现有 {candidate.preview.impact.replaced.cards} 张卡、{candidate.preview.impact.replaced.learning_events} 条学习事件。</p>
+              <dl style={{ fontSize: 12 }}>
+                {Object.entries(candidate.preview.counts).map(([name, count]) => <div key={name}><dt style={{ display: "inline" }}>{({cards: "词卡", reviews: "当前记忆状态", learning_events: "学习事件", review_baselines: "迁移基线", memos: "记忆法", errors: "错词", hard_cards: "困难词", lessons: "课程", stories: "故事", story_words: "故事关联"})[name]}</dt><dd style={{ display: "inline", marginLeft: 8 }}>恢复 {count} 项，替换现有 {candidate.preview.impact.replaced[name]} 项</dd></div>)}
+              </dl>
+              {candidate.preview.counts.cards === 0 && <p role="alert">这是空备份：确认后全部学习内容将替换为 0 项。</p>}
+            </> : <p style={{ fontSize: 13, margin: "6px 0" }}>
               将新增 {candidate.preview.impact.new_cards} 张卡，匹配已有 {candidate.preview.impact.matched_cards} 张；
               复习 {candidate.preview.impact.reviews} 条、记忆法 {candidate.preview.impact.memos} 条、错词 {candidate.preview.impact.errors} 条。
-            </p>
+            </p>}
             <p style={{ fontSize: 12, color: "var(--muted)" }}>
-              未包含的内容不会被清空。执行前会自动保存当前数据库的完整备份。
+              {full ? "备份未包含的现有学习内容将被删除。" : "未包含的内容不会被清空。"}执行前会自动保存当前数据库的完整备份。
             </p>
             <div style={{ display: "flex", gap: 8 }}>
               <button className="btn btn-primary" disabled={restoring} onClick={confirmRestore}>
-                {restoring ? "正在恢复…" : "确认恢复包含的内容"}
+                {restoring ? "正在恢复…" : full ? "确认替换学习数据" : "确认恢复包含的内容"}
               </button>
               <button className="btn btn-ghost" disabled={restoring} onClick={cancelPreview}>
                 取消
@@ -183,7 +198,7 @@ export default function BackupPage({ onBack }) {
 
         {restoreResult && (
           <p role="status" style={{ fontSize: 13 }}>
-            恢复完成：新增 {restoreResult.imported_words} 个词。恢复前备份保存在
+            {restoreResult.mode === "full_replace" ? "恢复成功" : "恢复完成"}：恢复 {restoreResult.imported_words} 张卡。恢复前备份保存在
             {" "}{restoreResult.safety_backup_path}
           </p>
         )}
