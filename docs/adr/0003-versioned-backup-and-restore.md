@@ -33,12 +33,15 @@
 5. **导出时间与时区来自 Runtime。** `exported_at` 是 aware UTC ISO 时间，
    `learning_timezone` 是本次运行的学习时区；它们描述导出环境，不属于业务内容。
 6. **语义比较与摘要。** `semantic_snapshot(payload)` 仅排除 `exported_at`；
-   `snapshot_revision(payload)` 将各集合按 `id` 排序、剔除导出时间、按排序键序列化后
+   `snapshot_revision(payload)` 保留学习事件数组的保存次序，其他集合按 `id` 排序；
+   剔除导出时间、按排序键序列化后
    取 SHA256。固定样本
    `{"version":2,"learning_timezone":"Asia/Shanghai","cards":[{"id":1,"word":"apple"}],...}`
    的摘要在 `tests/test_backup_v2.py` 固定为
    `4de0c10ff9d3247203427baba022721f1ae79c1e2092bb0eb92ecc405cdddca2`，
-   后续恢复票必须使用同一契约。
+   后续恢复票必须使用同一契约。EC-14 明确事件导出按 `occurred_at`、SQLite `rowid`
+   排列，恢复按数组次序写入，保证同时间戳的先后不会因随机 UUID 排序而变化；
+   已导出的旧文件若已丢失该先后，只能保留文件现有次序，不能反推。
 7. **旧导出保留为兼容面。** `GET /api/export/cards` 与 Anki CSV 保持原形状，
    不宣称完整备份；EC-10 不改变旧导入行为，已有往返测试继续通过。新旧 URL 并存的
    理由是恢复切片尚未交付：旧导入仍按旧形状消费，提前改变旧导出会破坏已保存的旧文件

@@ -71,7 +71,7 @@ test("EC-13 small library completes with keyboard and keeps specialist practice"
   await page.keyboard.press("Space");
   await page.locator(".rating-3").focus();
   await page.keyboard.press("Enter");
-  await expect(page.getByRole("heading", {name: "本轮主队列已保存", exact: true})).toBeVisible();
+  await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toBeVisible();
   await expect(page.locator(".done-detail")).toContainText("1 张卡已保存");
   await page.getByRole("button", {name: "← 返回队列", exact: true}).click();
   await expect(page.getByText("今日复习已完成", {exact: true})).toBeVisible();
@@ -116,7 +116,7 @@ test("EC-13 deleted card cannot count as complete and can exit to reload", async
   await page.locator(".rating-3").click();
   await expect(page.getByRole("alert")).toContainText("保存");
   await expect(page.locator(".study-count")).toHaveText("1 / 1");
-  await expect(page.getByRole("heading", {name: "本轮主队列已保存", exact: true})).toHaveCount(0);
+  await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toHaveCount(0);
   await page.getByRole("button", {name: "退出本轮并重新加载", exact: true}).click({timeout: 5000});
   await expect(page.getByText("欢迎来到 EnglishCoach", {exact: true})).toBeVisible();
   expect((await (await app.request.get("/api/stats")).json()).reviewed_today).toBe(0);
@@ -153,7 +153,7 @@ test("EC-13 a completed full round leaves the backlog for a fresh next round", a
     await page.locator(".flip-hint").first().click();
     await page.locator(".rating-3").click();
   }
-  await expect(page.getByRole("heading", {name: "本轮主队列已保存", exact: true})).toBeVisible();
+  await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toBeVisible();
   expect(seen).toEqual(["due25", ...Array.from({length: 19}, (_, i) => `due${i + 1}`), "new26", "new27"]);
   expect((await (await app.request.get("/api/stats")).json()).reviewed_today).toBe(22);
   await page.getByRole("button", {name: "← 返回队列", exact: true}).click();
@@ -182,7 +182,7 @@ test("EC-13 resuming before pending confirmation cannot review the same main car
   await expect(page.locator(".front-main")).toHaveText("second");
   await page.locator(".flip-hint").first().click();
   await page.locator(".rating-3").click();
-  await expect(page.getByRole("heading", {name: "本轮主队列已保存", exact: true})).toBeVisible();
+  await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toBeVisible();
   await expect(page.locator(".done-detail")).toContainText("2 张卡已保存");
   for (const id of ids) {
     const events = (await (await app.request.get(`/api/cards/${id}`)).json()).learning_events;
@@ -222,7 +222,7 @@ test("EC-13 standalone pending for the same card cannot count toward the daily s
   const {ids, mainSessionId} = await enterDailyWithForeignPending(app, page);
   await page.getByRole("button", {name: "继续本轮学习", exact: true}).click();
   await page.getByRole("button", {name: "继续确认保存", exact: true}).click();
-  await expect(page.getByRole("heading", {name: "本轮主队列已保存", exact: true})).toHaveCount(0);
+  await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toHaveCount(0);
   await expect(page.locator(".study-count")).toHaveText("2 / 2");
   await expect(page.getByRole("alert")).toHaveCount(0);
   await expect(page.locator(".front-main")).toHaveText("second");
@@ -230,7 +230,7 @@ test("EC-13 standalone pending for the same card cannot count toward the daily s
   expect(recovered.map(event => event.stage)).toEqual(["standalone", "standalone"]);
   await page.locator(".flip-hint").first().click();
   await page.locator(".rating-3").click();
-  await expect(page.getByRole("heading", {name: "本轮主队列已保存", exact: true})).toBeVisible();
+  await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toBeVisible();
   const main = (await (await app.request.get(`/api/cards/${ids[1]}`)).json()).learning_events.filter(event => event.stage === "main");
   expect(main).toHaveLength(1);
   expect(main[0].session_id).toBe(mainSessionId);
@@ -252,10 +252,10 @@ test("EC-13 an in-flight foreign recovery clears pending without advancing daily
   release();
   await expect(page.getByRole("alert")).toHaveCount(0, {timeout: 5000});
   await expect(page.locator(".front-main")).toHaveText("second");
-  await expect(page.getByRole("heading", {name: "本轮主队列已保存", exact: true})).toHaveCount(0);
+  await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toHaveCount(0);
   await page.locator(".flip-hint").first().click();
   await page.locator(".rating-3").click();
-  await expect(page.getByRole("heading", {name: "本轮主队列已保存", exact: true})).toBeVisible();
+  await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toBeVisible();
   const events = (await (await app.request.get(`/api/cards/${ids[1]}`)).json()).learning_events;
   expect(events).toHaveLength(3);
   const main = events.filter(event => event.stage === "main");
@@ -326,14 +326,15 @@ for (const latePath of ["initial send", "retry", "home retry"]) {
       expect(await pending(), "late A must retain unconfirmed B for refresh recovery").toEqual(pendingB);
       await expect(page.locator(".study-count")).toHaveText("2 / 2");
       await expect(page.getByRole("status")).toContainText("正在确认保存");
-      await expect(page.getByRole("heading", {name: "本轮主队列已保存", exact: true})).toHaveCount(0);
+      await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toHaveCount(0);
       releaseB();
       await expect(page.getByRole("alert")).toContainText("尚未确认保存");
       await page.reload();
       await page.getByRole("button", {name: "继续确认保存", exact: true}).click();
       await expect(page.getByRole("button", {name: "继续确认保存", exact: true})).toHaveCount(0);
-      await expect(page.getByRole("heading", {name: "今日复习已完成", exact: true})).toBeVisible();
-      await expect(page.locator(".today-stats")).toContainText("今日完成 2 词");
+      await page.getByRole("button", {name: "继续本轮学习", exact: true}).click();
+      await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toBeVisible();
+      await expect(page.locator(".done-detail")).toContainText("2 张卡已保存");
       expect(submissions.map(command => command.submission_id)).toEqual([
         submissions[0].submission_id, submissions[0].submission_id,
         pendingB.payload.submission_id, pendingB.payload.submission_id,

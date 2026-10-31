@@ -117,7 +117,7 @@ export default function StudyPage({ queue, session, recoveryVersion, onProgress,
     try {
       const command = {
         card_id: card.id,
-        rating,
+        ...(rating === null ? { skipped: true } : { rating }),
         source: "study",
         kind: "self_rating",
         session_id: sessionId,
@@ -299,6 +299,7 @@ export default function StudyPage({ queue, session, recoveryVersion, onProgress,
 
       {/* 评分按钮：包裹层常驻占位（高度已在 CSS 预留），翻面后按钮永远在首屏 */}
       <div className="rating-area">
+        {session && <button className="btn btn-ghost btn-small" disabled={attempt.phase === "saving" || attempt.phase === "failed"} onClick={() => rate(null)}>跳过这张卡</button>}
         {flipped && (
           <RatingButtons
             onRate={rate}

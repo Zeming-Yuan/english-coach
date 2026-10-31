@@ -22,6 +22,7 @@ from app.routers import (
     memos,
     quiz,
     reviews,
+    sessions,
     stories,
     today,
     tts,
@@ -67,6 +68,7 @@ def create_app(
     # 注册路由
     app.include_router(health.router, prefix="/api", tags=["health"])
     app.include_router(today.router, prefix="/api", tags=["today"])
+    app.include_router(sessions.router, prefix="/api", tags=["sessions"])
     app.include_router(reviews.router, prefix="/api", tags=["reviews"])
     app.include_router(quiz.router, prefix="/api", tags=["quiz"])
     app.include_router(stories.router, prefix="/api", tags=["stories"])
