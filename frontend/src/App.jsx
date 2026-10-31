@@ -241,6 +241,8 @@ export default function App() {
         {view === "stats" && <StatsPage onBack={() => setView("queue")} />}
         {view === "settings" && <SettingsPage darkMode={darkMode} setDarkMode={setDarkMode} onOpenBackup={() => setView("backup")} />}
         {view === "backup" && <BackupPage restoring={restoringBackup} onRestoringChange={setRestoringBackup} onBack={() => setView("settings")} onRestored={() => {
+          setIsDailyStudy(false);
+          updateDaily(null);
           setStudyQueue([]);
           setSingleCard(null);
           setQueueVersion((v) => v + 1);
