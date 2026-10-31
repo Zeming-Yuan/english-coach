@@ -1,0 +1,210 @@
+{
+  "tables": {
+    "cards": [
+      {
+        "id": 101,
+        "word": "apple",
+        "phonetic": null,
+        "meaning": "苹果",
+        "example": "I eat an apple.",
+        "example_cn": "我吃苹果。",
+        "contexts": [
+          {
+            "text": "apple"
+          }
+        ],
+        "kind": "word",
+        "explanation": null,
+        "related_words": [
+          {
+            "word": "pear"
+          }
+        ],
+        "chunks": null,
+        "difficulty": null,
+        "created_at": "2026-10-31T02:48:19"
+      },
+      {
+        "id": 202,
+        "word": "apple",
+        "phonetic": null,
+        "meaning": "苹果",
+        "example": "I eat an apple.",
+        "example_cn": null,
+        "contexts": null,
+        "kind": "sentence",
+        "explanation": null,
+        "related_words": null,
+        "chunks": [
+          {
+            "text": "an apple",
+            "role": "predicate"
+          }
+        ],
+        "difficulty": "basic",
+        "created_at": "2026-10-31T02:48:19"
+      }
+    ],
+    "reviews": [
+      {
+        "id": 1,
+        "card_id": 101,
+        "state": 3,
+        "step": 0,
+        "due": "2026-10-30T12:10:00",
+        "stability": 0.668307152241192,
+        "difficulty": 8.341762369296838,
+        "elapsed_days": 2,
+        "last_review": "2026-10-30T12:00:00",
+        "review_count": 5,
+        "rating": 1
+      }
+    ],
+    "review_events": [
+      {
+        "id": "d185fe5e-aa3d-42c0-8a0c-5c9e0d8ea015",
+        "submission_id": "392e71e6-6fa6-4f14-974b-a22c0c7b98c4",
+        "card_id": 101,
+        "source": "study",
+        "kind": "self_rating",
+        "stage": "standalone",
+        "occurred_at": "2026-10-30T12:00:00",
+        "learning_day": "2026-10-30",
+        "learning_timezone": "Asia/Shanghai",
+        "answer": null,
+        "correct": null,
+        "skipped": false,
+        "scheduled": true,
+        "assistance": [],
+        "self_rating": 1,
+        "fsrs_rating": 1,
+        "before": {
+          "state": 2,
+          "step": null,
+          "due": "2026-10-29T00:00:00+00:00",
+          "stability": 3.0,
+          "difficulty": 5.0,
+          "last_review": "2026-10-28T00:00:00+00:00"
+        },
+        "after": {
+          "state": 3,
+          "step": 0,
+          "due": "2026-10-30T12:10:00+00:00",
+          "stability": 0.668307152241192,
+          "difficulty": 8.341762369296838,
+          "last_review": "2026-10-30T12:00:00+00:00"
+        },
+        "fingerprint": "1d35ef55d7e4aa4e8aae45d02e3f4a9a77b51a96bfc6e234afc62fd277c185ab",
+        "command_json": {
+          "card_id": 101,
+          "source": "study",
+          "kind": "self_rating",
+          "answer": null,
+          "rating": 1,
+          "assistance": [],
+          "skipped": false,
+          "stage": "standalone",
+          "session_id": null,
+          "question": null,
+          "submission_id": "392e71e6-6fa6-4f14-974b-a22c0c7b98c4",
+          "question_token": null,
+          "expected": null
+        },
+        "response": {
+          "committed": true,
+          "event_id": "d185fe5e-aa3d-42c0-8a0c-5c9e0d8ea015",
+          "card_id": 101,
+          "correct": null,
+          "expected": null,
+          "scheduled": true,
+          "next_due": "2026-10-30T12:10:00+00:00",
+          "graduated": true,
+          "newly_graduated": false,
+          "sentence_card_id": 202
+        },
+        "session_id": null
+      }
+    ],
+    "review_baselines": [
+      {
+        "id": "d06414a0-3493-40e3-aa41-6ec3295ce04f",
+        "card_id": 101,
+        "source_review_id": null,
+        "source_kind": "legacy_import",
+        "raw": {
+          "card_id": 101,
+          "state": 2,
+          "due": "2026-10-29T00:00:00",
+          "stability": 3.0,
+          "difficulty": 5.0,
+          "last_review": "2026-10-28T00:00:00",
+          "review_count": 4
+        },
+        "selected": true,
+        "captured_at": "2026-10-30T12:00:00",
+        "last_activity": "2026-10-28T00:00:00",
+        "cumulative_count": 4,
+        "source_fingerprint": "2825e007490cf0ff76bef6ca37e6bd1b596659deaea87ee9cad12148aacf4487"
+      }
+    ],
+    "memos": [
+      {
+        "id": 1,
+        "card_id": 202,
+        "content": "句子记忆",
+        "created_at": "2026-10-31T02:48:19"
+      }
+    ],
+    "error_cards": [
+      {
+        "id": 1,
+        "card_id": 101,
+        "error_count": 1,
+        "last_error_at": "2026-10-31T02:48:19"
+      }
+    ],
+    "hard_cards": [
+      {
+        "id": 1,
+        "card_id": 202,
+        "created_at": "2026-10-31T02:48:19"
+      }
+    ],
+    "lessons": [
+      {
+        "id": 71,
+        "level": 1,
+        "title": "Lesson",
+        "content": {
+          "words": [
+            "apple"
+          ],
+          "dialogue": []
+        },
+        "created_at": "2026-10-31T02:48:19"
+      }
+    ],
+    "stories": [
+      {
+        "id": 81,
+        "title": "Apple story",
+        "content": "An apple.",
+        "content_cn": "一个苹果。",
+        "title_cn": "苹果",
+        "created_at": "2026-10-31T02:48:19"
+      }
+    ],
+    "story_words": [
+      {
+        "id": 1,
+        "story_id": 81,
+        "card_id": 101
+      },
+      {
+        "id": 2,
+        "story_id": 81,
+        "card_id": 202
+      }
+    ]
+  }
+}

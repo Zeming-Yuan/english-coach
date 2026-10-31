@@ -72,7 +72,7 @@ def test_stamped_missing_rating_repairs(tmp_path):
                 conn.execute(
                     text("SELECT version_num FROM alembic_version")
                 ).scalar_one()
-                == "b1c2d3e4f502"
+                == "ec12_card_identity"
             )
     finally:
         engine.dispose()
@@ -112,7 +112,9 @@ def test_upgraded_database_accepts_a_review(tmp_path):
     engine = create_engine(url)
     try:
         with engine.begin() as conn:
-            conn.execute(text("INSERT INTO cards (word, kind) VALUES ('apple', 'word')"))
+            conn.execute(
+                text("INSERT INTO cards (word, kind) VALUES ('apple', 'word')")
+            )
             conn.execute(
                 text(
                     "INSERT INTO reviews "
@@ -255,7 +257,7 @@ def test_custom_database_target(tmp_path):
                 conn.execute(
                     text("SELECT version_num FROM alembic_version")
                 ).scalar_one()
-                == "b1c2d3e4f502"
+                == "ec12_card_identity"
             )
     finally:
         engine.dispose()
