@@ -16,7 +16,6 @@ from sqlalchemy import inspect, literal_column, select, text
 from sqlalchemy.orm import Session
 
 from app.models.card import Card
-from app.models.content_revision import ContentRevision
 from app.models.error_card import ErrorCard
 from app.models.hard_card import HardCard
 from app.models.lesson import Lesson
@@ -28,9 +27,6 @@ from app.models.story import Story, StoryWord
 from app.runtime import Runtime
 
 BACKUP_VERSION = 3
-
-# V3 扩展集合：每个集合必须同时在 app.schemas.backup_v3 登记。
-EXTENSION_COLLECTIONS = (("content_revisions", ContentRevision),)
 
 # 明确的模型白名单：新增业务表必须在这里显式登记才会进入备份。
 BACKUP_COLLECTIONS = (
@@ -61,6 +57,17 @@ def export_rows(db: Session, model) -> list[dict]:
     ]
 
 
+def extension_collections() -> tuple[tuple[str, type], ...]:
+    """已登记的 V3 扩展集合（顺序即导出顺序）；未绑定持久模型时拒绝导出。"""
+    from app.schemas.backup_v3 import registered_extensions
+
+    specs = registered_extensions()
+    missing = [name for name, spec in specs.items() if spec.model is None]
+    if missing:
+        raise RuntimeError(f"V3 扩展集合缺少持久模型：{','.join(missing)}")
+    return tuple((name, spec.model) for name, spec in specs.items())
+
+
 def export_backup(db: Session, runtime: Runtime) -> dict:
     """读取全部集合，形成同一读事务内的逻辑快照。
 
@@ -70,23 +77,15 @@ def export_backup(db: Session, runtime: Runtime) -> dict:
     if not db.in_transaction():
         db.execute(text("BEGIN"))
         started = True
-    from app.schemas.backup_v3 import registered_extensions
-
-    registered = set(registered_extensions())
-    declared = {name for name, _ in EXTENSION_COLLECTIONS}
-    if registered != declared:
-        raise RuntimeError(
-            "V3 扩展集合与登记表不一致："
-            f"registered={sorted(registered)} declared={sorted(declared)}"
-        )
+    extensions = extension_collections()
     try:
         payload = {
             "version": BACKUP_VERSION,
             "exported_at": runtime.clock.now().astimezone(UTC).isoformat(),
             "learning_timezone": runtime.learning_timezone,
-            "features": [name for name, _ in EXTENSION_COLLECTIONS],
+            "features": [name for name, _ in extensions],
             "extensions": {
-                name: export_rows(db, model) for name, model in EXTENSION_COLLECTIONS
+                name: export_rows(db, model) for name, model in extensions
             },
             **{name: export_rows(db, model) for name, model in BACKUP_COLLECTIONS},
         }

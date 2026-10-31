@@ -63,7 +63,43 @@ def test_el01_review_focus(arguments, expected):
     assert next_revision(*arguments) == expected
 
 
-def test_el01_revision_boundaries(ec):
+@pytest.mark.parametrize(
+    ("field", "value", "spaced"),
+    [
+        ("word", "pear", None),
+        ("meaning", "一个苹果", None),
+        ("example", "A red apple.", " A  red\n apple. "),
+        ("example_cn", "一个 红苹果。", " 一个  红苹果。 "),
+        (
+            "contexts",
+            [{"en": "An apple.", "cn": "一个苹果。"}],
+            [{"en": "An  apple.", "cn": "一个苹果。"}],
+        ),
+    ],
+)
+def test_el01_semantic_fields_advance_revision(ec, field, value, spaced):
+    card_id = ec.seed_card(word="apple", meaning="苹果")
+    before = _revision(ec, card_id)
+    changed = ec.client.put(f"/api/cards/{card_id}", json={field: value})
+    assert changed.status_code == 200, changed.text
+    assert changed.json()["content_revision"] == {
+        "identity": before["identity"],
+        "version": before["version"] + 1,
+    }
+    # 重复保存相同内容不重复递增。
+    repeat = ec.client.put(f"/api/cards/{card_id}", json={field: value})
+    assert repeat.json()["content_revision"]["version"] == before["version"] + 1
+    # 仅排版差异同样不增加。
+    if spaced is not None:
+        spaced_response = ec.client.put(f"/api/cards/{card_id}", json={field: spaced})
+        assert spaced_response.status_code == 200, spaced_response.text
+        assert (
+            spaced_response.json()["content_revision"]["version"]
+            == before["version"] + 1
+        )
+
+
+def test_el01_non_semantic_edits_keep_revision(ec):
     card_id = ec.seed_card(
         meaning="苹果",
         example="An apple.",
@@ -85,31 +121,7 @@ def test_el01_revision_boundaries(ec):
         ec.client.put(f"/api/memos/{card_id}", json={"content": "谐音：阿婆"}).status_code
         == 200
     )
-    unchanged = _revision(ec, card_id)
-    assert unchanged == first
-
-    # 释义变化增加一次；重复保存同一释义不再增加。
-    changed = ec.client.put(
-        f"/api/cards/{card_id}", json={"meaning": "一个苹果"}
-    ).json()["content_revision"]
-    assert changed == {
-        "identity": first["identity"],
-        "version": first["version"] + 1,
-    }
-    assert (
-        ec.client.put(
-            f"/api/cards/{card_id}", json={"meaning": "一个苹果"}
-        ).json()["content_revision"]
-        == changed
-    )
-
-    # 词形变化同样不复用旧修订。
-    renamed = ec.client.put(f"/api/cards/{card_id}", json={"word": "pear"})
-    assert renamed.status_code == 200
-    assert renamed.json()["content_revision"] == {
-        "identity": first["identity"],
-        "version": first["version"] + 2,
-    }
+    assert _revision(ec, card_id) == first
 
 
 def test_el01_commit_failure_and_retry(ec):
@@ -171,6 +183,109 @@ def test_el01_v3_roundtrip_keeps_identity_and_continues(ec, ec_factory):
         "identity": before["identity"],
         "version": before["version"] + 1,
     }
+
+
+def test_el01_v3_roundtrip_preserves_lesson_and_story_revisions(ec, ec_factory):
+    from app.models.lesson import Lesson
+    from app.models.story import Story
+
+    source = ec_factory()
+    db = source.SessionLocal()
+    try:
+        lesson = Lesson(level=1, title="Greetings", content={"words": []})
+        story = Story(title="A walk", content="A short story.")
+        db.add_all([lesson, story])
+        db.commit()
+        source_ids = {"lesson": lesson.id, "story": story.id}
+    finally:
+        db.close()
+    backup = _backup(source)
+    before = {
+        row["resource_kind"]: row
+        for row in backup["extensions"]["content_revisions"]
+    }
+
+    target = ec_factory()
+    # Pre-existing entities force the restored lesson/story IDs to be remapped.
+    db = target.SessionLocal()
+    try:
+        db.add_all(
+            [
+                Lesson(level=99, title="Old lesson", content={}),
+                Story(title="Old story", content="Old."),
+            ]
+        )
+        db.commit()
+    finally:
+        db.close()
+    preview = target.client.post("/api/import/preview", json=backup)
+    assert preview.status_code == 200, preview.text
+    assert (
+        target.client.post(
+            "/api/import/cards",
+            json={
+                "backup": backup,
+                "expected_revision": preview.json()["expected_revision"],
+            },
+        ).status_code
+        == 200
+    )
+
+    restored = _backup(target)
+    titles = {
+        "lesson": {row["id"]: row["title"] for row in restored["lessons"]},
+        "story": {row["id"]: row["title"] for row in restored["stories"]},
+    }
+    after = {
+        row["resource_kind"]: row
+        for row in restored["extensions"]["content_revisions"]
+    }
+    for kind in ("lesson", "story"):
+        # Identity/version survive; only the resource ID is remapped.
+        assert after[kind]["identity"] == before[kind]["identity"]
+        assert after[kind]["version"] == before[kind]["version"]
+        assert after[kind]["resource_id"] != source_ids[kind]
+        assert after[kind]["resource_id"] in titles[kind]
+
+
+def test_el01_v3_restore_invalidates_source_question_token(ec, ec_factory):
+    from uuid import uuid4
+
+    source = ec_factory()
+    for word in ["apple", "book", "cat", "dog"]:
+        source.seed_card(word=word, meaning=word)
+    question = source.client.get("/api/listening?limit=1").json()["questions"][0]
+    backup = _backup(source)
+
+    target = ec_factory()
+    preview = target.client.post("/api/import/preview", json=backup)
+    assert (
+        target.client.post(
+            "/api/import/cards",
+            json={
+                "backup": backup,
+                "expected_revision": preview.json()["expected_revision"],
+            },
+        ).status_code
+        == 200
+    )
+    restored = _backup(target)
+    card = next(
+        row for row in restored["cards"] if row["word"] == question["word"]
+    )
+    response = target.client.post(
+        "/api/listening/score",
+        json={
+            "card_id": card["id"],
+            "question_token": question["question_token"],
+            "answer": question["word"],
+            "source": "listening",
+            "kind": "choice",
+            "submission_id": str(uuid4()),
+        },
+    )
+    assert response.status_code == 409
+    assert restored["learning_events"] == []
 
 
 def test_el01_v2_preview_reports_missing_extensions_and_restore_regenerates(
@@ -286,16 +401,23 @@ def test_el01_v3_unknown_feature_rejected(ec, ec_factory):
     assert target.snapshot() == untouched
 
 
-@pytest.mark.parametrize("mutation", ["missing-entity", "duplicate", "bad-identity"])
+@pytest.mark.parametrize(
+    "mutation",
+    ["missing-entity", "duplicate", "duplicate-identity", "bad-identity"],
+)
 def test_el01_v3_invalid_revision_graph_rejected(ec, ec_factory, mutation):
     source = ec_factory()
-    source.seed_card()
+    source.seed_card("apple")
+    source.seed_card("pear")
     backup = _backup(source)
     rows = backup["extensions"]["content_revisions"]
+    assert len(rows) == 2
     if mutation == "missing-entity":
         rows[0]["resource_id"] = 999999
     elif mutation == "duplicate":
         rows.append({**rows[0], "id": rows[0]["id"] + 1})
+    elif mutation == "duplicate-identity":
+        rows[1]["identity"] = rows[0]["identity"]
     else:
         rows[0]["identity"] = "not-a-uuid"
 

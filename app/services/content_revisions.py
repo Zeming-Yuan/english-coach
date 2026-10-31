@@ -1,6 +1,6 @@
 """内容修订：实体身份与语义版本。
 
-only word/meaning/example/example_cn/contexts 的实质变化增加版本；
+只有 word/meaning/example/example_cn/contexts 的实质变化增加版本；
 纯排版差异（空白、换行）不算变化，记忆法/音标/讲解也不改变修订。
 """
 
@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.models.card import Card
@@ -52,6 +52,15 @@ def _model(resource_kind: str):
         raise UnknownResourceKindError(f"未知资源类型：{resource_kind}") from error
 
 
+def _new_revision(resource_kind: str, resource_id: int) -> ContentRevision:
+    return ContentRevision(
+        resource_kind=resource_kind,
+        resource_id=resource_id,
+        identity=str(uuid4()),
+        version=1,
+    )
+
+
 def _revision_row(
     db: Session, resource_kind: str, resource_id: int
 ) -> ContentRevision | None:
@@ -78,33 +87,29 @@ def ensure_content_revisions(db: Session) -> None:
         )
         for resource_id in db.scalars(select(model.id)):
             if resource_id not in known:
-                db.add(
-                    ContentRevision(
-                        resource_kind=resource_kind,
-                        resource_id=resource_id,
-                        identity=str(uuid4()),
-                        version=1,
-                    )
-                )
+                db.add(_new_revision(resource_kind, resource_id))
     db.flush()
 
 
 def get_content_revision(
     db: Session, resource_kind: str, resource_id: int
 ) -> dict:
-    """读取当前修订；缺少身份时 additive 补齐（旧库/外部导入）。"""
+    """读取当前修订。实体创建、迁移和恢复都会初始化身份；缺失即数据异常。"""
     _model(resource_kind)
     row = _revision_row(db, resource_kind, resource_id)
     if row is None:
-        row = ContentRevision(
-            resource_kind=resource_kind,
-            resource_id=resource_id,
-            identity=str(uuid4()),
-            version=1,
-        )
-        db.add(row)
-        db.flush()
+        raise LookupError(f"缺少内容修订身份：{resource_kind}:{resource_id}")
     return {"identity": row.identity, "version": row.version}
+
+
+def delete_content_revision(db: Session, resource_kind: str, resource_id: int) -> None:
+    """实体删除时同步移除修订身份，避免备份出现悬空引用。"""
+    db.execute(
+        delete(ContentRevision).where(
+            ContentRevision.resource_kind == resource_kind,
+            ContentRevision.resource_id == resource_id,
+        )
+    )
 
 
 def advance_content_revision(
@@ -122,12 +127,7 @@ def advance_content_revision(
     }
     row = _revision_row(db, resource_kind, resource_id)
     if row is None:
-        row = ContentRevision(
-            resource_kind=resource_kind,
-            resource_id=resource_id,
-            identity=str(uuid4()),
-            version=1,
-        )
+        row = _new_revision(resource_kind, resource_id)
         db.add(row)
     row.version = next_revision(before, changes, row.version)
     db.flush()

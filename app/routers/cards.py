@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models.card import Card
-from app.models.content_revision import ContentRevision
 from app.models.error_card import ErrorCard
 from app.models.hard_card import HardCard
 from app.models.memo import Memo
@@ -18,6 +17,7 @@ from app.services.card_generator import generate_cards, regenerate_example
 from app.services.card_payload import card_payload
 from app.services.content_revisions import (
     advance_content_revision,
+    delete_content_revision,
     get_content_revision,
 )
 from app.services.graduation import card_is_graduated
@@ -50,6 +50,7 @@ class UpdateCardIn(BaseModel):
     example: str | None = Field(default=None, max_length=500)
     example_cn: str | None = Field(default=None, max_length=500)
     explanation: str | None = Field(default=None, max_length=500)
+    contexts: list | None = None
 
 
 @router.post("/cards/{card_id}/hard")
@@ -104,12 +105,7 @@ def delete_card(card_id: int, db: Session = Depends(get_db)):
     db.execute(
         ReviewBaseline.__table__.delete().where(ReviewBaseline.card_id == card_id)
     )
-    db.execute(
-        ContentRevision.__table__.delete().where(
-            ContentRevision.resource_kind == "card",
-            ContentRevision.resource_id == card_id,
-        )
-    )
+    delete_content_revision(db, "card", card_id)
     db.execute(Memo.__table__.delete().where(Memo.card_id == card_id))
     db.execute(ErrorCard.__table__.delete().where(ErrorCard.card_id == card_id))
     db.execute(HardCard.__table__.delete().where(HardCard.card_id == card_id))
@@ -132,10 +128,13 @@ def card_to_dict(card: Card, db: Session) -> dict:
         .scalars()
         .first()
     )
-    return {
-        **card_payload(card, review=review, error=error, hard=hard is not None),
-        "content_revision": get_content_revision(db, "card", card.id),
-    }
+    return card_payload(
+        card,
+        review=review,
+        error=error,
+        hard=hard is not None,
+        revision=get_content_revision(db, "card", card.id),
+    )
 
 
 def _card_to_dict_fast(

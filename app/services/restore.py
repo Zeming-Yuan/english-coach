@@ -32,8 +32,8 @@ from app.schemas.backup import (
 from app.schemas.learning import AttemptCommand
 from app.services.backup import (
     BACKUP_COLLECTIONS,
-    EXTENSION_COLLECTIONS,
     export_backup,
+    extension_collections,
     snapshot_revision,
 )
 from app.services.content_revisions import (
@@ -252,7 +252,7 @@ def _apply_restore(
 def preview_legacy_restore(db: Session, payload: dict, runtime: Runtime) -> dict:
     """只读预览：全量替换 / 旧版部分恢复、影响与数据库修订。"""
     validated = validate_backup(payload)
-    registered = [name for name, _ in EXTENSION_COLLECTIONS]
+    registered = [name for name, _ in extension_collections()]
     if validated.mode == "full_replace":
         current = export_backup(db, runtime)
         provided = [name for name in registered if name in validated.extensions]
@@ -360,7 +360,8 @@ __all__ = [
 
 def _apply_full_restore(session: Session, validated: ValidatedBackup) -> dict:
     """Replace the validated graph under the existing coordinator's write lock."""
-    models = {**dict(BACKUP_COLLECTIONS), **dict(EXTENSION_COLLECTIONS)}
+    extensions = extension_collections()
+    models = {**dict(BACKUP_COLLECTIONS), **dict(extensions)}
     order = (
         "cards",
         "lessons",
@@ -373,7 +374,7 @@ def _apply_full_restore(session: Session, validated: ValidatedBackup) -> dict:
         "learning_events",
         "story_words",
     )
-    extension_names = [name for name, _ in EXTENSION_COLLECTIONS]
+    extension_names = [name for name, _ in extensions]
     # Cards use the durable native allocator, including across empty restores.
     # Other integer identities only need remapping within this replacement.
     next_ids = {

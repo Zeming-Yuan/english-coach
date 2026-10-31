@@ -15,13 +15,23 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, ValidationError
 
+from app.models.content_revision import ContentRevision
 from app.schemas.backup import (
     BackupValidationError,
     FullBackup,
     FullRow,
     ValidatedBackup,
     _digest,
+    _issues_from_error,
 )
+
+# 修订资源类型 ↔ 备份集合：导出、校验、映射共用同一张表。
+RESOURCE_COLLECTIONS = {
+    "card": "cards",
+    "lesson": "lessons",
+    "story": "stories",
+}
+_COLLECTION_RESOURCES = {value: key for key, value in RESOURCE_COLLECTIONS.items()}
 
 
 @dataclass(frozen=True)
@@ -32,6 +42,7 @@ class ExtensionSpec:
     schema: type[BaseModel]
     parents: tuple[str, ...]
     remap: Callable[[dict, dict[str, dict[int, int]]], dict]
+    model: type | None = None
 
 
 _EXTENSIONS: dict[str, ExtensionSpec] = {}
@@ -42,11 +53,16 @@ def register_extension(
     schema: type[BaseModel],
     parents: tuple[str, ...],
     remap: Callable[[dict, dict[str, dict[int, int]]], dict],
+    *,
+    model: type | None = None,
 ) -> None:
-    """登记扩展集合；重复登记是编程错误，拒绝静默覆盖。"""
+    """登记扩展集合；重复登记是编程错误，拒绝静默覆盖。
+
+    model 是导出与恢复删除拓扑使用的持久模型；登记顺序即导出顺序。
+    """
     if name in _EXTENSIONS:
         raise ValueError(f"扩展集合已登记：{name}")
-    _EXTENSIONS[name] = ExtensionSpec(name, schema, parents, remap)
+    _EXTENSIONS[name] = ExtensionSpec(name, schema, parents, remap, model)
 
 
 def registered_extensions() -> dict[str, ExtensionSpec]:
@@ -62,11 +78,7 @@ class FullContentRevision(FullRow):
 
 
 def _remap_content_revision(row: dict, mapping: dict[str, dict[int, int]]) -> dict:
-    collection = {
-        "card": "cards",
-        "lesson": "lessons",
-        "story": "stories",
-    }[row["resource_kind"]]
+    collection = RESOURCE_COLLECTIONS[row["resource_kind"]]
     return {**row, "resource_id": mapping[collection][row["resource_id"]]}
 
 
@@ -75,6 +87,7 @@ register_extension(
     FullContentRevision,
     ("cards", "lessons", "stories"),
     _remap_content_revision,
+    model=ContentRevision,
 )
 
 
@@ -104,18 +117,7 @@ def _validate_extension_rows(name: str, rows: list) -> list[dict]:
     try:
         return [spec.schema.model_validate(row).model_dump() for row in rows]
     except ValidationError as error:
-        issues = []
-        for item in error.errors():
-            location = [str(part) for part in item["loc"]]
-            issues.append(
-                {
-                    "collection": name,
-                    "index": location[0] if location else "?",
-                    "field": ".".join(location[1:]) or "?",
-                    "reason": item["msg"],
-                }
-            )
-        raise BackupValidationError(issues) from error
+        raise BackupValidationError(_issues_from_error(error, name)) from error
 
 
 def _validate_extension_graph(
@@ -124,14 +126,13 @@ def _validate_extension_graph(
     ids = {name: {row["id"] for row in rows} for name, rows in tables.items()}
     for name, rows in extensions.items():
         spec = _EXTENSIONS[name]
-        seen = set()
+        resource_keys = set()
+        identities = set()
         for index, row in enumerate(rows):
             for parent in spec.parents:
-                singular = {
-                    "cards": "card",
-                    "lessons": "lesson",
-                    "stories": "story",
-                }.get(parent, parent.removesuffix("s"))
+                singular = _COLLECTION_RESOURCES.get(
+                    parent, parent.removesuffix("s")
+                )
                 if row.get("resource_kind") is not None:
                     if (
                         row["resource_kind"] == singular
@@ -148,15 +149,19 @@ def _validate_extension_graph(
                         f"{singular}_id",
                         "引用了备份中不存在的实体",
                     )
-            if name == "content_revisions":
+            if "identity" in row:
                 try:
                     UUID(row["identity"])
                 except (ValueError, TypeError):
                     _reject(name, index, "identity", "必须是 UUID")
+                if row["identity"] in identities:
+                    _reject(name, index, "identity", "实体身份重复")
+                identities.add(row["identity"])
+            if "resource_kind" in row and "resource_id" in row:
                 key = (row["resource_kind"], row["resource_id"])
-                if key in seen:
+                if key in resource_keys:
                     _reject(name, index, "resource_id", "同一实体重复登记修订")
-                seen.add(key)
+                resource_keys.add(key)
 
 
 def validate_v3(payload: dict) -> ValidatedBackup:
