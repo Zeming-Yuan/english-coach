@@ -25,11 +25,18 @@ function saveMixedPending(record) {
     return false;
   }
 }
-function clearMixedPending() {
+const pendingId = (record) =>
+  record?.pending.payload.answers?.[0]?.submission_id ??
+  record?.pending.payload.submission_id;
+function clearMixedPending(expected) {
+  // A response may belong to an older mounted page; never erase another answer.
+  if (expected && pendingId(loadMixedPending()) !== pendingId(expected))
+    return false;
   memoryPending = null;
   try {
     localStorage.removeItem(PENDING_KEY);
   } catch {}
+  return true;
 }
 const shuffle = (list) => {
   for (let i = list.length - 1; i > 0; i--) {
@@ -52,6 +59,8 @@ export default function MixedPage({ onExit }) {
   const [audioHint, setAudioHint] = useState("");
   const [stats, setStats] = useState({ correct: 0, skipped: 0, wrongList: [] });
   const pendingRef = useRef(null);
+  const mountedRef = useRef(false);
+  const requestRef = useRef(null);
   const busyRef = useRef(false);
   const advancedRef = useRef(new Set());
   const item = items[idx];
@@ -59,6 +68,9 @@ export default function MixedPage({ onExit }) {
   const total = items.length;
 
   const load = useCallback(async () => {
+    requestRef.current = null;
+    busyRef.current = false;
+    setSaving(false);
     setPhase("loading");
     setFeedback(null);
     setError(null);
@@ -102,7 +114,12 @@ export default function MixedPage({ onExit }) {
     }
   }, []);
   useEffect(() => {
+    mountedRef.current = true;
     load();
+    return () => {
+      mountedRef.current = false;
+      requestRef.current = null;
+    };
   }, [load]);
 
   const play = useCallback(async (word) => {
@@ -121,7 +138,8 @@ export default function MixedPage({ onExit }) {
 
   // 同一题的按钮、Enter 与自动计时共享推进门闩。
   const next = useCallback(() => {
-    if (!feedback || advancedRef.current.has(idx)) return;
+    if (!mountedRef.current || !feedback || advancedRef.current.has(idx))
+      return;
     advancedRef.current.add(idx);
     setFeedback(null);
     setError(null);
@@ -147,18 +165,24 @@ export default function MixedPage({ onExit }) {
   }, [feedback, next]);
 
   const send = async (record) => {
-    if (busyRef.current) return;
+    if (!mountedRef.current || busyRef.current || pendingRef.current !== record)
+      return;
+    const request = {};
+    requestRef.current = request;
+    const ownsRequest = () =>
+      mountedRef.current && requestRef.current === request;
     busyRef.current = true;
     setSaving(true);
     setError(null);
     try {
       const response = await sendPending(record.pending);
+      if (!ownsRequest()) return;
       const result =
         record.pending.path === "/api/quiz/score"
           ? response.details[0]
           : response;
       if (result?.committed !== true) throw new Error("保存尚未确认");
-      clearMixedPending();
+      if (!clearMixedPending(record)) return;
       setStorageWarning("");
       pendingRef.current = null;
       setFeedback({
@@ -183,6 +207,7 @@ export default function MixedPage({ onExit }) {
               },
       );
     } catch (cause) {
+      if (!ownsRequest()) return;
       setError({
         message:
           cause.status === 409
@@ -193,8 +218,11 @@ export default function MixedPage({ onExit }) {
         reload: cause.status === 409 || cause.status === 404,
       });
     } finally {
-      busyRef.current = false;
-      setSaving(false);
+      if (ownsRequest()) {
+        requestRef.current = null;
+        busyRef.current = false;
+        setSaving(false);
+      }
     }
   };
   const answer = (value, skipped = false) => {

@@ -291,3 +291,90 @@ test("EC-07 choice-audio-is-not-an-answer", async ({ app, page }) => {
     page.getByTestId("mixed-choice").locator(".quiz-option").first(),
   ).toBeEnabled();
 });
+
+for (const delayedAttempt of [1, 2]) {
+  test(`EC-07 late-${delayedAttempt === 1 ? "original" : "retry"}-response-preserves-newer-pending`, async ({
+    app,
+    page,
+  }) => {
+    const ids = await app.seedCards(words);
+    await page.addInitScript(
+      ({ delayedAttempt }) => {
+        const fetch = window.fetch.bind(window);
+        let attempts = 0;
+        window.fetch = async (...args) => {
+          const isListening = args[0] === "/api/listening/score";
+          if (isListening) {
+            attempts += 1;
+            if (delayedAttempt === 2 && attempts === 1)
+              throw new TypeError("simulated transport failure");
+          }
+          const response = await fetch(...args);
+          if (isListening && attempts === delayedAttempt) {
+            // The real application has committed A; delay only its transport response.
+            await response.clone().json();
+            window.oldMixedResponseReceived = true;
+            await new Promise((resolve) => {
+              window.releaseOldMixedResponse = resolve;
+            });
+            const json = response.json.bind(response);
+            response.json = async () => {
+              const result = await json();
+              window.oldMixedResponseDelivered = true;
+              return result;
+            };
+          }
+          return response;
+        };
+      },
+      { delayedAttempt },
+    );
+    await page.clock.install();
+    await open(app, page);
+    await page.locator(".listening-option").first().click();
+    if (delayedAttempt === 2) {
+      await expect(page.getByRole("alert")).toContainText("尚未确认保存");
+      await page.getByRole("button", { name: /重试保存/ }).click();
+    }
+    await expect
+      .poll(() => page.evaluate(() => window.oldMixedResponseReceived))
+      .toBe(true);
+    await page.locator(".page-head button").click();
+    await page.getByRole("button", { name: /混合练习/ }).click();
+    await page.getByRole("button", { name: /重试保存/ }).click();
+    await expect(page.getByRole("status")).toContainText("已保存");
+    await page.getByRole("button", { name: /下一题/ }).click();
+    await expect(page.getByTestId("mixed-choice")).toBeVisible();
+    const position = await page.locator(".study-count").innerText();
+    const submissions = [];
+    page.on("request", (request) => {
+      if (request.url().endsWith("/api/quiz/score"))
+        submissions.push(request.postDataJSON().answers[0].submission_id);
+    });
+    await page.route("**/api/quiz/score", (route) => route.abort(), {
+      times: 1,
+    });
+    await page
+      .getByTestId("mixed-choice")
+      .locator(".quiz-option")
+      .first()
+      .click();
+    await expect(page.getByRole("alert")).toContainText("尚未确认保存");
+    await page.evaluate(() => window.releaseOldMixedResponse());
+    await expect
+      .poll(() => page.evaluate(() => window.oldMixedResponseDelivered))
+      .toBe(true);
+    await page.clock.runFor(3000);
+    await expect(page.locator(".study-count")).toHaveText(position);
+    await expect(page.getByRole("status")).toHaveCount(0);
+    await page.reload();
+    await page.getByRole("button", { name: /混合练习/ }).click();
+    await expect(page.getByRole("alert")).toContainText("上次提交尚未确认保存");
+    await expect(page.locator(".study-count")).toHaveText(position);
+    await page.getByRole("button", { name: /重试保存/ }).click();
+    await expect(page.getByRole("status")).toContainText("已保存");
+    expect(submissions).toHaveLength(2);
+    expect(new Set(submissions).size).toBe(1);
+    expect(await events(app, ids)).toHaveLength(2);
+  });
+}
