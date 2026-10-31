@@ -279,7 +279,7 @@ class FullBaseline(FullRow):
     id: str
     card_id: int = Field(gt=0, strict=True)
     source_review_id: int | None = Field(gt=0)
-    source_kind: Literal["migration", "legacy_import"]
+    source_kind: Literal["migration", "legacy_import", "contract_archive"]
     raw: dict
     selected: bool = Field(strict=True)
     captured_at: datetime
@@ -403,6 +403,7 @@ def _validate_full_graph(tables: dict, payload: dict) -> None:
                 if field in row and row[field] not in {r["id"] for r in tables[parent]}:
                     reject(name, index, field, "引用了备份中不存在的实体")
     for name, key in (
+        ("reviews", "card_id"),
         ("memos", "card_id"),
         ("hard_cards", "card_id"),
         ("lessons", "level"),

@@ -9,7 +9,7 @@ RF5 删卡不留下事件/基线悬空关系。
 """
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
@@ -25,7 +25,8 @@ from app.services.learning import classify_attempt
 
 def _dt(*args) -> datetime:
     """旧 reviews 表使用 naive UTC，测试前置数据保持一致。"""
-    return datetime(*args)  # noqa: DTZ001
+    return datetime(*args)
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -126,7 +127,9 @@ def test_legacy_request_is_unclassified_and_incomplete(ec):
 
 def test_new_source_events_do_not_claim_incomplete_history(ec):
     card_id = ec.seed_card()
-    assert ec.client.post("/api/reviews", json=_review_payload(card_id)).status_code == 200
+    assert (
+        ec.client.post("/api/reviews", json=_review_payload(card_id)).status_code == 200
+    )
     detail = ec.client.get(f"/api/cards/{card_id}").json()
     assert detail["history_incomplete"] is False
     assert len(detail["learning_events"]) == 1
@@ -142,7 +145,9 @@ def test_baseline_preserves_multiple_old_rows(tmp_path):
     engine = create_engine(url)
     try:
         with engine.begin() as conn:
-            conn.execute(text("INSERT INTO cards (word, kind) VALUES ('apple', 'word')"))
+            conn.execute(
+                text("INSERT INTO cards (word, kind) VALUES ('apple', 'word')")
+            )
             conn.execute(
                 text(
                     "INSERT INTO reviews (card_id, state, step, due, stability, "
@@ -178,9 +183,10 @@ def test_baseline_preserves_multiple_old_rows(tmp_path):
             assert [row.cumulative_count for row in baselines] == [1, 3]
             raw_rows = [json.loads(row.raw) for row in baselines]
             assert {raw["rating"] for raw in raw_rows} == {2, 3}
-            assert conn.execute(
-                text("SELECT COUNT(*) FROM review_events")
-            ).scalar_one() == 0
+            assert (
+                conn.execute(text("SELECT COUNT(*) FROM review_events")).scalar_one()
+                == 0
+            )
     finally:
         engine.dispose()
 
@@ -237,7 +243,7 @@ def test_submission_id_is_unique_in_database(ec):
                 source="study",
                 kind="self_rating",
                 stage="standalone",
-                occurred_at=datetime(2026, 10, 30, 12, 0, tzinfo=timezone.utc),
+                occurred_at=datetime(2026, 10, 30, 12, 0, tzinfo=UTC),
                 learning_day="2026-10-30",
                 learning_timezone="Asia/Shanghai",
                 answer=None,
@@ -272,7 +278,9 @@ def test_failed_commit_keeps_state_and_errors(ec):
     assert detail["review_count"] == 0
 
     with ec.engine.connect() as conn:
-        assert conn.execute(text("SELECT COUNT(*) FROM review_events")).scalar_one() == 0
+        assert (
+            conn.execute(text("SELECT COUNT(*) FROM review_events")).scalar_one() == 0
+        )
         assert conn.execute(text("SELECT COUNT(*) FROM reviews")).scalar_one() == 0
         assert conn.execute(text("SELECT COUNT(*) FROM error_cards")).scalar_one() == 0
 
@@ -280,7 +288,9 @@ def test_failed_commit_keeps_state_and_errors(ec):
 def test_delete_card_clears_new_references(ec):
     """RF5：删卡后事件与基线不留悬空关系。"""
     card_id = ec.seed_card()
-    assert ec.client.post("/api/reviews", json=_review_payload(card_id)).status_code == 200
+    assert (
+        ec.client.post("/api/reviews", json=_review_payload(card_id)).status_code == 200
+    )
 
     with ec.engine.begin() as conn:
         conn.execute(
@@ -302,31 +312,66 @@ def test_delete_card_clears_new_references(ec):
     assert ec.client.delete(f"/api/cards/{card_id}").status_code == 200
     assert ec.client.get(f"/api/cards/{card_id}").status_code == 404
     with ec.engine.connect() as conn:
-        assert conn.execute(
-            text("SELECT COUNT(*) FROM review_events WHERE card_id = :id"),
-            {"id": card_id},
-        ).scalar_one() == 0
-        assert conn.execute(
-            text("SELECT COUNT(*) FROM review_baselines WHERE card_id = :id"),
-            {"id": card_id},
-        ).scalar_one() == 0
+        assert (
+            conn.execute(
+                text("SELECT COUNT(*) FROM review_events WHERE card_id = :id"),
+                {"id": card_id},
+            ).scalar_one()
+            == 0
+        )
+        assert (
+            conn.execute(
+                text("SELECT COUNT(*) FROM review_baselines WHERE card_id = :id"),
+                {"id": card_id},
+            ).scalar_one()
+            == 0
+        )
 
 
 @pytest.mark.parametrize(
     ("command", "expected", "result"),
     [
-        ({"card_id": 1, "kind": "self_rating", "rating": 4, "source": "study"}, "apple", (None, 4)),
-        ({"card_id": 1, "kind": "typed", "answer": "Apple", "source": "spelling"}, "apple", (True, 3)),
-        ({"card_id": 1, "kind": "typed", "answer": "apl", "source": "spelling"}, "apple", (False, 1)),
         (
-            {"card_id": 1, "kind": "typed", "answer": "apple", "source": "spelling",
-             "assistance": ["first_letter"]},
+            {"card_id": 1, "kind": "self_rating", "rating": 4, "source": "study"},
+            "apple",
+            (None, 4),
+        ),
+        (
+            {"card_id": 1, "kind": "typed", "answer": "Apple", "source": "spelling"},
+            "apple",
+            (True, 3),
+        ),
+        (
+            {"card_id": 1, "kind": "typed", "answer": "apl", "source": "spelling"},
+            "apple",
+            (False, 1),
+        ),
+        (
+            {
+                "card_id": 1,
+                "kind": "typed",
+                "answer": "apple",
+                "source": "spelling",
+                "assistance": ["first_letter"],
+            },
             "apple",
             (True, None),
         ),
-        ({"card_id": 1, "kind": "choice", "answer": "apple", "source": "quiz"}, "apple", (True, None)),
-        ({"card_id": 1, "kind": "typed", "answer": "apple", "source": "legacy"}, "apple", (True, None)),
-        ({"card_id": 1, "kind": "typed", "source": "spelling", "skipped": True}, "apple", (None, None)),
+        (
+            {"card_id": 1, "kind": "choice", "answer": "apple", "source": "quiz"},
+            "apple",
+            (True, None),
+        ),
+        (
+            {"card_id": 1, "kind": "typed", "answer": "apple", "source": "legacy"},
+            "apple",
+            (True, None),
+        ),
+        (
+            {"card_id": 1, "kind": "typed", "source": "spelling", "skipped": True},
+            "apple",
+            (None, None),
+        ),
     ],
 )
 def test_classify_attempt_contract(command, expected, result):
@@ -338,6 +383,8 @@ def test_current_state_prefers_last_review_over_id(ec):
     """旧库多行时，详情与列表都必须按 last_review 选当前状态，而不是 id。"""
     from app.models.review import Review
 
+    config = _migration_config(ec.database_url)
+    command.downgrade(config, "ec12_card_identity")
     card_id = ec.seed_card()
     db = ec.SessionLocal()
     try:
@@ -372,6 +419,7 @@ def test_current_state_prefers_last_review_over_id(ec):
     finally:
         db.close()
 
+    command.upgrade(config, "head")
     detail = ec.client.get(f"/api/cards/{card_id}").json()
     assert detail["memory_state"]["review_count"] == 7
     listed = ec.client.get("/api/cards").json()["cards"][0]
@@ -508,8 +556,12 @@ def test_downgrade_keeps_events_and_upgrade_is_idempotent(ec):
     config.set_main_option("sqlalchemy.url", ec.database_url)
     command.downgrade(config, "b1c2d3e4f501")
     with ec.engine.connect() as conn:
-        assert conn.execute(text("SELECT COUNT(*) FROM review_events")).scalar_one() == 1
+        assert (
+            conn.execute(text("SELECT COUNT(*) FROM review_events")).scalar_one() == 1
+        )
 
     command.upgrade(config, "head")
     with ec.engine.connect() as conn:
-        assert conn.execute(text("SELECT COUNT(*) FROM review_events")).scalar_one() == 1
+        assert (
+            conn.execute(text("SELECT COUNT(*) FROM review_events")).scalar_one() == 1
+        )
