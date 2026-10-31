@@ -880,3 +880,62 @@ def test_full_restore_preserves_normalized_cached_answer_and_replay(ec, ec_facto
     assert replay.status_code == 200, replay.text
     assert replay.json()["expected"] == "apple"
     assert target.snapshot() == before
+
+
+@pytest.mark.parametrize("outer_form", ["uppercase", "unhyphenated"])
+def test_full_restore_canonicalizes_outer_session_for_reading_and_replay(
+    ec, ec_factory, outer_form
+):
+    cid = ec.seed_card()
+    session_id = "12345678-1234-4abc-8def-123456789abc"
+    command = {
+        "card_id": cid,
+        "rating": 1,
+        "source": "study",
+        "kind": "self_rating",
+        "stage": "main",
+        "session_id": session_id,
+        "submission_id": str(uuid4()),
+    }
+    saved = ec.client.post("/api/reviews", json=command)
+    assert saved.status_code == 200, saved.text
+    original = ec.client.get(f"/api/sessions/{session_id}/summary")
+    assert original.status_code == 200, original.text
+    backup = ec.client.get("/api/export/backup").json()
+    raw_session = (
+        session_id.upper() if outer_form == "uppercase" else session_id.replace("-", "")
+    )
+    backup["learning_events"][0]["session_id"] = raw_session
+    target = ec_factory()
+    target.seed_card("replace-me", id=100)
+    preview = target.client.post("/api/import/preview", json=backup)
+    assert preview.status_code == 200, preview.text
+    restored = target.client.post(
+        "/api/import/cards",
+        json={
+            "backup": backup,
+            "expected_revision": preview.json()["expected_revision"],
+        },
+    )
+    assert restored.status_code == 200, restored.text
+    summary = target.client.get(f"/api/sessions/{session_id}/summary")
+    assert summary.status_code == 200, summary.text
+    assert summary.json()["counts"] == original.json()["counts"]
+    assert summary.json()["metrics"] == original.json()["metrics"]
+    mapped = target.client.get("/api/cards").json()["cards"][0]["id"]
+    assert mapped != cid
+    reinforcement = target.client.get(f"/api/sessions/{session_id}/reinforcement")
+    assert reinforcement.status_code == 200, reinforcement.text
+    assert reinforcement.json()["questions"] == [
+        {"card_id": mapped, "word": "apple", "meaning": "苹果"}
+    ]
+    event = target.client.get("/api/export/backup").json()["learning_events"][0]
+    assert event["session_id"] == session_id
+    before = target.snapshot()
+    replay = target.client.post("/api/reviews", json={**command, "card_id": mapped})
+    assert replay.status_code == 200, replay.text
+    assert replay.json()["event_id"] == saved.json()["event_id"]
+    assert target.snapshot() == before
+    repeated_preview = target.client.post("/api/import/preview", json=backup)
+    assert repeated_preview.status_code == 200, repeated_preview.text
+    assert repeated_preview.json()["payload_digest"] == preview.json()["payload_digest"]
