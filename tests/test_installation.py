@@ -8,11 +8,15 @@ from pathlib import Path
 
 import pytest
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy import create_engine, inspect, text
 
 from alembic import command
 
 ROOT = Path(__file__).resolve().parents[1]
+MIGRATION_HEAD = ScriptDirectory.from_config(
+    Config(str(ROOT / "alembic.ini"))
+).get_current_head()
 
 
 def _migration_config(url: str) -> Config:
@@ -72,7 +76,7 @@ def test_stamped_missing_rating_repairs(tmp_path):
                 conn.execute(
                     text("SELECT version_num FROM alembic_version")
                 ).scalar_one()
-                == "ec12_card_identity"
+                == MIGRATION_HEAD
             )
     finally:
         engine.dispose()
@@ -257,7 +261,7 @@ def test_custom_database_target(tmp_path):
                 conn.execute(
                     text("SELECT version_num FROM alembic_version")
                 ).scalar_one()
-                == "ec12_card_identity"
+                == MIGRATION_HEAD
             )
     finally:
         engine.dispose()
