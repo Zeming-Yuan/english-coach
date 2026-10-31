@@ -18,7 +18,7 @@
 
 ## 记忆与调度
 
-- **复习记录**（`Review`）：FSRS 的当前记忆状态入库形态（state/step/due/stability/difficulty/rating/review_count）；同卡多行时由 `get_memory_state` 按最新有效复习时间选择
+- **复习记录**（`Review`）：FSRS 的当前记忆状态入库形态（state/step/due/stability/difficulty/rating/review_count）；迁移 `b1c2d3e4f503` 先归档旧重复行，再以单卡唯一索引收口；`get_memory_state` 只读唯一当前行，旧行仍可从基线追溯
 - **学习事件**（`ReviewEvent`）：每次被接受的学习提交追加一行（来源/题型/提示/可空正误/自评/排期摘要/提交标识）；只追加，不覆盖历史；`submission_id` 唯一保证重试幂等
 - **迁移基线**（`ReviewBaseline`）：升级前旧 Review 行的原始快照，`selected` 标出当前状态来源；不是作答事件，不纳入客观正确率
 - **学习提交**（LearningSubmission，`app/services/learning.py`）：所有评分入口的统一原子写模块——判分、事件、FSRS、错词与幂等回放；`run_write` 持有 `BEGIN IMMEDIATE`，路由不提交

@@ -402,6 +402,7 @@ def _validate_full_graph(tables: dict, payload: dict) -> None:
                 if field in row and row[field] not in {r["id"] for r in tables[parent]}:
                     reject(name, index, field, "引用了备份中不存在的实体")
     for name, key in (
+        ("reviews", "card_id"),
         ("memos", "card_id"),
         ("hard_cards", "card_id"),
         ("lessons", "level"),
