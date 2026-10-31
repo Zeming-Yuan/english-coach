@@ -705,7 +705,7 @@ def test_full_restore_rejects_changed_saved_session_or_rating_before_any_write(
     if kind == "typed":
         command.update(kind="typed", answer="apple")
     elif kind == "skip":
-        command.update(kind="typed", skipped=True)
+        command.update(kind="self_rating", skipped=True)
     else:
         command.update(kind="self_rating", rating=1)
     saved = ec.client.post("/api/reviews", json=command)
@@ -755,7 +755,7 @@ def test_full_restore_preserves_valid_saved_session_and_rating(
     if kind == "typed":
         command.update(kind="typed", answer="apple")
     elif kind == "skip":
-        command.update(kind="typed", skipped=True)
+        command.update(kind="self_rating", skipped=True)
     else:
         command.update(kind="self_rating", rating=1)
     saved = ec.client.post("/api/reviews", json=command)
@@ -769,6 +769,12 @@ def test_full_restore_preserves_valid_saved_session_and_rating(
     event = target.client.get("/api/export/backup").json()["learning_events"][0]
     assert event["session_id"] == session_id
     assert event["self_rating"] == (1 if kind == "self_rating" else None)
+    if session_id is not None:
+        original = ec.client.get(f"/api/sessions/{session_id}/summary")
+        restored = target.client.get(f"/api/sessions/{session_id}/summary")
+        assert original.status_code == restored.status_code == 200
+        assert restored.json()["counts"] == original.json()["counts"]
+        assert restored.json()["metrics"] == original.json()["metrics"]
 
 
 @pytest.mark.parametrize("card_count", [0, 2])
@@ -815,7 +821,7 @@ def test_full_restore_rejects_cache_answer_inconsistent_with_saved_command(
             question_token=question["question_token"],
         )
     elif kind == "skip":
-        command.update(kind="typed", skipped=True)
+        command.update(kind="self_rating", skipped=True)
     else:
         command.update(kind="self_rating", rating=1)
     saved = ec.client.post("/api/reviews", json=command)
@@ -893,6 +899,8 @@ def test_full_restore_canonicalizes_outer_session_for_reading_and_replay(
     }
     saved = ec.client.post("/api/reviews", json=command)
     assert saved.status_code == 200, saved.text
+    original = ec.client.get(f"/api/sessions/{session_id}/summary")
+    assert original.status_code == 200, original.text
     backup = ec.client.get("/api/export/backup").json()
     raw_session = (
         session_id.upper() if outer_form == "uppercase" else session_id.replace("-", "")
@@ -910,8 +918,17 @@ def test_full_restore_canonicalizes_outer_session_for_reading_and_replay(
         },
     )
     assert restored.status_code == 200, restored.text
+    summary = target.client.get(f"/api/sessions/{session_id}/summary")
+    assert summary.status_code == 200, summary.text
+    assert summary.json()["counts"] == original.json()["counts"]
+    assert summary.json()["metrics"] == original.json()["metrics"]
     mapped = target.client.get("/api/cards").json()["cards"][0]["id"]
     assert mapped != cid
+    reinforcement = target.client.get(f"/api/sessions/{session_id}/reinforcement")
+    assert reinforcement.status_code == 200, reinforcement.text
+    assert reinforcement.json()["questions"] == [
+        {"card_id": mapped, "word": "apple", "meaning": "苹果"}
+    ]
     event = target.client.get("/api/export/backup").json()["learning_events"][0]
     assert event["session_id"] == session_id
     before = target.snapshot()
