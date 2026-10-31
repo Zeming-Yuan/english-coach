@@ -378,3 +378,50 @@ for (const delayedAttempt of [1, 2]) {
     expect(await events(app, ids)).toHaveLength(2);
   });
 }
+
+test("EC-07 saved-skip-remains-a-completion-consolidation-item", async ({
+  app,
+  page,
+}) => {
+  const [id] = await app.seedCards([words[0]]);
+  const submissions = [];
+  page.on("request", (request) => {
+    if (request.url().endsWith("/api/typing/check"))
+      submissions.push(request.postDataJSON().submission_id);
+  });
+  await page.route(
+    "**/api/typing/check",
+    async (route) => {
+      await route.fetch();
+      await route.abort("failed");
+    },
+    { times: 1 },
+  );
+  await page.clock.install();
+  await open(app, page);
+  await page.getByRole("button", { name: /跳过这题/ }).click();
+  await expect(page.getByRole("alert")).toContainText("尚未确认保存");
+  await expect(page.getByText("混合练习完成！")).toHaveCount(0);
+  await page.getByRole("button", { name: /重试保存/ }).click();
+  await expect(page.getByRole("status")).toContainText(
+    "已跳过，本题不计正误，也不排期",
+  );
+  await page.getByRole("button", { name: /下一题/ }).click();
+  await expect(page.getByText("混合练习完成！")).toBeVisible();
+  await expect(page.getByRole("region", { name: "待巩固" })).toContainText(
+    "apple：苹果",
+  );
+  await expect(page.locator(".study-done")).toContainText(
+    "答对 0/1 题 · 跳过 1 题",
+  );
+  expect(submissions).toHaveLength(2);
+  expect(new Set(submissions).size).toBe(1);
+  const saved = await events(app, [id]);
+  expect(saved).toHaveLength(1);
+  expect(saved[0].skipped).toBe(true);
+  expect(saved[0].correct).toBeNull();
+  expect(saved[0].scheduled).toBe(false);
+  expect(
+    (await (await app.request.get("/api/errors")).json()).errors,
+  ).toHaveLength(0);
+});
