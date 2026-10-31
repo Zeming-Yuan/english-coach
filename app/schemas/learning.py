@@ -41,7 +41,7 @@ class AttemptCommand(BaseModel):
 
     @model_validator(mode="after")
     def _validate_combination(self) -> "AttemptCommand":
-        if self.kind == "self_rating" and self.rating is None:
+        if self.kind == "self_rating" and self.rating is None and not self.skipped:
             raise ValueError("self_rating 必须提供 rating")
         if self.kind != "self_rating" and self.rating is not None:
             raise ValueError("只有 self_rating 可以使用 rating，不能用自评分覆盖策略")

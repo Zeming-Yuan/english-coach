@@ -159,7 +159,7 @@ test("EC-12 confirmed restore discards frozen daily and single-card practice", a
   await expect(page.locator(".front-main")).toHaveText("apple");
   await page.locator(".flip-hint").first().click();
   await page.locator(".rating-3").click();
-  await expect(page.getByRole("heading", {name: "本轮主队列已保存", exact: true})).toBeVisible();
+  await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toBeVisible();
   const restored = await snapshot(target);
   expect(restored.cards.every(card => !oldIds.includes(card.id))).toBe(true);
   expect(restored.learning_events.filter(event => event.stage === "main")).toHaveLength(1);
