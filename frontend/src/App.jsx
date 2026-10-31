@@ -4,6 +4,7 @@ import { storageGet, storageSet } from "./lib/utils.js";
 import { setTtsRate } from "./lib/tts.js";
 import { loadPending, sendPending, clearPending } from "./lib/learning.js";
 import StudyPage from "./views/StudyPage.jsx";
+import DailySessionPage from "./views/DailySessionPage.jsx";
 import QuizPage from "./views/QuizPage.jsx";
 import SpellingPage from "./views/SpellingPage.jsx";
 import ListeningPage from "./views/ListeningPage.jsx";
@@ -166,7 +167,7 @@ export default function App() {
   const [isDailyStudy, setIsDailyStudy] = useState(false);
   const [dailySession, setDailySession] = useState(() => storageGet("activeDailySession", null));
   const updateDaily = (session) => {
-    storageSet("activeDailySession", session?.complete ? null : session);
+    storageSet("activeDailySession", session?.finished ? null : session);
     setDailySession(session);
   };
   const confirmDailyCard = (command, result) => {
@@ -175,7 +176,7 @@ export default function App() {
       if (!current || current.id !== command.session_id || current.queue[current.index]?.id !== command.card_id) return current;
       const index = current.index + 1;
       const next = { ...current, index, complete: index >= current.target };
-      storageSet("activeDailySession", next.complete ? null : next);
+      storageSet("activeDailySession", next.finished ? null : next);
       return next;
     });
   };
@@ -250,7 +251,7 @@ export default function App() {
           setQueueVersion((v) => v + 1);
         }} />}
         {view === "lessons" && <LessonsPage onExit={() => setView("queue")} />}
-        {view === "study" && <StudyPage recoveryVersion={queueVersion} session={isDailyStudy ? dailySession : null} onAbort={() => { setIsDailyStudy(false); updateDaily(null); setStudyQueue([]); setView("queue"); }} onProgress={confirmDailyCard} queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} />}
+        {view === "study" && (isDailyStudy ? <DailySessionPage session={dailySession} onSessionChange={updateDaily} onFinish={() => { updateDaily({...dailySession, finished: true}); setView("queue"); }} recoveryVersion={queueVersion} onAbort={() => { setIsDailyStudy(false); updateDaily(null); setStudyQueue([]); setView("queue"); }} onProgress={confirmDailyCard} queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} /> : <StudyPage recoveryVersion={queueVersion} session={isDailyStudy ? dailySession : null} onAbort={() => { setIsDailyStudy(false); updateDaily(null); setStudyQueue([]); setView("queue"); }} onProgress={confirmDailyCard} queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} />)}
         {view === "quiz" && <QuizPage onExit={() => setView("queue")} />}
         {view === "spelling" && <SpellingPage onExit={() => { setView("queue"); setSingleCard(null); }} singleCard={singleCard} />}
         {view === "listening" && <ListeningPage onExit={() => setView("queue")} />}
@@ -355,7 +356,7 @@ function QueueView({ setView, setStudyQueue, dailySession, onStartDaily, onResum
     }
   };
 
-  const activeSession = dailySession && !dailySession.complete ? dailySession : null;
+  const activeSession = dailySession && !dailySession.finished ? dailySession : null;
   const errorCount = (data.error_cards || []).length;
   const isEmpty = stats?.total_cards === 0;
 
@@ -431,7 +432,7 @@ function QueueView({ setView, setStudyQueue, dailySession, onStartDaily, onResum
         )}
       </div>
 
-      {!isEmpty && queueTotal === 0 && !(dailySession && !dailySession.complete) && <div className="welcome-box">
+      {!isEmpty && queueTotal === 0 && !(dailySession && !dailySession.finished) && <div className="welcome-box">
         <h2>今日复习已完成</h2>
         <p>当前没有到期词或待学新词，可以继续练习，也可以添加新词。</p>
         <button className="btn btn-ghost" onClick={() => setView("add")}>添加新词</button>
