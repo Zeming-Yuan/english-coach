@@ -141,8 +141,30 @@ function speakLocal(word, done) {
 /**
  * 预合成暖缓存（列表加载时调用）。
  */
+const prewarmQueue = [];
+const warmingWords = new Set();
+let prewarming = 0;
+
+function drainPrewarm() {
+  // Keep same-origin connections available for reading and saving learning.
+  while (prewarming < 2 && prewarmQueue.length) {
+    const word = prewarmQueue.shift();
+    prewarming += 1;
+    fetch(`/api/tts/audio/${encodeURIComponent(word)}/preload`)
+      .catch(() => {})
+      .finally(() => {
+        warmingWords.delete(word);
+        prewarming -= 1;
+        drainPrewarm();
+      });
+  }
+}
+
 export function prewarmTts(words) {
-  words.slice(0, 50).forEach((w) => {
-    fetch(`/api/tts/audio/${encodeURIComponent(w)}/preload`).catch(() => {});
-  });
+  for (const word of words.slice(0, 50)) {
+    if (warmingWords.has(word)) continue;
+    warmingWords.add(word);
+    prewarmQueue.push(word);
+  }
+  drainPrewarm();
 }

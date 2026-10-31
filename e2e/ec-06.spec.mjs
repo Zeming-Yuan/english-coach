@@ -362,3 +362,23 @@ test("EC-16 a newer replay owns its playback deadline", async ({appFactory, page
     console.log("TTS_PROVIDER", fs.readFileSync(controlFile, "utf8"));
   }
 });
+
+test("EC-16 speech prewarming cannot block detail or saving", async ({appFactory, page}) => {
+  await page.unroute("**/api/tts/**");
+  const app = await appFactory({fixture: "ec16-tts-slow-warm.json"});
+  const words = ["apple", "book", "cat", "dog", "egg", "fish", "goat", "house"];
+  const ids = await app.seedCards(words.map(word => ({word, meaning: word})));
+  const before = await ttsSnapshot(app);
+  await page.goto(app.baseURL);
+  await page.getByRole("button", {name: /单词本/}).click();
+  await expect(page.locator(".word-item").first()).toBeVisible();
+  // Real requests have reached the slow external adapter and still hold HTTP
+  // connections. API reads/learning must remain usable while they are pending.
+  await expect.poll(async () => (await app.externalCalls()).filter(call => call === "tts").length).toBeGreaterThanOrEqual(2);
+  await page.locator(".word-item").first().click();
+  expect(await ttsSnapshot(app)).toEqual(before);
+  await expect(page.getByTestId("rate-good")).toBeVisible({timeout: 5000});
+  await page.getByTestId("rate-good").click();
+  await expect.poll(async () => (await ttsSnapshot(app)).learning_events, {timeout: 5000}).toHaveLength(1);
+  expect((await ttsSnapshot(app)).learning_events[0].card_id).toBe(ids[0]);
+});
