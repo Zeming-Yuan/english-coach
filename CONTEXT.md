@@ -24,7 +24,8 @@
 - **学习提交**（LearningSubmission，`app/services/learning.py`）：所有评分入口的统一原子写模块——判分、事件、FSRS、错词与幂等回放；`run_write` 持有 `BEGIN IMMEDIATE`，路由不提交
 - **复习提交适配器**（ReviewSubmission，`app/services/review_submission.py`）：旧函数签名（闪卡/听写）与后台升级接缝，内部委托学习提交模块
 - **毕业**（Graduation）：词卡 → 句子卡的触发；**全库唯一口径** `card_is_graduated` = word 卡且（FSRS state==2 或 review_count>=3），句子卡永不毕业（`app/services/graduation.py`）；毕业 ≠ 已建句卡（兜底先行，AI 升级幂等）
-- **今日队列**（TodayQueue）：新课/到期卡/错词优先/困难词；句子卡**不进**队列（2026-09-02 决策，词库过 200 词可评估恢复）
+- **今日队列**（TodayQueue）：单词卡的每日主队列，先取最多 20 张到期词，再取建议配额内新词；错词/困难标记只影响各组内优先级，未到期词不因此进入主队列。句子卡**不进**队列（2026-09-02 决策）
+- **每日学习轮次**（DailySession）：开始时冻结去重队列、本轮目标与会话标识；已确认保存才推进，刷新可继续剩余卡片，剩余到期词另开下一轮。每日最低完成目标不改变本轮目标或新词配额
 - **错词追踪**（ErrorCard）：答错加权、答对清权，错误增强效应
 
 ## 练习

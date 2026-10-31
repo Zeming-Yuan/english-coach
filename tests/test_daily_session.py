@@ -100,3 +100,32 @@ def test_daily_queue_uses_current_state_not_stale_due_rows(ec):
     result = ec.client.get("/api/today").json()
     assert result["queue"] == []
     assert result["remaining_due"] == result["target"] == 0
+
+
+def test_daily_quota_stays_lowered_and_empty_counts_are_explicit(ec):
+    empty = ec.client.get("/api/today").json()
+    assert (
+        empty["queue"],
+        empty["review_count"],
+        empty["new_count"],
+        empty["target"],
+    ) == ([], 0, 0, 0)
+    ids = [ec.seed_card(word=f"quota{i}") for i in range(8)]
+    assert (
+        ec.client.post(
+            "/api/reviews",
+            json={
+                "card_id": ids[0],
+                "rating": 1,
+                "source": "study",
+                "kind": "self_rating",
+                "submission_id": str(uuid4()),
+            },
+        ).status_code
+        == 200
+    )
+    result = ec.client.get("/api/today").json()
+    assert result["recommended_goal"] == 5
+    assert result["sample_count"] == 1
+    assert result["new_count"] == 5
+    assert result["target"] == 5
