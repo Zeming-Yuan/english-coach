@@ -207,3 +207,138 @@ def test_archived_unknown_history_remains_readable_after_v2_restore(ec, ec_facto
     assert (
         restored["review_baselines"][0]["raw"] == backup["review_baselines"][0]["raw"]
     )
+
+
+def _prepare_contract_preflight(ec):
+    """Real saved activity plus prior-revision legacy duplicates and audit evidence."""
+    from pathlib import Path
+
+    from alembic.config import Config
+    from sqlalchemy import text
+
+    from alembic import command
+
+    cid = ec.seed_card()
+    assert (
+        ec.client.post("/api/reviews", json={"card_id": cid, "rating": 3}).status_code
+        == 200
+    )
+    config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
+    config.set_main_option("sqlalchemy.url", ec.database_url)
+    command.downgrade(config, "ec12_card_identity")
+    with ec.engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO reviews (id, card_id, state, step, due, stability, difficulty, "
+                "elapsed_days, last_review, review_count, rating) VALUES "
+                "(99, :cid, 1, 0, '2026-10-29 12:00:00', 1, 5, 0, '2026-10-29 12:00:00', 1, 2)"
+            ),
+            {"cid": cid},
+        )
+        conn.execute(
+            text(
+                "INSERT INTO review_baselines (id, card_id, source_review_id, source_kind, raw, "
+                "selected, captured_at, last_activity, cumulative_count, source_fingerprint) "
+                "VALUES ('00000000-0000-4000-8000-000000000001', :cid, NULL, 'migration', "
+                "'{\"evidence\":\"unchanged\"}', 0, '2026-10-29 12:00:00', NULL, 0, :fp)"
+            ),
+            {"cid": cid, "fp": "a" * 64},
+        )
+        current_id = conn.execute(
+            text("SELECT id FROM reviews WHERE id != 99")
+        ).scalar_one()
+    return config, cid, current_id
+
+
+def _preflight_snapshot(ec):
+    from sqlalchemy import text
+
+    with ec.engine.connect() as conn:
+        return {
+            table: conn.execute(text(f'SELECT * FROM "{table}" ORDER BY 1')).all()
+            for table in (
+                "reviews",
+                "review_events",
+                "review_baselines",
+                "alembic_version",
+                "sqlite_sequence",
+            )
+        }
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("stability", -1),
+        ("difficulty", -1),
+        ("difficulty", 10.01),
+        ("step", -1),
+        ("step", 0.5),
+        ("review_count", -1),
+        ("review_count", 0.5),
+        ("elapsed_days", -1),
+        ("elapsed_days", 0.5),
+        ("state", -1),
+        ("state", 4),
+        ("state", 1.5),
+        ("rating", 0),
+        ("rating", 5),
+        ("rating", 1.5),
+        ("stability", float("inf")),
+        ("difficulty", float("inf")),
+    ],
+)
+def test_contract_preflight_rejects_invalid_fsrs_without_changes(ec, field, value):
+    from sqlalchemy import text
+
+    from alembic import command
+
+    config, _, current_id = _prepare_contract_preflight(ec)
+    with ec.engine.begin() as conn:
+        conn.execute(
+            text(f"UPDATE reviews SET {field} = :value WHERE id = :id"),
+            {"value": value, "id": current_id},
+        )
+    before = _preflight_snapshot(ec)
+    with pytest.raises(RuntimeError, match=f"reviews.*{field}"):
+        command.upgrade(config, "head")
+    assert _preflight_snapshot(ec) == before
+
+
+@pytest.mark.parametrize(
+    ("step", "rating", "difficulty"), [(None, None, 0), (0, 4, 10)]
+)
+def test_contract_preflight_preserves_valid_zero_and_unknown_fields(
+    ec, step, rating, difficulty
+):
+    from sqlalchemy import text
+
+    from alembic import command
+
+    config, cid, _ = _prepare_contract_preflight(ec)
+    with ec.engine.begin() as conn:
+        conn.execute(
+            text(
+                "UPDATE reviews SET state=0, step=:step, stability=0, difficulty=:difficulty, "
+                "review_count=0, elapsed_days=0, last_review=NULL, rating=:rating"
+            ),
+            {"step": step, "difficulty": difficulty, "rating": rating},
+        )
+    before = _preflight_snapshot(ec)
+    command.upgrade(config, "head")
+    detail = ec.client.get(f"/api/cards/{cid}")
+    assert detail.status_code == 200
+    memory = detail.json()["memory_state"]
+    assert memory["state"] == memory["review_count"] == memory["stability"] == 0
+    assert memory["difficulty"] == difficulty
+    assert memory["step"] == step
+    assert memory["rating"] == rating
+    assert memory["last_review"] is None
+    after = _preflight_snapshot(ec)
+    assert after["review_events"] == before["review_events"]
+    assert after["sqlite_sequence"] == before["sqlite_sequence"]
+    backup = ec.client.get("/api/export/backup").json()
+    assert len(backup["reviews"]) == 1
+    assert len(backup["review_baselines"]) == 3
+    preview = ec.client.post("/api/import/preview", json=backup)
+    assert preview.status_code == 200, preview.text
