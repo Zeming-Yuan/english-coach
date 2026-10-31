@@ -332,9 +332,8 @@ for (const latePath of ["initial send", "retry", "home retry"]) {
       await page.reload();
       await page.getByRole("button", {name: "继续确认保存", exact: true}).click();
       await expect(page.getByRole("button", {name: "继续确认保存", exact: true})).toHaveCount(0);
-      await page.getByRole("button", {name: "继续本轮学习", exact: true}).click();
-      await expect(page.getByRole("heading", {name: "本轮主队列已保存", exact: true})).toBeVisible();
-      await expect(page.locator(".done-detail")).toContainText("2 张卡已保存");
+      await expect(page.getByRole("heading", {name: "今日复习已完成", exact: true})).toBeVisible();
+      await expect(page.locator(".today-stats")).toContainText("今日完成 2 词");
       expect(submissions.map(command => command.submission_id)).toEqual([
         submissions[0].submission_id, submissions[0].submission_id,
         pendingB.payload.submission_id, pendingB.payload.submission_id,
