@@ -262,3 +262,98 @@ test("EC-13 an in-flight foreign recovery clears pending without advancing daily
   expect(main).toHaveLength(1);
   expect(main[0].session_id).toBe(mainSessionId);
 });
+
+for (const latePath of ["initial send", "retry", "home retry"]) {
+  test(`EC-13 late ${latePath} confirmation preserves the next card's pending identity`, async ({app, page}) => {
+    const ids = await app.seedCards([{word: "first"}, {word: "second"}]);
+    const detail = async id => (await (await app.request.get(`/api/cards/${id}`)).json());
+    const pending = () => page.evaluate(() => JSON.parse(localStorage.getItem("ec.pending.study")));
+    await page.goto(app.baseURL);
+    await page.getByRole("button", {name: "开始今天的学习", exact: true}).click();
+    if (latePath !== "initial send") {
+      await page.route("**/api/reviews", route => route.abort("failed"), {times: 1});
+      await page.locator(".flip-hint").first().click();
+      await page.locator(".rating-3").click();
+      await expect(page.getByRole("alert")).toContainText("保存");
+      if (latePath === "home retry") {
+        await page.getByRole("button", {name: "← 退出", exact: true}).click();
+      }
+    }
+    let releaseA, releaseB;
+    const heldA = new Promise(resolve => { releaseA = resolve; });
+    const heldB = new Promise(resolve => { releaseB = resolve; });
+    const submissions = [];
+    try {
+      await page.route("**/api/reviews", async route => {
+        const command = route.request().postDataJSON();
+        submissions.push(command);
+        const index = submissions.length;
+        if (index === 2 || index > 3) return route.continue();
+        const response = await route.fetch();
+        await (index === 1 ? heldA : heldB);
+        if (index === 1) await route.fulfill({response});
+        else await route.abort("failed");
+      });
+      if (latePath !== "initial send") {
+        await page.getByRole("button", {name: "继续确认保存", exact: true}).click();
+      } else {
+        await page.locator(".flip-hint").first().click();
+        await page.locator(".rating-3").click();
+      }
+      await expect.poll(async () => (await detail(ids[0])).learning_events.length).toBe(1);
+      if (latePath === "home retry") {
+        await page.getByRole("button", {name: "继续本轮学习", exact: true}).click();
+        await page.getByRole("button", {name: "继续确认保存", exact: true}).click();
+      } else {
+        await page.getByRole("button", {name: "← 退出", exact: true}).click();
+        await page.getByRole("button", {name: "继续确认保存", exact: true}).click();
+        await expect(page.getByRole("button", {name: "继续确认保存", exact: true})).toHaveCount(0);
+        await page.getByRole("button", {name: "继续本轮学习", exact: true}).click();
+      }
+      await expect(page.locator(".front-main")).toHaveText("second");
+      await page.locator(".flip-hint").first().click();
+      await page.locator(".rating-3").click();
+      await expect.poll(async () => (await detail(ids[1])).learning_events.length).toBe(1);
+      const savedB = await detail(ids[1]);
+      const pendingB = await pending();
+      expect(pendingB.payload.card_id).toBe(ids[1]);
+      const lateResponse = page.waitForResponse(response => response.url().endsWith("/api/reviews") &&
+        response.request().postDataJSON().submission_id === submissions[0].submission_id);
+      releaseA();
+      await (await lateResponse).finished();
+      // Let the fulfilled response's JSON/React callbacks finish before inspecting storage.
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      expect(await pending(), "late A must retain unconfirmed B for refresh recovery").toEqual(pendingB);
+      await expect(page.locator(".study-count")).toHaveText("2 / 2");
+      await expect(page.getByRole("status")).toContainText("正在确认保存");
+      await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toHaveCount(0);
+      releaseB();
+      await expect(page.getByRole("alert")).toContainText("尚未确认保存");
+      await page.reload();
+      await page.getByRole("button", {name: "继续确认保存", exact: true}).click();
+      await expect(page.getByRole("button", {name: "继续确认保存", exact: true})).toHaveCount(0);
+      await page.getByRole("button", {name: "继续本轮学习", exact: true}).click();
+      await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toBeVisible();
+      await expect(page.locator(".done-detail")).toContainText("2 张卡已保存");
+      expect(submissions.map(command => command.submission_id)).toEqual([
+        submissions[0].submission_id, submissions[0].submission_id,
+        pendingB.payload.submission_id, pendingB.payload.submission_id,
+      ]);
+      expect(await pending()).toBeNull();
+      const finalB = await detail(ids[1]);
+      expect(finalB.memory_state).toEqual(savedB.memory_state);
+      expect(finalB.learning_events).toHaveLength(1);
+      const backup = await (await app.request.get("/api/export/backup")).json();
+      expect(backup.learning_events.filter(event => event.card_id === ids[1]).map(event => event.submission_id))
+        .toEqual([pendingB.payload.submission_id]);
+      expect(finalB.learning_events[0].stage).toBe("main");
+      const finalA = await detail(ids[0]);
+      expect(finalA.learning_events).toHaveLength(1);
+      expect(finalA.learning_events[0].session_id).toBe(finalB.learning_events[0].session_id);
+      expect(finalA.learning_events[0].stage).toBe("main");
+    } finally {
+      releaseA();
+      releaseB();
+    }
+  });
+}
