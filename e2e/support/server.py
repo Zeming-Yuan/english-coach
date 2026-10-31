@@ -106,6 +106,62 @@ def main() -> None:
 
         app.state.llm_client = _FailingLLMClient()
 
+    # Replace only the external speech adapter; keep real TTS routes/cache/HTTP.
+    import asyncio
+    import io
+    import time
+    import wave
+
+    from app.routers import tts
+
+    audio = io.BytesIO()
+    with wave.open(audio, "wb") as wav:
+        wav.setnchannels(1)
+        wav.setsampwidth(2)
+        wav.setframerate(8000)
+        wav.writeframes(b"\x00\x00" * 80)
+
+    def record_tts(phase, text, delay_ms, mode):
+        control = json.loads(control_file.read_text(encoding="utf-8"))
+        control["tts_observations"] = [
+            *control.get("tts_observations", []),
+            {
+                "phase": phase,
+                "text": text,
+                "delay_ms": delay_ms,
+                "mode": mode,
+                "time": time.monotonic(),
+                "wall": time.time(),
+            },
+        ]
+        control_file.write_text(json.dumps(control), encoding="utf-8")
+
+    async def controlled_synthesis(_text):
+        control = json.loads(control_file.read_text(encoding="utf-8"))
+        tts_mode = control.get("tts_mode", external.get("tts", "success"))
+        _record_external_call("tts" if tts_mode == "success" else f"tts:{tts_mode}")
+        delay_ms = control.get("tts_delay_ms", external.get("tts_delay_ms", 0))
+        record_tts("start", _text, delay_ms, tts_mode)
+        if external.get("tts_release_gate"):
+            while not json.loads(control_file.read_text(encoding="utf-8")).get(
+                "tts_release"
+            ):
+                await asyncio.sleep(0.01)
+        if delay_ms:
+            try:
+                await asyncio.sleep(delay_ms / 1000)
+            except asyncio.CancelledError:
+                record_tts("cancelled", _text, delay_ms, tts_mode)
+                raise
+        if tts_mode == "timeout":
+            raise TimeoutError("simulated TTS provider timeout")
+        if tts_mode == "error":
+            raise OSError("simulated TTS provider unavailable")
+        record_tts("ready", _text, delay_ms, tts_mode)
+        yield audio.getvalue()
+
+    tts._synthesize = controlled_synthesis
+
     port = _free_port()
     print(json.dumps({"port": port, "databasePath": args.database}), flush=True)
     uvicorn.run(app, host="127.0.0.1", port=port, log_level="warning")
