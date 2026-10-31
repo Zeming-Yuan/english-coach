@@ -1,0 +1,7 @@
+{
+  "external": {
+    "tts": "timeout",
+    "tts_delay_ms": 3500
+  },
+  "tables": {}
+}

@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import {randomUUID} from "node:crypto";
 import {test, expect} from "./support/test.mjs";
 
@@ -257,3 +259,126 @@ async function openSpecialistPractice(page) {
   const summary = page.getByText("专项练习", {exact: true});
   if (await summary.locator("..").getAttribute("open") === null) await summary.click();
 }
+
+// EC-16 release qualification: real route/cache with controlled external provider.
+async function ttsSnapshot(app) {
+  const response = await app.request.get("/api/export/backup");
+  expect(response.ok()).toBe(true);
+  const data = await response.json(); delete data.exported_at; return data;
+}
+
+test("EC-16 TTS uses controlled external adapter", async ({app, page}) => {
+  await page.unroute("**/api/tts/**");
+  expect((await app.request.get("/api/tts/audio/release/preload")).ok()).toBe(true);
+  expect(await app.externalCalls()).toContain("tts");
+});
+
+for (const failure of ["timeout", "error"]) {
+  test(`EC-16 TTS provider ${failure} preserves saved learning`, async ({appFactory, page}) => {
+    await page.unroute("**/api/tts/**");
+    const app = await appFactory({fixture: `ec16-tts-${failure}.json`});
+    const [id] = await app.seedCards([{word: "apple", meaning: "苹果"}, {word: "book"}, {word: "cat"}, {word: "dog"}]);
+    const saved = await app.request.post("/api/reviews", {data: {card_id: id, rating: 3, source: "study", submission_id: crypto.randomUUID()}});
+    expect(saved.status()).toBe(200);
+    const before = await ttsSnapshot(app);
+    const preload = await app.request.get("/api/tts/audio/release/preload");
+    expect(preload.ok()).toBe(true);
+    expect(await preload.json()).toEqual({cached: false});
+    await page.goto(app.baseURL);
+    await page.locator("summary").click();
+    await page.getByRole("button", {name: /听写练习/}).click();
+    await expect(page.locator(".listening-option").first()).toBeVisible();
+    await page.locator(".btn-speak-large").click();
+    expect(await ttsSnapshot(app)).toEqual(before);
+    await expect(page.getByText(/发音不可用|本地语音/)).toBeVisible();
+    expect(await app.externalCalls()).toContain(`tts:${failure}`);
+    expect(await ttsSnapshot(app)).toEqual(before);
+    await page.locator(".listening-option").first().click();
+    await expect(page.getByRole("status")).toContainText("已保存");
+    expect((await ttsSnapshot(app)).learning_events).toHaveLength(2);
+  });
+}
+
+
+test("EC-16 TTS retries the same word after provider recovery", async ({appFactory, page}) => {
+  await page.unroute("**/api/tts/**");
+  const app = await appFactory({fixture: "ec16-tts-error.json"});
+  await seedWords(app);
+  const before = await ttsSnapshot(app);
+  const first = page.waitForRequest(request => request.url().includes("/api/tts/audio/") && !request.url().endsWith("/preload"));
+  await openListening(app, page);
+  const audioPath = new URL((await first).url()).pathname;
+  await page.locator(".btn-speak-large").click();
+  await expect(page.getByText(/发音不可用|本地语音/)).toBeVisible();
+  // Test-only external provider control, never a product API or learning-data write.
+  const controlFile = path.join(path.dirname(app.databasePath), "control.json");
+  const control = JSON.parse(fs.readFileSync(controlFile, "utf8"));
+  fs.writeFileSync(controlFile, JSON.stringify({...control, tts_mode: "success", tts_delay_ms: 0}));
+  const retry = page.waitForRequest(request => new URL(request.url()).pathname === audioPath, {timeout: 5000});
+  await page.locator(".btn-speak-large").click();
+  await retry;
+  await expect(page.getByText(/发音不可用|本地语音/)).toHaveCount(0);
+  expect(await app.externalCalls()).toContain("tts");
+  expect(await ttsSnapshot(app)).toEqual(before);
+});
+
+test("EC-16 a newer replay owns its playback deadline", async ({appFactory, page}) => {
+  await page.unroute("**/api/tts/**");
+  // Observe native media completion without replacing HTTP or Audio behavior.
+  await page.addInitScript(() => {
+    const NativeAudio = window.Audio;
+    window.ttsEnded = [];
+    window.Audio = function (...args) {
+      const audio = new NativeAudio(...args);
+      audio.addEventListener("ended", () => window.ttsEnded.push(audio.currentSrc));
+      for (const event of ["playing", "stalled", "abort", "error", "ended"]) {
+        audio.addEventListener(event, () => console.log("TTS_MEDIA", event,
+          performance.now(), audio.readyState, audio.networkState, audio.error?.message));
+      }
+      return audio;
+    };
+    window.Audio.prototype = NativeAudio.prototype;
+  });
+  const app = await appFactory({fixture: "ec16-tts-overlap.json"});
+  await seedWords(app);
+  const before = await ttsSnapshot(app);
+  const started = page.waitForRequest(request => request.url().includes("/api/tts/audio/") && !request.url().endsWith("/preload"));
+  await openListening(app, page);
+  await started;
+  await page.waitForTimeout(2000);
+  await page.locator(".btn-speak-large").click();
+  // Release the real provider beyond the first 3s deadline, inside the replay's
+  // own window. Gate timing does not depend on browser HTTP dispatch latency.
+  await page.waitForTimeout(1500);
+  const controlFile = path.join(path.dirname(app.databasePath), "control.json");
+  const control = JSON.parse(fs.readFileSync(controlFile, "utf8"));
+  expect(control.external_calls).toContain("tts");
+  fs.writeFileSync(controlFile, JSON.stringify({...control, tts_release: true}));
+  try {
+    await expect.poll(() => page.evaluate(() => window.ttsEnded.length), {timeout: 5000}).toBe(1);
+    await expect(page.getByText(/发音不可用|本地语音/)).toHaveCount(0);
+    expect(await ttsSnapshot(app)).toEqual(before);
+  } finally {
+    console.log("TTS_PROVIDER", fs.readFileSync(controlFile, "utf8"));
+  }
+});
+
+test("EC-16 speech prewarming cannot block detail or saving", async ({appFactory, page}) => {
+  await page.unroute("**/api/tts/**");
+  const app = await appFactory({fixture: "ec16-tts-slow-warm.json"});
+  const words = ["apple", "book", "cat", "dog", "egg", "fish", "goat", "house"];
+  const ids = await app.seedCards(words.map(word => ({word, meaning: word})));
+  const before = await ttsSnapshot(app);
+  await page.goto(app.baseURL);
+  await page.getByRole("button", {name: /单词本/}).click();
+  await expect(page.locator(".word-item").first()).toBeVisible();
+  // Real requests have reached the slow external adapter and still hold HTTP
+  // connections. API reads/learning must remain usable while they are pending.
+  await expect.poll(async () => (await app.externalCalls()).filter(call => call === "tts").length).toBeGreaterThanOrEqual(2);
+  await page.locator(".word-item").first().click();
+  expect(await ttsSnapshot(app)).toEqual(before);
+  await expect(page.getByTestId("rate-good")).toBeVisible({timeout: 5000});
+  await page.getByTestId("rate-good").click();
+  await expect.poll(async () => (await ttsSnapshot(app)).learning_events, {timeout: 5000}).toHaveLength(1);
+  expect((await ttsSnapshot(app)).learning_events[0].card_id).toBe(ids[0]);
+});

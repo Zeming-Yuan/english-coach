@@ -40,3 +40,4 @@ e2e/playwright-report/
 # ---- 一次性调试脚本（跑完即弃，不入库） ----
 *_check.js
 test.py
+e2e/release-results/
