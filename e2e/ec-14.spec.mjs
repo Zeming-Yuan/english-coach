@@ -257,3 +257,50 @@ test("EC-14 saved wrong reinforcement feedback precedes the next question", asyn
   const backup = await (await app.request.get("/api/export/backup")).json();
   expect(backup.learning_events.filter(e => e.submission_id === pending.payload.submission_id)).toHaveLength(1);
 });
+
+test("EC-14 obsolete reinforcement response cannot replace a newer daily round", async ({app, page}) => {
+  const [oldCard] = await app.seedCards([{word: "apple", meaning: "苹果"}]);
+  let release;
+  let captured;
+  let delivered;
+  const held = new Promise(resolve => { release = resolve; });
+  const responseCaptured = new Promise(resolve => { captured = resolve; });
+  const responseDelivered = new Promise(resolve => { delivered = resolve; });
+  await page.route("**/api/sessions/*/reinforcement", async route => {
+    const response = await route.fetch();
+    captured();
+    await held;
+    await route.fulfill({response});
+    delivered();
+  }, {times: 1});
+  await page.goto(app.baseURL);
+  await page.getByRole("button", {name: "开始今天的学习", exact: true}).click();
+  await page.locator(".flip-hint").first().click();
+  await page.locator(".rating-1").click();
+  await responseCaptured;
+  await page.getByRole("button", {name: "← 退出", exact: true}).click();
+  await page.getByRole("button", {name: "继续本轮学习", exact: true}).click();
+  await expect(page.locator(".spelling-meaning")).toHaveText("苹果");
+  await page.getByRole("button", {name: "跳过本轮巩固", exact: true}).click();
+  await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toBeVisible();
+  const [newCard] = await app.seedCards([{word: "book", meaning: "书"}]);
+  await page.getByRole("button", {name: "← 返回队列", exact: true}).click();
+  await page.getByRole("button", {name: "开始今天的学习", exact: true}).click();
+  await expect(page.locator(".front-main")).toHaveText("book");
+  const nextSession = await page.evaluate(() => JSON.parse(localStorage.getItem("activeDailySession")));
+  release();
+  await responseDelivered;
+  // Flush browser rendering after the delayed fetch has actually been delivered.
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem("activeDailySession")).id)).toBe(nextSession.id);
+  await expect(page.locator(".front-main")).toHaveText("book");
+  await expect(page.locator(".study-count")).toHaveText("1 / 1");
+  await page.locator(".flip-hint").first().click();
+  await page.locator(".rating-3").click();
+  await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toBeVisible();
+  const oldEvents = (await (await app.request.get(`/api/cards/${oldCard}`)).json()).learning_events;
+  const newEvents = (await (await app.request.get(`/api/cards/${newCard}`)).json()).learning_events;
+  expect(oldEvents).toHaveLength(1);
+  expect(newEvents).toHaveLength(1);
+  expect(newEvents[0]).toMatchObject({session_id: nextSession.id, stage: "main"});
+});

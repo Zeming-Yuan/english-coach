@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../lib/api.js";
 import StudyPage from "./StudyPage.jsx";
 import SpellingBoard from "../components/SpellingBoard.jsx";
@@ -8,6 +8,16 @@ import { clearPending, loadPending } from "../lib/learning.js";
 /** Daily orchestration only; main progress and attempt commits keep their existing owners. */
 export default function DailySessionPage({ session, onSessionChange, onFinish, ...studyProps }) {
   const attempt = useLearningAttempt("reinforcement");
+  const mounted = useRef(false);
+  const readSequence = useRef(0);
+  const activeSessionId = useRef(session.id);
+  activeSessionId.current = session.id;
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; readSequence.current += 1; };
+  }, [session.id]);
+  const ownsSession = () => mounted.current && activeSessionId.current === session.id;
+  const ownsRead = (request) => ownsSession() && request === readSequence.current;
   const [questions, setQuestions] = useState(null);
   const [assisted, setAssisted] = useState(false);
   useEffect(() => { setAssisted(false); }, [questions?.[0]?.card_id]);
@@ -15,26 +25,31 @@ export default function DailySessionPage({ session, onSessionChange, onFinish, .
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const finish = useCallback(async () => {
+    if (!ownsSession()) return;
+    const request = ++readSequence.current;
     setLoading(true); setError(""); setQuestions(null);
-    onSessionChange({...session, phase: "summary"});
+    onSessionChange({phase: "summary"});
     try {
       const saved = await api(`/api/sessions/${session.id}/summary`);
-      setSummary(saved);
-    } catch (e) { setError(`结果加载失败：${e.message}`); }
-    finally { setLoading(false); }
+      if (ownsRead(request)) setSummary(saved);
+    } catch (e) { if (ownsRead(request)) setError(`结果加载失败：${e.message}`); }
+    finally { if (ownsRead(request)) setLoading(false); }
   }, [session, onSessionChange]);
   const load = async () => {
+    if (!ownsSession()) return;
+    const request = ++readSequence.current;
     setLoading(true); setError(""); setQuestions(null);
     try {
       if (session.phase === "summary") { await finish(); return; }
       const data = await api(`/api/sessions/${session.id}/reinforcement`);
+      if (!ownsRead(request)) return;
       const ids = session.reinforcementCardIds ?? data.questions.map(q => q.card_id);
-      if (!session.reinforcementCardIds) onSessionChange({...session, reinforcementCardIds: ids});
+      if (!session.reinforcementCardIds) onSessionChange({reinforcementCardIds: ids});
       const available = data.questions.filter(q => ids.includes(q.card_id));
       setQuestions(available);
       if (!available.length && !loadPending("reinforcement")) await finish();
-    } catch (e) { setError(`巩固加载失败：${e.message}`); }
-    finally { setLoading(false); }
+    } catch (e) { if (ownsRead(request)) setError(`巩固加载失败：${e.message}`); }
+    finally { if (ownsRead(request)) setLoading(false); }
   };
   useEffect(() => {
     if (!session.complete) return;
@@ -50,10 +65,10 @@ export default function DailySessionPage({ session, onSessionChange, onFinish, .
       card_id: question.card_id, kind: "typed", user_input: answer,
       source: "reinforcement", session_id: session.id, stage: "reinforcement", assistance: assisted ? ["first_letter", "length", "live_feedback"] : [],
     });
-    clearPending("reinforcement");
+    if (ownsSession()) clearPending("reinforcement");
   };
   const retry = async () => {
-    try { await attempt.retry(); clearPending("reinforcement"); } catch {}
+    try { await attempt.retry(); if (ownsSession()) clearPending("reinforcement"); } catch {}
   };
   const next = async () => {
     attempt.clear();
