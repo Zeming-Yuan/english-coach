@@ -677,3 +677,101 @@ def test_full_restore_requires_preview_revision_before_safety_backup(
     )
     assert other.snapshot() == before
     assert sorted((other.root / "backups").glob("*")) == safety_before
+
+
+@pytest.mark.parametrize(
+    "kind,session_present,field,value",
+    [
+        ("self_rating", True, "session_id", "different"),
+        ("self_rating", True, "session_id", None),
+        ("self_rating", False, "session_id", "different"),
+        ("self_rating", True, "self_rating", 4),
+        ("self_rating", True, "self_rating", None),
+        ("typed", True, "self_rating", 4),
+        ("skip", True, "self_rating", 4),
+    ],
+)
+def test_full_restore_rejects_changed_saved_session_or_rating_before_any_write(
+    ec, ec_factory, kind, session_present, field, value
+):
+    cid = ec.seed_card()
+    command = {
+        "card_id": cid,
+        "source": "study",
+        "session_id": str(uuid4()) if session_present else None,
+        "stage": "main",
+        "submission_id": str(uuid4()),
+    }
+    if kind == "typed":
+        command.update(kind="typed", answer="apple")
+    elif kind == "skip":
+        command.update(kind="self_rating", skipped=True)
+    else:
+        command.update(kind="self_rating", rating=1)
+    saved = ec.client.post("/api/reviews", json=command)
+    assert saved.status_code == 200, saved.text
+    backup = ec.client.get("/api/export/backup").json()
+    backup["learning_events"][0][field] = (
+        str(uuid4()) if value == "different" else value
+    )
+    target = ec_factory()
+    _seed_full(target)
+    before = target.snapshot()
+    safety_before = {
+        path.name: path.read_bytes() for path in (target.root / "backups").glob("*")
+    }
+    # Each boundary must validate independently; the valid revision cannot hide bad data.
+    current = target.client.get("/api/export/backup").json()
+    preview = target.client.post("/api/import/preview", json=current)
+    assert preview.status_code == 200, preview.text
+    revision = preview.json()["expected_revision"]
+    for path, payload in (
+        ("/api/import/preview", backup),
+        ("/api/import/cards", {"backup": backup, "expected_revision": revision}),
+    ):
+        result = target.client.post(path, json=payload)
+        assert result.status_code == 422, result.text
+        assert result.json()["detail"][0]["collection"] == "learning_events"
+        assert target.snapshot() == before
+        assert {
+            path.name: path.read_bytes() for path in (target.root / "backups").glob("*")
+        } == safety_before
+
+
+@pytest.mark.parametrize("kind", ["self_rating", "typed", "skip"])
+@pytest.mark.parametrize("session_form", ["none", "canonical", "uppercase_command"])
+def test_full_restore_preserves_valid_saved_session_and_rating(
+    ec, ec_factory, kind, session_form
+):
+    cid = ec.seed_card()
+    session_id = None if session_form == "none" else str(uuid4())
+    command = {
+        "card_id": cid,
+        "source": "study",
+        "session_id": session_id,
+        "stage": "main",
+        "submission_id": str(uuid4()),
+    }
+    if kind == "typed":
+        command.update(kind="typed", answer="apple")
+    elif kind == "skip":
+        command.update(kind="self_rating", skipped=True)
+    else:
+        command.update(kind="self_rating", rating=1)
+    saved = ec.client.post("/api/reviews", json=command)
+    assert saved.status_code == 200, saved.text
+    backup = ec.client.get("/api/export/backup").json()
+    if session_form == "uppercase_command":
+        backup["learning_events"][0]["command_json"]["session_id"] = session_id.upper()
+    target = ec_factory()
+    result = _confirmed_restore(target, backup)
+    assert result.status_code == 200, result.text
+    event = target.client.get("/api/export/backup").json()["learning_events"][0]
+    assert event["session_id"] == session_id
+    assert event["self_rating"] == (1 if kind == "self_rating" else None)
+    if session_id is not None:
+        original = ec.client.get(f"/api/sessions/{session_id}/summary")
+        restored = target.client.get(f"/api/sessions/{session_id}/summary")
+        assert original.status_code == restored.status_code == 200
+        assert restored.json()["counts"] == original.json()["counts"]
+        assert restored.json()["metrics"] == original.json()["metrics"]
