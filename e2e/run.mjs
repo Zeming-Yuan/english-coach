@@ -10,7 +10,7 @@ import {assertSpecCoverage} from "./spec-coverage.mjs";
 const root = fileURLToPath(new URL("../", import.meta.url));
 const args = process.argv.slice(2);
 if (args.length && !(args.length === 2 && args[0] === "--ticket" && /^EC-\d{2}$/.test(args[1]))) {
-  console.error("Usage: test:e2e [--ticket EC-NN]; release runs must be unfiltered");
+  console.error("Invalid arguments. Usage: test:e2e [--ticket EC-NN]; release runs must be unfiltered");
   process.exit(2);
 }
 const ticket = args[1] || null;
