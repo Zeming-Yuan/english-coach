@@ -358,6 +358,7 @@ def validate_backup(payload: dict) -> ValidatedBackup:
 
 def _validate_full_graph(tables: dict, payload: dict) -> None:
     from app.schemas.learning import AttemptCommand, AttemptResult
+    from app.services.learning import canonical_attempt
 
     def reject(collection, index, field, reason):
         raise BackupValidationError(
@@ -452,13 +453,12 @@ def _validate_full_graph(tables: dict, payload: dict) -> None:
             for field in ("before", "after"):
                 if row[field] is not None:
                     MemorySummary.model_validate_json(json.dumps(row[field]))
-            canonical = {
-                key: value
-                for key, value in row["command_json"].items()
-                if key not in ("submission_id", "question_token", "expected")
-            }
-            canonical["assistance"] = sorted(command.assistance)
-            if _digest(canonical) != row["fingerprint"]:
+            if (
+                canonical_attempt(
+                    command, verified_question=row["command_json"].get("question")
+                )
+                != row["fingerprint"]
+            ):
                 raise ValueError("提交指纹与内容不匹配")
             if (
                 command.card_id != row["card_id"]
