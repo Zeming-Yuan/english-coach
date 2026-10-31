@@ -29,7 +29,7 @@ class QuestionTokenExpired(InvalidQuestionToken):
 
 
 class QuestionTokenStale(InvalidQuestionToken):
-    """由其他应用实例签发（重启后旧 token，HTTP 409）。"""
+    """上下文已过期：其他实例签发、重启，或词卡内容已修改（HTTP 409）。"""
 
 
 def new_question_secret() -> bytes:
