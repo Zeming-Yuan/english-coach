@@ -11,6 +11,7 @@ async function open(app, page) {
     Math.random = () => 0.999;
   });
   await page.goto(app.baseURL);
+  await openSpecialistPractice(page);
   await page.getByRole("button", { name: /混合练习/ }).click();
 }
 async function events(app, ids) {
@@ -98,6 +99,7 @@ test("EC-07 choice-unknown-refresh-retry-once", async ({ app, page }) => {
     (await events(app, ids)).filter((e) => e.kind === "choice" && !e.skipped),
   ).toHaveLength(1);
   await page.reload();
+  await openSpecialistPractice(page);
   await page.getByRole("button", { name: /混合练习/ }).click();
   await expect(page.getByRole("alert")).toContainText("上次提交尚未确认保存");
   await expect(page.locator(".study-count")).toHaveText(before);
@@ -177,8 +179,10 @@ test("EC-07 single-card-independent-and-assisted-spelling-parity", async ({
 test("EC-07 empty-and-load-error-are-not-complete", async ({ app, page }) => {
   const [id] = await app.seedCards([words[0]]);
   await page.goto(app.baseURL);
+  await openSpecialistPractice(page);
   await expect(page.getByRole("button", { name: /混合练习/ })).toBeVisible();
   expect((await app.request.delete(`/api/cards/${id}`)).ok()).toBe(true);
+  await openSpecialistPractice(page);
   await page.getByRole("button", { name: /混合练习/ }).click();
   await expect(page.getByText("没有可练习的题目，先去加词吧")).toBeVisible();
   await expect(page.getByText("混合练习完成！")).toHaveCount(0);
@@ -194,6 +198,7 @@ test("EC-07 empty-and-load-error-are-not-complete", async ({ app, page }) => {
       }),
     { times: 1 },
   );
+  await openSpecialistPractice(page);
   await page.getByRole("button", { name: /混合练习/ }).click();
   await expect(page.getByRole("alert")).toContainText("题目加载失败");
   await expect(page.getByText("混合练习完成！")).toHaveCount(0);
@@ -340,6 +345,7 @@ for (const delayedAttempt of [1, 2]) {
       .poll(() => page.evaluate(() => window.oldMixedResponseReceived))
       .toBe(true);
     await page.locator(".page-head button").click();
+    await openSpecialistPractice(page);
     await page.getByRole("button", { name: /混合练习/ }).click();
     await page.getByRole("button", { name: /重试保存/ }).click();
     await expect(page.getByRole("status")).toContainText("已保存");
@@ -368,6 +374,7 @@ for (const delayedAttempt of [1, 2]) {
     await expect(page.locator(".study-count")).toHaveText(position);
     await expect(page.getByRole("status")).toHaveCount(0);
     await page.reload();
+    await openSpecialistPractice(page);
     await page.getByRole("button", { name: /混合练习/ }).click();
     await expect(page.getByRole("alert")).toContainText("上次提交尚未确认保存");
     await expect(page.locator(".study-count")).toHaveText(position);
@@ -425,3 +432,8 @@ test("EC-07 saved-skip-remains-a-completion-consolidation-item", async ({
     (await (await app.request.get("/api/errors")).json()).errors,
   ).toHaveLength(0);
 });
+
+async function openSpecialistPractice(page) {
+  const summary = page.getByText("专项练习", {exact: true});
+  if (await summary.locator("..").getAttribute("open") === null) await summary.click();
+}

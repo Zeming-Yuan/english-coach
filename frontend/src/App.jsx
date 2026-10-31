@@ -88,10 +88,12 @@ function PendingRecovery({ onConfirmed }) {
     try {
       const result = await sendPending(entry.pending);
       if (result.committed !== true) throw new Error("尚未确认保存");
-      clearPending(entry.scope);
+      if (loadPending(entry.scope)?.payload.submission_id === entry.pending.payload.submission_id) {
+        clearPending(entry.scope);
+      }
       setEntries((list) => list.filter((item) => item.scope !== entry.scope));
       showToast("已确认保存这条学习记录");
-      onConfirmed();
+      onConfirmed(result, entry.pending);
     } catch (e) {
       setError("继续确认失败：" + (e?.message || e));
     } finally {
@@ -161,6 +163,29 @@ class ErrorBoundary extends Component {
 export default function App() {
   const [view, setView] = useState("queue");
   const [studyQueue, setStudyQueue] = useState([]);
+  const [isDailyStudy, setIsDailyStudy] = useState(false);
+  const [dailySession, setDailySession] = useState(() => storageGet("activeDailySession", null));
+  const updateDaily = (session) => {
+    storageSet("activeDailySession", session?.complete ? null : session);
+    setDailySession(session);
+  };
+  const confirmDailyCard = (command, result) => {
+    if (result?.committed !== true || result.card_id !== command?.card_id || command.stage !== "main") return;
+    setDailySession((current) => {
+      if (!current || current.id !== command.session_id || current.queue[current.index]?.id !== command.card_id) return current;
+      const index = current.index + 1;
+      const next = { ...current, index, complete: index >= current.target };
+      storageSet("activeDailySession", next.complete ? null : next);
+      return next;
+    });
+  };
+  const startDaily = (data) => {
+    const session = { id: crypto.randomUUID(), queue: data.queue, target: data.target, index: 0, remainingDue: data.remaining_due, reviewCount: data.review_count, newCount: data.new_count };
+    updateDaily(session);
+    setIsDailyStudy(true);
+    setStudyQueue(session.queue);
+    setView("study");
+  };
   const [singleCard, setSingleCard] = useState(null);
   const [restoringBackup, setRestoringBackup] = useState(false);
   const [queueVersion, setQueueVersion] = useState(0);
@@ -205,20 +230,27 @@ export default function App() {
       {/* 内容区 */}
       <ErrorBoundary>
       <main className="stage">
-        <PendingRecovery onConfirmed={() => setQueueVersion((v) => v + 1)} />
-        {view === "queue" && <QueueView key={queueVersion} setView={setView} setStudyQueue={setStudyQueue} onAddStarter={addStarterCards} />}
+        {view !== "study" && <PendingRecovery onConfirmed={(result, pending) => {
+          confirmDailyCard(pending.payload, result);
+          setQueueVersion((v) => v + 1);
+        }} />}
+        {view === "queue" && <QueueView key={queueVersion} setView={setView} setStudyQueue={(cards) => { setIsDailyStudy(false); setStudyQueue(cards); }} dailySession={dailySession} onStartDaily={startDaily} onResumeDaily={() => {
+          setIsDailyStudy(true); setStudyQueue(dailySession.queue); setView("study");
+        }} onAddStarter={addStarterCards} />}
         {view === "words" && <WordsPage />}
         {view === "stories" && <StoriesPage />}
-        {view === "add" && <AddPage onAddStarter={addStarterCards} onGoWords={() => setView("words")} onStartStudy={(cards) => { setStudyQueue(cards); setView("study"); }} />}
+        {view === "add" && <AddPage onAddStarter={addStarterCards} onGoWords={() => setView("words")} onStartStudy={(cards) => { setIsDailyStudy(false); setStudyQueue(cards); setView("study"); }} />}
         {view === "stats" && <StatsPage onBack={() => setView("queue")} />}
         {view === "settings" && <SettingsPage darkMode={darkMode} setDarkMode={setDarkMode} onOpenBackup={() => setView("backup")} />}
         {view === "backup" && <BackupPage restoring={restoringBackup} onRestoringChange={setRestoringBackup} onBack={() => setView("settings")} onRestored={() => {
+          setIsDailyStudy(false);
+          updateDaily(null);
           setStudyQueue([]);
           setSingleCard(null);
           setQueueVersion((v) => v + 1);
         }} />}
         {view === "lessons" && <LessonsPage onExit={() => setView("queue")} />}
-        {view === "study" && <StudyPage queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} />}
+        {view === "study" && <StudyPage recoveryVersion={queueVersion} session={isDailyStudy ? dailySession : null} onAbort={() => { setIsDailyStudy(false); updateDaily(null); setStudyQueue([]); setView("queue"); }} onProgress={confirmDailyCard} queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} />}
         {view === "quiz" && <QuizPage onExit={() => setView("queue")} />}
         {view === "spelling" && <SpellingPage onExit={() => { setView("queue"); setSingleCard(null); }} singleCard={singleCard} />}
         {view === "listening" && <ListeningPage onExit={() => setView("queue")} />}
@@ -247,7 +279,7 @@ export default function App() {
 }
 
 /* ============ 队列页 ============ */
-function QueueView({ setView, setStudyQueue, onAddStarter }) {
+function QueueView({ setView, setStudyQueue, dailySession, onStartDaily, onResumeDaily, onAddStarter }) {
   const [data, setData] = useState(null);
   const [stats, setStats] = useState(null);
   const [lessonData, setLessonData] = useState(null);
@@ -295,7 +327,7 @@ function QueueView({ setView, setStudyQueue, onAddStarter }) {
   if (!data) {
     return (
       <div className="story-empty">
-        <p>加载失败：{loadError || "未知错误"}</p>
+        <p role="alert">加载失败：{loadError || "未知错误"}</p>
         <button
           className="btn btn-primary"
           onClick={() => {
@@ -323,14 +355,15 @@ function QueueView({ setView, setStudyQueue, onAddStarter }) {
     }
   };
 
+  const activeSession = dailySession && !dailySession.complete ? dailySession : null;
   const errorCount = (data.error_cards || []).length;
-  const isEmpty = data.new_cards.length === 0 && data.due_cards.length === 0 && errorCount === 0;
+  const isEmpty = stats?.total_cards === 0;
 
-  // 今日目标环（科学自适应：后端推荐值驱动，用户设置为最低保底）
+  // 每日最低目标、新词建议与本轮卡数分别表达。
   const done = stats?.reviewed_today || 0;
-  const queueTotal = errorCount + data.new_cards.length + data.due_cards.length;
+  const queueTotal = data.target;
   const adaptiveGoal = data.recommended_goal || 10;  // 后端自适应推荐
-  const target = Math.min(Math.max(dailyGoal, adaptiveGoal), queueTotal);  // 取保底和推荐的较大值
+  const target = dailyGoal;
   const pct = target > 0 ? Math.min(1, done / target) : 0;
   const deg = Math.round(pct * 360);
   const hour = new Date().getHours();
@@ -348,11 +381,11 @@ function QueueView({ setView, setStudyQueue, onAddStarter }) {
 
       <div className="queue-cards">
         <div className="big-stat">
-          <span className="big-number">{data.new_cards.length}</span>
+          <span className="big-number">{data.new_count}</span>
           <span className="big-label">个新词</span>
         </div>
         <div className="big-stat big-stat-alt">
-          <span className="big-number">{data.due_cards.length}</span>
+          <span className="big-number">{data.review_count}</span>
           <span className="big-label">待复习</span>
         </div>
         {queueTotal > 0 && (
@@ -364,11 +397,11 @@ function QueueView({ setView, setStudyQueue, onAddStarter }) {
               </div>
             </div>
             <div className="goal-text">
-              <span className="goal-title">{done >= target ? "今日目标达成 🎉" : pct === 0 ? "今日目标" : "继续加油"}</span>
+              <span className="goal-title">{done >= target ? "今日目标达成 🎉" : pct === 0 ? "每日最低目标" : "继续加油"}</span>
               <span className="goal-sub">
                 {done >= target
                   ? `目标 ${target} 词已达成`
-                  : `还剩 ${target - done} 张`}
+                  : `今日完成 ${done} 词 · 最低目标 ${target} 词`}
                 {data.error_rate !== null && data.error_rate !== undefined && (
                   <span style={{ marginLeft: 8, fontSize: 10, opacity: 0.7 }}>
                     （近7天复习通过率 {100 - data.error_rate}%）
@@ -381,7 +414,7 @@ function QueueView({ setView, setStudyQueue, onAddStarter }) {
               <select
                 className="goal-daily-set"
                 value={dailyGoal}
-                title="最低保底目标（实际目标由学习表现自动调节）"
+                title="每日最低完成目标（不改变新词配额或本轮张数）"
                 onChange={(e) => {
                   const n = parseInt(e.target.value);
                   setDailyGoal(n);
@@ -398,6 +431,12 @@ function QueueView({ setView, setStudyQueue, onAddStarter }) {
         )}
       </div>
 
+      {!isEmpty && queueTotal === 0 && !(dailySession && !dailySession.complete) && <div className="welcome-box">
+        <h2>今日复习已完成</h2>
+        <p>当前没有到期词或待学新词，可以继续练习，也可以添加新词。</p>
+        <button className="btn btn-ghost" onClick={() => setView("add")}>添加新词</button>
+      </div>}
+
       {/* 欢迎页 */}
       {isEmpty && (
         <div className="welcome-box">
@@ -405,6 +444,7 @@ function QueueView({ setView, setStudyQueue, onAddStarter }) {
           <h2>欢迎来到 EnglishCoach</h2>
           <p>AI 会根据你的记忆安排每天学什么。<br />先加几个想学的词，马上开始！</p>
           <button className="btn btn-primary" onClick={() => setView("add")}>先加几个词</button>
+          <button className="btn btn-ghost" onClick={() => setView("backup")}>恢复备份</button>
           <button className="btn btn-ghost" onClick={addStarter} disabled={starterLoading}>
             {starterLoading ? "正在添加…" : "体验入门词卡"}
           </button>
@@ -415,6 +455,27 @@ function QueueView({ setView, setStudyQueue, onAddStarter }) {
         </div>
       )}
 
+      {(activeSession || queueTotal > 0) && <>
+        <p data-testid="round-target">本轮目标 {activeSession?.target ?? data.target} 张 · 到期复习 {activeSession?.reviewCount ?? data.review_count} 张 · 新词 {activeSession?.newCount ?? data.new_count} 个</p>
+        <p data-testid="remaining-due">另有 {activeSession?.remainingDue ?? data.remaining_due} 张到期词，完成后可继续下一轮</p>
+        <button className="btn btn-primary btn-large" onClick={() => activeSession ? onResumeDaily() : onStartDaily(data)}>
+          {activeSession ? "继续本轮学习" : "开始今天的学习"}
+        </button>
+      </>}
+
+      {/* 今日统计 */}
+      {stats && (
+        <div className="today-stats" style={{ cursor: "pointer" }} onClick={() => setView("stats")}>
+          {stats.streak > 0 && <span className="streak-badge">🔥 <b>{stats.streak}</b> 天连续</span>}
+          <span>
+            今日完成 <b>{stats.reviewed_today}</b> 词 · 练习 <b>{stats.attempted_today}</b> 次 ·
+            跳过 <b>{stats.skipped_today}</b> 次 · 累计 <b>{stats.total_cards}</b> 词
+          </span>
+        </div>
+      )}
+
+      <details>
+        <summary>专项练习</summary>
       {/* 错词复习入口 */}
       {errorCount > 0 && (
         <div className="lesson-entry error-entry">
@@ -481,30 +542,15 @@ function QueueView({ setView, setStudyQueue, onAddStarter }) {
         </div>
       )}
 
-      {/* 今日统计 */}
-      {stats && (
-        <div className="today-stats" style={{ cursor: "pointer" }} onClick={() => setView("stats")}>
-          {stats.streak > 0 && <span className="streak-badge">🔥 <b>{stats.streak}</b> 天连续</span>}
-          <span>
-            今日完成 <b>{stats.reviewed_today}</b> 词 · 练习 <b>{stats.attempted_today}</b> 次 ·
-            跳过 <b>{stats.skipped_today}</b> 次 · 累计 <b>{stats.total_cards}</b> 词
-          </span>
-        </div>
-      )}
-
       {!isEmpty && (
         <>
-          <button className="btn btn-primary btn-large" onClick={() => {
-            const queue = [...(data.error_cards || []), ...data.new_cards, ...data.due_cards];
-            setStudyQueue(queue);
-            setView("study");
-          }}>开始今天的学习</button>
           <button className="btn btn-ghost" onClick={() => setView("quiz")}>直接做测验</button>
           <button className="btn btn-ghost" onClick={() => setView("listening")}>🎧 听写练习</button>
           <button className="btn btn-ghost" onClick={() => setView("spelling")}>⌨️ 拼写练习</button>
           <button className="btn btn-ghost" onClick={() => setView("mixed")}>🎲 混合练习</button>
         </>
       )}
+      </details>
     </section>
   );
 }
