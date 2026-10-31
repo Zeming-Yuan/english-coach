@@ -190,3 +190,75 @@ test("EC-13 resuming before pending confirmation cannot review the same main car
     expect(events[0].stage).toBe("main");
   }
 });
+
+async function enterDailyWithForeignPending(app, page) {
+  const ids = await app.seedCards([{word: "first"}, {word: "second"}]);
+  for (const id of ids) {
+    expect((await app.request.post("/api/reviews", {data: {
+      card_id: id, rating: 1, source: "study", kind: "self_rating", submission_id: crypto.randomUUID(),
+    }})).ok()).toBe(true);
+  }
+  await app.setTime("2026-11-30T12:00:00Z");
+  await page.goto(app.baseURL);
+  await page.getByRole("button", {name: "开始今天的学习", exact: true}).click();
+  await page.locator(".flip-hint").first().click();
+  await page.locator(".rating-3").click();
+  await expect(page.locator(".study-count")).toHaveText("2 / 2");
+  const events = (await (await app.request.get(`/api/cards/${ids[0]}`)).json()).learning_events;
+  const mainSessionId = events.find(event => event.stage === "main").session_id;
+  await page.getByRole("button", {name: "← 退出", exact: true}).click();
+  await page.locator("summary").click();
+  await page.locator(".error-entry").getByRole("button", {name: "复习 →", exact: true}).click();
+  await expect(page.locator(".front-main")).toHaveText("second");
+  await app.failCommitOnce();
+  await page.locator(".flip-hint").first().click();
+  await page.locator(".rating-3").click();
+  await expect(page.getByRole("alert")).toContainText("保存");
+  await page.getByRole("button", {name: "← 退出", exact: true}).click();
+  return {ids, mainSessionId};
+}
+
+test("EC-13 standalone pending for the same card cannot count toward the daily session", async ({app, page}) => {
+  const {ids, mainSessionId} = await enterDailyWithForeignPending(app, page);
+  await page.getByRole("button", {name: "继续本轮学习", exact: true}).click();
+  await page.getByRole("button", {name: "继续确认保存", exact: true}).click();
+  await expect(page.getByRole("heading", {name: "本轮主队列已保存", exact: true})).toHaveCount(0);
+  await expect(page.locator(".study-count")).toHaveText("2 / 2");
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.locator(".front-main")).toHaveText("second");
+  const recovered = (await (await app.request.get(`/api/cards/${ids[1]}`)).json()).learning_events;
+  expect(recovered.map(event => event.stage)).toEqual(["standalone", "standalone"]);
+  await page.locator(".flip-hint").first().click();
+  await page.locator(".rating-3").click();
+  await expect(page.getByRole("heading", {name: "本轮主队列已保存", exact: true})).toBeVisible();
+  const main = (await (await app.request.get(`/api/cards/${ids[1]}`)).json()).learning_events.filter(event => event.stage === "main");
+  expect(main).toHaveLength(1);
+  expect(main[0].session_id).toBe(mainSessionId);
+});
+
+test("EC-13 an in-flight foreign recovery clears pending without advancing daily progress", async ({app, page}) => {
+  const {ids, mainSessionId} = await enterDailyWithForeignPending(app, page);
+  let release;
+  const responseHeld = new Promise(resolve => { release = resolve; });
+  await page.route("**/api/reviews", async route => {
+    const response = await route.fetch();
+    await responseHeld;
+    await route.fulfill({response});
+  }, {times: 1});
+  await page.getByRole("button", {name: "继续确认保存", exact: true}).click();
+  await expect.poll(async () => (await (await app.request.get(`/api/cards/${ids[1]}`)).json()).learning_events.length).toBe(2);
+  await page.getByRole("button", {name: "继续本轮学习", exact: true}).click();
+  await expect(page.locator(".study-count")).toHaveText("2 / 2");
+  release();
+  await expect(page.getByRole("alert")).toHaveCount(0, {timeout: 5000});
+  await expect(page.locator(".front-main")).toHaveText("second");
+  await expect(page.getByRole("heading", {name: "本轮主队列已保存", exact: true})).toHaveCount(0);
+  await page.locator(".flip-hint").first().click();
+  await page.locator(".rating-3").click();
+  await expect(page.getByRole("heading", {name: "本轮主队列已保存", exact: true})).toBeVisible();
+  const events = (await (await app.request.get(`/api/cards/${ids[1]}`)).json()).learning_events;
+  expect(events).toHaveLength(3);
+  const main = events.filter(event => event.stage === "main");
+  expect(main).toHaveLength(1);
+  expect(main[0].session_id).toBe(mainSessionId);
+});

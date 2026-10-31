@@ -16,7 +16,7 @@ import RatingButtons from "../components/RatingButtons.jsx";
  * onExit: () => void 返回队列
  * onToQuiz: () => void 进测验
  */
-export default function StudyPage({ queue, session, onProgress, onAbort, onExit, onToQuiz, onToMixed }) {
+export default function StudyPage({ queue, session, recoveryVersion, onProgress, onAbort, onExit, onToQuiz, onToMixed }) {
   const [standaloneIdx, setStandaloneIdx] = useState(0);
   const idx = session ? session.index : standaloneIdx;
   const [flipped, setFlipped] = useState(false);
@@ -40,7 +40,7 @@ export default function StudyPage({ queue, session, onProgress, onAbort, onExit,
   // after the shared pending record has actually been resolved.
   useEffect(() => {
     if (session && !loadPending("study")) attempt.clear();
-  }, [session?.id, idx, attempt.clear]);
+  }, [session?.id, idx, recoveryVersion, attempt.clear]);
 
   useEffect(() => {
     storageSet("sentenceCnMode", cnMode);
@@ -84,10 +84,10 @@ export default function StudyPage({ queue, session, onProgress, onAbort, onExit,
   }, [card, flipStartedAt, isSentence, exiting, done]);
 
   // 只有服务端确认保存才推进；失败停留当前题并保留同一提交标识。
-  const advance = useCallback(() => {
+  const advance = useCallback((command, result) => {
     if (session) {
       setFlipped(false);
-      onProgress(card.id);
+      onProgress(command, result);
       return;
     }
     setStandaloneAnswered((n) => n + 1);
@@ -115,36 +115,39 @@ export default function StudyPage({ queue, session, onProgress, onAbort, onExit,
       showToast("这个评分是你回想后的吗？下次先想出声再翻面，记忆更准");
     }
     try {
-      const result = await attempt.submit("/api/reviews", {
+      const command = {
         card_id: card.id,
         rating,
         source: "study",
         kind: "self_rating",
         session_id: sessionId,
         stage: session ? "main" : "standalone",
-      });
+      };
+      const result = await attempt.submit("/api/reviews", command);
       if (result.committed !== true) return;
       if (result.newly_graduated) setGraduated((g) => [...g, card.word]);
       attempt.clear();
-      advance();
+      advance(command, result);
     } catch {
       // 失败保留当前题与待确认请求，由 role=alert 提供继续确认/放弃。
     }
   }, [card, idx, total, flipStartedAt, exiting, done, attempt, sessionId, advance]);
 
   const retrySave = useCallback(async () => {
+    const command = loadPending("study")?.payload;
     try {
       const result = await attempt.retry();
       if (result.committed !== true) return;
       attempt.clear();
-      if (!card || result.card_id !== card.id) {
+      if (!card || result.card_id !== card.id || command?.card_id !== card.id ||
+          command.session_id !== sessionId || command.stage !== (session ? "main" : "standalone")) {
         showToast("已确认保存上一条学习记录");
         return;
       }
       if (result.newly_graduated) setGraduated((g) => [...g, card.word]);
-      advance();
+      advance(command, result);
     } catch {}
-  }, [attempt, card, advance]);
+  }, [attempt, card, advance, sessionId, session]);
 
   // 完成态
   if (done) {
