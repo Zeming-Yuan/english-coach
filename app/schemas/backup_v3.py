@@ -43,6 +43,7 @@ class ExtensionSpec:
     parents: tuple[str, ...]
     remap: Callable[[dict, dict[str, dict[int, int]]], dict]
     model: type | None = None
+    complete: bool = False
 
 
 _EXTENSIONS: dict[str, ExtensionSpec] = {}
@@ -55,14 +56,16 @@ def register_extension(
     remap: Callable[[dict, dict[str, dict[int, int]]], dict],
     *,
     model: type | None = None,
+    complete: bool = False,
 ) -> None:
     """登记扩展集合；重复登记是编程错误，拒绝静默覆盖。
 
     model 是导出与恢复删除拓扑使用的持久模型；登记顺序即导出顺序。
+    complete 表示快照必须为每个父实体包含一行（如当前修订身份）。
     """
     if name in _EXTENSIONS:
         raise ValueError(f"扩展集合已登记：{name}")
-    _EXTENSIONS[name] = ExtensionSpec(name, schema, parents, remap, model)
+    _EXTENSIONS[name] = ExtensionSpec(name, schema, parents, remap, model, complete)
 
 
 def registered_extensions() -> dict[str, ExtensionSpec]:
@@ -85,9 +88,10 @@ def _remap_content_revision(row: dict, mapping: dict[str, dict[int, int]]) -> di
 register_extension(
     "content_revisions",
     FullContentRevision,
-    ("cards", "lessons", "stories"),
+    tuple(RESOURCE_COLLECTIONS.values()),
     _remap_content_revision,
     model=ContentRevision,
+    complete=True,
 )
 
 
@@ -162,6 +166,23 @@ def _validate_extension_graph(
                 if key in resource_keys:
                     _reject(name, index, "resource_id", "同一实体重复登记修订")
                 resource_keys.add(key)
+        if spec.complete:
+            # Declared-but-incomplete snapshots would silently mint new
+            # identities during restore; reject them before any write.
+            for kind, collection in RESOURCE_COLLECTIONS.items():
+                covered = {
+                    row["resource_id"]
+                    for row in rows
+                    if row.get("resource_kind") == kind
+                }
+                missing = sorted(ids[collection] - covered)
+                if missing:
+                    _reject(
+                        name,
+                        "?",
+                        "resource_id",
+                        f"缺少 {kind} 的当前修订：{missing[:5]}",
+                    )
 
 
 def validate_v3(payload: dict) -> ValidatedBackup:

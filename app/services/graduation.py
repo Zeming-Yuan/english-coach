@@ -11,7 +11,10 @@ from sqlalchemy.orm import Session
 
 from app.models.card import Card
 from app.models.review import Review
-from app.services.content_revisions import get_content_revision
+from app.services.content_revisions import (
+    advance_content_revision,
+    get_content_revision,
+)
 from app.services.llm import generate_json
 
 

@@ -27,6 +27,7 @@ from app.models.review_baseline import ReviewBaseline
 from app.models.review_event import ReviewEvent
 from app.runtime import Runtime
 from app.schemas.learning import AttemptCommand, AttemptResult
+from app.services.content_revisions import get_content_revision
 from app.services.error_tracking import record_error
 from app.services.graduation import (
     card_is_graduated,
@@ -36,6 +37,7 @@ from app.services.graduation import (
 )
 from app.services.questions import (
     InvalidQuestionToken,
+    QuestionTokenStale,
     business_context,
     verify_question,
 )
@@ -296,9 +298,20 @@ def _resolve_verified_question(
     stored = _stored_question(existing, cmd)
     if stored is not None:
         return stored
-    return verify_question(
+    verified = verify_question(
         cmd.question_token, runtime.question_secret, runtime.clock.now()
     )
+    # 词形/释义/例句等实质修改后，旧题目上下文不能继续证明新内容。
+    try:
+        current = get_content_revision(db, "card", verified["card_id"])
+    except LookupError as error:
+        raise QuestionTokenStale("题目上下文已失效，请重新加载题目") from error
+    if (
+        verified.get("identity") != current["identity"]
+        or verified.get("version") != current["version"]
+    ):
+        raise QuestionTokenStale("词卡内容已修改，请重新加载题目")
+    return verified
 
 
 def _validate_verified_question(cmd: AttemptCommand, verified: dict | None) -> None:

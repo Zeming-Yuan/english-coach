@@ -403,7 +403,13 @@ def test_el01_v3_unknown_feature_rejected(ec, ec_factory):
 
 @pytest.mark.parametrize(
     "mutation",
-    ["missing-entity", "duplicate", "duplicate-identity", "bad-identity"],
+    [
+        "missing-entity",
+        "duplicate",
+        "duplicate-identity",
+        "bad-identity",
+        "incomplete-coverage",
+    ],
 )
 def test_el01_v3_invalid_revision_graph_rejected(ec, ec_factory, mutation):
     source = ec_factory()
@@ -418,6 +424,8 @@ def test_el01_v3_invalid_revision_graph_rejected(ec, ec_factory, mutation):
         rows.append({**rows[0], "id": rows[0]["id"] + 1})
     elif mutation == "duplicate-identity":
         rows[1]["identity"] = rows[0]["identity"]
+    elif mutation == "incomplete-coverage":
+        rows.pop()
     else:
         rows[0]["identity"] = "not-a-uuid"
 
@@ -655,6 +663,87 @@ def test_el01_regenerated_example_advances_revision(ec):
     assert response.status_code == 200, response.text
     assert response.json()["example"] == "A new example."
     assert _revision(ec, card_id) == {
+        "identity": before["identity"],
+        "version": before["version"] + 1,
+    }
+
+
+def test_el01_question_token_stale_only_after_semantic_change(ec):
+    from uuid import uuid4
+
+    apple_id = ec.seed_card(word="apple", meaning="苹果")
+    for word in ["book", "cat", "dog"]:
+        ec.seed_card(word=word, meaning=word)
+
+    def question_for(target):
+        questions = ec.client.get("/api/listening?limit=4").json()["questions"]
+        return next(row for row in questions if row["card_id"] == target)
+
+    def submit(row):
+        return ec.client.post(
+            "/api/listening/score",
+            json={
+                "card_id": row["card_id"],
+                "question_token": row["question_token"],
+                "answer": row["word"],
+                "source": "listening",
+                "kind": "choice",
+                "submission_id": str(uuid4()),
+            },
+        )
+
+    stale = question_for(apple_id)
+    assert (
+        ec.client.put(f"/api/cards/{apple_id}", json={"meaning": "一个苹果"}).status_code
+        == 200
+    )
+    assert submit(stale).status_code == 409
+    assert ec.client.get(f"/api/cards/{apple_id}").json()["learning_events"] == []
+
+    fresh = question_for(apple_id)
+    assert submit(fresh).status_code == 200
+
+    # 非语义编辑不改变修订，旧题目上下文仍然有效。
+    untouched = question_for(apple_id)
+    assert (
+        ec.client.put(f"/api/cards/{apple_id}", json={"phonetic": "/x/"}).status_code
+        == 200
+    )
+    assert submit(untouched).status_code == 200
+
+
+def test_el01_outline_sentence_upgrade_advances_revision(ec, monkeypatch):
+    import app.db
+    from app.services import llm
+    from app.services.graduation import upgrade_sentence_card
+    from tests.support.llm_queue import QueuedLLM
+
+    word_id = ec.seed_card(word="apple", example="An apple.")
+    sentence_id = ec.seed_card(
+        word="apple", kind="sentence", example="An apple."
+    )
+    before = _revision(ec, sentence_id)
+    monkeypatch.setattr(app.db, "SessionLocal", ec.SessionLocal)
+    monkeypatch.setattr(
+        llm,
+        "client",
+        QueuedLLM(
+            [
+                {
+                    "example": "An apple fell from the tall tree.",
+                    "example_cn": "一个苹果从高树上落下。",
+                    "chunks": [{"text": "An apple", "role": "subject"}],
+                }
+            ]
+        ),
+    )
+
+    upgrade_sentence_card(word_id)
+
+    detail = ec.client.get(f"/api/cards/{sentence_id}").json()
+    assert detail["example"] == "An apple fell from the tall tree."
+    assert detail["difficulty"] == "reading"
+    assert detail["content_revision"] == {
         "identity": before["identity"],
         "version": before["version"] + 1,
     }

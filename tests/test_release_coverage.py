@@ -133,10 +133,6 @@ def test_release_runner_empty_ticket_fails_with_retained_diagnostics():
     assert "No tests found" in result.stdout + result.stderr
 
 
-@pytest.mark.skipif(
-    sys.platform == "win32",
-    reason="Windows terminates the process instead of delivering SIGTERM to Node",
-)
 def test_release_runner_interrupted_fails_with_retained_diagnostics():
     process = subprocess.Popen(
         ["node", "e2e/run.mjs", "--ticket", "EC-99"],
