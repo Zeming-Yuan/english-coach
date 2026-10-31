@@ -30,14 +30,19 @@ def upgrade() -> None:
             "reviews contains invalid legacy timestamps; repair before contract"
         ) from error
     for row in rows:
-        for field in ("review_count", "elapsed_days"):
+        for field in ("review_count", "elapsed_days", "step"):
+            if field == "step" and row[field] is None:
+                continue
             if not isinstance(row[field], int) or row[field] < 0:
                 raise RuntimeError(
                     f"reviews row {row['id']} has invalid {field}; repair before contract"
                 )
         for field in ("stability", "difficulty"):
-            if not isinstance(row[field], (int, float)) or not math.isfinite(
-                row[field]
+            if (
+                not isinstance(row[field], (int, float))
+                or not math.isfinite(row[field])
+                or row[field] < 0
+                or (field == "difficulty" and row[field] > 10)
             ):
                 raise RuntimeError(
                     f"reviews row {row['id']} has invalid {field}; repair before contract"
