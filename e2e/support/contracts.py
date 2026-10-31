@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import signal
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -142,6 +144,75 @@ def self_test():
             raise AssertionError(name + " incorrectly accepted")
 
 
+class ContractInterrupted(Exception):
+    pass
+
+
+def run_pytest(command):
+    child = None
+    interrupted = None
+
+    def interrupt(signum, _frame):
+        nonlocal interrupted
+        interrupted = signum
+        # A signal during Popen must not lose a newly spawned child before the
+        # assignment. Check the recorded signal immediately after Popen returns.
+        if child is not None:
+            raise ContractInterrupted(signum)
+
+    def terminate(signum, force=False):
+        try:
+            if os.name == "posix":
+                os.killpg(child.pid, signal.SIGKILL if force else signum)
+            elif force:
+                child.kill()
+            else:
+                child.terminate()
+        except ProcessLookupError:
+            pass
+
+    previous = {
+        sig: signal.signal(sig, interrupt) for sig in (signal.SIGTERM, signal.SIGINT)
+    }
+    try:
+        child = subprocess.Popen(
+            command,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            start_new_session=os.name == "posix",
+        )
+        if interrupted is not None:
+            raise ContractInterrupted(interrupted)
+        output, _ = child.communicate()
+        return subprocess.CompletedProcess(command, child.returncode, output)
+    except ContractInterrupted as exc:
+        signum = exc.args[0]
+        # Cleanup has a bounded grace period even if another interrupt arrives.
+        for sig in previous:
+            signal.signal(sig, signal.SIG_IGN)
+        output = ""
+        if child is not None:
+            terminate(signum)
+            try:
+                output, _ = child.communicate(timeout=3)
+            except subprocess.TimeoutExpired:
+                terminate(signum, force=True)
+                output, _ = child.communicate()
+            finally:
+                # Also stop a descendant that ignored the graceful signal and
+                # closed its inherited pipes before pytest itself exited.
+                terminate(signum, force=True)
+        output += f"\nINTERRUPTED={signal.Signals(signum).name}\n"
+        return subprocess.CompletedProcess(command, 128 + signum, output)
+    finally:
+        if child is not None and child.poll() is None:
+            terminate(signal.SIGTERM, force=True)
+            child.wait()
+        for sig, handler in previous.items():
+            signal.signal(sig, handler)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--self-test", action="store_true")
@@ -157,13 +228,7 @@ def main():
     report = Path(args.report)
     report.parent.mkdir(parents=True, exist_ok=True)
     command = [sys.executable, "-m", "pytest", "-q", *selectors, f"--junitxml={report}"]
-    result = subprocess.run(
-        command,
-        check=False,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-    )
+    result = run_pytest(command)
     report.with_suffix(".log").write_text(
         repr(command) + "\n" + result.stdout + f"\nEXIT_CODE={result.returncode}\n"
     )

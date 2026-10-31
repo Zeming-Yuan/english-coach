@@ -74,7 +74,7 @@
 | 命令 | 实际结果 |
 | --- | --- |
 | `npm --prefix frontend run test:e2e -- --ticket EC-16` | 38 passed，mobile/desktop 各 19，4.1 分钟，exit 0；无跳过或重试 |
-| `python -m pytest tests/test_release_coverage.py -q` | 16 passed，exit 0；包含缺分支、非通过、阻塞、中断和三个 TTS 回归分支缺失的拒绝 |
+| `python -m pytest tests/test_release_coverage.py -q` | 原 38 场景阶段 16 passed；复审中断修复后 18 passed（见后续记录），exit 0；包含缺分支、非通过、阻塞、中断和三个 TTS 回归分支缺失的拒绝 |
 | 受影响 Python 的 `ruff check` / `ruff format --check` | server、seed、readonly_server、contracts、test_release_coverage 五文件均 exit 0 |
 | `npm --prefix frontend audit --json` | total 0，exit 0；锁文件只更新 Vite 7.3.6→7.3.7、source-map-js 1.2.1→1.2.2 两项补丁 |
 | TTS 受影响组合 | 12 passed，exit 0；另有预热公共 UI 2 passed，exit 0 |
@@ -100,3 +100,20 @@
 - 独立 Standards / Spec 固定差异审查：待父任务执行。
 
 [真实旧版兼容与前向恢复边界](release-compatibility.md)。
+
+
+## 整票复审后的补充进程清理
+
+固定版本 `34d29aa` 的真实 RED：补充包装器收到 SIGTERM 后退出，实际 pytest 子进程仍存活。新增公共命令生命周期回归先复现这一泄漏，再改为隔离 POSIX 进程组；信号处理器只标记/转交控制流，正常控制流负责转发信号、最多 3 秒宽限、必要时强制结束所属组，并回收 pytest。中断仍非零（SIGTERM 143、SIGINT 130），`.log` 保留 `INTERRUPTED` 与退出码，不把未完成的 JUnit 当作通过。
+
+修复后定向验证：
+
+- 同一 SIGTERM 公共回归从 1 failed 变为 1 passed；SIGTERM/SIGINT 两参数均通过。
+- `python -m pytest tests/test_release_coverage.py -q`：18 passed，Linux 下无跳过；原缺失/跳过/失败/阻塞参数资格自检仍拒绝。
+- 六个真实正常补充组共 49 个具名参数用例通过并核对 JUnit（5/2/2/36/3/1）。中断以外的分支资格契约保持原状。
+- 独立真实进程树演练覆盖 pytest 和后代均忽略优雅信号的情形，两种信号约 3.03 秒强制收敛；也覆盖 pytest 先退出、忽略信号的后代已关闭继承管道的情形。pytest 被包装器回收，后代被终止并由隔离演练的 subreaper 回收，未遗留运行进程。
+- 受影响 `contracts.py` / `test_release_coverage.py` 的 Ruff check/format 均 exit 0。
+
+本次信号路径只在 Linux 原生验证。非 POSIX 的信号回归明确标为不适用；Windows 的 `TerminateProcess` 不会触发 Python 信号处理器，该强制终止路径未原生验证，不计为平台通过。没有为此引入跨平台进程框架。此修复只改测试支持、回归与报告，生产源码和产物未变化，未重复生产构建或全部 38 场景；最终合并后的未过滤全套仍待父任务执行。
+
+实际输出与诊断位于外部 `ec16-contract-interrupt-{red,green}.log`、`ec16-contract-interrupt-signals.log`、`ec16-contract-cleanup-coverage.log`、`ec16-contract-normal-groups.log`、`ec16-contract-tree-{force,closed-pipe}.log`、`ec16-contract-qualifier-selftest.log` 和 `ec16-contract-cleanup-{ruff,format}.log`。具名 JUnit/正常组日志在 `ec16-contract-cleanup-groups/`；保留的实际信号日志在 `ec16-contract-signal-diagnostics/` 与 `ec16-contract-tree-closed-pipe/`，均位于此前同一 `/tmp/english-coach-followup-2026-10-31/`。

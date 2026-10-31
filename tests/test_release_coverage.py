@@ -1,9 +1,11 @@
 """Release acceptance exercises the public report CLI."""
 
 import json
+import os
 import signal
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -210,3 +212,72 @@ def test_release_gate_requires_tts_regression_branches(tmp_path, missing_title):
     assert result.returncode == 1
     assert f"T20/mobile: {missing_title}" in result.stderr
     assert f"T20/desktop: {missing_title}" in result.stderr
+
+
+@pytest.mark.skipif(
+    os.name != "posix",
+    reason="POSIX signals; Windows termination is not natively verified",
+)
+@pytest.mark.parametrize("interrupt_signal", [signal.SIGTERM, signal.SIGINT])
+def test_contract_wrapper_interrupt_reaps_pytest(tmp_path, interrupt_signal):
+    marker = tmp_path / "pytest.pid"
+    plugin = tmp_path / "ec16_paused_pytest.py"
+    plugin.write_text(
+        "import os,time\nfrom pathlib import Path\n"
+        f"def pytest_sessionstart(session):\n    Path({str(marker)!r}).write_text(str(os.getpid()))\n"
+        "    while True: time.sleep(1)\n"
+    )
+    report = tmp_path / "installation.xml"
+    process = subprocess.Popen(
+        [
+            sys.executable,
+            "e2e/support/contracts.py",
+            "--group",
+            "installation",
+            "--report",
+            str(report),
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        env={
+            **os.environ,
+            "PYTHONPATH": str(tmp_path) + os.pathsep + str(Path.cwd()),
+            "PYTEST_ADDOPTS": "-p ec16_paused_pytest",
+        },
+    )
+    child_pid = None
+    try:
+        deadline = time.monotonic() + 10
+        while (
+            not marker.exists()
+            and process.poll() is None
+            and time.monotonic() < deadline
+        ):
+            time.sleep(0.02)
+        assert marker.exists(), "real pytest did not reach startup pause"
+        child_pid = int(marker.read_text())
+        process.send_signal(interrupt_signal)
+        process.wait(timeout=5)
+        assert process.returncode != 0
+        try:
+            os.kill(child_pid, 0)
+        except ProcessLookupError:
+            pass
+        else:
+            pytest.fail(
+                f"interrupted wrapper left pytest child {child_pid} alive/unreaped"
+            )
+        diagnostic = report.with_suffix(".log").read_text()
+        assert f"INTERRUPTED={signal.Signals(interrupt_signal).name}" in diagnostic
+        assert "EXIT_CODE=" in diagnostic
+    finally:
+        if process.poll() is None:
+            process.kill()
+            process.wait(timeout=5)
+        if child_pid is not None:
+            try:
+                os.kill(child_pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        process.communicate(timeout=5)

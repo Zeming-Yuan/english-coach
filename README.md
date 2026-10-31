@@ -152,6 +152,7 @@ npm --prefix frontend run build                        # 生产构建
 ```
 
 - 每次 E2E 使用本次运行独有的临时数据库、端口与构建目录；结束时关闭测试进程。
+- 补充 pytest 包装器的 SIGTERM/SIGINT 中断清理已在 Linux 验证：停止所属进程组、回收 pytest，保留非零中断日志。Windows 强制终止路径未做原生验证；Python 信号处理器不能捕获 `TerminateProcess`，不据此承诺所有操作系统的中断清理。
 - `--ticket` 只接受 `EC-NN` 形式；未知票号或没有匹配用例会以非零状态退出，不能当作通过。
 - 主命令从实际 Playwright JSON 结果逐分支核对 T01–T21；两个项目都必须通过。缺场景、跳过、失败、阻塞、中断或失败后重试都返回非零。`--ticket` 仅用于开发定位，不是整体验收。
 - 主命令每次保留 `e2e/release-results/<run>/`：`run.json` 含源码 HEAD、工作区状态、源码内容摘要、构建时间及产物摘要，`playwright.json` 与 `artifacts/` 保存同次运行的报告、trace、截图和补充 HTTP/进程 JUnit 证据。测试临时库与服务器在结束后清理；直接运行 Playwright 的默认诊断仍在 `e2e/test-results/`。这些目录已加入 gitignore。
