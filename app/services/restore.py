@@ -379,5 +379,6 @@ def _apply_full_restore(session: Session, validated: ValidatedBackup) -> dict:
     return {
         "mode": "full_replace",
         "imported_words": len(validated.tables["cards"]),
+        "requests": len(validated.tables["cards"]),
         "counts": {name: len(rows) for name, rows in validated.tables.items()},
     }
