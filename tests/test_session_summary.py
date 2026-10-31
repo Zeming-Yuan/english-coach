@@ -164,3 +164,109 @@ def test_main_skip_has_no_rating_schedule_or_error_and_roundtrips(ec, ec_factory
         ).status_code
         == 422
     )
+
+
+def test_recognition_success_does_not_clear_a_weak_main_word(ec):
+    session = str(uuid4())
+    apple = ec.seed_card(word="apple")
+    ec.seed_card(word="book")
+    save(ec, session, apple)
+    questions = ec.client.get("/api/quiz/choice").json()["questions"]
+    question = next(q for q in questions if q["card_id"] == apple)
+    response = ec.client.post(
+        "/api/quiz/score",
+        json={
+            "answers": [
+                {
+                    "submission_id": str(uuid4()),
+                    "card_id": apple,
+                    "source": "quiz",
+                    "kind": "choice",
+                    "answer": "apple",
+                    "question_token": question["question_token"],
+                    "session_id": session,
+                    "stage": "reinforcement",
+                }
+            ]
+        },
+    )
+    assert response.status_code == 200, response.text
+    summary = ec.client.get(f"/api/sessions/{session}/summary").json()
+    assert [w["card_id"] for w in summary["weak_words"]] == [apple]
+    assert summary["metrics"]["recognition"] == {
+        "successes": 1,
+        "count": 1,
+        "percent": 100,
+    }
+    assert summary["counts"]["completed_cards"] == 1
+
+
+def test_same_clock_session_feedback_and_candidate_order_survive_full_restore(
+    ec, ec_factory, monkeypatch
+):
+    from uuid import UUID
+
+    from app.services import learning
+
+    # Control only UUID randomness: every save, export and restore remains real.
+    # Ascending UUID export would put independent success before its main failure.
+    event_ids = [str(UUID(int=n)) for n in (9, 8, 7, 6, 1)]
+    generated = iter(event_ids)
+    monkeypatch.setattr(learning, "uuid4", lambda: next(generated))
+    session = str(uuid4())
+    ids = [ec.seed_card(word=word) for word in ("alpha", "bravo", "charlie", "delta")]
+    for cid in ids:
+        save(ec, session, cid)
+    save(
+        ec,
+        session,
+        ids[0],
+        rating=None,
+        kind="typed",
+        answer="alpha",
+        source="reinforcement",
+        stage="reinforcement",
+    )
+
+    def feedback(env):
+        summary = env.client.get(f"/api/sessions/{session}/summary").json()
+        questions = env.client.get(f"/api/sessions/{session}/reinforcement").json()
+        return {
+            "weak": [row["word"] for row in summary["weak_words"]],
+            "questions": [row["word"] for row in questions["questions"]],
+        }
+
+    expected = {
+        "weak": ["bravo", "charlie", "delta"],
+        "questions": ["bravo", "charlie"],
+    }
+    assert feedback(ec) == expected
+    backup = ec.client.get("/api/export/backup").json()
+    target = ec_factory()
+    preview = target.client.post("/api/import/preview", json={"backup": backup})
+    assert preview.status_code == 200, preview.text
+    response = target.client.post(
+        "/api/import/cards",
+        json={
+            "backup": backup,
+            "expected_revision": preview.json()["expected_revision"],
+        },
+    )
+    assert response.status_code == 200, response.text
+    assert feedback(target) == expected
+    assert [row["id"] for row in backup["learning_events"]] == event_ids
+
+
+def test_backup_revision_distinguishes_saved_event_order(ec):
+    from app.services.backup import snapshot_revision
+
+    session = str(uuid4())
+    cid = ec.seed_card()
+    save(ec, session, cid, rating=1)
+    save(ec, session, cid, rating=3)
+    backup = ec.client.get("/api/export/backup").json()
+    reversed_events = {
+        **backup,
+        "learning_events": list(reversed(backup["learning_events"])),
+    }
+    assert snapshot_revision(backup) != snapshot_revision(reversed_events)

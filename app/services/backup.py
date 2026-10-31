@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import timezone
+from datetime import UTC
 
 from fastapi.encoders import jsonable_encoder
-from sqlalchemy import inspect, select, text
+from sqlalchemy import inspect, literal_column, select, text
 from sqlalchemy.orm import Session
 
 from app.models.card import Card
@@ -44,11 +44,16 @@ BACKUP_COLLECTIONS = (
 
 
 def export_rows(db: Session, model) -> list[dict]:
-    """按 id 导出模型的全部业务列；行字段与数据库列一致。"""
+    """事件按时间与保存次序导出，其余按 id；保留同时间事件的先后。"""
     columns = inspect(model).columns
+    order = (
+        (ReviewEvent.occurred_at, literal_column("review_events.rowid"))
+        if model is ReviewEvent
+        else (model.id,)
+    )
     return [
         jsonable_encoder({column.key: getattr(row, column.key) for column in columns})
-        for row in db.scalars(select(model).order_by(model.id))
+        for row in db.scalars(select(model).order_by(*order))
     ]
 
 
@@ -64,12 +69,9 @@ def export_backup(db: Session, runtime: Runtime) -> dict:
     try:
         payload = {
             "version": BACKUP_VERSION,
-            "exported_at": runtime.clock.now().astimezone(timezone.utc).isoformat(),
+            "exported_at": runtime.clock.now().astimezone(UTC).isoformat(),
             "learning_timezone": runtime.learning_timezone,
-            **{
-                name: export_rows(db, model)
-                for name, model in BACKUP_COLLECTIONS
-            },
+            **{name: export_rows(db, model) for name, model in BACKUP_COLLECTIONS},
         }
     finally:
         if started:
@@ -78,17 +80,17 @@ def export_backup(db: Session, runtime: Runtime) -> dict:
 
 
 def semantic_snapshot(payload: dict) -> dict:
-    """业务内容快照：仅排除导出时间。"""
+    """业务内容快照：仅排除导出时间，保留学习事件数组次序。"""
     return {key: value for key, value in payload.items() if key != "exported_at"}
 
 
 def snapshot_revision(payload: dict) -> str:
-    """规范化排序后的内容摘要：集合按 id 排序，JSON 排序键后取 SHA256。"""
+    """内容摘要保留事件保存次序，其余集合按 id；JSON 排序键后取 SHA256。"""
     canonical = semantic_snapshot(payload)
     canonical = {
         key: (
             sorted(value, key=lambda row: row["id"])
-            if isinstance(value, list)
+            if isinstance(value, list) and key != "learning_events"
             else value
         )
         for key, value in canonical.items()
