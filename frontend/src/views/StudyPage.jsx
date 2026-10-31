@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "../lib/api.js";
 import { speak } from "../lib/tts.js";
+import { loadPending } from "../lib/learning.js";
 import { cleanToken, escapeHtml, highlightWord, storageGet, storageSet } from "../lib/utils.js";
 import { splitSentence } from "../lib/chunks.js";
 import { useWordLookup } from "../lib/wordLookup.js";
@@ -16,20 +17,30 @@ import RatingButtons from "../components/RatingButtons.jsx";
  * onToQuiz: () => void 进测验
  */
 export default function StudyPage({ queue, session, onProgress, onAbort, onExit, onToQuiz, onToMixed }) {
-  const [idx, setIdx] = useState(session?.index || 0);
+  const [standaloneIdx, setStandaloneIdx] = useState(0);
+  const idx = session ? session.index : standaloneIdx;
   const [flipped, setFlipped] = useState(false);
   const [graduated, setGraduated] = useState([]);
-  const [answered, setAnswered] = useState(session?.index || 0);
+  const [standaloneAnswered, setStandaloneAnswered] = useState(0);
+  const answered = session ? session.index : standaloneAnswered;
   const [flipStartedAt, setFlipStartedAt] = useState(null);
   const [memoText, setMemoText] = useState(null);
   const cardRef = useRef(null);
   const [exiting, setExiting] = useState(false);
-  const [done, setDone] = useState(false);
+  const [standaloneDone, setStandaloneDone] = useState(false);
+  const done = session ? session.complete === true : standaloneDone;
   // 中文翻译档位：auto=复习<3次显示，>=3次自动隐藏；on=常显；off=隐藏
   const [cnMode, setCnMode] = useState(() => storageGet("sentenceCnMode", "auto"));
   // 每日主队列复用固定会话 ID；专项自评使用独立 ID。
   const [sessionId] = useState(() => session?.id || crypto.randomUUID());
   const attempt = useLearningAttempt("study");
+
+  // A home recovery already in flight can finish after this screen mounts.
+  // The daily session owns progress; discard the hook's stale pending copy only
+  // after the shared pending record has actually been resolved.
+  useEffect(() => {
+    if (session && !loadPending("study")) attempt.clear();
+  }, [session?.id, idx, attempt.clear]);
 
   useEffect(() => {
     storageSet("sentenceCnMode", cnMode);
@@ -74,20 +85,24 @@ export default function StudyPage({ queue, session, onProgress, onAbort, onExit,
 
   // 只有服务端确认保存才推进；失败停留当前题并保留同一提交标识。
   const advance = useCallback(() => {
-    if (session) onProgress(idx + 1);
-    setAnswered((n) => n + 1);
+    if (session) {
+      setFlipped(false);
+      onProgress(card.id);
+      return;
+    }
+    setStandaloneAnswered((n) => n + 1);
     if (idx + 1 >= total) {
       // 最后一张：直接完成
-      setDone(true);
+      setStandaloneDone(true);
       return;
     }
     // 非最后一张：动画后进下一题
     setExiting(true);
     setTimeout(() => {
       setExiting(false);
-      setIdx((i) => i + 1);
+      setStandaloneIdx((i) => i + 1);
     }, 320);
-  }, [idx, total, session, onProgress]);
+  }, [idx, total, session, onProgress, card]);
 
   const rate = useCallback(async (rating) => {
     if (!card || done || exiting) return;

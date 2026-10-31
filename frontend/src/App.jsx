@@ -167,6 +167,15 @@ export default function App() {
     storageSet("activeDailySession", session?.complete ? null : session);
     setDailySession(session);
   };
+  const confirmDailyCard = (sessionId, cardId) => {
+    setDailySession((current) => {
+      if (!current || current.id !== sessionId || current.queue[current.index]?.id !== cardId) return current;
+      const index = current.index + 1;
+      const next = { ...current, index, complete: index >= current.target };
+      storageSet("activeDailySession", next.complete ? null : next);
+      return next;
+    });
+  };
   const startDaily = (data) => {
     const session = { id: crypto.randomUUID(), queue: data.queue, target: data.target, index: 0, remainingDue: data.remaining_due, reviewCount: data.review_count, newCount: data.new_count };
     updateDaily(session);
@@ -218,14 +227,10 @@ export default function App() {
       {/* 内容区 */}
       <ErrorBoundary>
       <main className="stage">
-        <PendingRecovery onConfirmed={(result, pending) => {
-          if (dailySession && pending.payload.session_id === dailySession.id &&
-              dailySession.queue[dailySession.index]?.id === result.card_id) {
-            const index = dailySession.index + 1;
-            updateDaily({ ...dailySession, index, complete: index >= dailySession.target });
-          }
+        {view !== "study" && <PendingRecovery onConfirmed={(result, pending) => {
+          confirmDailyCard(pending.payload.session_id, result.card_id);
           setQueueVersion((v) => v + 1);
-        }} />
+        }} />}
         {view === "queue" && <QueueView key={queueVersion} setView={setView} setStudyQueue={(cards) => { setIsDailyStudy(false); setStudyQueue(cards); }} dailySession={dailySession} onStartDaily={startDaily} onResumeDaily={() => {
           setIsDailyStudy(true); setStudyQueue(dailySession.queue); setView("study");
         }} onAddStarter={addStarterCards} />}
@@ -240,7 +245,7 @@ export default function App() {
           setQueueVersion((v) => v + 1);
         }} />}
         {view === "lessons" && <LessonsPage onExit={() => setView("queue")} />}
-        {view === "study" && <StudyPage session={isDailyStudy ? dailySession : null} onAbort={() => { setIsDailyStudy(false); updateDaily(null); setStudyQueue([]); setView("queue"); }} onProgress={(index) => updateDaily({ ...dailySession, index, complete: index >= dailySession.target })} queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} />}
+        {view === "study" && <StudyPage session={isDailyStudy ? dailySession : null} onAbort={() => { setIsDailyStudy(false); updateDaily(null); setStudyQueue([]); setView("queue"); }} onProgress={(cardId) => confirmDailyCard(dailySession.id, cardId)} queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} />}
         {view === "quiz" && <QuizPage onExit={() => setView("queue")} />}
         {view === "spelling" && <SpellingPage onExit={() => { setView("queue"); setSingleCard(null); }} singleCard={singleCard} />}
         {view === "listening" && <ListeningPage onExit={() => setView("queue")} />}

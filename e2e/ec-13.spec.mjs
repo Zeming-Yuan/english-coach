@@ -162,3 +162,31 @@ test("EC-13 a completed full round leaves the backlog for a fresh next round", a
   await expect(page.locator(".study-count")).toHaveText("1 / 5");
   await expect(page.locator(".front-main")).toHaveText("due20");
 });
+
+test("EC-13 resuming before pending confirmation cannot review the same main card twice", async ({app, page}) => {
+  const ids = await app.seedCards([{word: "first"}, {word: "second"}]);
+  await page.goto(app.baseURL);
+  await page.getByRole("button", {name: "开始今天的学习", exact: true}).click();
+  await app.failCommitOnce();
+  await page.locator(".flip-hint").first().click();
+  await page.locator(".rating-3").click();
+  await expect(page.getByRole("alert")).toContainText("保存");
+  await page.reload();
+  await page.getByRole("button", {name: "继续本轮学习", exact: true}).click();
+  await expect(page.locator(".study-count")).toHaveText("1 / 2");
+  // The first available confirmation used to be the global recovery banner.
+  await page.getByRole("button", {name: "继续确认保存", exact: true}).first().click();
+  await expect(page.locator(".study-count")).toHaveText("2 / 2", {timeout: 5000});
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(page.getByRole("button", {name: "继续确认保存", exact: true})).toHaveCount(0);
+  await expect(page.locator(".front-main")).toHaveText("second");
+  await page.locator(".flip-hint").first().click();
+  await page.locator(".rating-3").click();
+  await expect(page.getByRole("heading", {name: "本轮主队列已保存", exact: true})).toBeVisible();
+  await expect(page.locator(".done-detail")).toContainText("2 张卡已保存");
+  for (const id of ids) {
+    const events = (await (await app.request.get(`/api/cards/${id}`)).json()).learning_events;
+    expect(events).toHaveLength(1);
+    expect(events[0].stage).toBe("main");
+  }
+});
