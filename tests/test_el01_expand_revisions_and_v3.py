@@ -712,6 +712,29 @@ def test_el01_question_token_stale_only_after_semantic_change(ec):
     assert submit(untouched).status_code == 200
 
 
+def test_el01_deleted_card_token_returns_not_found(ec):
+    from uuid import uuid4
+
+    apple_id = ec.seed_card(word="apple", meaning="苹果")
+    for word in ["book", "cat", "dog"]:
+        ec.seed_card(word=word, meaning=word)
+    questions = ec.client.get("/api/listening?limit=4").json()["questions"]
+    row = next(item for item in questions if item["card_id"] == apple_id)
+    assert ec.client.delete(f"/api/cards/{apple_id}").status_code == 200
+    response = ec.client.post(
+        "/api/listening/score",
+        json={
+            "card_id": row["card_id"],
+            "question_token": row["question_token"],
+            "answer": row["word"],
+            "source": "listening",
+            "kind": "choice",
+            "submission_id": str(uuid4()),
+        },
+    )
+    assert response.status_code == 404
+
+
 def test_el01_outline_sentence_upgrade_advances_revision(ec, monkeypatch):
     import app.db
     from app.services import llm

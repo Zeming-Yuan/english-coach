@@ -305,6 +305,9 @@ def _resolve_verified_question(
     try:
         current = get_content_revision(db, "card", verified["card_id"])
     except LookupError as error:
+        # 已删除的内容保持 404；只有仍存在但身份异常的卡才是上下文过期。
+        if db.get(Card, verified["card_id"]) is None:
+            raise CardNotFoundError(verified["card_id"]) from error
         raise QuestionTokenStale("题目上下文已失效，请重新加载题目") from error
     if (
         verified.get("identity") != current["identity"]
