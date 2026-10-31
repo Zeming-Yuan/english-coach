@@ -1,5 +1,10 @@
 import {test, expect} from "./support/test.mjs";
 
+async function continueAfterSaved(page) {
+  await expect(page.getByRole("status")).toContainText("已保存");
+  await page.getByRole("button", {name: /^(下一题 →|查看本轮结果)$/}).click();
+}
+
 test("EC-14 optional reinforcement and saved summary", async ({app, page}) => {
   const [id] = await app.seedCards([{word: "apple", meaning: "苹果"}]);
   await page.goto(app.baseURL);
@@ -42,6 +47,7 @@ test("EC-14 reinforcement uses independent typed save and real summary", async (
   await page.screenshot({path: `/tmp/english-coach-followup-2026-10-31/ec14-reinforcement-${test.info().project.name}.png`});
   await page.locator(".spelling-input").fill("apple");
   await page.locator(".spelling-input").press("Enter");
+  await continueAfterSaved(page);
   await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toBeVisible();
   await expect(page.getByText("独立提取：1 / 1", {exact: true})).toBeVisible();
   await page.screenshot({path: `/tmp/english-coach-followup-2026-10-31/ec14-summary-${test.info().project.name}.png`});
@@ -60,6 +66,7 @@ test("EC-14 assisted reinforcement stays weak without another schedule", async (
   await page.getByRole("button", {name: "提示首字母", exact: true}).click({timeout: 5000});
   await expect(page.locator(".spelling-word-display")).toBeVisible();
   await page.locator(".spelling-input").fill("apple");
+  await continueAfterSaved(page);
   await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toBeVisible();
   await expect(page.getByText("辅助练习：1 / 1", {exact: true})).toBeVisible();
   await expect(page.getByText("仍需复习：apple", {exact: true})).toBeVisible();
@@ -85,6 +92,7 @@ test("EC-14 failed reinforcement retains pending UUID across refresh", async ({a
   await page.reload();
   await page.getByRole("button", {name: "继续本轮学习", exact: true}).click();
   await page.getByRole("button", {name: "继续确认保存", exact: true}).click();
+  await continueAfterSaved(page);
   await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toBeVisible();
   const backup = await (await app.request.get("/api/export/backup")).json();
   expect(backup.learning_events.filter(e => e.submission_id === pending.payload.submission_id)).toHaveLength(1);
@@ -174,6 +182,7 @@ test("EC-14 three question lifetime cap survives refresh without refilling", asy
     await expect(page.locator(".spelling-meaning")).toHaveText(`释义${i}`);
     await page.locator(".spelling-input").fill("wrong");
     await page.locator(".spelling-input").press("Enter");
+    await continueAfterSaved(page);
     if (i < 2) await expect(page.locator(".spelling-meaning")).toHaveText(`释义${i + 1}`);
     else await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toBeVisible();
     await page.reload();
@@ -200,6 +209,7 @@ test("EC-14 deleting an answered slot cannot introduce a fourth question after r
   await expect(page.locator(".spelling-meaning")).toHaveText("释义0");
   await page.locator(".spelling-input").fill("wrong");
   await page.locator(".spelling-input").press("Enter");
+  await continueAfterSaved(page);
   await expect(page.locator(".spelling-meaning")).toHaveText("释义1");
   expect((await app.request.delete(`/api/cards/${ids[0]}`)).ok()).toBe(true);
   await page.reload();
@@ -208,6 +218,42 @@ test("EC-14 deleting an answered slot cannot introduce a fourth question after r
     await expect(page.locator(".spelling-meaning")).toHaveText(`释义${i}`);
     await page.locator(".spelling-input").fill("wrong");
     await page.locator(".spelling-input").press("Enter");
+    await continueAfterSaved(page);
   }
   await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toBeVisible({timeout: 5000});
+});
+
+test("EC-14 saved wrong reinforcement feedback precedes the next question", async ({app, page}) => {
+  const ids = await app.seedCards([{word: "apple", meaning: "苹果"}, {word: "book", meaning: "书"}]);
+  await page.goto(app.baseURL);
+  await page.getByRole("button", {name: "开始今天的学习", exact: true}).click();
+  for (let i = 0; i < 2; i += 1) {
+    await expect(page.locator(".study-count")).toHaveText(`${i + 1} / 2`);
+    await page.locator(".flip-hint").first().click();
+    await page.locator(".rating-1").click();
+  }
+  await expect(page.locator(".spelling-meaning")).toHaveText("苹果");
+  await page.locator(".spelling-input").fill("wrong");
+  await page.locator(".spelling-input").press("Enter");
+  await expect(page.getByRole("status")).toContainText("已保存：答错，正确拼写：apple", {timeout: 5000});
+  expect(await page.evaluate(() => localStorage.getItem("ec.pending.reinforcement"))).toBeNull();
+  await expect(page.getByText("书", {exact: true})).toHaveCount(0);
+  await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toHaveCount(0);
+  const first = (await (await app.request.get(`/api/cards/${ids[0]}`)).json()).learning_events;
+  expect(first).toHaveLength(2);
+  expect(first[1]).toMatchObject({correct: false, source: "reinforcement", stage: "reinforcement"});
+  await page.getByRole("button", {name: "下一题 →", exact: true}).click();
+  await expect(page.locator(".spelling-meaning")).toHaveText("书");
+  await app.failCommitOnce();
+  await page.locator(".spelling-input").fill("book");
+  await page.locator(".spelling-input").press("Enter");
+  await expect(page.getByRole("alert")).toContainText("保存");
+  const pending = await page.evaluate(() => JSON.parse(localStorage.getItem("ec.pending.reinforcement")));
+  await page.getByRole("button", {name: "继续确认保存", exact: true}).click();
+  await expect(page.getByRole("status")).toContainText("已保存：答对");
+  await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toHaveCount(0);
+  await page.getByRole("button", {name: "查看本轮结果", exact: true}).click();
+  await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toBeVisible();
+  const backup = await (await app.request.get("/api/export/backup")).json();
+  expect(backup.learning_events.filter(e => e.submission_id === pending.payload.submission_id)).toHaveLength(1);
 });
