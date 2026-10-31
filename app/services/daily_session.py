@@ -64,3 +64,60 @@ def build_daily_queue(db: Session, limit: int, runtime: Runtime, due_limit: int 
         [queue_payload(card) for card in new],
         max(0, min(20, due_limit)),
     )
+
+
+def build_reinforcement(events, max_items=3):
+    """Select the first three distinct weak main cards, in saved-event order."""
+    selected = {}
+    for event in events:
+        weak = (
+            event["skipped"]
+            or event.get("correct") is False
+            or event.get("fsrs_rating") in (1, 2)
+        )
+        if event["stage"] == "main" and weak:
+            selected.setdefault(event["card_id"], {"card_id": event["card_id"]})
+    return list(selected.values())[: max(0, min(max_items, 3))]
+
+
+def summarize_session(events):
+    """Describe saved work without inferring mastery from assisted recognition."""
+    from app.services.statistics import metric
+
+    weak = {}
+    for event in events:
+        if event["stage"] not in ("main", "reinforcement"):
+            continue
+        if (
+            event["skipped"]
+            or event["correct"] is False
+            or event["fsrs_rating"] in (1, 2)
+        ):
+            weak[event["card_id"]] = True
+        elif (
+            event["source"] != "legacy"
+            and not event["skipped"]
+            and (
+                (
+                    event["kind"] == "typed"
+                    and not event["assistance"]
+                    and event["correct"] is True
+                )
+                or (event["kind"] == "self_rating" and event["self_rating"] in (3, 4))
+            )
+        ):
+            weak.pop(event["card_id"], None)
+    rows = [e for e in events if e["stage"] in ("main", "reinforcement")]
+    return {
+        "counts": {
+            "main": sum(e["stage"] == "main" for e in rows),
+            "reinforcement": sum(e["stage"] == "reinforcement" for e in rows),
+            "skipped": sum(e["skipped"] for e in rows),
+            "completed_cards": len({e["card_id"] for e in rows if e["scheduled"]}),
+        },
+        "metrics": {
+            category: metric(rows, category)
+            for category in ("retrieval", "assisted", "recognition", "self_report")
+        },
+        "weak_card_ids": list(weak),
+    }
