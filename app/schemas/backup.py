@@ -459,6 +459,7 @@ def _validate_full_graph(tables: dict, payload: dict) -> None:
             )
             if command.session_id != session_id or command.rating != row["self_rating"]:
                 raise ValueError("命令会话或自评分与事件不匹配")
+            row["session_id"] = str(session_id) if session_id is not None else None
             if result.correct != row["correct"] or result.scheduled != row["scheduled"]:
                 raise ValueError("缓存业务结果与事件不匹配")
             for field in ("before", "after"):
