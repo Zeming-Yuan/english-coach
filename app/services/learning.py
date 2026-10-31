@@ -13,7 +13,7 @@ import contextvars
 import hashlib
 import json
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
@@ -62,8 +62,8 @@ def _utc_iso(value: datetime | None) -> str | None:
     if value is None:
         return None
     if value.tzinfo is None:
-        value = value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc).isoformat()
+        value = value.replace(tzinfo=UTC)
+    return value.astimezone(UTC).isoformat()
 
 
 def _command_payload(
@@ -99,7 +99,9 @@ def canonical_attempt(
     return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
 
-def classify_attempt(cmd: AttemptCommand, expected: str) -> tuple[bool | None, int | None]:
+def classify_attempt(
+    cmd: AttemptCommand, expected: str
+) -> tuple[bool | None, int | None]:
     """返回 (客观正误, 实际采用的 FSRS 评分)。
 
     - 跳过：均为空，不伪造答错；
@@ -112,11 +114,7 @@ def classify_attempt(cmd: AttemptCommand, expected: str) -> tuple[bool | None, i
     if cmd.kind == "self_rating":
         return None, cmd.rating
     correct = normalize(cmd.answer or "") == normalize(expected)
-    if (
-        cmd.kind == "typed"
-        and not cmd.assistance
-        and cmd.source != "legacy"
-    ):
+    if cmd.kind == "typed" and not cmd.assistance and cmd.source != "legacy":
         return correct, 3 if correct else 1
     return correct, None
 
@@ -132,30 +130,54 @@ def select_current_review(reviews: list[Review]) -> Review | None:
         reviews,
         key=lambda review: (
             review.last_review is not None,
-            review.last_review or datetime.min,  # noqa: DTZ901 — 旧表为 naive UTC
+            review.last_review or datetime.min,
             review.id,
         ),
     )
 
 
 def get_memory_state(db: Session, card_id: int) -> Review | None:
-    """选择当前记忆状态：最新有效复习时间，再按记录顺序（id）。
+    """Read the sole current state; the contract index guarantees cardinality."""
+    return db.execute(
+        select(Review).where(Review.card_id == card_id)
+    ).scalar_one_or_none()
 
-    兼容旧库同卡多行；迁移基线与运行期读取使用同一规则。
+
+def get_legacy_review_history(db: Session, card_id: int) -> list[dict]:
+    """Keep the old history response using physical states and archived evidence.
+
+    A baseline that exactly matches an extant row is the same evidence, not a
+    second review. Events remain separate and never get synthesized here.
     """
-    return (
-        db.execute(
-            select(Review)
-            .where(Review.card_id == card_id)
-            .order_by(
-                Review.last_review.is_(None),
-                Review.last_review.desc(),
-                Review.id.desc(),
-            )
-        )
-        .scalars()
-        .first()
-    )
+    fields = ("rating", "state", "last_review", "review_count")
+    rows = {}
+    for review in db.execute(select(Review).where(Review.card_id == card_id)).scalars():
+        raw = {
+            column.name: getattr(review, column.name)
+            for column in Review.__table__.columns
+        }
+        rows[json.dumps(raw, sort_keys=True, default=str)] = (review.id, raw)
+    for baseline in db.execute(
+        select(ReviewBaseline).where(ReviewBaseline.card_id == card_id)
+    ).scalars():
+        raw = dict(baseline.raw)
+        # Full baselines serialize datetime with T; normalize for deduplication.
+        for field in ("due", "last_review"):
+            if isinstance(raw.get(field), str):
+                try:
+                    raw[field] = datetime.fromisoformat(raw[field])
+                except ValueError:
+                    # raw is audit evidence, not a validated current timestamp.
+                    pass
+        key = json.dumps(raw, sort_keys=True, default=str)
+        rows.setdefault(key, (baseline.source_review_id or 0, raw))
+    result = []
+    for _, raw in sorted(rows.values(), key=lambda item: item[0], reverse=True):
+        history = {field: raw.get(field) for field in fields}
+        if isinstance(history["last_review"], datetime):
+            history["last_review"] = history["last_review"].isoformat()
+        result.append(history)
+    return result
 
 
 def _event_payload(event: ReviewEvent) -> dict:
@@ -324,8 +346,10 @@ def _apply_attempt_in_transaction(
     if correct_override is not None:
         correct = correct_override
 
-    now = runtime.clock.now().astimezone(timezone.utc)
-    learning_day = now.astimezone(ZoneInfo(runtime.learning_timezone)).date().isoformat()
+    now = runtime.clock.now().astimezone(UTC)
+    learning_day = (
+        now.astimezone(ZoneInfo(runtime.learning_timezone)).date().isoformat()
+    )
 
     review = get_memory_state(db, card.id)
     was_graduated = card_is_graduated(card, review)
@@ -349,7 +373,7 @@ def _apply_attempt_in_transaction(
         review.stability = new_card.stability  # type: ignore[assignment]
         review.difficulty = new_card.difficulty  # type: ignore[assignment]
         review.elapsed_days = (
-            (now - review.last_review.replace(tzinfo=timezone.utc)).days
+            (now - review.last_review.replace(tzinfo=UTC)).days
             if review.last_review
             else 0
         )
@@ -462,9 +486,7 @@ def submit_batch(
                 cmd = cmd.model_copy(update={"submission_id": uuid4()})
             if not cmd.skipped:
                 if not cmd.question_token:
-                    raise InvalidQuestionToken(
-                        "缺少题目上下文，请重新加载题目"
-                    )
+                    raise InvalidQuestionToken("缺少题目上下文，请重新加载题目")
                 if cmd.kind not in ("choice", "related"):
                     raise InvalidQuestionToken(
                         "批量判分只接受选择题提交，请重新加载题目"
@@ -518,9 +540,7 @@ def submit_attempt(
         verified = _resolve_verified_question(db, cmd, runtime, existing)
         if verified is not None:
             verified = business_context(verified)
-        if existing.fingerprint != canonical_attempt(
-            cmd, verified_question=verified
-        ):
+        if existing.fingerprint != canonical_attempt(cmd, verified_question=verified):
             raise
         result = AttemptResult.model_validate(existing.response)
 
@@ -529,5 +549,7 @@ def submit_attempt(
         # commit 之后才启动 AI；后台线程沿用本应用实例的 LLM 绑定。
         target = upgrade or upgrade_sentence_card
         ctx = contextvars.copy_context()
-        threading.Thread(target=ctx.run, args=(target, upgrade_card_id), daemon=True).start()
+        threading.Thread(
+            target=ctx.run, args=(target, upgrade_card_id), daemon=True
+        ).start()
     return result

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer
+from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db import Base
@@ -10,6 +10,8 @@ class Review(Base):
     """复习记录"""
 
     __tablename__ = "reviews"
+    __table_args__ = (Index("uq_reviews_current_card", "card_id", unique=True),)
+
     id: Mapped[int] = mapped_column(primary_key=True)
     card_id: Mapped[int] = mapped_column(ForeignKey("cards.id"), index=True)
     state: Mapped[int] = mapped_column(nullable=False)
@@ -20,4 +22,6 @@ class Review(Base):
     elapsed_days: Mapped[int] = mapped_column(Integer, nullable=False)
     last_review: Mapped[datetime | None] = mapped_column(DateTime, index=True)
     review_count: Mapped[int] = mapped_column(Integer, nullable=False)
-    rating: Mapped[int | None] = mapped_column(Integer, nullable=True)  # 评分 1-4（旧数据为空）
+    rating: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )  # 评分 1-4（旧数据为空）
