@@ -52,6 +52,7 @@ def test_el02_independent_cross_day_recall(ec):
     _two_days(ec, card_id)
     detail = ec.client.get(f"/api/cards/{card_id}").json()
     assert detail["learning_evidence"]["recall"]["status"] == "verified"
+    assert detail["learning_evidence"]["rule_version"] == "el02-v1"
 
 
 @pytest.mark.parametrize(
@@ -65,15 +66,8 @@ def test_el02_independent_cross_day_recall(ec):
         ([2, 86400, True, 0, False], "history_incomplete"),
     ],
 )
-def test_el02_review_focus(arguments, expected):
+def test_el02_recall_status_matrix(arguments, expected):
     assert recall_status(*arguments) == expected
-
-
-def test_el02_exactly_one_day_requires_two_learning_days(ec):
-    card_id = ec.seed_card()
-    # 不同学习日、整 24 小时：验证。
-    _two_days(ec, card_id)
-    assert _status(ec, card_id)["status"] == "verified"
 
 
 def test_el02_cross_midnight_under_24h_is_insufficient(ec):
@@ -101,6 +95,89 @@ def test_el02_same_day_retry_does_not_add_a_learning_day(ec):
     evidence = _status(ec, card_id)
     assert evidence["status"] == "insufficient"
     assert evidence["count"] == 1
+
+
+@pytest.mark.parametrize("first_assisted", [True, False])
+def test_el02_first_answer_of_day_must_be_independent(ec, first_assisted):
+    card_id = ec.seed_card()
+    ec.set_time("2026-10-01T00:30:00Z")
+    if first_assisted:
+        assert (
+            _typing(ec, card_id, assistance=["first_letter"]).status_code == 200
+        )
+    else:
+        assert (
+            ec.client.post(
+                "/api/typing/check",
+                json={
+                    "card_id": card_id,
+                    "user_input": "",
+                    "skipped": True,
+                    "source": "spelling",
+                    "submission_id": str(uuid4()),
+                },
+            ).status_code
+            == 200
+        )
+    # 同日稍后独立重试不能把当天变成独立学习日。
+    ec.set_time("2026-10-01T05:00:00Z")
+    assert _typing(ec, card_id).status_code == 200
+    ec.set_time("2026-10-02T05:00:00Z")
+    assert _typing(ec, card_id).status_code == 200
+    evidence = _status(ec, card_id)
+    assert evidence["status"] == "insufficient"
+    assert evidence["count"] == 1
+
+
+def test_el02_recognition_and_baseline_are_not_independent(ec):
+    from datetime import UTC, datetime
+    from uuid import UUID
+
+    from app.models.review_baseline import ReviewBaseline
+
+    card_id = ec.seed_card(word="apple")
+    for word in ["book", "cat", "dog"]:
+        ec.seed_card(word=word)
+    for now in ["2026-10-01T01:00:00Z", "2026-10-02T01:00:00Z"]:
+        ec.set_time(now)
+        questions = ec.client.get("/api/listening?limit=4").json()["questions"]
+        question = next(row for row in questions if row["card_id"] == card_id)
+        assert (
+            ec.client.post(
+                "/api/listening/score",
+                json={
+                    "card_id": card_id,
+                    "question_token": question["question_token"],
+                    "answer": question["word"],
+                    "source": "listening",
+                    "kind": "choice",
+                    "submission_id": str(uuid4()),
+                },
+            ).status_code
+            == 200
+        )
+    assert _status(ec, card_id)["count"] == 0
+
+    db = ec.SessionLocal()
+    try:
+        db.add(
+            ReviewBaseline(
+                id=str(UUID(int=1)),
+                card_id=card_id,
+                source_review_id=None,
+                source_kind="migration",
+                raw={},
+                selected=False,
+                captured_at=datetime(2026, 10, 3, tzinfo=UTC).replace(tzinfo=None),
+                last_activity=None,
+                cumulative_count=0,
+                source_fingerprint="a" * 64,
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+    assert _status(ec, card_id)["status"] == "history_incomplete"
 
 
 def test_el02_new_independent_failure_makes_evidence_weak(ec):
@@ -235,6 +312,58 @@ def test_el02_commit_failure_and_replay_do_not_duplicate_evidence(ec):
     ) == 1
     assert after["learning_events"][0]["card_revision"] == 1
     assert after["learning_events"][0]["card_identity"]
+
+
+@pytest.mark.parametrize("mutation", ["missing-pair", "bad-identity"])
+def test_el02_v3_invalid_event_links_rejected(ec, ec_factory, mutation):
+    source = ec_factory()
+    card_id = source.seed_card()
+    source.set_time("2026-10-01T01:00:00Z")
+    assert _typing(source, card_id).status_code == 200
+    backup = source.client.get("/api/export/backup").json()
+    event = backup["learning_events"][0]
+    if mutation == "missing-pair":
+        event["card_identity"] = None
+    else:
+        event["card_identity"] = "not-a-uuid"
+
+    target = ec_factory()
+    target.seed_card("keep")
+    untouched = target.snapshot()
+    preview = target.client.post("/api/import/preview", json=backup)
+    assert preview.status_code == 422
+    assert target.snapshot() == untouched
+    confirmed = target.client.post(
+        "/api/import/cards",
+        json={"backup": backup, "expected_revision": "irrelevant"},
+    )
+    assert confirmed.status_code == 422
+    assert target.snapshot() == untouched
+
+
+def test_el02_stale_question_creates_no_evidence(ec):
+    card_id = ec.seed_card(word="apple")
+    for word in ["book", "cat", "dog"]:
+        ec.seed_card(word=word)
+    question = ec.client.get("/api/listening?limit=4").json()["questions"]
+    row = next(item for item in question if item["card_id"] == card_id)
+    assert (
+        ec.client.put(f"/api/cards/{card_id}", json={"meaning": "一个苹果"}).status_code
+        == 200
+    )
+    response = ec.client.post(
+        "/api/listening/score",
+        json={
+            "card_id": card_id,
+            "question_token": row["question_token"],
+            "answer": row["word"],
+            "source": "listening",
+            "kind": "choice",
+            "submission_id": str(uuid4()),
+        },
+    )
+    assert response.status_code == 409
+    assert _status(ec, card_id)["count"] == 0
 
 
 def test_el02_v3_restore_preserves_revision_links_and_evidence(ec, ec_factory):

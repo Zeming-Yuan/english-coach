@@ -429,18 +429,6 @@ def _validate_full_graph(tables: dict, payload: dict) -> None:
             UUID(row["submission_id"])
             if row["session_id"] is not None:
                 UUID(row["session_id"])
-            card_identity = row.get("card_identity")
-            card_revision = row.get("card_revision")
-            if (card_identity is None) != (card_revision is None):
-                raise ValueError("事件修订关联不完整")
-            if card_identity is not None:
-                UUID(card_identity)
-                if (
-                    not isinstance(card_revision, int)
-                    or isinstance(card_revision, bool)
-                    or card_revision < 1
-                ):
-                    raise ValueError("事件修订版本无效")
             if (
                 date.fromisoformat(row["learning_day"]).isoformat()
                 != row["learning_day"]

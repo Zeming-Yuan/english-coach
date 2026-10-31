@@ -395,6 +395,10 @@ def get_card_detail(
         .first()
     )
     memo = db.execute(select(Memo).where(Memo.card_id == card_id)).scalars().first()
+    history_incomplete = has_incomplete_history(db, card_id)
+    evidence = evidence_summary(
+        db, card_id, runtime, incomplete_history=history_incomplete
+    )
 
     return {
         "id": card.id,
@@ -434,7 +438,7 @@ def get_card_detail(
             else None
         ),
         "learning_events": get_card_events(db, card_id),
-        "history_incomplete": has_incomplete_history(db, card_id),
-        "content_revision": get_content_revision(db, "card", card_id),
-        "learning_evidence": evidence_summary(db, card_id, runtime),
+        "history_incomplete": history_incomplete,
+        "content_revision": evidence["revision"],
+        "learning_evidence": evidence,
     }

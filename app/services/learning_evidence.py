@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import or_, select
+from sqlalchemy import literal_column, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.review_event import ReviewEvent
@@ -45,9 +45,7 @@ def _aware_utc(value: datetime) -> datetime:
     return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
 
 
-def _history_complete(db: Session, card_id: int) -> bool:
-    if has_incomplete_history(db, card_id):
-        return False
+def _no_unlinked_events(db: Session, card_id: int) -> bool:
     unlinked = db.execute(
         select(ReviewEvent.id)
         .where(
@@ -63,25 +61,30 @@ def _history_complete(db: Session, card_id: int) -> bool:
 
 
 def _first_independent_per_day(db: Session, card_id: int, revision: dict):
+    # 先按学习日取首个 typed 作答（无论是否辅助/跳过），再要求它独立。
+    # 否则“先辅助、后同日重试”会被误算成当天的独立首答。
     rows = db.execute(
         select(ReviewEvent)
         .where(
             ReviewEvent.card_id == card_id,
             ReviewEvent.kind == "typed",
             ReviewEvent.source != "legacy",
-            ReviewEvent.skipped.is_(False),
-            ReviewEvent.correct.is_not(None),
             ReviewEvent.card_identity == revision["identity"],
             ReviewEvent.card_revision == revision["version"],
         )
-        .order_by(ReviewEvent.occurred_at)
+        .order_by(
+            ReviewEvent.occurred_at,
+            literal_column("review_events.rowid"),
+        )
     ).scalars()
     first_by_day = {}
     for row in rows:
-        if row.assistance:
-            continue
         first_by_day.setdefault(row.learning_day, row)
-    return list(first_by_day.values())
+    return [
+        row
+        for row in first_by_day.values()
+        if not row.assistance and not row.skipped and row.correct is not None
+    ]
 
 
 def _dimension(status: str, count: int, last_verified_at: str | None) -> dict:
@@ -92,9 +95,17 @@ def _dimension(status: str, count: int, last_verified_at: str | None) -> dict:
     }
 
 
-def evidence_summary(db: Session, card_id: int, runtime: Runtime) -> dict:
+def evidence_summary(
+    db: Session,
+    card_id: int,
+    runtime: Runtime,
+    *,
+    incomplete_history: bool | None = None,
+) -> dict:
     revision = get_content_revision(db, "card", card_id)
-    history_complete = _history_complete(db, card_id)
+    if incomplete_history is None:
+        incomplete_history = has_incomplete_history(db, card_id)
+    history_complete = not incomplete_history and _no_unlinked_events(db, card_id)
     samples = _first_independent_per_day(db, card_id, revision)
 
     failure_index = max(
@@ -134,6 +145,7 @@ def evidence_summary(db: Session, card_id: int, runtime: Runtime) -> dict:
     unavailable = _dimension("insufficient", 0, None)
     return {
         "revision": revision,
+        "rule_version": RULE_VERSION,
         "recall": _dimension(status, len(samples), last_verified_at),
         # 延迟保持与应用证据尚未引入；显式无证据，不偷读毕业字段。
         "retention": dict(unavailable),

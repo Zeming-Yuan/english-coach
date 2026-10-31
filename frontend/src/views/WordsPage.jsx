@@ -386,7 +386,7 @@ function WordDetail({ cardId, onBack, allCards, setDetail }) {
         )}
         <div className="word-detail-badges">
           <span className={`badge ${c.kind === "sentence" ? "badge-sentence" : "badge-word"}`}>{c.kind === "sentence" ? "句子" : "词"}</span>
-          {c.graduated && <span className="badge badge-graduated">毕业</span>}
+          {c.graduated && <span className="badge badge-graduated">句子练习已解锁</span>}
           {c.error_count > 0 && <span className="badge badge-error">错词×{c.error_count}</span>}
           {c.is_hard && <span className="badge badge-error">⭕ 困难词</span>}
         </div>
@@ -496,7 +496,7 @@ function WordDetail({ cardId, onBack, allCards, setDetail }) {
       {/* 状态卡 */}
       <div className="word-detail-status">
         <div className="status-item"><span className="status-label">复习次数</span><span className="status-value">{c.review_count}</span></div>
-        <div className="status-item"><span className="status-label">状态</span><span className="status-value">{c.graduated ? "已毕业 ✅" : c.review_count > 0 ? "学习中" : "新词"}</span></div>
+        <div className="status-item"><span className="status-label">状态</span><span className="status-value">{c.graduated ? "句子练习已解锁" : c.review_count > 0 ? "学习中" : "新词"}</span></div>
         <div className="status-item"><span className="status-label">下次复习</span><span className="status-value">{c.next_due ? new Date(c.next_due).toLocaleDateString() : "-"}</span></div>
       </div>
 

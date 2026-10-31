@@ -241,6 +241,21 @@ def validate_v3(payload: dict) -> ValidatedBackup:
     from app.schemas.backup import _validate_full_graph
 
     _validate_full_graph(tables, payload)
+    for index, row in enumerate(tables["learning_events"]):
+        identity = row.get("card_identity")
+        version = row.get("card_revision")
+        if (identity is None) != (version is None):
+            _reject(
+                "learning_events",
+                index,
+                "card_identity/card_revision",
+                "事件修订关联不完整",
+            )
+        if identity is not None:
+            try:
+                UUID(identity)
+            except (ValueError, TypeError):
+                _reject("learning_events", index, "card_identity", "必须是 UUID")
     validated_extensions = {
         name: _validate_extension_rows(name, extensions.get(name) or [])
         for name in features

@@ -37,6 +37,7 @@ export const requirements = {
     "EL-02 new failure changes verified recall to weak",
     "EL-02 assisted answers never become independent evidence",
     "EL-02 meaning edit moves old evidence to history",
+    "EL-02 weak evidence never reads as mastery",
   ],
 };
 export const projects = ["mobile", "desktop"];

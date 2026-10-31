@@ -21,11 +21,13 @@
    `card_identity + card_revision` 限定当前修订，再筛选 `kind=typed`、
    `source != legacy`、未跳过、已判分且 `assistance=[]` 的事件。辅助、识别、
    自评、跳过与迁移基线不进入独立回忆样本。旧修订事件保留为历史，不证明新内容。
-3. **回忆规则是产品阈值。** 同一学习日只取首个独立 typed 作答；最近一次独立首答
-   错误时状态为 `weak`；至少两个不同学习日、首答独立正确且时间相隔 ≥24 小时才
-   为 `verified`；距今超过 30 天为 `stale`。可见状态只有
+3. **回忆规则是产品阈值。** 同一学习日先取首个 typed 作答（按保存次序），只有它
+   未使用辅助、未跳过且已判分时才成为独立样本；先辅助后同日重试不能算独立首答。
+   最近一次独立首答错误时状态为 `weak`；至少两个不同学习日、首答独立正确且时间
+   相隔 ≥24 小时才为 `verified`；距今超过 30 天为 `stale`。可见状态只有
    `insufficient / verified / weak / stale / history_incomplete`，不输出百分比或
-   概率。
+   概率。规则版本 `rule_version` 随摘要返回但不持久化；事件与修订关联是可重算
+   依据。
 4. **历史完整性单独表达。** 存在迁移基线、`source=legacy` 事件或未绑定修订的旧
    事件时，回忆状态为 `history_incomplete`；历史成功仍保留日期可查看，但不冒充
    当前掌握。`graduated` 继续只表示句子练习解锁，不是回忆证据。
@@ -33,9 +35,10 @@
    （实际应用）在后续票引入前固定为 `insufficient / count=0 /
    last_verified_at=null`，不偷读毕业或复习次数。
 6. **公开边界。** `GET /api/cards/{id}` 增加 `learning_evidence`：
-   `{revision, recall, retention, application}`，每个维度
+   `{revision, rule_version, recall, retention, application}`，每个维度
    `{status, count, last_verified_at}`。详情同时保留真实 FSRS 到期、复习次数与
-   毕业解锁；删除词卡级联删除事件，证据随卡消失。
+   句子练习解锁标签（不再显示“已毕业/100% 掌握”）；删除词卡级联删除事件，证据
+   随卡消失。
 7. **V3 兼容。** 事件修订字段随 V3 `learning_events` 导出/校验/恢复；两个字段要么
    同时为空、要么同时有效（identity 为 UUID，version ≥1）。旧 V2/V1 恢复产生的
    事件为空值，读取时显示 `history_incomplete`，不伪造当前证据。
