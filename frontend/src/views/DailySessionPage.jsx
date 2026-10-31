@@ -10,6 +10,7 @@ export default function DailySessionPage({ session, onSessionChange, onFinish, .
   const attempt = useLearningAttempt("reinforcement");
   const mounted = useRef(false);
   const readSequence = useRef(0);
+  const recoveryVersion = useRef(studyProps.recoveryVersion);
   const activeSessionId = useRef(session.id);
   activeSessionId.current = session.id;
   useEffect(() => {
@@ -53,11 +54,18 @@ export default function DailySessionPage({ session, onSessionChange, onFinish, .
   };
   useEffect(() => {
     if (!session.complete) return;
-    // Home confirmation may resolve after this view mounts. Re-read committed
-    // events and release only the hook copy whose durable pending was cleared.
     if (!loadPending("reinforcement")) attempt.clear();
     load();
-  }, [session.id, session.complete, studyProps.recoveryVersion]);
+  }, [session.id, session.complete]);
+  useEffect(() => {
+    if (recoveryVersion.current === studyProps.recoveryVersion) return;
+    recoveryVersion.current = studyProps.recoveryVersion;
+    // Only reconcile this unresolved hook copy after its own pending is gone.
+    // Other scopes finishing must not clear feedback or an answer being typed.
+    if (!session.complete || attempt.phase !== "failed" || loadPending("reinforcement")) return;
+    attempt.clear();
+    load();
+  }, [studyProps.recoveryVersion]);
   const submit = async (answer) => {
     const question = questions?.[0];
     if (!question || attempt.phase !== "idle") return;
@@ -97,7 +105,7 @@ export default function DailySessionPage({ session, onSessionChange, onFinish, .
     </>}
     {attempt.phase === "saved" && <>
       <p role="status">{attempt.result.correct === true ? "已保存：答对" : attempt.result.correct === false ? `已保存：答错，正确拼写：${attempt.result.expected}` : "已保存：已跳过"}</p>
-      <button className="btn btn-primary" onClick={next}>{questions?.length > 1 ? "下一题 →" : "查看本轮结果"}</button>
+      <button className="btn btn-primary" onClick={next}>{questions?.some(q => q.card_id !== attempt.result.card_id) ? "下一题 →" : "查看本轮结果"}</button>
     </>}
     {attempt.phase === "saving" && <p role="status">正在确认保存…</p>}
     {attempt.phase === "failed" && <div role="alert">{attempt.error}<button className="btn btn-primary" onClick={retry}>继续确认保存</button><button className="btn btn-ghost" onClick={() => { attempt.clear(); studyProps.onAbort(); }}>退出本轮并重新加载</button></div>}

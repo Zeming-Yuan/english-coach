@@ -159,7 +159,7 @@ test("EC-14 late home confirmation clears reinforcement pending and finishes onc
   const held = new Promise(resolve => { release = resolve; });
   await page.route("**/api/typing/check", async route => {
     const response = await route.fetch(); await held; await route.fulfill({response});
-  }, {times: 1});
+  });
   await page.getByRole("button", {name: "继续确认保存", exact: true}).click();
   await page.getByRole("button", {name: "继续本轮学习", exact: true}).click();
   await expect(page.getByRole("heading", {name: "本轮巩固", exact: true})).toBeVisible();
@@ -303,4 +303,119 @@ test("EC-14 obsolete reinforcement response cannot replace a newer daily round",
   expect(oldEvents).toHaveLength(1);
   expect(newEvents).toHaveLength(1);
   expect(newEvents[0]).toMatchObject({session_id: nextSession.id, stage: "main"});
+});
+
+test("EC-14 lost response retry feedback still offers the remaining question", async ({app, page}) => {
+  const errors = [];
+  page.on("pageerror", error => errors.push(error.message));
+  const ids = await app.seedCards([{word: "apple", meaning: "苹果"}, {word: "book", meaning: "书"}]);
+  await page.goto(app.baseURL);
+  await page.getByRole("button", {name: "开始今天的学习", exact: true}).click();
+  for (let i = 0; i < 2; i += 1) {
+    await expect(page.locator(".study-count")).toHaveText(`${i + 1} / 2`);
+    await page.locator(".flip-hint").first().click();
+    await page.locator(".rating-1").click();
+  }
+  await expect(page.locator(".spelling-meaning")).toHaveText("苹果");
+  await page.route("**/api/typing/check", async route => { await route.fetch(); await route.abort("failed"); }, {times: 1});
+  await page.locator(".spelling-input").fill("wrong");
+  await page.locator(".spelling-input").press("Enter");
+  await expect(page.getByRole("alert")).toContainText("保存");
+  const pending = await page.evaluate(() => JSON.parse(localStorage.getItem("ec.pending.reinforcement")));
+  await page.reload();
+  await page.getByRole("button", {name: "继续本轮学习", exact: true}).click();
+  await page.getByRole("button", {name: "继续确认保存", exact: true}).click();
+  await expect(page.getByRole("status")).toContainText("已保存：答错，正确拼写：apple");
+  await expect(page.getByRole("button", {name: "下一题 →", exact: true})).toBeVisible({timeout: 5000});
+  await page.getByRole("button", {name: "下一题 →", exact: true}).click();
+  await expect(page.locator(".spelling-meaning")).toHaveText("书");
+  const backup = await (await app.request.get("/api/export/backup")).json();
+  expect(backup.learning_events.filter(e => e.submission_id === pending.payload.submission_id)).toHaveLength(1);
+  expect((await (await app.request.get(`/api/cards/${ids[0]}`)).json()).learning_events).toHaveLength(2);
+  expect(errors).toEqual([]);
+});
+
+test("EC-14 unrelated late confirmation preserves saved reinforcement feedback", async ({app, page}) => {
+  const [id] = await app.seedCards([{word: "apple", meaning: "苹果"}]);
+  await page.goto(app.baseURL);
+  await page.getByRole("button", {name: "开始今天的学习", exact: true}).click();
+  await page.locator(".flip-hint").first().click();
+  await page.locator(".rating-1").click();
+  await expect(page.locator(".spelling-input")).toBeVisible();
+  await page.getByRole("button", {name: "← 退出", exact: true}).click();
+  await page.locator("summary").click();
+  await page.locator(".error-entry").getByRole("button", {name: "复习 →", exact: true}).click();
+  await app.failCommitOnce();
+  await page.locator(".flip-hint").first().click();
+  await page.locator(".rating-3").click();
+  await expect(page.getByRole("alert")).toContainText("保存");
+  await page.getByRole("button", {name: "← 退出", exact: true}).click();
+  let release;
+  let delivered;
+  const held = new Promise(resolve => { release = resolve; });
+  const responseDelivered = new Promise(resolve => { delivered = resolve; });
+  await page.route("**/api/reviews", async route => {
+    const response = await route.fetch(); await held; await route.fulfill({response}); delivered();
+  }, {times: 1});
+  await page.getByRole("button", {name: "继续确认保存", exact: true}).click();
+  await page.getByRole("button", {name: "继续本轮学习", exact: true}).click();
+  await expect(page.locator(".spelling-input")).toBeVisible();
+  await page.locator(".spelling-input").fill("wrong");
+  await page.locator(".spelling-input").press("Enter");
+  await expect(page.getByRole("status")).toHaveText("已保存：答错，正确拼写：apple");
+  release();
+  await responseDelivered;
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await expect(page.getByRole("status")).toHaveText("已保存：答错，正确拼写：apple", {timeout: 5000});
+  await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toHaveCount(0);
+  await page.getByRole("button", {name: "查看本轮结果", exact: true}).click();
+  await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toBeVisible();
+  const events = (await (await app.request.get(`/api/cards/${id}`)).json()).learning_events;
+  expect(events.map(event => event.stage)).toEqual(["main", "standalone", "reinforcement"]);
+});
+
+test("EC-14 late home confirmation keeps the latest read authoritative", async ({app, page}) => {
+  const [id] = await app.seedCards([{word: "apple"}]);
+  await page.goto(app.baseURL);
+  await page.getByRole("button", {name: "开始今天的学习", exact: true}).click();
+  await page.locator(".flip-hint").first().click();
+  await page.locator(".rating-1").click();
+  await expect(page.locator(".spelling-input")).toBeVisible();
+  await page.route("**/api/typing/check", async route => { await route.fetch(); await route.abort("failed"); }, {times: 1});
+  await page.locator(".spelling-input").fill("apple");
+  await page.locator(".spelling-input").press("Enter");
+  await expect(page.getByRole("alert")).toContainText("保存");
+  await page.getByRole("button", {name: "← 退出", exact: true}).click();
+  let releaseHome;
+  let releaseInitial;
+  let initialCaptured;
+  let initialDelivered;
+  const homeHeld = new Promise(resolve => { releaseHome = resolve; });
+  const initialHeld = new Promise(resolve => { releaseInitial = resolve; });
+  const captured = new Promise(resolve => { initialCaptured = resolve; });
+  const delivered = new Promise(resolve => { initialDelivered = resolve; });
+  await page.route("**/api/typing/check", async route => {
+    const response = await route.fetch(); await homeHeld; await route.fulfill({response});
+  }, {times: 1});
+  let firstRead = true;
+  await page.route("**/api/sessions/*/reinforcement", async route => {
+    if (!firstRead) { await route.continue(); return; }
+    firstRead = false;
+    const response = await route.fetch(); initialCaptured(); await initialHeld;
+    await route.fulfill({response}); initialDelivered();
+  });
+  try {
+    await page.getByRole("button", {name: "继续确认保存", exact: true}).click();
+    await page.getByRole("button", {name: "继续本轮学习", exact: true}).click();
+    await captured;
+    const latest = page.waitForResponse(response => response.url().endsWith("/reinforcement"), {timeout: 5000});
+    releaseHome();
+    expect((await latest).status()).toBe(200);
+    await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toBeVisible({timeout: 5000});
+    releaseInitial();
+    await delivered;
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toBeVisible();
+    expect((await (await app.request.get(`/api/cards/${id}`)).json()).learning_events).toHaveLength(2);
+  } finally { releaseHome(); releaseInitial(); }
 });
