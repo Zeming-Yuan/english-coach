@@ -121,18 +121,16 @@ def test_get_card_detail_with_reviews(ec):
 
     config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
     config.set_main_option("sqlalchemy.url", ec.database_url)
+    card_id = ec.seed_card(word="world", meaning="世界")
     command.downgrade(config, "ec12_card_identity")
     db_session = ec.SessionLocal()
     client = ec.client
-    card = Card(word="world", meaning="世界", kind="word")
-    db_session.add(card)
-    db_session.flush()
 
     # 模拟两次复习
     now = datetime.now(UTC).replace(tzinfo=None)
     db_session.add(
         Review(
-            card_id=card.id,
+            card_id=card_id,
             state=1,
             due=now + timedelta(days=1),
             stability=2.5,
@@ -144,7 +142,7 @@ def test_get_card_detail_with_reviews(ec):
     )
     db_session.add(
         Review(
-            card_id=card.id,
+            card_id=card_id,
             state=2,
             due=now + timedelta(days=7),
             stability=5.0,
@@ -156,7 +154,6 @@ def test_get_card_detail_with_reviews(ec):
     )
     db_session.commit()
 
-    card_id = card.id
     db_session.close()
     command.upgrade(config, "head")
     resp = client.get(f"/api/cards/{card_id}")

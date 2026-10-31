@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.models.card import Card
 from app.models.review import Review
+from app.services.content_revisions import get_content_revision
 from app.services.llm import generate_json
 
 
@@ -105,6 +106,7 @@ def upgrade_sentence_card(card_id: int) -> None:
         if existing is not None and (existing.chunks or existing.difficulty == "reading"):
             return  # 已有 AI 句卡，无需升级
 
+        revision = get_content_revision(db, "card", card.id)
         snapshot = (
             card.word,
             card.kind,
@@ -115,6 +117,7 @@ def upgrade_sentence_card(card_id: int) -> None:
         data = _generate_ai_sentence(card.word)
 
         # AI 期间卡片可能被编辑、删除或随恢复被替换：过期结果直接丢弃。
+        # 修订身份/版本同时变化时，旧后台结果不能写入恢复后的实体。
         db.refresh(card)
         if (
             card.word,
@@ -122,7 +125,7 @@ def upgrade_sentence_card(card_id: int) -> None:
             card.created_at,
             card.example,
             card.example_cn,
-        ) != snapshot:
+        ) != snapshot or get_content_revision(db, "card", card.id) != revision:
             return
         existing = find_sentence_card(db, card.word)
         if existing is not None:
@@ -142,9 +145,15 @@ def upgrade_sentence_card(card_id: int) -> None:
             ]
             if existing is not None:
                 # 升级轮廓句卡（保留原 id，前端已引用）
-                existing.example = example
-                existing.example_cn = data.get("example_cn", existing.example_cn)
-                existing.meaning = data.get("example_cn", existing.meaning)
+                changes = {
+                    "example": example,
+                    "example_cn": data.get("example_cn", existing.example_cn),
+                    "meaning": data.get("example_cn", existing.meaning),
+                }
+                advance_content_revision(db, "card", existing.id, changes)
+                existing.example = changes["example"]
+                existing.example_cn = changes["example_cn"]
+                existing.meaning = changes["meaning"]
                 existing.chunks = chunks or None
                 existing.difficulty = "reading"
             else:

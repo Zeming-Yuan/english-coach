@@ -64,3 +64,15 @@ def load_fixture(engine: Engine, payload: dict[str, Any]) -> None:
             table = Base.metadata.tables[name]
             for row in tables.get(name) or []:
                 conn.execute(table.insert().values(**_convert_row(table, row)))
+    # Core inserts bypass ORM listeners; give every fixture entity a current
+    # identity without manufacturing learning events. Fixtures may also prepare
+    # a pre-EL-01 schema, whose upgrade backfills identities instead.
+    from sqlalchemy import inspect
+    from sqlalchemy.orm import Session
+
+    from app.services.content_revisions import ensure_content_revisions
+
+    if inspect(engine).has_table("content_revisions"):
+        with Session(engine) as session:
+            ensure_content_revisions(session)
+            session.commit()

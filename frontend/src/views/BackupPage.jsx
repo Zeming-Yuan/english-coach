@@ -171,15 +171,21 @@ export default function BackupPage({ onBack, onRestored, restoring, onRestoringC
           <div style={{ marginTop: 14, padding: 12, background: "var(--card, #f5f7f6)", borderRadius: 10 }}>
             <p style={{ margin: 0, fontWeight: 700 }}>{full ? "全量恢复" : "旧版部分恢复"}</p>
             {full ? <>
-              <p style={{ fontSize: 13, margin: "6px 0" }}>现有数据库学习内容将被备份替换。</p>
+              <p style={{ fontSize: 13, margin: "6px 0" }}>备份格式：V{candidate.preview.version ?? 2}。现有数据库学习内容将被备份替换。</p>
               <p style={{ fontSize: 13 }}>备份包含 {candidate.preview.counts.cards} 张卡、{candidate.preview.counts.learning_events} 条学习事件；将替换现有 {candidate.preview.impact.replaced.cards} 张卡、{candidate.preview.impact.replaced.learning_events} 条学习事件。</p>
+              {candidate.preview.extensions?.missing?.length > 0 && (
+                <p role="alert" style={{ fontSize: 13 }}>
+                  此备份缺少内容修订：确认后将清空现有修订，并为恢复的词卡、课程和故事重新生成身份；旧修订不再适用。
+                </p>
+              )}
               <dl style={{ fontSize: 12 }}>
-                {Object.entries(candidate.preview.counts).map(([name, count]) => <div key={name}><dt style={{ display: "inline" }}>{({cards: "词卡", reviews: "当前记忆状态", learning_events: "学习事件", review_baselines: "迁移基线", memos: "记忆法", errors: "错词", hard_cards: "困难词", lessons: "课程", stories: "故事", story_words: "故事关联"})[name]}</dt><dd style={{ display: "inline", marginLeft: 8 }}>恢复 {count} 项，替换现有 {candidate.preview.impact.replaced[name]} 项</dd></div>)}
+                {Object.entries(candidate.preview.counts).map(([name, count]) => <div key={name}><dt style={{ display: "inline" }}>{({cards: "词卡", reviews: "当前记忆状态", learning_events: "学习事件", review_baselines: "迁移基线", memos: "记忆法", errors: "错词", hard_cards: "困难词", lessons: "课程", stories: "故事", story_words: "故事关联", content_revisions: "内容修订"})[name] || name}</dt><dd style={{ display: "inline", marginLeft: 8 }}>恢复 {count} 项，替换现有 {candidate.preview.impact.replaced[name]} 项</dd></div>)}
               </dl>
               {candidate.preview.counts.cards === 0 && <p role="alert">这是空备份：确认后全部学习内容将替换为 0 项。</p>}
             </> : <p style={{ fontSize: 13, margin: "6px 0" }}>
-              将新增 {candidate.preview.impact.new_cards} 张卡，匹配已有 {candidate.preview.impact.matched_cards} 张；
+              备份格式：V{candidate.preview.version ?? 1}。将新增 {candidate.preview.impact.new_cards} 张卡，匹配已有 {candidate.preview.impact.matched_cards} 张；
               复习 {candidate.preview.impact.reviews} 条、记忆法 {candidate.preview.impact.memos} 条、错词 {candidate.preview.impact.errors} 条。
+              旧版备份不包含内容修订；新增卡会建立新身份，未包含的内容不会被清空。
             </p>}
             <p style={{ fontSize: 12, color: "var(--muted)" }}>
               {full ? "备份未包含的现有学习内容将被删除。" : "未包含的内容不会被清空。"}执行前会自动保存当前数据库的完整备份。

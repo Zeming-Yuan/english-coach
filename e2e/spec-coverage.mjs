@@ -24,6 +24,13 @@ export const requirements = {
   T19: ["EC-14 main low rating and explicit skip both become reinforcement", "EC-14 three question lifetime cap survives refresh without refilling", "EC-14 no weak items reads summary and a summary failure remains retryable", "EC-14 assisted reinforcement stays weak without another schedule"],
   T20: ["EC-16 TTS retries the same word after provider recovery", "EC-16 a newer replay owns its playback deadline", "EC-16 speech prewarming cannot block detail or saving", "EC-16 TTS uses controlled external adapter", "EC-16 TTS provider timeout preserves saved learning", "EC-16 TTS provider error preserves saved learning", "EC-01 external-missing", "EC-01 external-timeout", "EC-01 external-unavailable", "EC-04 ai-upgrade-failure-does-not-block", "EC-06 tts-failure-options-usable", "EC-13 load error is distinct from empty library and offers retry"],
   T21: ["EC-13 small library completes with keyboard and keeps specialist practice", "EC-16 complete install learn restore journey"],
+  EL01: [
+    "EL-01 visible revision panel tracks semantic edits",
+    "EL-01 v3 roundtrip preserves revision and keeps working",
+    "EL-01 v2 preview announces missing revisions and regenerates identity",
+    "EL-01 unknown v3 feature is rejected without touching data",
+    "EL-01 lost edit response replays without double revision",
+  ],
 };
 export const projects = ["mobile", "desktop"];
 

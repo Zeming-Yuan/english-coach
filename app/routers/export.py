@@ -1,4 +1,4 @@
-"""导出/导入路由：V2 完整备份 + 旧版卡片 JSON（非完整）+ Anki CSV + 恢复导入。"""
+"""导出/导入路由：V3 完整备份 + 旧版卡片 JSON（非完整）+ Anki CSV + 恢复导入。"""
 
 import csv
 import io
@@ -91,7 +91,7 @@ def export_backup_endpoint(
     db: Session = Depends(get_db),
     runtime: Runtime = Depends(get_runtime),
 ):
-    """完整 V2 备份：版本、导出时间、学习时区与全部学习内容及关联。"""
+    """完整 V3 备份：版本、导出时间、学习时区、扩展登记与全部学习内容。"""
     payload = export_backup(db, runtime)
     raw = json.dumps(payload, ensure_ascii=False, indent=1).encode("utf-8")
     return StreamingResponse(

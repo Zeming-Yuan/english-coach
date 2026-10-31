@@ -505,6 +505,18 @@ function WordDetail({ cardId, onBack, allCards, setDetail }) {
         <div className="status-item"><span className="status-label">下次复习</span><span className="status-value">{c.next_due ? new Date(c.next_due).toLocaleDateString() : "-"}</span></div>
       </div>
 
+      {/* 内容修订：词形/释义等实质变化才增加版本 */}
+      <div className="word-detail-status" data-testid="revision-panel">
+        <div className="status-item">
+          <span className="status-label">内容修订</span>
+          <span className="status-value">第 {c.content_revision?.version ?? 1} 版</span>
+        </div>
+        <div className="status-item">
+          <span className="status-label">修订身份</span>
+          <span className="status-value">{c.content_revision?.identity?.slice(0, 8) || "-"}</span>
+        </div>
+      </div>
+
       {/* 自测按钮（句子卡不适合拼写测试，隐藏） */}
       {c.kind !== "sentence" && (
         <button className="btn btn-primary btn-wide" style={{ marginTop: 12 }} onClick={() => {

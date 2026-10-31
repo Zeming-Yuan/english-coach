@@ -24,6 +24,7 @@ from app.db import get_db
 from app.main import create_app
 from app.models.card import Card
 from app.runtime import Runtime
+from app.services.content_revisions import ensure_content_revisions
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_NOW = "2026-10-30T12:00:00+00:00"
@@ -152,6 +153,8 @@ class ECEnv:
         try:
             card = Card(word=word, kind=kind, **payload)
             db.add(card)
+            db.commit()
+            ensure_content_revisions(db)
             db.commit()
             db.refresh(card)
             return card.id

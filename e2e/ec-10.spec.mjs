@@ -13,7 +13,8 @@ test("EC-10 download-complete-backup", async ({app, page}) => {
   await page.getByRole("button", {name: "下载完整备份", exact: true}).click();
   const download = await downloadPromise;
   const data = JSON.parse(await readFile(await download.path(), "utf8"));
-  expect(data.version).toBe(2);
+  expect(data.version).toBe(3);
+  expect(data.extensions.content_revisions).toHaveLength(2);
   expect(data.cards).toHaveLength(2);
 });
 

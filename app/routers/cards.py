@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models.card import Card
+from app.models.content_revision import ContentRevision
 from app.models.error_card import ErrorCard
 from app.models.hard_card import HardCard
 from app.models.memo import Memo
@@ -15,6 +16,10 @@ from app.models.review_baseline import ReviewBaseline
 from app.models.review_event import ReviewEvent
 from app.services.card_generator import generate_cards, regenerate_example
 from app.services.card_payload import card_payload
+from app.services.content_revisions import (
+    advance_content_revision,
+    get_content_revision,
+)
 from app.services.graduation import card_is_graduated
 from app.services.learning import (
     get_card_events,
@@ -25,6 +30,7 @@ from app.services.learning import (
 )
 from app.services.llm_client import LLMNotConfigured
 from app.services.starter_cards import load_starter_cards, starter_card_rows
+from app.services.write_transaction import run_write
 
 router = APIRouter()
 
@@ -38,6 +44,7 @@ class GenerateCardsIn(BaseModel):
 class UpdateCardIn(BaseModel):
     """词卡编辑请求体：字段可部分更新。"""
 
+    word: str | None = Field(default=None, min_length=1, max_length=50)
     meaning: str | None = Field(default=None, max_length=500)
     phonetic: str | None = Field(default=None, max_length=50)
     example: str | None = Field(default=None, max_length=500)
@@ -67,15 +74,21 @@ def toggle_hard(card_id: int, db: Session = Depends(get_db)):
 
 @router.put("/cards/{card_id}")
 def update_card(card_id: int, payload: UpdateCardIn, db: Session = Depends(get_db)):
-    """编辑词卡（用户纠正 AI 生成错误）。"""
-    card = db.get(Card, card_id)
-    if card is None:
-        raise HTTPException(status_code=404, detail="Card not found")
+    """编辑词卡（用户纠正 AI 生成错误）；内容与修订同一事务提交。"""
     data = payload.model_dump(exclude_none=True)
-    for field, value in data.items():
-        setattr(card, field, value)
-    db.commit()
-    return card_to_dict(card, db)
+
+    def operation(session: Session) -> dict:
+        card = session.get(Card, card_id)
+        if card is None:
+            raise HTTPException(status_code=404, detail="Card not found")
+        # 必须在赋值前读取旧内容，才能判断这次编辑是否实质变化。
+        advance_content_revision(session, "card", card_id, data)
+        for field, value in data.items():
+            setattr(card, field, value)
+        session.flush()
+        return card_to_dict(card, session)
+
+    return run_write(db, operation)
 
 
 @router.delete("/cards/{card_id}")
@@ -90,6 +103,12 @@ def delete_card(card_id: int, db: Session = Depends(get_db)):
     db.execute(ReviewEvent.__table__.delete().where(ReviewEvent.card_id == card_id))
     db.execute(
         ReviewBaseline.__table__.delete().where(ReviewBaseline.card_id == card_id)
+    )
+    db.execute(
+        ContentRevision.__table__.delete().where(
+            ContentRevision.resource_kind == "card",
+            ContentRevision.resource_id == card_id,
+        )
     )
     db.execute(Memo.__table__.delete().where(Memo.card_id == card_id))
     db.execute(ErrorCard.__table__.delete().where(ErrorCard.card_id == card_id))
@@ -113,7 +132,10 @@ def card_to_dict(card: Card, db: Session) -> dict:
         .scalars()
         .first()
     )
-    return card_payload(card, review=review, error=error, hard=hard is not None)
+    return {
+        **card_payload(card, review=review, error=error, hard=hard is not None),
+        "content_revision": get_content_revision(db, "card", card.id),
+    }
 
 
 def _card_to_dict_fast(
@@ -170,6 +192,9 @@ def regenerate_card_example(card_id: int, db: Session = Depends(get_db)):
     except (ValueError, TypeError) as e:
         raise HTTPException(status_code=502, detail=str(e))
     if example:
+        advance_content_revision(
+            db, "card", card.id, {"example": example, "example_cn": example_cn}
+        )
         card.example = example
         card.example_cn = example_cn
         card.explanation = explanation
@@ -250,6 +275,12 @@ def refresh_examples(limit: int = 10, db: Session = Depends(get_db)):
         try:
             example, example_cn, explanation = regenerate_example(card.word)
             if example:
+                advance_content_revision(
+                    db,
+                    "card",
+                    card.id,
+                    {"example": example, "example_cn": example_cn},
+                )
                 card.example = example
                 card.example_cn = example_cn
                 card.explanation = explanation
@@ -265,6 +296,12 @@ def refresh_examples(limit: int = 10, db: Session = Depends(get_db)):
                     .first()
                 )
                 if sentence_card:
+                    advance_content_revision(
+                        db,
+                        "card",
+                        sentence_card.id,
+                        {"example": example, "example_cn": example_cn},
+                    )
                     sentence_card.example = example
                     sentence_card.example_cn = example_cn
         except LLMNotConfigured:
@@ -393,4 +430,5 @@ def get_card_detail(card_id: int, db: Session = Depends(get_db)):
         ),
         "learning_events": get_card_events(db, card_id),
         "history_incomplete": has_incomplete_history(db, card_id),
+        "content_revision": get_content_revision(db, "card", card_id),
     }
