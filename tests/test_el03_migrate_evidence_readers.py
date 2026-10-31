@@ -69,11 +69,16 @@ def test_el03_all_readers_share_verified_evidence(ec):
     today = ec.client.get("/api/today").json()
     assert today["evidence_counts"]["verified"] == 1
     assert today["evidence_samples"] == 2
+    assert today["evidence_labels"]["verified"] == "独立回忆已有证据"
 
     stats = ec.client.get("/api/stats").json()
     assert stats["evidence_counts"]["verified"] == 1
     assert stats["evidence_samples"] == 2
+    assert stats["evidence_labels"]["verified"] == "独立回忆已有证据"
     assert stats["evidence_latest_at"].startswith("2026-10-02")
+    detail = ec.client.get(f"/api/cards/{card_id}").json()
+    assert detail["learning_evidence"]["recall"]["label"] == "独立回忆已有证据"
+    assert detail["learning_evidence"]["retention"]["label"] == "独立证据不足"
 
 
 def test_el03_all_readers_share_weak_label(ec):
@@ -120,6 +125,28 @@ def test_el03_edit_and_old_events_stay_conservative(ec):
     finally:
         db.close()
     assert _list_row(ec, card_id)["progress_label"] == "历史依据不完整"
+    stats = ec.client.get("/api/stats").json()
+    assert stats["evidence_counts"]["history_incomplete"] == 1
+    detail = ec.client.get(f"/api/cards/{card_id}").json()
+    assert detail["learning_evidence"]["recall"]["status"] == "history_incomplete"
+
+
+def test_el03_unlock_and_evidence_are_separate_dimensions(ec):
+    card_id = ec.seed_card()
+    _two_days(ec, card_id)
+    for rating in (4, 4, 4):
+        assert (
+            ec.client.post(
+                "/api/reviews",
+                json={"card_id": card_id, "rating": rating, "source": "study"},
+            ).status_code
+            == 200
+        )
+    detail = ec.client.get(f"/api/cards/{card_id}").json()
+    assert detail["graduated"] is True
+    assert detail["learning_evidence"]["recall"]["status"] == "verified"
+    # 自评不增加独立样本。
+    assert detail["learning_evidence"]["recall"]["count"] == 2
 
 
 def test_el03_reading_is_not_learning(ec):
@@ -136,6 +163,9 @@ def test_el03_sentence_cards_do_not_skew_word_counts(ec):
     ec.seed_card(word="apple", kind="sentence")
     rows = ec.client.get("/api/cards").json()["cards"]
     assert len(rows) == 2
-    assert all("progress_label" in row for row in rows)
+    word = next(row for row in rows if row["kind"] == "word")
+    sentence = next(row for row in rows if row["kind"] == "sentence")
+    assert word["progress_label"] == "独立证据不足"
+    assert "progress_label" not in sentence
     stats = ec.client.get("/api/stats").json()
     assert stats["evidence_counts"]["insufficient"] == 1

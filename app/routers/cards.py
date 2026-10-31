@@ -29,7 +29,7 @@ from app.services.learning import (
     has_incomplete_history,
     select_current_review,
 )
-from app.services.learning_evidence import evidence_summaries, evidence_summary
+from app.services.learning_evidence import bulk_evidence_summaries, evidence_summary
 from app.services.llm_client import LLMNotConfigured
 from app.services.starter_cards import load_starter_cards, starter_card_rows
 from app.services.write_transaction import run_write
@@ -246,7 +246,10 @@ def list_cards(
     }
     error_map = {e.card_id: e for e in errors}
     hard_set = {h.card_id for h in hards}
-    evidence_map = evidence_summaries(db, card_ids, runtime)
+    # 句子卡没有独立 typed 回忆，不应为它们扫描/分发无意义证据。
+    evidence_map = bulk_evidence_summaries(
+        db, [c.id for c in cards if c.kind == "word"], runtime
+    )
 
     return {
         "cards": [

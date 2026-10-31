@@ -99,6 +99,7 @@ def _samples_from_events(events, revision: dict):
 def _dimension(status: str, count: int, last_verified_at: str | None) -> dict:
     return {
         "status": status,
+        "label": evidence_label(status),
         "count": count,
         "last_verified_at": last_verified_at,
     }
@@ -174,7 +175,7 @@ def evidence_summary(
     )
 
 
-def evidence_summaries(
+def bulk_evidence_summaries(
     db: Session, card_ids, runtime: Runtime
 ) -> dict[int, dict]:
     """批量证据摘要：词表/首页/统计共用一次事件与历史读取。"""
@@ -244,6 +245,7 @@ def evidence_overview(summaries: dict[int, dict]) -> dict:
             latest = recall["last_verified_at"]
     return {
         "counts": counts,
+        "labels": {status: evidence_label(status) for status in EVIDENCE_STATUSES},
         "samples": samples,
         "latest_at": latest,
     }
@@ -251,15 +253,15 @@ def evidence_overview(summaries: dict[int, dict]) -> dict:
 
 def word_evidence_overview(db: Session, runtime: Runtime) -> dict:
     word_ids = list(db.scalars(select(Card.id).where(Card.kind == "word")))
-    return evidence_overview(evidence_summaries(db, word_ids, runtime))
+    return evidence_overview(bulk_evidence_summaries(db, word_ids, runtime))
 
 
 __all__ = [
     "EVIDENCE_STATUSES",
     "RULE_VERSION",
+    "bulk_evidence_summaries",
     "evidence_label",
     "evidence_overview",
-    "evidence_summaries",
     "evidence_summary",
     "recall_status",
     "word_evidence_overview",

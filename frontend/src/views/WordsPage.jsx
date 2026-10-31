@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { api } from "../lib/api.js";
 import { speak, prewarmTts } from "../lib/tts.js";
 import { escapeHtml } from "../lib/utils.js";
@@ -20,13 +20,17 @@ export default function WordsPage({ onBack }) {
   const [peekPos, setPeekPos] = useState({ x: 0, y: 0 });
   const [tab, setTab] = useState("words"); // words | sentences
 
-  useEffect(() => {
-    api("/api/cards").then((d) => {
+  const loadCards = useCallback(() => {
+    return api("/api/cards").then((d) => {
       setAllCards(d.cards);
       prewarmTts(d.cards.map((c) => c.kind === "sentence" ? (c.example || c.word) : c.word));
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    loadCards();
+  }, [loadCards]);
 
   // 数据加载时就预分成两组并按字母排序，切换 tab 只是引用不同的数组
   const { wordsCards, sentenceCards } = useMemo(() => {
@@ -75,7 +79,7 @@ export default function WordsPage({ onBack }) {
 
   // 详情页
   if (detail) {
-    return <WordDetail key={detail} cardId={detail} onBack={() => setDetail(null)} allCards={filtered} setDetail={setDetail} />;
+    return <WordDetail key={detail} cardId={detail} onBack={() => setDetail(null)} allCards={filtered} setDetail={setDetail} onCardChanged={loadCards} />;
   }
 
   // 点击关闭快速查阅
@@ -247,7 +251,7 @@ function LearningEventRow({ event }) {
 }
 
 /* ============ 单词详情子组件 ============ */
-function WordDetail({ cardId, onBack, allCards, setDetail }) {
+function WordDetail({ cardId, onBack, allCards, setDetail, onCardChanged }) {
   const [c, setCard] = useState(null);
   const [loading, setLoading] = useState(true);
   const attempt = useLearningAttempt("card_detail:" + cardId);
@@ -308,6 +312,12 @@ function WordDetail({ cardId, onBack, allCards, setDetail }) {
 
   const [pendingExample, setPendingExample] = useState(null);
 
+  const refreshDetail = async () => {
+    try {
+      setCard(await api(`/api/cards/${c.id}`));
+    } catch {}
+  };
+
   const regenerate = async () => {
     try {
       // 保存旧例句用于对比
@@ -315,11 +325,12 @@ function WordDetail({ cardId, onBack, allCards, setDetail }) {
       const oldExampleCn = c.example_cn;
       const oldExplanation = c.explanation;
       const updated = await api(`/api/cards/${c.id}/regenerate`, { method: "POST" });
+      onCardChanged?.();
       // 如果新例句和旧的不同，显示对比让用户选择
       if (updated.example && updated.example !== oldExample) {
         setPendingExample({ old: { example: oldExample, example_cn: oldExampleCn, explanation: oldExplanation }, new: updated });
       } else {
-        setCard(updated);
+        await refreshDetail();
       }
     } catch (e) {
       showToast("换例句失败：" + e.message, "重试", regenerate);
@@ -330,8 +341,9 @@ function WordDetail({ cardId, onBack, allCards, setDetail }) {
     const v = prompt("编辑释义：", c.meaning || "");
     if (v === null) return;
     try {
-      const updated = await api(`/api/cards/${c.id}`, { method: "PUT", body: JSON.stringify({ meaning: v.trim() }) });
-      setCard(updated);
+      await api(`/api/cards/${c.id}`, { method: "PUT", body: JSON.stringify({ meaning: v.trim() }) });
+      await refreshDetail();
+      onCardChanged?.();
     } catch {}
   };
 
@@ -417,10 +429,11 @@ function WordDetail({ cardId, onBack, allCards, setDetail }) {
                 // 保留旧的：把新例句写回去（但用户选旧的，所以不更新）
                 setPendingExample(null);
               }}>保留旧的</button>
-              <button className="btn btn-primary btn-small" onClick={() => {
-                // 用新的：更新卡片
-                setCard({ ...c, example: pendingExample.new.example, example_cn: pendingExample.new.example_cn, explanation: pendingExample.new.explanation || c.explanation });
+              <button className="btn btn-primary btn-small" onClick={async () => {
+                // 用新的：例句已在后端保存，重新读取证据/修订
                 setPendingExample(null);
+                await refreshDetail();
+                onCardChanged?.();
                 showToast("✅ 已换新例句");
               }}>用新的</button>
             </div>

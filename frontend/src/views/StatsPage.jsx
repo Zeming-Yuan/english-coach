@@ -14,6 +14,7 @@ export default function StatsPage({ onBack }) {
   const [loading, setLoading] = useState(true);
   const canvasRef = useRef(null);
   const [tooltip, setTooltip] = useState(null);
+  const [exportSummary, setExportSummary] = useState(null);
 
   const showTooltip = useCallback((e, date, reviews) => {
     setTooltip({ x: e.clientX + 12, y: e.clientY + 14, text: `${date} · ${reviews} 次作答` });
@@ -67,11 +68,30 @@ export default function StatsPage({ onBack }) {
     e.target.value = "";
   };
 
-  // 成绩单
-  const openReport = () => {
+  // 成绩单：重新读取导出时统计，不画按次数换算的掌握百分比
+  const openReport = async () => {
     if (!stats) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
+    let fresh = stats;
+    try {
+      fresh = await api("/api/stats");
+      setStats(fresh);
+    } catch {}
+    const counts = fresh.evidence_counts || {};
+    const labels = fresh.evidence_labels || {};
+    const summary = [
+      `${labels.verified || "独立回忆已有证据"} ${counts.verified || 0}`,
+      `${labels.weak || "仍需巩固"} ${counts.weak || 0}`,
+      `${labels.stale || "历史证据，待复测"} ${counts.stale || 0}`,
+      `${labels.history_incomplete || "历史依据不完整"} ${counts.history_incomplete || 0}`,
+      `${labels.insufficient || "独立证据不足"} ${counts.insufficient || 0}`,
+    ].join(" · ");
+    setExportSummary(summary);
+
+    const latest = fresh.evidence_latest_at
+      ? new Date(fresh.evidence_latest_at).toLocaleDateString()
+      : "暂无";
     const ctx = canvas.getContext("2d");
     ctx.fillStyle = "#F7FBFA";
     ctx.fillRect(0, 0, 340, 420);
@@ -87,9 +107,9 @@ export default function StatsPage({ onBack }) {
     ctx.textAlign = "left";
     ctx.fillStyle = "#1E2A32";
     ctx.font = "900 30px sans-serif";
-    ctx.fillText(String(stats.total_cards), 46, 150);
-    ctx.fillText(String(stats.graduated), 46, 280);
-    ctx.fillText(String(stats.streak), 46, 410);
+    ctx.fillText(String(fresh.total_cards), 46, 150);
+    ctx.fillText(String(fresh.graduated), 46, 280);
+    ctx.fillText(String(fresh.streak), 46, 410);
     ctx.font = "700 13px sans-serif";
     ctx.fillStyle = "#7A8B94";
     ctx.fillText("累计词汇", 96, 144);
@@ -98,13 +118,20 @@ export default function StatsPage({ onBack }) {
     ctx.textAlign = "center";
     ctx.font = "700 11px sans-serif";
     ctx.fillStyle = "#7A8B94";
-    const latest = stats.evidence_latest_at
-      ? new Date(stats.evidence_latest_at).toLocaleDateString()
-      : "暂无";
     ctx.fillText(
-      `独立证据 ${stats.evidence_samples || 0} 个样本 · 最近 ${latest}`,
+      `${labels.verified || "独立回忆已有证据"} ${counts.verified || 0} · ${labels.weak || "仍需巩固"} ${counts.weak || 0}`,
       170,
-      352,
+      344,
+    );
+    ctx.fillText(
+      `${labels.stale || "历史证据，待复测"} ${counts.stale || 0} · ${labels.insufficient || "独立证据不足"} ${counts.insufficient || 0}`,
+      170,
+      360,
+    );
+    ctx.fillText(
+      `${labels.history_incomplete || "历史依据不完整"} ${counts.history_incomplete || 0} · 样本 ${fresh.evidence_samples || 0} · 最近 ${latest}`,
+      170,
+      376,
     );
     ctx.strokeStyle = "#D9E2E6";
     ctx.beginPath();
@@ -216,13 +243,18 @@ export default function StatsPage({ onBack }) {
       <div data-testid="evidence-overview" style={{ marginTop: 12 }}>
         <h3 className="lesson-section">学习证据</h3>
         <p style={{ fontSize: 13 }}>
-          独立回忆已有证据 {stats.evidence_counts?.verified || 0} 张 ·
-          仍需巩固 {stats.evidence_counts?.weak || 0} 张 ·
-          历史证据待复测 {stats.evidence_counts?.stale || 0} 张 ·
-          独立证据不足 {stats.evidence_counts?.insufficient || 0} 张
+          {stats.evidence_labels?.verified || "独立回忆已有证据"}{" "}
+          {stats.evidence_counts?.verified || 0} 张 ·{" "}
+          {stats.evidence_labels?.weak || "仍需巩固"}{" "}
+          {stats.evidence_counts?.weak || 0} 张 ·{" "}
+          {stats.evidence_labels?.stale || "历史证据，待复测"}{" "}
+          {stats.evidence_counts?.stale || 0} 张 ·{" "}
+          {stats.evidence_labels?.insufficient || "独立证据不足"}{" "}
+          {stats.evidence_counts?.insufficient || 0} 张
         </p>
         <p style={{ fontSize: 12, color: "var(--muted)" }}>
-          历史依据不完整 {stats.evidence_counts?.history_incomplete || 0} 张 ·
+          {stats.evidence_labels?.history_incomplete || "历史依据不完整"}{" "}
+          {stats.evidence_counts?.history_incomplete || 0} 张 ·
           独立样本 {stats.evidence_samples || 0} 次 ·
           最近证据{" "}
           {stats.evidence_latest_at
@@ -283,6 +315,11 @@ export default function StatsPage({ onBack }) {
         <button className="btn btn-ghost btn-small" onClick={() => importRef.current?.click()}>📥 恢复词库</button>
         <input ref={importRef} type="file" accept=".json" hidden onChange={handleImport} />
       </div>
+      {exportSummary && (
+        <p role="status" data-testid="export-summary" style={{ fontSize: 12, color: "var(--muted)" }}>
+          成绩单已按导出时证据生成：{exportSummary}
+        </p>
+      )}
 
       <h3 className="lesson-section">最近 1 年</h3>
       {renderHeatmap()}

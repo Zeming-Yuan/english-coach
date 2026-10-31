@@ -41,6 +41,7 @@ export const requirements = {
   ],
   EL03: [
     "EL-03 visible evidence overview from today stats",
+    "EL-03 verified evidence reads the same on home, stats and list",
     "EL-03 weak evidence reads the same on home, stats and list",
     "EL-03 share report downloads with the exported state",
   ],

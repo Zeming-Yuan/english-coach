@@ -93,7 +93,7 @@ export default function SettingsPage({ darkMode, setDarkMode, onOpenBackup }) {
         </div>
         <div className="settings-row" style={{ flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
           <span className="settings-label">句子卡</span>
-          <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>为已毕业的词生成更复杂的阅读句子（15-25词，有上下文故事感）</p>
+          <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>为已解锁句子练习的词生成更复杂的阅读句子（15-25词，有上下文故事感）</p>
           <button className="btn btn-ghost btn-small" disabled={regenerating} onClick={async () => {
             setRegenerating(true);
             try {

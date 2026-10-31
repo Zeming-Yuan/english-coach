@@ -16,8 +16,8 @@ from app.services.card_payload import queue_payload
 from app.services.daily_session import build_daily_queue
 from app.services.graduation import card_is_graduated
 from app.services.learning_evidence import (
+    bulk_evidence_summaries,
     evidence_overview,
-    evidence_summaries,
     word_evidence_overview,
 )
 from app.services.statistics import (
@@ -105,30 +105,29 @@ def get_today(
         new_cards_dict = [c for c in new_cards_dict if c["id"] not in hard_ids]
         due_cards_dict = [c for c in due_cards_dict if c["id"] not in hard_ids]
     word_ids = list(db.scalars(select(Card.id).where(Card.kind == "word")))
-    summaries = evidence_summaries(db, word_ids, runtime)
+    summaries = bulk_evidence_summaries(db, word_ids, runtime)
     overview = evidence_overview(summaries)
 
-    def with_evidence(cards: list[dict]) -> list[dict]:
+    def with_progress_label(cards: list[dict]) -> list[dict]:
+        # 首页只需统一标签；完整证据载荷留在词表/详情，避免队列膨胀。
         for card in cards:
-            summary = summaries.get(card["id"])
-            if summary is not None:
-                card["progress_label"] = summary["progress_label"]
-                card["learning_evidence"] = summary
+            card["progress_label"] = summaries[card["id"]]["progress_label"]
         return cards
 
     queue = build_daily_queue(db, adaptive_limit, runtime, due_limit)
-    with_evidence(queue["queue"])
+    with_progress_label(queue["queue"])
     return {
         **queue,
-        "error_cards": with_evidence(
+        "error_cards": with_progress_label(
             [queue_payload(c) for c in list(error_first) + list(hard_first)]
         ),
-        "new_cards": with_evidence(new_cards_dict),
-        "due_cards": with_evidence(due_cards_dict),
+        "new_cards": with_progress_label(new_cards_dict),
+        "due_cards": with_progress_label(due_cards_dict),
         "recommended_goal": adaptive_limit,  # 新词建议（只看可排期首答）
         "error_rate": round(error_rate * 100) if error_rate is not None else None,
         "sample_count": sample_count,
         "evidence_counts": overview["counts"],
+        "evidence_labels": overview["labels"],
         "evidence_samples": overview["samples"],
         "evidence_latest_at": overview["latest_at"],
     }
@@ -270,6 +269,7 @@ def get_stats(db: Session = Depends(get_db), runtime: Runtime = Depends(get_runt
         "graduated": graduated,
         "history_incomplete": history_incomplete,
         "evidence_counts": overview["counts"],
+        "evidence_labels": overview["labels"],
         "evidence_samples": overview["samples"],
         "evidence_latest_at": overview["latest_at"],
         "learning_timezone": runtime.learning_timezone,

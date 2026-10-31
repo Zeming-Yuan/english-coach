@@ -5,14 +5,6 @@ import React from "react";
  * 不按复习次数推断百分比；旧历史或样本不足时明确说明原因。
  */
 
-const STATUS_TEXT = {
-  verified: "已有独立证据",
-  insufficient: "证据不足",
-  weak: "待巩固",
-  stale: "待复测",
-  history_incomplete: "历史依据不完整",
-};
-
 const REASON_TEXT = {
   insufficient: "至少需要两个不同学习日、相隔 24 小时以上的独立首答。",
   weak: "最近一次独立首答错误，当前回忆证据待巩固。",
@@ -28,8 +20,7 @@ function dateText(value) {
 export default function LearningEvidence({ evidence }) {
   if (!evidence) return null;
   const { recall, retention, application, revision } = evidence;
-  const recallLabel =
-    evidence.progress_label || STATUS_TEXT[recall.status] || "独立证据不足";
+  const recallLabel = recall.label || evidence.progress_label || "独立证据不足";
   return (
     <div className="word-detail-status" data-testid="learning-evidence" role="status">
       <div className="status-item">
@@ -45,7 +36,7 @@ export default function LearningEvidence({ evidence }) {
       <div className="status-item">
         <span className="status-label">延迟保持 / 实际应用</span>
         <span className="status-value">
-          {STATUS_TEXT[retention.status] || "证据不足"} / {STATUS_TEXT[application.status] || "证据不足"}
+          {retention.label || "独立证据不足"} / {application.label || "独立证据不足"}
         </span>
       </div>
       <div style={{ gridColumn: "1 / -1", fontSize: 12, color: "var(--muted)" }}>

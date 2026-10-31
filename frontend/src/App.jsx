@@ -482,8 +482,15 @@ function QueueView({ setView, setStudyQueue, dailySession, onStartDaily, onResum
           </span>
           {data?.evidence_counts && (
             <span style={{ display: "block", fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
-              学习证据：已有独立回忆 {data.evidence_counts.verified || 0} 张 · 仍需巩固{" "}
-              {data.evidence_counts.weak || 0} 张 · 独立证据不足{" "}
+              {data.evidence_labels?.verified || "独立回忆已有证据"}{" "}
+              {data.evidence_counts.verified || 0} 张 ·{" "}
+              {data.evidence_labels?.weak || "仍需巩固"}{" "}
+              {data.evidence_counts.weak || 0} 张 ·{" "}
+              {data.evidence_labels?.stale || "历史证据，待复测"}{" "}
+              {data.evidence_counts.stale || 0} 张 ·{" "}
+              {data.evidence_labels?.history_incomplete || "历史依据不完整"}{" "}
+              {data.evidence_counts.history_incomplete || 0} 张 ·{" "}
+              {data.evidence_labels?.insufficient || "独立证据不足"}{" "}
               {data.evidence_counts.insufficient || 0} 张
             </span>
           )}

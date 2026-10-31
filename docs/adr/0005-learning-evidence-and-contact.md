@@ -35,10 +35,10 @@
    （实际应用）在后续票引入前固定为 `insufficient / count=0 /
    last_verified_at=null`，不偷读毕业或复习次数。
 6. **公开边界。** `GET /api/cards/{id}` 增加 `learning_evidence`：
-   `{revision, rule_version, recall, retention, application}`，每个维度
-   `{status, count, last_verified_at}`。详情同时保留真实 FSRS 到期、复习次数与
-   句子练习解锁标签（不再显示“已毕业/100% 掌握”）；删除词卡级联删除事件，证据
-   随卡消失。
+   `{revision, rule_version, progress_label, recall, retention, application}`，
+   每个维度 `{status, label, count, last_verified_at}`。详情同时保留真实 FSRS 到期、
+   复习次数与句子练习解锁标签（不再显示“已毕业/100% 掌握”）；删除词卡级联删除
+   事件，证据随卡消失。
 7. **V3 兼容。** 事件修订字段随 V3 `learning_events` 导出/校验/恢复；两个字段要么
    同时为空、要么同时有效（identity 为 UUID，version ≥1）。旧 V2/V1 恢复产生的
    事件为空值，读取时显示 `history_incomplete`，不伪造当前证据。
