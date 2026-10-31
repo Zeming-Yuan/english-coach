@@ -775,3 +775,20 @@ def test_full_restore_preserves_valid_saved_session_and_rating(
         assert original.status_code == restored.status_code == 200
         assert restored.json()["counts"] == original.json()["counts"]
         assert restored.json()["metrics"] == original.json()["metrics"]
+
+
+@pytest.mark.parametrize("card_count", [0, 2])
+def test_full_restore_success_keeps_legacy_request_count(ec, ec_factory, card_count):
+    for kind in ("word", "sentence")[:card_count]:
+        ec.seed_card("apple", kind=kind)
+    backup = ec.client.get("/api/export/backup").json()
+    target = ec_factory()
+    target.seed_card("replace-me")
+    result = _confirmed_restore(target, backup)
+    assert result.status_code == 200, result.text
+    data = result.json()
+    assert data["requests"] == card_count
+    assert data["imported_words"] == card_count
+    assert data["mode"] == "full_replace"
+    assert data["counts"]["cards"] == card_count
+    assert data["safety_backup_path"]
