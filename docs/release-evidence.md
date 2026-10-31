@@ -1,6 +1,6 @@
 # EC-16 发行证据与聚合验收
 
-状态：EC-16 实现与定向验证已完成；父规格 AC01–AC15 的最终集成验收待执行。下表是可复核的行为映射，不是全套通过声明。只有最终合并后的未过滤 E2E、完整 pytest、生产构建和安全检查均有真实输出，才可声明整体交付。
+状态：后续切片已集成，父规格 AC01–AC15 已取得最终验收证据。冻结提交 `3d1c453bc1b0b142824d3ff5c8bd3b72b52e7c9e` 的完整 pytest、未过滤双视口 E2E 和适用门禁均通过；下面保留定向历史与最终记录的区别。PR 仍须正常审阅合并，未部署。
 
 ## 命令与诊断
 
@@ -51,21 +51,21 @@
 
 | 验收条件 | 行为证据 | 聚合状态 |
 | --- | --- | --- |
-| AC01 安装/升级 | T01–03，installation/upgrade JUnit、真实旧库 UI 续学 | 待最终未过滤运行 |
-| AC02 无密钥本地闭环 | T01、T04、EC-16 入门/下载/恢复/继续评分 | 待最终未过滤运行 |
-| AC03 原子统一提交 | T05–07、T10–11，现有学习提交/识别/输入 HTTP 回归 | 待完整 pytest 与 E2E |
-| AC04 保存确认/幂等 | T05 transport/server/commit，T06 响应丢失，T07 同 UUID 并发/冲突/批次 | 待最终未过滤运行 |
-| AC05 真实统计 | T08 逐日 UI 评分 1/3/4→2/3，T09 去重，T12 上海午夜，T13 未知/样本 | 待最终未过滤运行 |
-| AC06 题型规则 | T10 来源策略一致，T11 提示/识别/跳过/离开；README 规则表 | 待完整 pytest 与 E2E |
-| AC07 完整备份往返 | T14 全实体关联/同词不同卡型；EC-16 UI 文件往返与新 ID 续学 | 待最终未过滤运行 |
-| AC08 坏文件/回滚/旧格式 | T15 36 参数，T16 三故障，T17 歧义与重复部分恢复 | 待最终未过滤运行 |
-| AC09 预览/确认/安全副本 | T14/16/21；EC-16 键盘取消不写入、确认后显示安全副本 | 待最终未过滤运行 |
-| AC10 每日主线 | T18–20；EC-16 主队列→薄弱词输入→已保存反馈→结果→跨天 | 待最终未过滤运行 |
-| AC11 两视口键盘 | T21；EC-16 使用 Tab/Enter/PageDown，焦点、横向边界和中心命中断言；保存失败可键盘重试 | 待最终未过滤运行 |
-| AC12 可信命令 | 实际结果门禁、独立迁移库/端口、外部替身；CLI 缺失/skip/blocked/中断非零测试 | 待最终完整命令 |
-| AC13 回归与构建 | 定向检查与最终生产构建；合并后完整 pytest/E2E/build/audit | 待父执行最终全套 |
-| AC14 文档一致 | README/.env.example/CONTEXT/ADR；兼容边界、题型、学习日、备份范围、旧历史限制 | 已同步；待独立审查 |
-| AC15 不提前完成 | 本表保留最终待验项；单票与历史日志不充当最终集成证明 | 整体未声明完成 |
+| AC01 安装/升级 | T01–03，installation/upgrade JUnit、真实旧库 UI 续学 | 通过：最终两视口全部分支 |
+| AC02 无密钥本地闭环 | T01、T04、EC-16 入门/下载/恢复/继续评分 | 通过：最终两视口全部分支 |
+| AC03 原子统一提交 | T05–07、T10–11，现有学习提交/识别/输入 HTTP 回归 | 通过：416 pytest 与 244 E2E |
+| AC04 保存确认/幂等 | T05 transport/server/commit，T06 响应丢失，T07 同 UUID 并发/冲突/批次 | 通过：最终两视口全部分支 |
+| AC05 真实统计 | T08 逐日 UI 评分 1/3/4→2/3，T09 去重，T12 上海午夜，T13 未知/样本 | 通过：最终两视口全部分支 |
+| AC06 题型规则 | T10 来源策略一致，T11 提示/识别/跳过/离开；README 规则表 | 通过：416 pytest 与 244 E2E |
+| AC07 完整备份往返 | T14 全实体关联/同词不同卡型；EC-16 UI 文件往返与新 ID 续学 | 通过：最终两视口全部分支 |
+| AC08 坏文件/回滚/旧格式 | T15 36 参数，T16 三故障，T17 歧义与重复部分恢复 | 通过：最终两视口全部分支 |
+| AC09 预览/确认/安全副本 | T14/16/21；EC-16 键盘取消不写入、确认后显示安全副本 | 通过：最终两视口全部分支 |
+| AC10 每日主线 | T18–20；EC-16 主队列→薄弱词输入→已保存反馈→结果→跨天 | 通过：最终两视口全部分支 |
+| AC11 两视口键盘 | T21；EC-16 使用 Tab/Enter/PageDown，焦点、横向边界和中心命中断言；保存失败可键盘重试 | 通过：最终两视口全部分支 |
+| AC12 可信命令 | 实际结果门禁、独立迁移库/端口、外部替身；CLI 缺失/skip/blocked/中断非零测试 | 通过：未过滤命令 exit 0 |
+| AC13 回归与构建 | 定向检查与最终生产构建；合并后完整 pytest/E2E/build/audit | 通过：最终全套与构建 |
+| AC14 文档一致 | README/.env.example/CONTEXT/ADR；兼容边界、题型、学习日、备份范围、旧历史限制 | 已同步；固定差异双轴审查无重要未处理项 |
+| AC15 不提前完成 | 分别记录定向历史与最终测试身份；单票与历史日志不充当最终集成证明 | 全部验收证据已取得；未合并或部署 |
 
 ## 定向验证记录
 
@@ -91,13 +91,40 @@
 
 早期 RED/重跑日志位于实施会话的 `/tmp/english-coach-followup-2026-10-31/ec16-*.log`，每份包含完整命令、输出与 EXIT_CODE；文件名含 green 不等于成功，以实际退出码为准。错误的测试预期（毕业新增句卡、HTTP 指标字段位置、TTS preload 的 200/cached=false 语义）单独记录为测试修正，不声称产品 RED→GREEN。有效循环包括覆盖门禁、JUnit 参数门禁、真实旧版不安全 POST、TTS 外部适配成功/故障及旧 GET 隐式写入保护。TTS 另有真实外部故障后同词重试、旧播放调用不能取消新重播、慢预热未完成仍可详情评分的公共 UI RED→GREEN；T20 明确要求三条分支。重播用例在外部适配处控制音频释放，避免将浏览器 request 事件误当提供方已经开始；成功仍须真实媒体 ended。初期固定延迟用例的组合失败和撤回的 seek 原因假设保留在日志中，不算 GREEN，也不证明 EC14 历史停滞具有同根因。
 
-## 最终集成门禁（父任务合并后填写）
+## 最终集成门禁（2026-10-31 实际结果）
 
-- 未过滤 `npm --prefix frontend run test:e2e`：待执行，须有 T01–T21 两项目分支摘要。
-- `python -m pytest -q`：待执行。
-- `npm --prefix frontend run build`：待最终集成复核。
-- 受影响 Python Ruff 与 `npm --prefix frontend audit --json`：待最终集成复核。
-- 独立 Standards / Spec 固定差异审查：待父任务执行。
+| 命令 / 检查 | 实际结果 |
+| --- | --- |
+| `python -m pytest -q` | 416 passed，190.85 秒，exit 0 |
+| 未过滤 `npm --prefix frontend run test:e2e` | 244 passed，28.3 分钟，exit 0；mobile/desktop 各 122；无跳过、预期失败或重试 |
+| T01–T21 实际结果门禁 | 两项目全部必需分支通过；正式 `coverage.txt` 已逐场景记录 |
+| 六组补充 JUnit | 两项目各 49 个参数用例；12 份 XML 共 98 项，无 failure/error/skipped；它们是 HTTP/安装补充，不是额外浏览器用例 |
+| `npm --prefix frontend ci` / `npm --prefix frontend run build` | exit 0；根目录按锁安装 Vite 7.3.7；再次构建与提交产物逐字节相同，cache `?v=5` |
+| 生产静态资源 HTTP smoke | 隔离迁移库下首页、JS、今日队列均 200；实际返回 JS 摘要与构建一致 |
+| 变更 Python 的 `ruff check` / `ruff format --check` | Git 固定基线至最终实现的 30 个现存 Python 文件，均 exit 0 |
+| `npm --prefix frontend audit --json` | exit 0，全部严重级别 total 0 |
+| Standards / Spec | 非空固定差异 `8ad4d36...b0dc5e7` 及最后 CLI 修复 `b0dc5e7...544c954` 分别审查；实际集成源与已审提交相同，重要未处理项各 0 |
+
+构建、Ruff、audit 的实际结果来自 `b0dc5e7`；最后合入的 `3d1c453` 只补回测试命令的一行非法参数诊断，生产构建、Python 与锁文件输入逐字节相同，因此复用这些相关检查，没有假称重新运行。完整 pytest 和未过滤 E2E 则在最后合并后重新执行。
+
+测试提交为 `3d1c453bc1b0b142824d3ff5c8bd3b72b52e7c9e`。主命令开始于 `2026-10-31T06:49:35.595Z`，本次构建完成于 `06:49:36.327Z`；源码内容摘要为 `ad35da2321dac33b6c0128544420e24775a8957f572d73e7c0bf1a73debb1073`。摘要包含原有未跟踪文档，运行期间 HEAD 与内容均冻结；本节是验后仅文档补记，不能将补记提交冒充测试提交。
+
+本次报告为 `e2e/release-results/ec-e2e-static-zhNTR2/`，`run.json` 实际 `status=passed`、`ticket=null`。正式 JSON 逐项核对 244 次执行，每项恰有一个 passed 结果；无报告错误。`coverage.txt` 逐条列出 T01–T21 两项目分支。完整诊断另保留于 `/tmp/english-coach-followup-2026-10-31/final-unfiltered-results/`；原始输出为同级 `final-pytest-resumed.log`、`final-unfiltered-e2e.log`、`final-reproducible-build.log`、`final-ruff-{check,format}.log`、`final-npm-audit.json`。机器证据为 `final-gates-result.json` 与父代理独立核对的 `final-root-evidence-inspection.json`。
+
+本次新构建与提交的生产文件摘要逐项相同：
+
+- `index-DfwY2ILZ.js`：`a7527ab6727de1bcdb53985b8cb634325bf02828dbc786b7cd65cf102cb1e603`。
+- `index.html`：`1446b3251ac78b797e08ea93cd9b3a901cf31f17445d5a14fbfc308e8a3a93a6`。
+- `style.css`：`559448c6cc4597f3c3d1580349b0c483a112bdc5dfa8c383e611085008e75ff9`。
+- `favicon.svg`：`f785f84057e716ae12632ae706e639c36f0b893abe8ab53835c54ec72c0b7e8b`。
+
+完整门禁首次运行曾有 415 passed / 1 failed：旧 CLI 回归要求非法参数含 `Invalid`，新诊断只有 Usage。保留原断言，仅补回 `Invalid arguments.`；同一测试先 RED 后 GREEN，34 项相关测试通过，五类真实 npm 非法调用仍 exit 2，经双轴复审后重新运行完整 416 项与本次未过滤 E2E。初次失败保留在 `final-pytest.log`，没有改称通过。
+
+最终恢复审查修复也有公开行为 RED→GREEN：V2 必须携带预览修订；命令会话/评分与外层事件、规范化答案与缓存相符；可接受的外层会话 UUID 规范保存后能读取结果和巩固。前端三个晚到响应路径均按提交 UUID 保护下一条待确认记录，刷新重试保持同一事件和排期。代码、测试与既有 ADR 契约一致。
+
+未配置门禁为 **N/A**：TypeScript/typecheck、前端 ESLint、CI/Makefile、Docker Compose、变异测试、独立 SAST。没有把这些检查计为通过。真实迁移、入门 seed、备份恢复故障、旧版只读与前向续学已在上述实际测试内验证。外部 AI/TTS 使用已批准的可控适配器，真实供应商内容质量**未验证**；Windows `TerminateProcess` 后代清理**未原生验证**，Linux/POSIX 的中断清理已有实际证据。
+
+本轮差异未新增数据库、生产数据文件或可识别密钥；原有未跟踪文档保留，测试使用独立数据库。仅验后报告文字的补记不改变已验行为或产物，需独立审查文档差异。
 
 [真实旧版兼容与前向恢复边界](release-compatibility.md)。
 
@@ -114,6 +141,6 @@
 - 独立真实进程树演练覆盖 pytest 和后代均忽略优雅信号的情形，两种信号约 3.03 秒强制收敛；也覆盖 pytest 先退出、忽略信号的后代已关闭继承管道的情形。pytest 被包装器回收，后代被终止并由隔离演练的 subreaper 回收，未遗留运行进程。
 - 受影响 `contracts.py` / `test_release_coverage.py` 的 Ruff check/format 均 exit 0。
 
-本次信号路径只在 Linux 原生验证。非 POSIX 的信号回归明确标为不适用；Windows 的 `TerminateProcess` 不会触发 Python 信号处理器，该强制终止路径未原生验证，不计为平台通过。没有为此引入跨平台进程框架。此修复只改测试支持、回归与报告，生产源码和产物未变化，未重复生产构建或全部 38 场景；最终合并后的未过滤全套仍待父任务执行。
+本次信号路径只在 Linux 原生验证。非 POSIX 的信号回归明确标为不适用；Windows 的 `TerminateProcess` 不会触发 Python 信号处理器，该强制终止路径未原生验证，不计为平台通过。没有为此引入跨平台进程框架。此修复只改测试支持、回归与报告，生产源码和产物未变化，未重复生产构建或全部 38 场景；最终合并后的未过滤全套实际结果见上节。
 
 实际输出与诊断位于外部 `ec16-contract-interrupt-{red,green}.log`、`ec16-contract-interrupt-signals.log`、`ec16-contract-cleanup-coverage.log`、`ec16-contract-normal-groups.log`、`ec16-contract-tree-{force,closed-pipe}.log`、`ec16-contract-qualifier-selftest.log` 和 `ec16-contract-cleanup-{ruff,format}.log`。具名 JUnit/正常组日志在 `ec16-contract-cleanup-groups/`；保留的实际信号日志在 `ec16-contract-signal-diagnostics/` 与 `ec16-contract-tree-closed-pipe/`，均位于此前同一 `/tmp/english-coach-followup-2026-10-31/`。
