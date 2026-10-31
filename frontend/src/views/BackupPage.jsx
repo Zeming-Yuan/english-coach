@@ -39,12 +39,11 @@ async function postJson(path, payload) {
   return data;
 }
 
-export default function BackupPage({ onBack, onRestored }) {
+export default function BackupPage({ onBack, onRestored, restoring, onRestoringChange }) {
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
   const [candidate, setCandidate] = useState(null);
-  const [restoring, setRestoring] = useState(false);
   const [restoreResult, setRestoreResult] = useState(null);
   const inputRef = useRef(null);
 
@@ -90,7 +89,7 @@ export default function BackupPage({ onBack, onRestored }) {
 
   const confirmRestore = async () => {
     if (!candidate || restoring) return;
-    setRestoring(true);
+    onRestoringChange(true);
     setError("");
     try {
       const result = await postJson("/api/import/cards", {
@@ -124,7 +123,7 @@ export default function BackupPage({ onBack, onRestored }) {
         setError("恢复失败：" + (e?.message || String(e)));
       }
     } finally {
-      setRestoring(false);
+      onRestoringChange(false);
     }
   };
 
@@ -215,7 +214,7 @@ export default function BackupPage({ onBack, onRestored }) {
           </p>
         </div>
 
-        <button className="btn btn-ghost" onClick={onBack}>返回设置</button>
+        <button className="btn btn-ghost" disabled={restoring} onClick={onBack}>返回设置</button>
       </div>
     </section>
   );
