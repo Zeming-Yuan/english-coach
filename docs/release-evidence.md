@@ -1,6 +1,6 @@
 # EC-16 发行证据与聚合验收
 
-状态：后续切片已集成，父规格 AC01–AC15 已取得最终验收证据。冻结提交 `3d1c453bc1b0b142824d3ff5c8bd3b72b52e7c9e` 的完整 pytest、未过滤双视口 E2E 和适用门禁均通过；下面保留定向历史与最终记录的区别。PR 仍须正常审阅合并，未部署。
+状态：后续切片已集成，父规格 AC01–AC15 已取得最终验收证据。冻结提交 `3d1c453bc1b0b142824d3ff5c8bd3b72b52e7c9e` 的完整 pytest、未过滤双视口 E2E 和适用门禁均通过；下面保留定向历史与最终记录的区别。合并记录以 GitHub 为准，未部署。
 
 ## 命令与诊断
 
@@ -65,7 +65,7 @@
 | AC12 可信命令 | 实际结果门禁、独立迁移库/端口、外部替身；CLI 缺失/skip/blocked/中断非零测试 | 通过：未过滤命令 exit 0 |
 | AC13 回归与构建 | 定向检查与最终生产构建；合并后完整 pytest/E2E/build/audit | 通过：最终全套与构建 |
 | AC14 文档一致 | README/.env.example/CONTEXT/ADR；兼容边界、题型、学习日、备份范围、旧历史限制 | 已同步；固定差异双轴审查无重要未处理项 |
-| AC15 不提前完成 | 分别记录定向历史与最终测试身份；单票与历史日志不充当最终集成证明 | 全部验收证据已取得；未合并或部署 |
+| AC15 不提前完成 | 分别记录定向历史与最终测试身份；单票与历史日志不充当最终集成证明 | 全部验收证据已取得；合并记录以 GitHub 为准，未部署 |
 
 ## 定向验证记录
 
@@ -144,3 +144,33 @@
 本次信号路径只在 Linux 原生验证。非 POSIX 的信号回归明确标为不适用；Windows 的 `TerminateProcess` 不会触发 Python 信号处理器，该强制终止路径未原生验证，不计为平台通过。没有为此引入跨平台进程框架。此修复只改测试支持、回归与报告，生产源码和产物未变化，未重复生产构建或全部 38 场景；最终合并后的未过滤全套实际结果见上节。
 
 实际输出与诊断位于外部 `ec16-contract-interrupt-{red,green}.log`、`ec16-contract-interrupt-signals.log`、`ec16-contract-cleanup-coverage.log`、`ec16-contract-normal-groups.log`、`ec16-contract-tree-{force,closed-pipe}.log`、`ec16-contract-qualifier-selftest.log` 和 `ec16-contract-cleanup-{ruff,format}.log`。具名 JUnit/正常组日志在 `ec16-contract-cleanup-groups/`；保留的实际信号日志在 `ec16-contract-signal-diagnostics/` 与 `ec16-contract-tree-closed-pipe/`，均位于此前同一 `/tmp/english-coach-followup-2026-10-31/`。
+
+
+## 分票顺序发布与验收复用（2026-10-31）
+
+已审实现按 EC12 → EC07 → EC13 → EC15 → EC14 → EC16 顺序重组。此前完整验收身份仍为 `3d1c453bc1b0b142824d3ff5c8bd3b72b52e7c9e`：416 项 pytest、244 项未过滤双视口 E2E 与 T01–T21 全分支。验后文档参考树为 `d0351fb66e4a1158f2eb2adc592b3f0bf44caa4e`。下列分票当前结果和旧完整门禁分别保留各自身份。
+
+| 已合并票据 | PR | GitHub 合并提交 |
+| --- | --- | --- |
+| EC-12 | [#31](https://github.com/Zeming-Yuan/english-coach/pull/31) | `4fc5a0d3af5c734b961324218fdd4f9d2d720348` |
+| EC-07 | [#32](https://github.com/Zeming-Yuan/english-coach/pull/32) | `9fa628f5df6176d4e95fdd273c492ab819b5727c` |
+| EC-13 | [#33](https://github.com/Zeming-Yuan/english-coach/pull/33) | `d53e7c9917a5be59f82cddb64e7df896b3f99067` |
+| EC-15 | [#34](https://github.com/Zeming-Yuan/english-coach/pull/34) | `1334e93d4c1aa89de2c700a4b85580104aad43b7` |
+| EC-14 | [#35](https://github.com/Zeming-Yuan/english-coach/pull/35) | `2ab3be00002312288a2bab1d16a1ba7f723603a9` |
+
+EC16 本票当前为待审候选；合并与 issue #17、父规格 #1 的最终关闭以 GitHub 记录为准，未部署。
+
+EC16 定向测试的代码提交为 `9b15432b09b07e3e2dd0983c5cc6c70efa436f1a`。重组后的核心源码、全部测试、依赖锁、样式与 JavaScript 产物逐字节等于 `d0351fb`；仅两个 HTML 的样式缓存查询单调递增为 `?v=8`，以及本节/CONTEXT 的发布记录属于元数据差异。JavaScript 仍为 `index-DfwY2ILZ.js`，SHA256 `a7527ab6727de1bcdb53985b8cb634325bf02828dbc786b7cd65cf102cb1e603`。
+
+| 本次分票定向检查 | 实际结果 |
+| --- | --- |
+| 当前工作树 `npm --prefix frontend ci` / audit | 锁定安装完成，audit JSON 为 0 漏洞 |
+| 新鲜生产构建 | 成功；cache 8，JavaScript 与已验产物相同 |
+| 临时迁移库生产 HTTP smoke | index、同摘要 JS、today 均 200；cache 8 |
+| `tests/test_ec_environment.py` + `tests/test_release_coverage.py` | 34 passed，11.16 秒，exit 0 |
+| 本票 5 个变更 Python 文件 Ruff check/format | 全部通过 |
+| 两视口定向公开旅程与兼容/TTS | 14 passed，2.0 分钟，exit 0；每视口 7 项，无跳过或重试 |
+
+定向浏览器覆盖安装→学习→备份→恢复旅程、真实旧版只读与隐式 GET 写保护、TTS 超时/播放所有权/预热、旧库升级后 UI 续学。运行报告 `e2e/release-results/ec-e2e-static-oYqOKA/` 的 `run.json` 为 passed；外部留存 `/tmp/english-coach-followup-2026-10-31/per-ticket/ec16-selected-results/`，同级 `ec16-frontier-manifest.json` 记录最终等价差异与新提交。原完整 416/244 通过结果按相同核心/测试/锁/样式/JS 复用，本次新 SHA 的实际执行是上述定向检查。本节为验后文档记录，不替代运行提交身份。
+
+既有未验证边界保持：付费外部 AI/TTS 质量、Windows 强制终止后代清理和部署均未验证；只读旧版回退不允许恢复旧写入或覆盖新进度。
