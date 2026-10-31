@@ -1,4 +1,4 @@
-"""旧版备份校验与原子部分恢复。
+"""版本化备份校验与原子恢复。
 
 只恢复备份实际包含的卡与关联；未覆盖的课程、故事、其他卡保持原样。
 旧复习转成当前状态 + 迁移基线，不伪造学习事件。写入与普通学习共用
@@ -11,11 +11,11 @@ import hashlib
 import json
 import os
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from app.models.card import Card
@@ -27,9 +27,11 @@ from app.runtime import Runtime
 from app.schemas.backup import (
     BackupValidationError,
     ValidatedBackup,
-    validate_legacy_backup,
+    validate_backup,
 )
-from app.services.backup import export_backup, snapshot_revision
+from app.schemas.learning import AttemptCommand
+from app.services.backup import BACKUP_COLLECTIONS, export_backup, snapshot_revision
+from app.services.learning import canonical_attempt
 from app.services.write_transaction import run_write
 
 
@@ -106,7 +108,7 @@ def _fingerprint(card_id: int, row: dict) -> str:
 def _naive(value):
     """数据库列使用 naive UTC；带时区输入统一转换。"""
     if isinstance(value, datetime) and value.tzinfo is not None:
-        return value.astimezone(timezone.utc).replace(tzinfo=None)
+        return value.astimezone(UTC).replace(tzinfo=None)
     return value
 
 
@@ -232,9 +234,7 @@ def _apply_restore(
             .first()
         )
         if error is None:
-            session.add(
-                ErrorCard(card_id=target.id, error_count=row["error_count"])
-            )
+            session.add(ErrorCard(card_id=target.id, error_count=row["error_count"]))
         else:
             error.error_count = row["error_count"]
 
@@ -245,11 +245,20 @@ def _apply_restore(
     }
 
 
-def preview_legacy_restore(
-    db: Session, payload: dict, runtime: Runtime
-) -> dict:
-    """只读预览：范围、影响与当前数据库修订。"""
-    validated = validate_legacy_backup(payload)
+def preview_legacy_restore(db: Session, payload: dict, runtime: Runtime) -> dict:
+    """只读预览：V2 全量替换 / 旧版部分恢复、影响与数据库修订。"""
+    validated = validate_backup(payload)
+    if validated.mode == "full_replace":
+        current = export_backup(db, runtime)
+        return {
+            "mode": "full_replace",
+            "counts": {name: len(rows) for name, rows in validated.tables.items()},
+            "impact": {
+                "replaced": {name: len(current[name]) for name, _ in BACKUP_COLLECTIONS}
+            },
+            "expected_revision": snapshot_revision(current),
+            "payload_digest": validated.payload_digest,
+        }
     mapping = _target_map(db, validated)
     existing = sum(1 for target, _ in mapping.values() if target is not None)
     revision = snapshot_revision(export_backup(db, runtime))
@@ -277,16 +286,31 @@ def restore_legacy_backup(
     runtime: Runtime,
     safety_directory: Path,
 ) -> dict:
-    """校验通过后，在单一写事务内执行旧版部分恢复。"""
-    validated = validate_legacy_backup(payload)
+    """校验完整数据图后，在单一协调事务内保存安全副本并恢复。"""
+    validated = validate_backup(payload)
 
     def operation(session: Session) -> dict:
+        if validated.mode == "full_replace" and not isinstance(expected_revision, str):
+            raise BackupValidationError(
+                [
+                    {
+                        "collection": "backup",
+                        "index": "0",
+                        "field": "expected_revision",
+                        "reason": "全量恢复必须携带预览 revision 字符串",
+                    }
+                ]
+            )
         revision = snapshot_revision(export_backup(session, runtime))
         if expected_revision is not None and revision != expected_revision:
             raise RevisionConflictError("预览后数据已有变化，请重新预览")
         safety_payload = export_backup(session, runtime)
         safety_path = persist_safety_backup(safety_payload, safety_directory)
-        result = _apply_restore(session, validated, runtime)
+        result = (
+            _apply_full_restore(session, validated)
+            if validated.mode == "full_replace"
+            else _apply_restore(session, validated, runtime)
+        )
         result["safety_backup_path"] = str(safety_path)
         return result
 
@@ -301,3 +325,69 @@ __all__ = [
     "preview_legacy_restore",
     "restore_legacy_backup",
 ]
+
+
+def _apply_full_restore(session: Session, validated: ValidatedBackup) -> dict:
+    """Replace the validated graph under the existing coordinator's write lock."""
+    models = dict(BACKUP_COLLECTIONS)
+    order = (
+        "cards",
+        "lessons",
+        "stories",
+        "reviews",
+        "review_baselines",
+        "memos",
+        "errors",
+        "hard_cards",
+        "learning_events",
+        "story_words",
+    )
+    # Cards use the durable native allocator, including across empty restores.
+    # Other integer identities only need remapping within this replacement.
+    next_ids = {
+        name: (session.scalar(select(func.max(model.id))) or 0) + 1
+        for name, model in BACKUP_COLLECTIONS
+        if name not in ("cards", "learning_events", "review_baselines")
+    }
+    for name in reversed(order):
+        session.execute(delete(models[name]))
+    mapping = {name: {} for name in order}
+    for name in order:
+        for source in validated.tables[name]:
+            row = {key: _naive(value) for key, value in source.items() if key != "id"}
+            for key, parent in (("card_id", "cards"), ("story_id", "stories")):
+                if key in row:
+                    row[key] = mapping[parent][row[key]]
+            if name in ("learning_events", "review_baselines"):
+                row["id"] = source["id"]
+            elif name != "cards":
+                row["id"] = next_ids[name]
+                next_ids[name] += 1
+            if name == "learning_events":
+                command = dict(row["command_json"])
+                command["card_id"] = row["card_id"]
+                if command.get("question") is not None:
+                    command["question"] = {
+                        **command["question"],
+                        "card_id": row["card_id"],
+                    }
+                response = dict(row["response"])
+                for key in ("card_id", "sentence_card_id"):
+                    if response.get(key) is not None:
+                        response[key] = mapping["cards"][response[key]]
+                row["command_json"] = command
+                row["response"] = response
+                row["fingerprint"] = canonical_attempt(
+                    AttemptCommand.model_validate(command),
+                    verified_question=command.get("question"),
+                )
+            target = models[name](**row)
+            session.add(target)
+            session.flush()
+            mapping[name][source["id"]] = target.id
+    return {
+        "mode": "full_replace",
+        "imported_words": len(validated.tables["cards"]),
+        "requests": len(validated.tables["cards"]),
+        "counts": {name: len(rows) for name, rows in validated.tables.items()},
+    }

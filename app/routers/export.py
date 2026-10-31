@@ -46,7 +46,7 @@ def _restore_error(error: Exception) -> HTTPException:
         return HTTPException(status_code=422, detail=str(error))
     if isinstance(error, RevisionConflictError):
         return HTTPException(status_code=409, detail=str(error))
-    logger.exception("legacy restore failed")
+    logger.exception("backup restore failed")
     return HTTPException(status_code=500, detail="恢复失败，原数据未改变")
 
 
@@ -56,7 +56,7 @@ def preview_import(
     db: Session = Depends(get_db),
     runtime: Runtime = Depends(get_runtime),
 ):
-    """只读预览旧版部分恢复的范围与影响。"""
+    """只读预览新版全量替换或旧版部分恢复的范围与影响。"""
     try:
         return preview_legacy_restore(db, payload, runtime)
     except Exception as error:  # 统一映射为结构化错误
@@ -69,7 +69,7 @@ def import_cards(
     db: Session = Depends(get_db),
     runtime: Runtime = Depends(get_runtime),
 ):
-    """旧版部分恢复：先校验，再在单一事务中写入；失败不改变原数据。"""
+    """备份恢复：先校验全图，再在单一事务中写入；失败不改变原数据。"""
     if "backup" in payload:
         backup = payload.get("backup")
         expected_revision = payload.get("expected_revision")
@@ -132,9 +132,7 @@ def export_cards(db: Session = Depends(get_db)):
             }
             for r in reviews
         ],
-        "memos": [
-            {"card_id": m.card_id, "content": m.content} for m in memos
-        ],
+        "memos": [{"card_id": m.card_id, "content": m.content} for m in memos],
         "errors": [
             {"card_id": e.card_id, "error_count": e.error_count} for e in errors
         ],
@@ -142,6 +140,7 @@ def export_cards(db: Session = Depends(get_db)):
 
     raw = json.dumps(payload, ensure_ascii=False, indent=1).encode("utf-8")
     return StreamingResponse(iter([raw]), media_type="application/json")
+
 
 @router.get("/export/anki")
 def export_anki(db: Session = Depends(get_db)):
@@ -155,13 +154,15 @@ def export_anki(db: Session = Depends(get_db)):
     writer = csv.writer(buf)
     writer.writerow(["word", "phonetic", "meaning", "example", "example_cn"])
     for c in cards:
-        writer.writerow([
-            c.word,
-            c.phonetic or "",
-            c.meaning or "",
-            c.example or "",
-            c.example_cn or "",
-        ])
+        writer.writerow(
+            [
+                c.word,
+                c.phonetic or "",
+                c.meaning or "",
+                c.example or "",
+                c.example_cn or "",
+            ]
+        )
     # UTF-8 BOM：Excel/Anki 中文不乱码
     raw = ("﻿" + buf.getvalue()).encode("utf-8")
     return StreamingResponse(
