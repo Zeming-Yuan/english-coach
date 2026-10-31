@@ -321,3 +321,44 @@ test("EC-16 TTS retries the same word after provider recovery", async ({appFacto
   expect(await app.externalCalls()).toContain("tts");
   expect(await ttsSnapshot(app)).toEqual(before);
 });
+
+test("EC-16 a newer replay owns its playback deadline", async ({appFactory, page}) => {
+  await page.unroute("**/api/tts/**");
+  // Observe native media completion without replacing HTTP or Audio behavior.
+  await page.addInitScript(() => {
+    const NativeAudio = window.Audio;
+    window.ttsEnded = [];
+    window.Audio = function (...args) {
+      const audio = new NativeAudio(...args);
+      audio.addEventListener("ended", () => window.ttsEnded.push(audio.currentSrc));
+      for (const event of ["playing", "stalled", "abort", "error", "ended"]) {
+        audio.addEventListener(event, () => console.log("TTS_MEDIA", event,
+          performance.now(), audio.readyState, audio.networkState, audio.error?.message));
+      }
+      return audio;
+    };
+    window.Audio.prototype = NativeAudio.prototype;
+  });
+  const app = await appFactory({fixture: "ec16-tts-overlap.json"});
+  await seedWords(app);
+  const before = await ttsSnapshot(app);
+  const started = page.waitForRequest(request => request.url().includes("/api/tts/audio/") && !request.url().endsWith("/preload"));
+  await openListening(app, page);
+  await started;
+  await page.waitForTimeout(2000);
+  await page.locator(".btn-speak-large").click();
+  // Release the real provider beyond the first 3s deadline, inside the replay's
+  // own window. Gate timing does not depend on browser HTTP dispatch latency.
+  await page.waitForTimeout(1500);
+  const controlFile = path.join(path.dirname(app.databasePath), "control.json");
+  const control = JSON.parse(fs.readFileSync(controlFile, "utf8"));
+  expect(control.external_calls).toContain("tts");
+  fs.writeFileSync(controlFile, JSON.stringify({...control, tts_release: true}));
+  try {
+    await expect.poll(() => page.evaluate(() => window.ttsEnded.length), {timeout: 5000}).toBe(1);
+    await expect(page.getByText(/发音不可用|本地语音/)).toHaveCount(0);
+    expect(await ttsSnapshot(app)).toEqual(before);
+  } finally {
+    console.log("TTS_PROVIDER", fs.readFileSync(controlFile, "utf8"));
+  }
+});

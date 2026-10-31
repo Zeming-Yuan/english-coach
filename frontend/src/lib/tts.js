@@ -7,6 +7,7 @@ let ttsVoice = null;
 let hasEnVoice = false;
 const audioCache = new Map();
 const failedAudio = new Set();
+const activeAudio = new WeakMap();
 
 const hasSpeech = typeof window !== "undefined" && "speechSynthesis" in window;
 
@@ -53,8 +54,8 @@ export function speak(word, btn = null) {
       if (btn) btn.classList.remove("speaking");
       resolve(mode);
     };
-    if (btn) btn.classList.add("speaking");
     speakOnline(word, done, () => speakLocal(word, done));
+    if (btn && !settled) btn.classList.add("speaking");
   });
 }
 
@@ -67,18 +68,31 @@ function speakOnline(word, done, fallback) {
     audio = new Audio(`/api/tts/audio/${encodeURIComponent(word)}${retry}`);
     audioCache.set(word, audio);
   }
+  // Replaying a cached element retires its previous caller first. Settling
+  // that caller must neither mutate this new playback nor start a late voice.
+  activeAudio.get(audio)?.();
   let finished = false;
+  const cancel = () => {
+    if (finished) return;
+    finished = true;
+    clearTimeout(safetyTimeout);
+    if (activeAudio.get(audio) === cancel) activeAudio.delete(audio);
+    done("none");
+  };
+  activeAudio.set(audio, cancel);
   const finish = () => {
     if (finished) return;
     finished = true;
     clearTimeout(safetyTimeout);
     failedAudio.delete(word);
+    if (activeAudio.get(audio) === cancel) activeAudio.delete(audio);
     done("online");
   };
   const failed = () => {
     if (finished) return;
     finished = true;
     clearTimeout(safetyTimeout);
+    if (activeAudio.get(audio) === cancel) activeAudio.delete(audio);
     failedAudio.add(word);
     if (audioCache.get(word) === audio) audioCache.delete(word);
     // Stop the failed request so it cannot start speaking after the fallback.
