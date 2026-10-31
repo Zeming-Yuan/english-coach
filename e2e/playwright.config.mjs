@@ -9,13 +9,13 @@ const {defineConfig} = requireFromFrontend("@playwright/test");
 export default defineConfig({
   testDir: path.join(root, "e2e"),
   testMatch: /.*\.spec\.mjs/,
-  outputDir: path.join(root, "e2e", "test-results"),
+  outputDir: process.env.EC_OUTPUT_DIR || path.join(root, "e2e", "test-results"),
   fullyParallel: false,
   workers: 1,
   retries: 0,
   timeout: 90000,
   expect: {timeout: 15000},
-  reporter: [["list"]],
+  reporter: [["list"], ["json", {outputFile: process.env.EC_REPORT_PATH || path.join(root, "e2e", "test-results", "results.json")}]],
   use: {
     headless: true,
     trace: "retain-on-failure",

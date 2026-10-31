@@ -143,17 +143,21 @@ python -m uvicorn app.main:app --reload --port 8001
 python -m pytest
 
 # 浏览器验收（首次需安装前端依赖与 Playwright Chromium）
-npm --prefix frontend install
+npm --prefix frontend ci
 npm --prefix frontend exec -- playwright install chromium-headless-shell
 
 npm --prefix frontend run test:e2e -- --ticket EC-01   # 只跑本票已交付场景
-npm --prefix frontend run test:e2e                     # 全部已交付场景
+npm --prefix frontend run test:e2e                     # T01–T21 双视口完整门禁
 npm --prefix frontend run build                        # 生产构建
 ```
 
 - 每次 E2E 使用本次运行独有的临时数据库、端口与构建目录；结束时关闭测试进程。
+- 补充 pytest 包装器的 SIGTERM/SIGINT 中断清理已在 Linux 验证：停止所属进程组、回收 pytest，保留非零中断日志。Windows 强制终止路径未做原生验证；Python 信号处理器不能捕获 `TerminateProcess`，不据此承诺所有操作系统的中断清理。
 - `--ticket` 只接受 `EC-NN` 形式；未知票号或没有匹配用例会以非零状态退出，不能当作通过。
-- 失败诊断（trace、截图、错误上下文）位于 `e2e/test-results/`，已加入 gitignore。
+- 主命令从实际 Playwright JSON 结果逐分支核对 T01–T21；两个项目都必须通过。缺场景、跳过、失败、阻塞、中断或失败后重试都返回非零。`--ticket` 仅用于开发定位，不是整体验收。
+- 主命令每次保留 `e2e/release-results/<run>/`：`run.json` 含源码 HEAD、工作区状态、源码内容摘要、构建时间及产物摘要，`playwright.json` 与 `artifacts/` 保存同次运行的报告、trace、截图和补充 HTTP/进程 JUnit 证据。测试临时库与服务器在结束后清理；直接运行 Playwright 的默认诊断仍在 `e2e/test-results/`。这些目录已加入 gitignore。
+- E2E 的 AI 与 TTS 提供方使用可控替身（含成功、超时和失败），正常学习和恢复仍经过真实 API/事务/迁移库，不使用真实付费 AI 或用户数据库。完整命令还执行具名 HTTP/安装边界测试，并核对实际 JUnit 参数用例，不能用跳过或空样本充数。
+- [发行证据与 AC01–AC15](docs/release-evidence.md) 区分单票验证与最终集成门禁；[版本回退兼容边界](docs/release-compatibility.md) 说明真实旧版只读范围与前向恢复。
 - 旧的 `node e2e_test.js` / `node e2e_story.js` 依赖本机 Edge，仅保留作手工调试；自动验收以
   `npm --prefix frontend run test:e2e` 为准。
 
@@ -220,3 +224,18 @@ data/           SQLite 数据文件（不提交）
 每日轮次的冻结队列与巩固候选 ID 只保存在当前浏览器，完成数仍由服务端已保存事件决定；它们不是服务端持久会话表，也不包含在数据库备份。会话只读 HTTP 接口从当前仍存在的事件识别会话、选出最多三个候选；删除词卡会级联删除关联事件，独立 HTTP 调用的候选可能变化，全部事件被删后返回 404。浏览器本轮保留初始巩固槽位，删除卡不会被算作已保存，也不会补入第四题。
 
 新版完整备份的学习事件数组按事件时间及同时间的实际保存次序导出，恢复按数组次序写入；其他集合仍按 ID 导出。事件次序影响本轮反馈，备份修订校验也保留该次序。之前已经按随机事件 ID 排序导出的旧文件可能丢失同一时间内的原始先后；恢复只能保留文件现有次序，不能反推或伪造丢失的次序。
+
+### 学习日与题型规则
+
+新事件保存 UTC 时间及当时的学习时区，默认 `Asia/Shanghai`；之后改时区不会重分过去学习日。同卡同日多次真实作答增加练习次数，成功排期的完成词只算一次，重试不增加任何计数。
+
+| 练习 | 排期及反馈口径 |
+| --- | --- |
+| 闪卡/课程/故事/详情的显式 1–4 分 | 更新 FSRS；显示自评通过率 |
+| 无提示独立拼写/填空 | 答对采用 3、答错采用 1；显示独立提取结果 |
+| 首字母/长度/逐字反馈/答案可见或朗读辅助 | 保存辅助结果，不更新 FSRS |
+| 四选一/听力/相关词识别 | 保存识别结果，不更新 FSRS |
+| 显式跳过 | 正误为空，不排期；跳过单列 |
+| 只打开/离开/播放发音 | 不产生作答事件 |
+
+混合入口沿用对应题型规则。复习通过率使用可排期事件，同卡同日首答进入新词建议；无有效样本显示“暂无数据”，未知旧历史不冒充正确答案。新词建议采用近七日样本：高错误率下调为 5；至少 20 个样本且错误率低于 15% 才上调为 15，其他默认 10。每日完成目标不会抬高新词配额。

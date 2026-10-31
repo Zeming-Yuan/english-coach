@@ -21,6 +21,7 @@ def main() -> None:
     parser.add_argument("--fixture")
     parser.add_argument("--cards-file")
     parser.add_argument("--migrate", action="store_true")
+    parser.add_argument("--legacy", action="store_true")
     args = parser.parse_args()
 
     url = _database_url(args.database)
@@ -44,7 +45,24 @@ def main() -> None:
         root = Path(__file__).resolve().parents[2]
         config = Config(str(root / "alembic.ini"))
         config.set_main_option("sqlalchemy.url", url)
+        if args.legacy:
+            command.upgrade(config, "a9f3e7d1c2b4")
+            old = create_engine(url)
+            with old.begin() as conn:
+                conn.execute(
+                    text(
+                        "INSERT INTO cards (id, word, kind, meaning) VALUES (41, 'apple', 'word', '苹果')"
+                    )
+                )
+                conn.execute(
+                    text(
+                        "INSERT INTO reviews (card_id, state, step, due, stability, difficulty, elapsed_days, review_count) VALUES (41, 1, 0, '2026-10-28 12:00:00', 2.5, 5.0, 0, 2)"
+                    )
+                )
+            old.dispose()
         command.upgrade(config, "head")
+        if args.legacy:
+            command.upgrade(config, "head")
 
     engine = create_engine(url)
     try:

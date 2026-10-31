@@ -2,6 +2,8 @@
  * Playwright 夹具：每个测试启动独立的真实 FastAPI + 迁移 SQLite。
  * 仅测试支持代码；生产应用没有时钟/故障调试端点。
  */
+import {startLegacy} from "./legacy-app.mjs";
+import {requirements} from "../spec-coverage.mjs";
 import {spawn, spawnSync} from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -13,7 +15,7 @@ const root = fileURLToPath(new URL("../../", import.meta.url));
 const requireFromFrontend = createRequire(path.join(root, "frontend", "package.json"));
 const {test: base, expect, request: apiRequest} = requireFromFrontend("@playwright/test");
 
-function pythonBin() {
+export function pythonBin() {
   if (process.env.EC_PYTHON) return process.env.EC_PYTHON;
   const venv =
     process.platform === "win32"
@@ -23,11 +25,12 @@ function pythonBin() {
   return process.env.PYTHON || "python";
 }
 
-function runSeed(databasePath, {fixture = null, cardsFile = null, migrate = false} = {}) {
+function runSeed(databasePath, {fixture = null, cardsFile = null, migrate = false, legacy = false} = {}) {
   const args = [path.join(root, "e2e", "support", "seed.py"), "--database", databasePath];
   if (fixture) args.push("--fixture", fixture);
   if (cardsFile) args.push("--cards-file", cardsFile);
   if (migrate) args.push("--migrate");
+  if (legacy) args.push("--legacy");
   const result = spawnSync(pythonBin(), args, {
     cwd: root,
     encoding: "utf8",
@@ -91,15 +94,20 @@ function readPort(child, getStderr) {
 }
 
 async function stopChild(child) {
-  if (child.exitCode !== null) return;
+  if (child.exitCode !== null || child.signalCode !== null) return;
   const exited = new Promise((resolve) => child.once("exit", resolve));
   child.kill();
+  let timer;
   const stopped = await Promise.race([
     exited.then(() => true),
-    new Promise((resolve) => setTimeout(() => resolve(false), 3000)),
+    new Promise((resolve) => { timer = setTimeout(() => resolve(false), 3000); }),
   ]);
-  if (!stopped && process.platform === "win32" && child.pid) {
-    spawnSync("taskkill", ["/pid", String(child.pid), "/T", "/F"]);
+  clearTimeout(timer);
+  if (!stopped) {
+    if (process.platform === "win32" && child.pid) {
+      spawnSync("taskkill", ["/pid", String(child.pid), "/T", "/F"]);
+    } else child.kill("SIGKILL");
+    await exited;
   }
 }
 
@@ -130,7 +138,7 @@ function writeControl(controlFile, patch) {
   fs.writeFileSync(controlFile, JSON.stringify(control));
 }
 
-async function startApp({fixture = null} = {}) {
+async function startApp({fixture = null, snapshotOf = null, legacy = false} = {}) {
   const staticDir = process.env.EC_STATIC_DIR;
   if (!staticDir || !fs.existsSync(staticDir)) {
     throw new Error("EC_STATIC_DIR missing: run through `npm --prefix frontend run test:e2e`");
@@ -141,7 +149,10 @@ async function startApp({fixture = null} = {}) {
   fs.writeFileSync(controlFile, JSON.stringify({now: "2026-10-30T12:00:00Z"}));
 
   const fixturePath = fixture ? path.join(root, "e2e", "fixtures", fixture) : null;
-  runSeed(databasePath, {fixture: fixturePath, migrate: true});
+  if (snapshotOf) {
+    const copy = spawnSync(pythonBin(), [path.join(root, "e2e/support/readonly_server.py"), "--snapshot-source", snapshotOf, "--snapshot-target", databasePath], {encoding: "utf8"});
+    if (copy.status !== 0) throw new Error(`snapshot failed: ${copy.stderr}`);
+  } else runSeed(databasePath, {fixture: fixturePath, migrate: true, legacy});
 
   const args = [
     path.join(root, "e2e", "support", "server.py"),
@@ -201,6 +212,15 @@ async function startApp({fixture = null} = {}) {
 }
 
 export const test = base.extend({
+  legacyAppFactory: async ({}, use) => {
+    const instances = [];
+    try {
+      await use(async options => {
+        const instance = await startLegacy(options, {pythonBin, readPort, stopChild});
+        instances.push(instance); return instance;
+      });
+    } finally { for (const instance of instances.reverse()) await instance.close(); }
+  },
   app: async ({}, use) => {
     const instance = await startApp();
     try {
@@ -224,6 +244,12 @@ export const test = base.extend({
       }
     }
   },
+});
+
+test.beforeEach(async ({}, testInfo) => {
+  for (const [id, titles] of Object.entries(requirements)) {
+    if (titles.includes(testInfo.title)) testInfo.annotations.push({type: "spec", description: id});
+  }
 });
 
 export {expect};
