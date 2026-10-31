@@ -98,6 +98,7 @@ test("EC-15 legacy-restore-then-input-and-choice-share-current-state", async ({a
   expect(imported.review_baselines).toHaveLength(1);
   expect((await detail(app, apple.id)).history_incomplete).toBe(true);
   await page.goto(app.baseURL);
+  await page.getByText("专项练习", {exact: true}).click();
   await page.getByRole("button", {name: /拼写练习/}).click();
   await page.getByRole("button", {name: "独立回忆", exact: true}).click();
   await page.getByRole("textbox").fill("apple");
@@ -109,6 +110,7 @@ test("EC-15 legacy-restore-then-input-and-choice-share-current-state", async ({a
   expect((await (await app.request.get("/api/stats")).json()).graduated).toBe(1);
   await app.seedCards([{word: "book"}, {word: "cat"}, {word: "dog"}]);
   await page.goto(app.baseURL);
+  await page.getByText("专项练习", {exact: true}).click();
   await page.getByRole("button", {name: /听写练习/}).click();
   await page.locator(".listening-option").first().click();
   await expect(page.getByRole("status")).toContainText("已保存");
