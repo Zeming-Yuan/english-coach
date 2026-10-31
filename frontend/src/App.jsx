@@ -88,7 +88,9 @@ function PendingRecovery({ onConfirmed }) {
     try {
       const result = await sendPending(entry.pending);
       if (result.committed !== true) throw new Error("尚未确认保存");
-      clearPending(entry.scope);
+      if (loadPending(entry.scope)?.payload.submission_id === entry.pending.payload.submission_id) {
+        clearPending(entry.scope);
+      }
       setEntries((list) => list.filter((item) => item.scope !== entry.scope));
       showToast("已确认保存这条学习记录");
       onConfirmed(result, entry.pending);
