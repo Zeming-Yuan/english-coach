@@ -281,6 +281,17 @@ def restore_legacy_backup(
     validated = validate_backup(payload)
 
     def operation(session: Session) -> dict:
+        if validated.mode == "full_replace" and not isinstance(expected_revision, str):
+            raise BackupValidationError(
+                [
+                    {
+                        "collection": "backup",
+                        "index": "0",
+                        "field": "expected_revision",
+                        "reason": "全量恢复必须携带预览 revision 字符串",
+                    }
+                ]
+            )
         revision = snapshot_revision(export_backup(session, runtime))
         if expected_revision is not None and revision != expected_revision:
             raise RevisionConflictError("预览后数据已有变化，请重新预览")
