@@ -6,6 +6,7 @@
 let ttsVoice = null;
 let hasEnVoice = false;
 const audioCache = new Map();
+const failedAudio = new Set();
 
 const hasSpeech = typeof window !== "undefined" && "speechSynthesis" in window;
 
@@ -60,7 +61,10 @@ export function speak(word, btn = null) {
 function speakOnline(word, done, fallback) {
   let audio = audioCache.get(word);
   if (!audio) {
-    audio = new Audio(`/api/tts/audio/${encodeURIComponent(word)}`);
+    // Browsers can retain a failed 200/empty media resource beyond the Audio
+    // object. A retry gets a fresh resource URL; the server word cache remains.
+    const retry = failedAudio.has(word) ? `?retry=${crypto.randomUUID()}` : "";
+    audio = new Audio(`/api/tts/audio/${encodeURIComponent(word)}${retry}`);
     audioCache.set(word, audio);
   }
   let finished = false;
@@ -68,16 +72,29 @@ function speakOnline(word, done, fallback) {
     if (finished) return;
     finished = true;
     clearTimeout(safetyTimeout);
+    failedAudio.delete(word);
     done("online");
   };
   const failed = () => {
     if (finished) return;
     finished = true;
     clearTimeout(safetyTimeout);
+    failedAudio.add(word);
+    if (audioCache.get(word) === audio) audioCache.delete(word);
+    // Stop the failed request so it cannot start speaking after the fallback.
+    audio.onended = null;
+    audio.onerror = null;
+    audio.pause();
+    audio.removeAttribute("src");
+    audio.load();
     fallback();
   };
-  // 安全超时：Chrome 短文本可能不触发 onended
-  const safetyTimeout = setTimeout(finish, Math.max(word.length * 150, 3000));
+  // A timeout is not evidence that audio played. Only a real ended state
+  // may confirm online completion; stalled/failed streams use the fallback.
+  const safetyTimeout = setTimeout(() => {
+    if (audio.ended) finish();
+    else failed();
+  }, Math.max(word.length * 150, 3000));
   audio.onended = finish;
   audio.onerror = failed;
   audio.currentTime = 0;
