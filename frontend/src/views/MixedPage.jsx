@@ -57,7 +57,12 @@ export default function MixedPage({ onExit }) {
   const [storageWarning, setStorageWarning] = useState("");
   const [assistance, setAssistance] = useState([]);
   const [audioHint, setAudioHint] = useState("");
-  const [stats, setStats] = useState({ correct: 0, skipped: 0, wrongList: [] });
+  const [stats, setStats] = useState({
+    correct: 0,
+    skipped: 0,
+    wrongList: [],
+    skippedList: [],
+  });
   const pendingRef = useRef(null);
   const mountedRef = useRef(false);
   const requestRef = useRef(null);
@@ -90,7 +95,7 @@ export default function MixedPage({ onExit }) {
     }
     pendingRef.current = null;
     setIdx(0);
-    setStats({ correct: 0, skipped: 0, wrongList: [] });
+    setStats({ correct: 0, skipped: 0, wrongList: [], skippedList: [] });
     try {
       const [listening, choice, pool] = await Promise.all([
         api("/api/listening?limit=3"),
@@ -194,7 +199,18 @@ export default function MixedPage({ onExit }) {
         result.correct
           ? { ...s, correct: s.correct + 1 }
           : record.skipped
-            ? { ...s, skipped: s.skipped + 1 }
+            ? {
+                ...s,
+                skipped: s.skipped + 1,
+                skippedList: [
+                  ...(s.skippedList || []),
+                  {
+                    card_id: item.q.card_id,
+                    word: result.expected || item.q.word,
+                    meaning: item.q.meaning || item.q.prompt,
+                  },
+                ],
+              }
             : {
                 ...s,
                 wrongList: [
@@ -297,6 +313,18 @@ export default function MixedPage({ onExit }) {
               {w.meaning}：{w.expected}
             </div>
           ))}
+          {stats.skippedList?.length > 0 && (
+            <section aria-label="待巩固">
+              <h3>待巩固（已跳过，不计正误）</h3>
+              <ul>
+                {stats.skippedList.map((skipped, i) => (
+                  <li key={`${skipped.card_id}-${i}`}>
+                    {skipped.word}：{skipped.meaning}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
           <button className="btn btn-primary" onClick={load}>
             再来一轮
           </button>
