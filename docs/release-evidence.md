@@ -158,7 +158,7 @@
 | EC-15 | [#34](https://github.com/Zeming-Yuan/english-coach/pull/34) | `1334e93d4c1aa89de2c700a4b85580104aad43b7` |
 | EC-14 | [#35](https://github.com/Zeming-Yuan/english-coach/pull/35) | `2ab3be00002312288a2bab1d16a1ba7f723603a9` |
 
-EC16 本票当前为待审候选；合并与 issue #17、父规格 #1 的最终关闭以 GitHub 记录为准，未部署。
+EC16 本票的合并与 issue #17、父规格 #1 的最终关闭以 GitHub 记录为准，未部署。
 
 EC16 定向测试的代码提交为 `9b15432b09b07e3e2dd0983c5cc6c70efa436f1a`。重组后的核心源码、全部测试、依赖锁、样式与 JavaScript 产物逐字节等于 `d0351fb`；仅两个 HTML 的样式缓存查询单调递增为 `?v=8`，以及本节/CONTEXT 的发布记录属于元数据差异。JavaScript 仍为 `index-DfwY2ILZ.js`，SHA256 `a7527ab6727de1bcdb53985b8cb634325bf02828dbc786b7cd65cf102cb1e603`。
 
