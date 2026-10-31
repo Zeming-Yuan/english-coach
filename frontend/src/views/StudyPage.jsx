@@ -15,11 +15,11 @@ import RatingButtons from "../components/RatingButtons.jsx";
  * onExit: () => void 返回队列
  * onToQuiz: () => void 进测验
  */
-export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
-  const [idx, setIdx] = useState(0);
+export default function StudyPage({ queue, session, onProgress, onAbort, onExit, onToQuiz, onToMixed }) {
+  const [idx, setIdx] = useState(session?.index || 0);
   const [flipped, setFlipped] = useState(false);
   const [graduated, setGraduated] = useState([]);
-  const [answered, setAnswered] = useState(0);
+  const [answered, setAnswered] = useState(session?.index || 0);
   const [flipStartedAt, setFlipStartedAt] = useState(null);
   const [memoText, setMemoText] = useState(null);
   const cardRef = useRef(null);
@@ -27,8 +27,8 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
   const [done, setDone] = useState(false);
   // 中文翻译档位：auto=复习<3次显示，>=3次自动隐藏；on=常显；off=隐藏
   const [cnMode, setCnMode] = useState(() => storageGet("sentenceCnMode", "auto"));
-  // EC-13 之前自评会话使用独立 ID；接入每日会话后由外部传入。
-  const [sessionId] = useState(() => crypto.randomUUID());
+  // 每日主队列复用固定会话 ID；专项自评使用独立 ID。
+  const [sessionId] = useState(() => session?.id || crypto.randomUUID());
   const attempt = useLearningAttempt("study");
 
   useEffect(() => {
@@ -74,6 +74,7 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
 
   // 只有服务端确认保存才推进；失败停留当前题并保留同一提交标识。
   const advance = useCallback(() => {
+    if (session) onProgress(idx + 1);
     setAnswered((n) => n + 1);
     if (idx + 1 >= total) {
       // 最后一张：直接完成
@@ -86,7 +87,7 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
       setExiting(false);
       setIdx((i) => i + 1);
     }, 320);
-  }, [idx, total]);
+  }, [idx, total, session, onProgress]);
 
   const rate = useCallback(async (rating) => {
     if (!card || done || exiting) return;
@@ -105,7 +106,7 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
         source: "study",
         kind: "self_rating",
         session_id: sessionId,
-        stage: "standalone",
+        stage: session ? "main" : "standalone",
       });
       if (result.committed !== true) return;
       if (result.newly_graduated) setGraduated((g) => [...g, card.word]);
@@ -136,10 +137,10 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
       <section className="view view-center">
         <div className="study-done">
           <div className="done-emoji">🎉</div>
-          <h2>今天的词都过了一遍</h2>
+          <h2>{session ? "本轮主队列已保存" : "今天的词都过了一遍"}</h2>
           <p className="done-detail">
             {graduated.length > 0 && `${graduated.length} 个词毕业了：${graduated.join("、")} — 例句已变成句子卡。`}
-            {answered} 张卡已复习，明天的队列会按你的记忆自动安排。
+            {session ? `${answered} 张卡已保存，可返回查看剩余到期任务。` : `${answered} 张卡已复习，明天的队列会按你的记忆自动安排。`}
           </p>
           <div className="done-actions">
             <button className="btn btn-primary" onClick={onToQuiz}>去做测验</button>
@@ -295,6 +296,7 @@ export default function StudyPage({ queue, onExit, onToQuiz, onToMixed }) {
             <div className="save-state-actions">
               <button className="btn btn-primary btn-small" onClick={retrySave}>继续确认保存</button>
               <button className="btn btn-ghost btn-small" onClick={attempt.clear}>放弃这条待确认</button>
+              {session && <button className="btn btn-ghost btn-small" onClick={() => { attempt.clear(); onAbort(); }}>退出本轮并重新加载</button>}
             </div>
           </div>
         )}
