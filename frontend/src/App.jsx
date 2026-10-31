@@ -167,9 +167,10 @@ export default function App() {
     storageSet("activeDailySession", session?.complete ? null : session);
     setDailySession(session);
   };
-  const confirmDailyCard = (sessionId, cardId) => {
+  const confirmDailyCard = (command, result) => {
+    if (result?.committed !== true || result.card_id !== command?.card_id || command.stage !== "main") return;
     setDailySession((current) => {
-      if (!current || current.id !== sessionId || current.queue[current.index]?.id !== cardId) return current;
+      if (!current || current.id !== command.session_id || current.queue[current.index]?.id !== command.card_id) return current;
       const index = current.index + 1;
       const next = { ...current, index, complete: index >= current.target };
       storageSet("activeDailySession", next.complete ? null : next);
@@ -228,7 +229,7 @@ export default function App() {
       <ErrorBoundary>
       <main className="stage">
         {view !== "study" && <PendingRecovery onConfirmed={(result, pending) => {
-          confirmDailyCard(pending.payload.session_id, result.card_id);
+          confirmDailyCard(pending.payload, result);
           setQueueVersion((v) => v + 1);
         }} />}
         {view === "queue" && <QueueView key={queueVersion} setView={setView} setStudyQueue={(cards) => { setIsDailyStudy(false); setStudyQueue(cards); }} dailySession={dailySession} onStartDaily={startDaily} onResumeDaily={() => {
@@ -245,7 +246,7 @@ export default function App() {
           setQueueVersion((v) => v + 1);
         }} />}
         {view === "lessons" && <LessonsPage onExit={() => setView("queue")} />}
-        {view === "study" && <StudyPage session={isDailyStudy ? dailySession : null} onAbort={() => { setIsDailyStudy(false); updateDaily(null); setStudyQueue([]); setView("queue"); }} onProgress={(cardId) => confirmDailyCard(dailySession.id, cardId)} queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} />}
+        {view === "study" && <StudyPage recoveryVersion={queueVersion} session={isDailyStudy ? dailySession : null} onAbort={() => { setIsDailyStudy(false); updateDaily(null); setStudyQueue([]); setView("queue"); }} onProgress={confirmDailyCard} queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} />}
         {view === "quiz" && <QuizPage onExit={() => setView("queue")} />}
         {view === "spelling" && <SpellingPage onExit={() => { setView("queue"); setSingleCard(null); }} singleCard={singleCard} />}
         {view === "listening" && <ListeningPage onExit={() => setView("queue")} />}
