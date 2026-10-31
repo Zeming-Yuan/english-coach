@@ -3,7 +3,7 @@ import { api } from "../lib/api.js";
 import StudyPage from "./StudyPage.jsx";
 import SpellingBoard from "../components/SpellingBoard.jsx";
 import { useLearningAttempt } from "../hooks/useLearningAttempt.js";
-import { loadPending } from "../lib/learning.js";
+import { clearPending, loadPending } from "../lib/learning.js";
 
 /** Daily orchestration only; main progress and attempt commits keep their existing owners. */
 export default function DailySessionPage({ session, onSessionChange, onFinish, ...studyProps }) {
@@ -50,11 +50,14 @@ export default function DailySessionPage({ session, onSessionChange, onFinish, .
       card_id: question.card_id, kind: "typed", user_input: answer,
       source: "reinforcement", session_id: session.id, stage: "reinforcement", assistance: assisted ? ["first_letter", "length", "live_feedback"] : [],
     });
-    attempt.clear();
-    await load();
+    clearPending("reinforcement");
   };
   const retry = async () => {
-    try { await attempt.retry(); attempt.clear(); await load(); } catch {}
+    try { await attempt.retry(); clearPending("reinforcement"); } catch {}
+  };
+  const next = async () => {
+    attempt.clear();
+    await load();
   };
   if (!session.complete) return <StudyPage {...studyProps} session={session} />;
   if (summary) return <section className="view view-center"><div className="study-done">
@@ -70,12 +73,16 @@ export default function DailySessionPage({ session, onSessionChange, onFinish, .
     <h2>本轮巩固</h2>
     {loading && <p role="status">正在读取已保存结果…</p>}
     {error && <div role="alert">{error}<button className="btn btn-primary" onClick={load}>重试加载</button></div>}
-    {questions?.length > 0 && <>
+    {questions?.length > 0 && attempt.phase !== "saved" && <>
       <p>本轮最多三题，可直接结束。</p>
       <div className="spelling-meaning">{questions[0].meaning}</div>
       <button className="btn btn-ghost" disabled={attempt.phase !== "idle" || loading} onClick={() => setAssisted(true)}>提示首字母</button>
       <p>{assisted ? "带提示练习，不更新排期" : "独立回忆：提交前不显示答案、长度或逐字正误"}</p>
       <SpellingBoard key={questions[0].card_id} mode={assisted ? "assisted" : "independent"} target={assisted ? questions[0].word : null} showFirstHint={assisted} onSubmit={submit} disabled={attempt.phase !== "idle" || loading} />
+    </>}
+    {attempt.phase === "saved" && <>
+      <p role="status">{attempt.result.correct === true ? "已保存：答对" : attempt.result.correct === false ? `已保存：答错，正确拼写：${attempt.result.expected}` : "已保存：已跳过"}</p>
+      <button className="btn btn-primary" onClick={next}>{questions?.length > 1 ? "下一题 →" : "查看本轮结果"}</button>
     </>}
     {attempt.phase === "saving" && <p role="status">正在确认保存…</p>}
     {attempt.phase === "failed" && <div role="alert">{attempt.error}<button className="btn btn-primary" onClick={retry}>继续确认保存</button><button className="btn btn-ghost" onClick={() => { attempt.clear(); studyProps.onAbort(); }}>退出本轮并重新加载</button></div>}
