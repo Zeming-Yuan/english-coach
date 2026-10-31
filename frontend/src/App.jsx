@@ -240,7 +240,13 @@ export default function App() {
         {view === "add" && <AddPage onAddStarter={addStarterCards} onGoWords={() => setView("words")} onStartStudy={(cards) => { setIsDailyStudy(false); setStudyQueue(cards); setView("study"); }} />}
         {view === "stats" && <StatsPage onBack={() => setView("queue")} />}
         {view === "settings" && <SettingsPage darkMode={darkMode} setDarkMode={setDarkMode} onOpenBackup={() => setView("backup")} />}
-        {view === "backup" && <BackupPage onBack={() => setView("settings")} />}
+        {view === "backup" && <BackupPage onBack={() => setView("settings")} onRestored={() => {
+          setIsDailyStudy(false);
+          updateDaily(null);
+          setStudyQueue([]);
+          setSingleCard(null);
+          setQueueVersion((v) => v + 1);
+        }} />}
         {view === "lessons" && <LessonsPage onExit={() => setView("queue")} />}
         {view === "study" && <StudyPage recoveryVersion={queueVersion} session={isDailyStudy ? dailySession : null} onAbort={() => { setIsDailyStudy(false); updateDaily(null); setStudyQueue([]); setView("queue"); }} onProgress={confirmDailyCard} queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} />}
         {view === "quiz" && <QuizPage onExit={() => setView("queue")} />}

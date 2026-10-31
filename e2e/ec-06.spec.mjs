@@ -16,6 +16,7 @@ async function cardEvents(app, ids) {
 
 async function openListening(app, page) {
   await page.goto(app.baseURL);
+  await openSpecialistPractice(page);
   await page.getByRole("button", {name: /听写练习/}).click();
   await expect(page.locator(".listening-option").first()).toBeVisible();
 }
@@ -28,6 +29,7 @@ test.beforeEach(async ({page}) => {
 test("EC-06 failed-choice-stays", async ({app, page}) => {
   await seedWords(app);
   await page.goto(app.baseURL);
+  await openSpecialistPractice(page);
   await page.getByRole("button", {name: /听写练习/}).click();
   await page.route("**/api/listening/score", (route) => route.abort("failed"), {times: 1});
   await page.locator(".listening-option").first().click();
@@ -154,6 +156,7 @@ test("EC-06 load-error-is-not-empty", async ({app, page}) => {
     {times: 1},
   );
   await page.goto(app.baseURL);
+  await openSpecialistPractice(page);
   await page.getByRole("button", {name: /听写练习/}).click();
   await expect(page.getByRole("alert")).toContainText("题目加载失败");
   await expect(page.getByText("今天没有需要听写的词")).toHaveCount(0);
@@ -175,6 +178,7 @@ test("EC-06 quiz-load-error-is-not-empty", async ({app, page}) => {
     {times: 1},
   );
   await page.goto(app.baseURL);
+  await openSpecialistPractice(page);
   await page.getByRole("button", {name: "直接做测验"}).click();
   await expect(page.getByRole("alert")).toContainText("题目加载失败");
   await expect(page.getByText("题库是空的")).toHaveCount(0);
@@ -223,6 +227,7 @@ test("EC-06 tts-failure-options-usable", async ({app, page}) => {
 test("EC-06 quiz-choice-save-then-feedback", async ({app, page}) => {
   const ids = await seedWords(app);
   await page.goto(app.baseURL);
+  await openSpecialistPractice(page);
   await page.getByRole("button", {name: "直接做测验"}).click();
 
   // 4 张卡 → 3 道 cn2en + 1 道 choice；先跳过输入题到选择题。
@@ -247,3 +252,8 @@ test("EC-06 quiz-choice-save-then-feedback", async ({app, page}) => {
   expect(choiceEvents[0].source).toBe("quiz");
   expect(choiceEvents[0].scheduled).toBe(false);
 });
+
+async function openSpecialistPractice(page) {
+  const summary = page.getByText("专项练习", {exact: true});
+  if (await summary.locator("..").getAttribute("open") === null) await summary.click();
+}

@@ -2,6 +2,7 @@ import {test, expect} from "./support/test.mjs";
 
 async function openSpelling(page, app) {
   await page.goto(app.baseURL);
+  await openSpecialistPractice(page);
   await page.getByRole("button", {name: /拼写练习/}).click();
 }
 
@@ -93,6 +94,7 @@ test("EC-05 leaving-page-creates-no-event", async ({app, page}) => {
   await page.getByRole("button", {name: "独立回忆", exact: true}).click();
   await page.getByRole("textbox").fill("app");
   await page.getByRole("button", {name: /返回/}).click();
+  await openSpecialistPractice(page);
   await expect(page.getByRole("button", {name: /拼写练习/})).toBeVisible();
   expect(await events(app, id)).toHaveLength(0);
 });
@@ -100,6 +102,7 @@ test("EC-05 leaving-page-creates-no-event", async ({app, page}) => {
 test("EC-05 quiz-typed-independent", async ({app, page}) => {
   const [id] = await app.seedCards([{word: "apple", meaning: "苹果"}]);
   await page.goto(app.baseURL);
+  await openSpecialistPractice(page);
   await page.getByRole("button", {name: "直接做测验"}).click();
   await expect(page.locator(".spelling-box")).toHaveCount(0);
   await page.getByRole("textbox").fill("apple");
@@ -111,3 +114,8 @@ test("EC-05 quiz-typed-independent", async ({app, page}) => {
   expect(saved[0].source).toBe("quiz");
   expect(saved[0].scheduled).toBe(true);
 });
+
+async function openSpecialistPractice(page) {
+  const summary = page.getByText("专项练习", {exact: true});
+  if (await summary.locator("..").getAttribute("open") === null) await summary.click();
+}
