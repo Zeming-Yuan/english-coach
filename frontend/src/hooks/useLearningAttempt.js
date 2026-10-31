@@ -84,7 +84,12 @@ export function useLearningAttempt(scope) {
   const retry = useCallback(() => run(pending.current), [run]);
 
   const clear = useCallback(() => {
-    clearPending(scope);
+    // A previous screen can finish after another screen has started a new
+    // submission in this scope. Only remove the request this hook owns.
+    const ownedId = pending.current?.payload.submission_id;
+    if (ownedId && loadPending(scope)?.payload.submission_id === ownedId) {
+      clearPending(scope);
+    }
     pending.current = null;
     if (mounted.current) setState({ phase: "idle", result: null, error: null });
   }, [scope]);
