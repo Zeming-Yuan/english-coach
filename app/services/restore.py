@@ -31,7 +31,7 @@ from app.schemas.backup import (
 )
 from app.schemas.learning import AttemptCommand
 from app.services.backup import BACKUP_COLLECTIONS, export_backup, snapshot_revision
-from app.services.learning import canonical_attempt
+from app.services.learning import canonical_attempt, get_memory_state
 from app.services.write_transaction import run_write
 
 
@@ -169,16 +169,7 @@ def _apply_restore(
         chosen_fingerprint = _fingerprint(target.id, chosen)
         if _baseline_exists(session, chosen_fingerprint):
             continue  # 同一旧备份重复导入：不重复、不覆盖新进度
-        review = (
-            session.execute(
-                select(Review)
-                .where(Review.card_id == target.id)
-                .order_by(Review.id.desc())
-                .limit(1)
-            )
-            .scalars()
-            .first()
-        )
+        review = get_memory_state(session, target.id)
         if review is None:
             review = Review(card_id=target.id)
             session.add(review)

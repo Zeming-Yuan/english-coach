@@ -27,7 +27,7 @@ def test_current_memory_rejects_second_state(ec):
             db.commit()
 
 
-def test_contract_archives_duplicate_states_and_preserves_allocator(ec):
+def test_contract_archives_duplicate_states_and_preserves_allocator(ec, ec_factory):
     import json
     from pathlib import Path
 
@@ -84,6 +84,23 @@ def test_contract_archives_duplicate_states_and_preserves_allocator(ec):
     backup = ec.client.get("/api/export/backup").json()
     assert len(backup["review_baselines"]) == 2
     assert len(backup["learning_events"]) == 1
+    target = ec_factory()
+    target.seed_card(
+        "replace-me"
+    )  # Force a new live card ID, while raw evidence stays original.
+    preview = target.client.post("/api/import/preview", json=backup)
+    assert preview.status_code == 200, preview.text
+    restored = target.client.post(
+        "/api/import/cards",
+        json={
+            "backup": backup,
+            "expected_revision": preview.json()["expected_revision"],
+        },
+    )
+    assert restored.status_code == 200
+    new_id = target.client.get("/api/export/backup").json()["cards"][0]["id"]
+    assert new_id != cid
+    assert len(target.client.get("/api/export/backup").json()["review_baselines"]) == 2
 
 
 def test_duplicate_v2_current_states_are_rejected_before_write(ec):
