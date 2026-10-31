@@ -29,8 +29,8 @@
 
 ## 练习
 
-- **练习会话**（PracticeSession）：拼写/听写/测验/混合四种练习的会话状态机（`frontend/src/lib/practiceSession.js`）——装配、判分、反馈、切题、统计都在此；视图只渲染题型 UI
-- **答案效果**（AnswerEffect）：题型 → 后端效果的策略（PracticeSession 内部）：听写=记一次复习（FSRS）；拼写/选择/填空=只记错词；**专属拼写练习例外** = 另记一次复习（rating 3/1）
+- **练习会话**（PracticeSession）：拼写与测验的共享编排（`frontend/src/lib/practiceSession.js`）；听写与混合页各自管理保存确认、失败重试和推进。混合页将唯一 pending 与原队列保存在 `ec.mixed.pending`，重新进入该页后继续确认，不交给全局自评恢复条。
+- **答案效果**（AnswerEffect）：服务端学习提交一次完成判分、事件与错词；无提示输入题按正误采用 FSRS 3/1，提示题和选择/听写只记事件与错词，跳过正误为空且不排期。混合入口仅增加 mixed 来源，不改变规则。
 
 ## 数据与复用
 

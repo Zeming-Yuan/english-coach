@@ -128,7 +128,7 @@ def get_listening(
 class ListeningScoreIn(AttemptCommand):
     """听写选择提交：answer 为选项文本，服务端按签名上下文判分。"""
 
-    source: Literal["listening"] = "listening"
+    source: Literal["listening", "mixed"] = "listening"
     kind: Literal["choice"] = "choice"
 
 
@@ -140,9 +140,7 @@ def score_listening(
 ):
     """识别题：判分 + 事件 + 错词一次提交；不更新 FSRS。"""
     if not payload.skipped and not payload.question_token:
-        raise HTTPException(
-            status_code=422, detail="缺少题目上下文，请重新加载题目"
-        )
+        raise HTTPException(status_code=422, detail="缺少题目上下文，请重新加载题目")
     try:
         result = submit_attempt(db, payload, runtime)
     except CardNotFoundError:
