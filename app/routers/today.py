@@ -1,7 +1,7 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -13,6 +13,7 @@ from app.models.review_baseline import ReviewBaseline
 from app.models.review_event import ReviewEvent
 from app.runtime import Runtime, get_runtime
 from app.services.card_payload import queue_payload
+from app.services.graduation import card_is_graduated
 from app.services.statistics import (
     adaptive_new_limit,
     history_days,
@@ -54,7 +55,7 @@ def get_today(
     stmt = (
         select(Card)
         .join(Review, Review.card_id == Card.id)
-        .where(Review.due <= datetime.now(timezone.utc).replace(tzinfo=None), Card.kind == "word")
+        .where(Review.due <= datetime.now(UTC).replace(tzinfo=None), Card.kind == "word")
         .order_by(Review.due)
         .limit(due_limit)
     )
@@ -209,14 +210,12 @@ def get_stats(db: Session = Depends(get_db), runtime: Runtime = Depends(get_runt
     events = _event_rows(db)
     summary = summary_for_day(events, today)
     total_cards = db.execute(select(func.count(Card.id))).scalar_one()
-    graduated = db.execute(
-        select(func.count(Review.id))
-        .join(Card, Review.card_id == Card.id)
-        .where(
-            Card.kind == "word",
-            or_(Review.state == 2, Review.review_count >= 3),
+    graduated = sum(
+        card_is_graduated(card, review)
+        for card, review in db.execute(
+            select(Card, Review).outerjoin(Review, Review.card_id == Card.id)
         )
-    ).scalar_one()
+    )
     history_incomplete = (
         db.execute(select(ReviewBaseline.id).limit(1)).first() is not None
     )
@@ -258,7 +257,7 @@ def get_recommended(limit: int = 5, db: Session = Depends(get_db)):
     2. 其次推荐 review_count >= 2 但最近 3 天没复习的词（巩固期）
     3. 排除已经在错误词/困难词列表里的（已有专门复习入口）
     """
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = datetime.now(UTC).replace(tzinfo=None)
     tomorrow = now + timedelta(days=1)
     three_days_ago = now - timedelta(days=3)
 

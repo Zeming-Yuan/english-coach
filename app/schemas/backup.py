@@ -279,7 +279,7 @@ class FullBaseline(FullRow):
     id: str
     card_id: int = Field(gt=0, strict=True)
     source_review_id: int | None = Field(gt=0)
-    source_kind: Literal["migration", "legacy_import"]
+    source_kind: Literal["migration", "legacy_import", "contract_archive"]
     raw: dict
     selected: bool = Field(strict=True)
     captured_at: datetime

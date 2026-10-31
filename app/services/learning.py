@@ -157,6 +157,12 @@ def get_legacy_review_history(db: Session, card_id: int) -> list[dict]:
             for column in Review.__table__.columns
         }
         rows[json.dumps(raw, sort_keys=True, default=str)] = (review.id, raw)
+    current_history = {
+        json.dumps(
+            {field: raw.get(field) for field in fields}, sort_keys=True, default=str
+        )
+        for _, raw in rows.values()
+    }
     for baseline in db.execute(
         select(ReviewBaseline).where(ReviewBaseline.card_id == card_id)
     ).scalars():
@@ -169,6 +175,14 @@ def get_legacy_review_history(db: Session, card_id: int) -> list[dict]:
                 except ValueError:
                     # raw is audit evidence, not a validated current timestamp.
                     pass
+        if (
+            baseline.selected
+            and json.dumps(
+                {field: raw.get(field) for field in fields}, sort_keys=True, default=str
+            )
+            in current_history
+        ):
+            continue  # Restores map live IDs; identical selected evidence is still current.
         key = json.dumps(raw, sort_keys=True, default=str)
         rows.setdefault(key, (baseline.source_review_id or 0, raw))
     result = []
