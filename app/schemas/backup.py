@@ -448,6 +448,11 @@ def _validate_full_graph(tables: dict, payload: dict) -> None:
             for field in ("source", "kind", "stage", "answer", "skipped", "assistance"):
                 if getattr(command, field) != row[field]:
                     raise ValueError("命令业务内容与事件不匹配")
+            session_id = (
+                UUID(row["session_id"]) if row["session_id"] is not None else None
+            )
+            if command.session_id != session_id or command.rating != row["self_rating"]:
+                raise ValueError("命令会话或自评分与事件不匹配")
             if result.correct != row["correct"] or result.scheduled != row["scheduled"]:
                 raise ValueError("缓存业务结果与事件不匹配")
             for field in ("before", "after"):
