@@ -359,6 +359,7 @@ def validate_backup(payload: dict) -> ValidatedBackup:
 def _validate_full_graph(tables: dict, payload: dict) -> None:
     from app.schemas.learning import AttemptCommand, AttemptResult
     from app.services.learning import canonical_attempt
+    from app.services.scoring import normalize
 
     def reject(collection, index, field, reason):
         raise BackupValidationError(
@@ -444,11 +445,21 @@ def _validate_full_graph(tables: dict, payload: dict) -> None:
             expected = row["command_json"]["expected"]
             if expected is not None and not isinstance(expected, str):
                 raise ValueError("已验答案必须是文本或空值")
+            if result.expected != (
+                normalize(expected) if expected is not None else None
+            ):
+                raise ValueError("缓存答案与已验答案不匹配")
             if result.next_due is not None:
                 datetime.fromisoformat(result.next_due)
             for field in ("source", "kind", "stage", "answer", "skipped", "assistance"):
                 if getattr(command, field) != row[field]:
                     raise ValueError("命令业务内容与事件不匹配")
+            session_id = (
+                UUID(row["session_id"]) if row["session_id"] is not None else None
+            )
+            if command.session_id != session_id or command.rating != row["self_rating"]:
+                raise ValueError("命令会话或自评分与事件不匹配")
+            row["session_id"] = str(session_id) if session_id is not None else None
             if result.correct != row["correct"] or result.scheduled != row["scheduled"]:
                 raise ValueError("缓存业务结果与事件不匹配")
             for field in ("before", "after"):

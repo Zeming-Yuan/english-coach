@@ -6,6 +6,18 @@ from uuid import uuid4
 import pytest
 
 
+def _confirmed_restore(ec, backup):
+    preview = ec.client.post("/api/import/preview", json=backup)
+    assert preview.status_code == 200, preview.text
+    return ec.client.post(
+        "/api/import/cards",
+        json={
+            "backup": backup,
+            "expected_revision": preview.json()["expected_revision"],
+        },
+    )
+
+
 def test_restore_preserves_two_kinds_and_replay(ec, ec_factory):
     cid = ec.seed_card(word="apple", kind="word", id=101)
     ec.seed_card(word="apple", kind="sentence", id=202)
@@ -278,7 +290,7 @@ def test_full_roundtrip_all_entities_repeat_and_usable_safety_backup(ec, ec_fact
         preview = other.client.post("/api/import/preview", json=backup)
     safety = json.loads(Path(result.json()["safety_backup_path"]).read_text())
     third = ec_factory()
-    assert third.client.post("/api/import/cards", json=safety).status_code == 200
+    assert _confirmed_restore(third, safety).status_code == 200
     assert _semantic(third.client.get("/api/export/backup").json()) == _semantic(backup)
     event = after["learning_events"][0]
     assert event["response"]["sentence_card_id"] == next(
@@ -303,7 +315,7 @@ def test_signed_submission_replays_after_restore_without_source_secret(ec, ec_fa
     assert first.status_code == 200, first.text
     backup = ec.client.get("/api/export/backup").json()
     other = ec_factory()
-    assert other.client.post("/api/import/cards", json=backup).status_code == 200
+    assert _confirmed_restore(other, backup).status_code == 200
     mapped = next(
         c["id"]
         for c in other.client.get("/api/cards").json()["cards"]
@@ -393,10 +405,10 @@ def test_response_started_before_restore_cannot_overwrite_restored_content(
     backup = ec.client.get("/api/export/backup").json()
     if sequence != "direct":
         empty = ec_factory().client.get("/api/export/backup").json()
-        assert ec.client.post("/api/import/cards", json=empty).status_code == 200
+        assert _confirmed_restore(ec, empty).status_code == 200
         if sequence == "empty_restart_full":
             ec.restart()
-    assert ec.client.post("/api/import/cards", json=backup).status_code == 200
+    assert _confirmed_restore(ec, backup).status_code == 200
     # Observe completion by the external connection lifecycle, without sleep races.
     from sqlalchemy import event
 
@@ -437,7 +449,7 @@ def test_full_restore_faults_preserve_entire_target_and_safety_copy(
         event.listen(target.engine, "before_cursor_execute", fail)
     else:
         target.fail_commit_once()
-    result = target.client.post("/api/import/cards", json=backup)
+    result = _confirmed_restore(target, backup)
     assert result.status_code == 500, result.text
     assert target.snapshot() == before
     if fault != "safety_disk":
@@ -596,7 +608,7 @@ def test_full_restore_accepts_legacy_new_state_without_fabricating_events(
     )
     backup = ec.client.get("/api/export/backup").json()
     other = ec_factory()
-    result = other.client.post("/api/import/cards", json=backup)
+    result = _confirmed_restore(other, backup)
     assert result.status_code == 200, result.text
     restored = other.client.get("/api/export/backup").json()
     assert restored["reviews"][0]["state"] == 0
@@ -630,3 +642,300 @@ def test_full_snapshot_rejects_invalid_audit_fields(ec, mutation):
         payload["version"] = 2.0
     result = ec.client.post("/api/import/preview", json=payload)
     assert result.status_code == 422, result.text
+
+
+@pytest.mark.parametrize(
+    "request_shape", ["flat", "missing", "null", "number", "object"]
+)
+def test_full_restore_requires_preview_revision_before_safety_backup(
+    ec, ec_factory, request_shape
+):
+    ec.seed_card("source")
+    backup = ec.client.get("/api/export/backup").json()
+    other = ec_factory()
+    cid = other.seed_card("new-progress")
+    assert (
+        other.client.post(
+            "/api/reviews",
+            json={"card_id": cid, "rating": 3, "source": "study"},
+        ).status_code
+        == 200
+    )
+    before = other.snapshot()
+    safety_before = sorted((other.root / "backups").glob("*"))
+    payload = {"backup": backup}
+    if request_shape == "flat":
+        payload = backup
+    elif request_shape != "missing":
+        payload["expected_revision"] = {"null": None, "number": 7, "object": {}}[
+            request_shape
+        ]
+    result = other.client.post("/api/import/cards", json=payload)
+    assert result.status_code == 422, result.text
+    assert any(
+        issue["field"] == "expected_revision" for issue in result.json()["detail"]
+    )
+    assert other.snapshot() == before
+    assert sorted((other.root / "backups").glob("*")) == safety_before
+
+
+@pytest.mark.parametrize(
+    "kind,session_present,field,value",
+    [
+        ("self_rating", True, "session_id", "different"),
+        ("self_rating", True, "session_id", None),
+        ("self_rating", False, "session_id", "different"),
+        ("self_rating", True, "self_rating", 4),
+        ("self_rating", True, "self_rating", None),
+        ("typed", True, "self_rating", 4),
+        ("skip", True, "self_rating", 4),
+    ],
+)
+def test_full_restore_rejects_changed_saved_session_or_rating_before_any_write(
+    ec, ec_factory, kind, session_present, field, value
+):
+    cid = ec.seed_card()
+    command = {
+        "card_id": cid,
+        "source": "study",
+        "session_id": str(uuid4()) if session_present else None,
+        "stage": "main",
+        "submission_id": str(uuid4()),
+    }
+    if kind == "typed":
+        command.update(kind="typed", answer="apple")
+    elif kind == "skip":
+        command.update(kind="self_rating", skipped=True)
+    else:
+        command.update(kind="self_rating", rating=1)
+    saved = ec.client.post("/api/reviews", json=command)
+    assert saved.status_code == 200, saved.text
+    backup = ec.client.get("/api/export/backup").json()
+    backup["learning_events"][0][field] = (
+        str(uuid4()) if value == "different" else value
+    )
+    target = ec_factory()
+    _seed_full(target)
+    before = target.snapshot()
+    safety_before = {
+        path.name: path.read_bytes() for path in (target.root / "backups").glob("*")
+    }
+    # Each boundary must validate independently; the valid revision cannot hide bad data.
+    current = target.client.get("/api/export/backup").json()
+    preview = target.client.post("/api/import/preview", json=current)
+    assert preview.status_code == 200, preview.text
+    revision = preview.json()["expected_revision"]
+    for path, payload in (
+        ("/api/import/preview", backup),
+        ("/api/import/cards", {"backup": backup, "expected_revision": revision}),
+    ):
+        result = target.client.post(path, json=payload)
+        assert result.status_code == 422, result.text
+        assert result.json()["detail"][0]["collection"] == "learning_events"
+        assert target.snapshot() == before
+        assert {
+            path.name: path.read_bytes() for path in (target.root / "backups").glob("*")
+        } == safety_before
+
+
+@pytest.mark.parametrize("kind", ["self_rating", "typed", "skip"])
+@pytest.mark.parametrize("session_form", ["none", "canonical", "uppercase_command"])
+def test_full_restore_preserves_valid_saved_session_and_rating(
+    ec, ec_factory, kind, session_form
+):
+    cid = ec.seed_card()
+    session_id = None if session_form == "none" else str(uuid4())
+    command = {
+        "card_id": cid,
+        "source": "study",
+        "session_id": session_id,
+        "stage": "main",
+        "submission_id": str(uuid4()),
+    }
+    if kind == "typed":
+        command.update(kind="typed", answer="apple")
+    elif kind == "skip":
+        command.update(kind="self_rating", skipped=True)
+    else:
+        command.update(kind="self_rating", rating=1)
+    saved = ec.client.post("/api/reviews", json=command)
+    assert saved.status_code == 200, saved.text
+    backup = ec.client.get("/api/export/backup").json()
+    if session_form == "uppercase_command":
+        backup["learning_events"][0]["command_json"]["session_id"] = session_id.upper()
+    target = ec_factory()
+    result = _confirmed_restore(target, backup)
+    assert result.status_code == 200, result.text
+    event = target.client.get("/api/export/backup").json()["learning_events"][0]
+    assert event["session_id"] == session_id
+    assert event["self_rating"] == (1 if kind == "self_rating" else None)
+    if session_id is not None:
+        original = ec.client.get(f"/api/sessions/{session_id}/summary")
+        restored = target.client.get(f"/api/sessions/{session_id}/summary")
+        assert original.status_code == restored.status_code == 200
+        assert restored.json()["counts"] == original.json()["counts"]
+        assert restored.json()["metrics"] == original.json()["metrics"]
+
+
+@pytest.mark.parametrize("card_count", [0, 2])
+def test_full_restore_success_keeps_legacy_request_count(ec, ec_factory, card_count):
+    for kind in ("word", "sentence")[:card_count]:
+        ec.seed_card("apple", kind=kind)
+    backup = ec.client.get("/api/export/backup").json()
+    target = ec_factory()
+    target.seed_card("replace-me")
+    result = _confirmed_restore(target, backup)
+    assert result.status_code == 200, result.text
+    data = result.json()
+    assert data["requests"] == card_count
+    assert data["imported_words"] == card_count
+    assert data["mode"] == "full_replace"
+    assert data["counts"]["cards"] == card_count
+    assert data["safety_backup_path"]
+
+
+@pytest.mark.parametrize("boundary", ["preview", "execute"])
+@pytest.mark.parametrize(
+    "kind", ["typed", "typed_null", "choice", "self_rating", "skip"]
+)
+def test_full_restore_rejects_cache_answer_inconsistent_with_saved_command(
+    ec, ec_factory, boundary, kind
+):
+    cid = ec.seed_card()
+    command = {
+        "card_id": cid,
+        "source": "study",
+        "submission_id": str(uuid4()),
+    }
+    if kind.startswith("typed"):
+        command.update(kind="typed", answer="apple")
+    elif kind == "choice":
+        for word in ("pear", "orange", "banana"):
+            ec.seed_card(word)
+        question = ec.client.get("/api/listening?limit=1").json()["questions"][0]
+        command.update(
+            card_id=question["card_id"],
+            source="listening",
+            kind="choice",
+            answer=question["word"],
+            question_token=question["question_token"],
+        )
+    elif kind == "skip":
+        command.update(kind="self_rating", skipped=True)
+    else:
+        command.update(kind="self_rating", rating=1)
+    saved = ec.client.post("/api/reviews", json=command)
+    assert saved.status_code == 200, saved.text
+    backup = ec.client.get("/api/export/backup").json()
+    backup["learning_events"][0]["response"]["expected"] = (
+        None if kind == "typed_null" else "tampered answer"
+    )
+    target = ec_factory()
+    valid_target = _seed_full(target)
+    before = target.snapshot()
+    safety_before = {
+        path.name: path.read_bytes() for path in (target.root / "backups").glob("*")
+    }
+    preview = target.client.post("/api/import/preview", json=valid_target)
+    assert preview.status_code == 200, preview.text
+    if boundary == "preview":
+        result = target.client.post("/api/import/preview", json=backup)
+    else:
+        result = target.client.post(
+            "/api/import/cards",
+            json={
+                "backup": backup,
+                "expected_revision": preview.json()["expected_revision"],
+            },
+        )
+    assert result.status_code == 422, result.text
+    assert result.json()["detail"][0]["collection"] == "learning_events"
+    assert target.snapshot() == before
+    assert {
+        path.name: path.read_bytes() for path in (target.root / "backups").glob("*")
+    } == safety_before
+
+
+def test_full_restore_preserves_normalized_cached_answer_and_replay(ec, ec_factory):
+    cid = ec.seed_card("  Apple!  ")
+    command = {
+        "card_id": cid,
+        "source": "study",
+        "kind": "typed",
+        "answer": "apple",
+        "submission_id": str(uuid4()),
+    }
+    saved = ec.client.post("/api/reviews", json=command)
+    assert saved.status_code == 200, saved.text
+    backup = ec.client.get("/api/export/backup").json()
+    event = backup["learning_events"][0]
+    assert event["command_json"]["expected"] == "  Apple!  "
+    assert event["response"]["expected"] == "apple"
+    target = ec_factory()
+    restored = _confirmed_restore(target, backup)
+    assert restored.status_code == 200, restored.text
+    mapped = target.client.get("/api/cards").json()["cards"][0]["id"]
+    before = target.snapshot()
+    replay = target.client.post("/api/reviews", json={**command, "card_id": mapped})
+    assert replay.status_code == 200, replay.text
+    assert replay.json()["expected"] == "apple"
+    assert target.snapshot() == before
+
+
+@pytest.mark.parametrize("outer_form", ["uppercase", "unhyphenated"])
+def test_full_restore_canonicalizes_outer_session_for_reading_and_replay(
+    ec, ec_factory, outer_form
+):
+    cid = ec.seed_card()
+    session_id = "12345678-1234-4abc-8def-123456789abc"
+    command = {
+        "card_id": cid,
+        "rating": 1,
+        "source": "study",
+        "kind": "self_rating",
+        "stage": "main",
+        "session_id": session_id,
+        "submission_id": str(uuid4()),
+    }
+    saved = ec.client.post("/api/reviews", json=command)
+    assert saved.status_code == 200, saved.text
+    original = ec.client.get(f"/api/sessions/{session_id}/summary")
+    assert original.status_code == 200, original.text
+    backup = ec.client.get("/api/export/backup").json()
+    raw_session = (
+        session_id.upper() if outer_form == "uppercase" else session_id.replace("-", "")
+    )
+    backup["learning_events"][0]["session_id"] = raw_session
+    target = ec_factory()
+    target.seed_card("replace-me", id=100)
+    preview = target.client.post("/api/import/preview", json=backup)
+    assert preview.status_code == 200, preview.text
+    restored = target.client.post(
+        "/api/import/cards",
+        json={
+            "backup": backup,
+            "expected_revision": preview.json()["expected_revision"],
+        },
+    )
+    assert restored.status_code == 200, restored.text
+    summary = target.client.get(f"/api/sessions/{session_id}/summary")
+    assert summary.status_code == 200, summary.text
+    assert summary.json()["counts"] == original.json()["counts"]
+    assert summary.json()["metrics"] == original.json()["metrics"]
+    mapped = target.client.get("/api/cards").json()["cards"][0]["id"]
+    assert mapped != cid
+    reinforcement = target.client.get(f"/api/sessions/{session_id}/reinforcement")
+    assert reinforcement.status_code == 200, reinforcement.text
+    assert reinforcement.json()["questions"] == [
+        {"card_id": mapped, "word": "apple", "meaning": "苹果"}
+    ]
+    event = target.client.get("/api/export/backup").json()["learning_events"][0]
+    assert event["session_id"] == session_id
+    before = target.snapshot()
+    replay = target.client.post("/api/reviews", json={**command, "card_id": mapped})
+    assert replay.status_code == 200, replay.text
+    assert replay.json()["event_id"] == saved.json()["event_id"]
+    assert target.snapshot() == before
+    repeated_preview = target.client.post("/api/import/preview", json=backup)
+    assert repeated_preview.status_code == 200, repeated_preview.text
+    assert repeated_preview.json()["payload_digest"] == preview.json()["payload_digest"]

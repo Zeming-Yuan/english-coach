@@ -51,7 +51,18 @@ def test_upgrade_preserves_graph_and_retired_card_ids_for_normal_inserts(tmp_pat
     empty = ECEnv(root=tmp_path / "empty")
     try:
         backup = empty.client.get("/api/export/backup").json()
-        assert env.client.post("/api/import/cards", json=backup).status_code == 200
+        preview = env.client.post("/api/import/preview", json=backup)
+        assert preview.status_code == 200, preview.text
+        assert (
+            env.client.post(
+                "/api/import/cards",
+                json={
+                    "backup": backup,
+                    "expected_revision": preview.json()["expected_revision"],
+                },
+            ).status_code
+            == 200
+        )
         # A compatible metadata downgrade keeps retired IDs, and re-upgrade
         # must not rebuild an already AUTOINCREMENT empty table and reset them.
         command.downgrade(config, "b1c2d3e4f502")
