@@ -31,6 +31,13 @@ export const requirements = {
     "EL-01 unknown v3 feature is rejected without touching data",
     "EL-01 lost edit response replays without double revision",
   ],
+  EL02: [
+    "EL-02 visible evidence panel states insufficient evidence",
+    "EL-02 independent cross-day answers show verified recall",
+    "EL-02 new failure changes verified recall to weak",
+    "EL-02 assisted answers never become independent evidence",
+    "EL-02 meaning edit moves old evidence to history",
+  ],
 };
 export const projects = ["mobile", "desktop"];
 

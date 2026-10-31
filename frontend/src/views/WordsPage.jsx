@@ -5,6 +5,7 @@ import { escapeHtml } from "../lib/utils.js";
 import { useLearningAttempt } from "../hooks/useLearningAttempt.js";
 import { showToast } from "../App.jsx";
 import ChunkChips from "../components/ChunkChips.jsx";
+import LearningEvidence from "../components/LearningEvidence.jsx";
 import RatingButtons from "../components/RatingButtons.jsx";
 
 /**
@@ -352,9 +353,6 @@ function WordDetail({ cardId, onBack, allCards, setDetail }) {
   // 讲解三要素分行（用 | 分隔）
   const explanationParts = c.explanation ? c.explanation.split("|").map((s) => s.trim()).filter(Boolean) : [];
 
-  // 掌握度百分比（基于 review_count 和 graduated）
-  const masteryPct = c.graduated ? 100 : Math.min(90, c.review_count * 15);
-
   return (
     <section className="view">
       <div className="page-head">
@@ -393,11 +391,8 @@ function WordDetail({ cardId, onBack, allCards, setDetail }) {
           {c.is_hard && <span className="badge badge-error">⭕ 困难词</span>}
         </div>
 
-        {/* 掌握度进度条 */}
-        <div className="mastery-bar-wrap">
-          <div className="mastery-bar" style={{ width: `${masteryPct}%` }} />
-          <span className="mastery-label">{masteryPct}% 掌握</span>
-        </div>
+        {/* 回忆证据：真实样本/日期/适用性，不用复习次数推断掌握 */}
+        <LearningEvidence evidence={c.learning_evidence} />
 
         <div className="word-detail-meaning">{c.kind === "sentence" ? (c.example_cn || "") : (c.meaning || "")}</div>
 

@@ -57,7 +57,7 @@ def test_contract_archives_duplicate_states_and_preserves_allocator(ec, ec_facto
             ),
             {"cid": cid},
         )
-        before = conn.execute(text("SELECT * FROM review_events")).all()
+        before = _event_rows(conn)
     command.upgrade(cfg, "head")
     with ec.engine.connect() as conn:
         rows = conn.execute(text("SELECT * FROM reviews")).mappings().all()
@@ -72,7 +72,10 @@ def test_contract_archives_duplicate_states_and_preserves_allocator(ec, ec_facto
         assert [r["source_review_id"] for r in archived if r["selected"]] == [
             rows[0]["id"]
         ]
-        assert conn.execute(text("SELECT * FROM review_events")).all() == before
+        assert _event_rows(conn) == before
+        assert conn.execute(
+            text("SELECT card_identity, card_revision FROM review_events")
+        ).all() == [(None, None)]
         assert (
             conn.execute(
                 text("SELECT seq FROM sqlite_sequence WHERE name='cards'")
@@ -250,12 +253,32 @@ def _prepare_contract_preflight(ec):
     return config, cid, current_id
 
 
+_EVENT_COLUMNS = (
+    "id, submission_id, card_id, source, kind, stage, occurred_at, learning_day, "
+    "learning_timezone, answer, correct, skipped, scheduled, assistance, "
+    "self_rating, fsrs_rating, before, after, fingerprint, command_json, response, "
+    "session_id"
+)
+
+
+def _event_rows(conn):
+    from sqlalchemy import text
+
+    return conn.execute(
+        text(f"SELECT {_EVENT_COLUMNS} FROM review_events ORDER BY 1")
+    ).all()
+
+
 def _preflight_snapshot(ec):
     from sqlalchemy import text
 
     with ec.engine.connect() as conn:
         return {
-            table: conn.execute(text(f'SELECT * FROM "{table}" ORDER BY 1')).all()
+            table: (
+                _event_rows(conn)
+                if table == "review_events"
+                else conn.execute(text(f'SELECT * FROM "{table}" ORDER BY 1')).all()
+            )
             for table in (
                 "reviews",
                 "review_events",

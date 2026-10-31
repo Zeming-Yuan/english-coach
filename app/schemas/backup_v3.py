@@ -19,6 +19,7 @@ from app.models.content_revision import ContentRevision
 from app.schemas.backup import (
     BackupValidationError,
     FullBackup,
+    FullEvent,
     FullRow,
     ValidatedBackup,
     _digest,
@@ -95,10 +96,22 @@ register_extension(
 )
 
 
+class FullEventV3(FullEvent):
+    """V3 events carry the revision seen when the submission was accepted.
+
+    Older V3 snapshots (EL-01) lack the fields; null means "history
+    incomplete" rather than an invented link.
+    """
+
+    card_identity: str | None = None
+    card_revision: int | None = Field(default=None, ge=1)
+
+
 class FullBackupV3(FullBackup):
     version: Literal[3]  # type: ignore[assignment] — pydantic 收窄字面量
     features: list[str]
     extensions: dict[str, list[dict]]
+    learning_events: list[FullEventV3]
 
 
 def _reject(collection: str, index, field: str, reason: str) -> NoReturn:
