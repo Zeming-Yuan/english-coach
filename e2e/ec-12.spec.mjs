@@ -127,3 +127,90 @@ test("EC-12 invalid-graph-rollback-and-preview-conflict", async ({appFactory, pa
   await page.getByRole("button", {name: "取消", exact: true}).click();
   expect(await snapshot(target)).toEqual(progressed);
 });
+
+test("EC-12 pending restore keeps navigation locked until its response arrives", async ({appFactory, page}) => {
+  const source = await appFactory({fixture: "ec12-full.json"});
+  const backup = await snapshot(source);
+  backup.exported_at = "2026-10-30T12:00:00+00:00";
+  const target = await appFactory();
+  await target.seedCards([{word: "obsolete"}]);
+  await target.setTime("2026-11-30T12:00:00Z");
+  let release;
+  let committed = false;
+  const held = new Promise(resolve => { release = resolve; });
+  await page.route("**/api/import/cards", async route => {
+    const response = await route.fetch();
+    expect(response.status()).toBe(200);
+    committed = true;
+    await held;
+    await route.fulfill({response});
+  });
+  await openBackup(target, page);
+  await upload(page, backup);
+  await page.getByRole("button", {name: "确认替换学习数据", exact: true}).click();
+  try {
+    await expect.poll(() => committed).toBe(true);
+    await expect(page.getByRole("button", {name: "设置", exact: true})).toBeDisabled();
+    await expect(page.getByRole("button", {name: "返回设置", exact: true})).toBeDisabled();
+    for (const button of await page.locator(".bottom-nav button").all()) await expect(button).toBeDisabled();
+    await expect(page.getByRole("button", {name: "开始今天的学习", exact: true})).toHaveCount(0);
+  } finally {
+    release();
+  }
+  await expect(page.getByRole("status")).toContainText("恢复成功");
+  await expect(page.getByRole("button", {name: "设置", exact: true})).toBeEnabled();
+  await page.getByRole("button", {name: "返回设置", exact: true}).click();
+  await page.getByRole("button", {name: "设置", exact: true}).click();
+  await page.getByRole("button", {name: "开始今天的学习", exact: true}).click();
+  await expect(page.locator(".front-main")).toHaveText("apple");
+  await page.getByRole("button", {name: "← 退出", exact: true}).click();
+  await expect(page.getByRole("button", {name: "开始今天的学习", exact: true})).toBeVisible();
+});
+
+for (const outcome of ["failed", "unknown"]) {
+  test(`EC-12 ${outcome} restore unlocks recovery navigation`, async ({appFactory, page}) => {
+    const source = await appFactory({fixture: "ec12-full.json"});
+    const target = await appFactory();
+    await target.seedCards([{word: "keep"}]);
+    await openBackup(target, page);
+    const backup = await snapshot(source);
+    backup.exported_at = "2026-10-30T12:00:00+00:00";
+    await upload(page, backup);
+    if (outcome === "failed") await target.failCommitOnce();
+    else await page.route("**/api/import/cards", async route => { await route.fetch(); await route.abort("failed"); }, {times: 1});
+    await page.getByRole("button", {name: "确认替换学习数据", exact: true}).click();
+    await expect(page.getByRole("alert")).toContainText(outcome === "failed" ? "恢复失败" : "恢复尚未确认");
+    await expect(page.getByRole("button", {name: "设置", exact: true})).toBeEnabled();
+    await expect(page.getByRole("button", {name: "返回设置", exact: true})).toBeEnabled();
+    for (const button of await page.locator(".bottom-nav button").all()) await expect(button).toBeEnabled();
+    await page.getByRole("button", {name: "返回设置", exact: true}).click();
+    await page.getByRole("button", {name: "设置", exact: true}).click();
+    await expect(page.locator(".today-stats")).toBeVisible();
+  });
+}
+
+
+test("EC-12 confirmed restore discards preloaded single-card practice", async ({appFactory, page}) => {
+  const source = await appFactory({fixture: "ec12-full.json"});
+  const backup = await snapshot(source);
+  backup.exported_at = "2026-10-30T12:00:00+00:00";
+  const target = await appFactory();
+  await target.seedCards([{word: "obsolete", meaning: "旧词"}]);
+  await page.goto(target.baseURL);
+  await page.getByRole("button", {name: /单词本/}).click();
+  await page.locator(".word-item", {hasText: "obsolete"}).click();
+  await page.getByRole("button", {name: /测这个词/}).click();
+  await expect(page.locator(".spelling-meaning")).toHaveText("旧词");
+  await page.getByRole("button", {name: "设置", exact: true}).click();
+  await page.getByRole("button", {name: "备份与恢复", exact: true}).click();
+  await upload(page, backup);
+  await page.getByRole("button", {name: "确认替换学习数据", exact: true}).click();
+  await expect(page.getByRole("status")).toContainText("恢复成功");
+  await page.getByRole("button", {name: "返回设置", exact: true}).click();
+  await page.getByRole("button", {name: "设置", exact: true}).click();
+  await page.getByRole("button", {name: /拼写练习/}).click();
+  await expect(page.locator(".spelling-meaning")).toHaveText("苹果");
+  await page.getByRole("textbox").fill("apple");
+  await page.getByRole("textbox").press("Enter");
+  await expect.poll(async () => (await snapshot(target)).learning_events.filter(event => event.source === "spelling").length).toBe(1);
+});

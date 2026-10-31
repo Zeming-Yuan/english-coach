@@ -162,7 +162,7 @@ export default function App() {
   const [view, setView] = useState("queue");
   const [studyQueue, setStudyQueue] = useState([]);
   const [singleCard, setSingleCard] = useState(null);
-  const [navLocked, setNavLocked] = useState(false);
+  const [restoringBackup, setRestoringBackup] = useState(false);
   const [queueVersion, setQueueVersion] = useState(0);
   const [darkMode, setDarkMode] = useState(() => storageGet("darkMode", false));
 
@@ -199,7 +199,7 @@ export default function App() {
           <span className="logo-mark">E</span>
           <span className="logo-text">EnglishCoach</span>
         </div>
-        <button className="settings-btn" title="设置" aria-label="设置" onClick={() => setView(view === "settings" ? "queue" : "settings")}>⚙️</button>
+        <button className="settings-btn" title="设置" aria-label="设置" disabled={restoringBackup} onClick={() => setView(view === "settings" ? "queue" : "settings")}>⚙️</button>
       </header>
 
       {/* 内容区 */}
@@ -212,7 +212,11 @@ export default function App() {
         {view === "add" && <AddPage onAddStarter={addStarterCards} onGoWords={() => setView("words")} onStartStudy={(cards) => { setStudyQueue(cards); setView("study"); }} />}
         {view === "stats" && <StatsPage onBack={() => setView("queue")} />}
         {view === "settings" && <SettingsPage darkMode={darkMode} setDarkMode={setDarkMode} onOpenBackup={() => setView("backup")} />}
-        {view === "backup" && <BackupPage onBack={() => setView("settings")} />}
+        {view === "backup" && <BackupPage restoring={restoringBackup} onRestoringChange={setRestoringBackup} onBack={() => setView("settings")} onRestored={() => {
+          setStudyQueue([]);
+          setSingleCard(null);
+          setQueueVersion((v) => v + 1);
+        }} />}
         {view === "lessons" && <LessonsPage onExit={() => setView("queue")} />}
         {view === "study" && <StudyPage queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} />}
         {view === "quiz" && <QuizPage onExit={() => setView("queue")} />}
@@ -228,7 +232,8 @@ export default function App() {
           <button
             key={key}
             className={`nav-item ${view === key ? "nav-active" : ""}`}
-            onClick={() => { if (!navLocked && isNavView) setView(key); }}
+            disabled={restoringBackup}
+            onClick={() => { if (!restoringBackup && isNavView) setView(key); }}
           >
             <span className="nav-icon">{key === "queue" ? "📋" : key === "words" ? "📖" : key === "stories" ? "📚" : "➕"}</span>
             <span>{label}</span>
