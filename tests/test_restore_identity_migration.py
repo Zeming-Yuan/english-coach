@@ -40,7 +40,8 @@ def test_upgrade_preserves_graph_and_retired_card_ids_for_normal_inserts(tmp_pat
             }
 
     before = graph()
-    command.upgrade(config, "head")
+    # This snapshot isolates EC-12; later contracts may add review indexes.
+    command.upgrade(config, "ec12_card_identity")
     assert graph() == before
     with sqlite3.connect(database) as db:
         assert db.execute("PRAGMA foreign_key_check").fetchall() == []

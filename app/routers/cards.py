@@ -18,6 +18,7 @@ from app.services.card_payload import card_payload
 from app.services.graduation import card_is_graduated
 from app.services.learning import (
     get_card_events,
+    get_legacy_review_history,
     get_memory_state,
     has_incomplete_history,
     select_current_review,
@@ -115,7 +116,9 @@ def card_to_dict(card: Card, db: Session) -> dict:
     return card_payload(card, review=review, error=error, hard=hard is not None)
 
 
-def _card_to_dict_fast(card: Card, review: Review | None, error: ErrorCard | None, is_hard: bool) -> dict:
+def _card_to_dict_fast(
+    card: Card, review: Review | None, error: ErrorCard | None, is_hard: bool
+) -> dict:
     """Card → 全量载荷（批量预加载版本，无额外查询）。"""
     return card_payload(card, review=review, error=error, hard=is_hard)
 
@@ -186,15 +189,19 @@ def list_cards(db: Session = Depends(get_db)):
         return {"cards": []}
     # 批量预加载关联数据，消除 N+1 查询
     card_ids = [c.id for c in cards]
-    reviews = db.execute(
-        select(Review).where(Review.card_id.in_(card_ids))
-    ).scalars().all()
-    errors = db.execute(
-        select(ErrorCard).where(ErrorCard.card_id.in_(card_ids))
-    ).scalars().all()
-    hards = db.execute(
-        select(HardCard).where(HardCard.card_id.in_(card_ids))
-    ).scalars().all()
+    reviews = (
+        db.execute(select(Review).where(Review.card_id.in_(card_ids))).scalars().all()
+    )
+    errors = (
+        db.execute(select(ErrorCard).where(ErrorCard.card_id.in_(card_ids)))
+        .scalars()
+        .all()
+    )
+    hards = (
+        db.execute(select(HardCard).where(HardCard.card_id.in_(card_ids)))
+        .scalars()
+        .all()
+    )
     # 构建查找表：每个 card_id 按全库统一规则选当前状态
     grouped: dict[int, list[Review]] = {}
     for r in reviews:
@@ -207,7 +214,9 @@ def list_cards(db: Session = Depends(get_db)):
 
     return {
         "cards": [
-            _card_to_dict_fast(c, review_map.get(c.id), error_map.get(c.id), c.id in hard_set)
+            _card_to_dict_fast(
+                c, review_map.get(c.id), error_map.get(c.id), c.id in hard_set
+            )
             for c in cards
         ]
     }
@@ -223,9 +232,7 @@ def refresh_examples(limit: int = 10, db: Session = Depends(get_db)):
     from app.services.card_generator import regenerate_example
 
     # 找需要刷新的卡
-    all_words = db.execute(
-        select(Card).where(Card.kind == "word")
-    ).scalars().all()
+    all_words = db.execute(select(Card).where(Card.kind == "word")).scalars().all()
 
     needs_refresh = []
     for c in all_words:
@@ -248,9 +255,15 @@ def refresh_examples(limit: int = 10, db: Session = Depends(get_db)):
                 card.explanation = explanation
                 refreshed += 1
                 # 同步更新对应的句子卡
-                sentence_card = db.execute(
-                    select(Card).where(Card.word == card.word, Card.kind == "sentence")
-                ).scalars().first()
+                sentence_card = (
+                    db.execute(
+                        select(Card).where(
+                            Card.word == card.word, Card.kind == "sentence"
+                        )
+                    )
+                    .scalars()
+                    .first()
+                )
                 if sentence_card:
                     sentence_card.example = example
                     sentence_card.example_cn = example_cn
@@ -287,9 +300,7 @@ def regenerate_sentences(limit: int = 5, db: Session = Depends(get_db)):
     grouped: dict[int, list[Review]] = {}
     for r in db.execute(select(Review)).scalars().all():
         grouped.setdefault(r.card_id, []).append(r)
-    latest = {
-        card_id: select_current_review(rows) for card_id, rows in grouped.items()
-    }
+    latest = {card_id: select_current_review(rows) for card_id, rows in grouped.items()}
 
     # 找已毕业但没有句子卡的词
     needs_sentence = []
@@ -334,33 +345,14 @@ def get_card_detail(card_id: int, db: Session = Depends(get_db)):
     if card is None:
         raise HTTPException(status_code=404, detail="Card not found")
 
-    # 复习记录（最新在前）
-    reviews = (
-        db.execute(
-            select(Review).where(Review.card_id == card_id).order_by(Review.id.desc())
-        )
-        .scalars()
-        .all()
-    )
-
     latest = get_memory_state(db, card_id)
-    history = [
-        {
-            "rating": r.rating,  # 用户评分 1-4（旧数据为 None）
-            "state": r.state,  # FSRS 状态（兜底展示）
-            "last_review": r.last_review.isoformat() if r.last_review else None,
-            "review_count": r.review_count,
-        }
-        for r in reviews
-    ]
+    history = get_legacy_review_history(db, card_id)
     error = (
         db.execute(select(ErrorCard).where(ErrorCard.card_id == card_id))
         .scalars()
         .first()
     )
-    memo = (
-        db.execute(select(Memo).where(Memo.card_id == card_id)).scalars().first()
-    )
+    memo = db.execute(select(Memo).where(Memo.card_id == card_id)).scalars().first()
 
     return {
         "id": card.id,

@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -14,6 +14,7 @@ from app.models.review_event import ReviewEvent
 from app.runtime import Runtime, get_runtime
 from app.services.card_payload import queue_payload
 from app.services.daily_session import build_daily_queue
+from app.services.graduation import card_is_graduated
 from app.services.statistics import (
     adaptive_new_limit,
     history_days,
@@ -229,14 +230,12 @@ def get_stats(db: Session = Depends(get_db), runtime: Runtime = Depends(get_runt
     events = _event_rows(db)
     summary = summary_for_day(events, today)
     total_cards = db.execute(select(func.count(Card.id))).scalar_one()
-    graduated = db.execute(
-        select(func.count(Review.id))
-        .join(Card, Review.card_id == Card.id)
-        .where(
-            Card.kind == "word",
-            or_(Review.state == 2, Review.review_count >= 3),
+    graduated = sum(
+        card_is_graduated(card, review)
+        for card, review in db.execute(
+            select(Card, Review).outerjoin(Review, Review.card_id == Card.id)
         )
-    ).scalar_one()
+    )
     history_incomplete = (
         db.execute(select(ReviewBaseline.id).limit(1)).first() is not None
     )

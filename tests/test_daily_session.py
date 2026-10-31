@@ -75,10 +75,17 @@ def test_daily_queue_prioritizes_tags_inside_due_and_new_groups(ec):
 
 def test_daily_queue_uses_current_state_not_stale_due_rows(ec):
     from datetime import datetime
+    from pathlib import Path
 
+    from alembic.config import Config
+
+    from alembic import command
     from app.models.review import Review
 
     card_id = ec.seed_card(word="already-reviewed")
+    cfg = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
+    cfg.set_main_option("sqlalchemy.url", ec.database_url)
+    command.downgrade(cfg, "ec12_card_identity")
     with ec.SessionLocal() as db:
         for due, last in [
             (datetime(2026, 10, 1), datetime(2026, 9, 30)),
@@ -97,6 +104,10 @@ def test_daily_queue_uses_current_state_not_stale_due_rows(ec):
                 )
             )
         db.commit()
+    command.upgrade(cfg, "head")
+    backup = ec.client.get("/api/export/backup").json()
+    assert len(backup["reviews"]) == 1
+    assert len(backup["review_baselines"]) == 2
     result = ec.client.get("/api/today").json()
     assert result["queue"] == []
     assert result["remaining_due"] == result["target"] == 0
