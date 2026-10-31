@@ -6,6 +6,18 @@ from uuid import uuid4
 import pytest
 
 
+def _confirmed_restore(ec, backup):
+    preview = ec.client.post("/api/import/preview", json=backup)
+    assert preview.status_code == 200, preview.text
+    return ec.client.post(
+        "/api/import/cards",
+        json={
+            "backup": backup,
+            "expected_revision": preview.json()["expected_revision"],
+        },
+    )
+
+
 def test_restore_preserves_two_kinds_and_replay(ec, ec_factory):
     cid = ec.seed_card(word="apple", kind="word", id=101)
     ec.seed_card(word="apple", kind="sentence", id=202)
@@ -278,7 +290,7 @@ def test_full_roundtrip_all_entities_repeat_and_usable_safety_backup(ec, ec_fact
         preview = other.client.post("/api/import/preview", json=backup)
     safety = json.loads(Path(result.json()["safety_backup_path"]).read_text())
     third = ec_factory()
-    assert third.client.post("/api/import/cards", json=safety).status_code == 200
+    assert _confirmed_restore(third, safety).status_code == 200
     assert _semantic(third.client.get("/api/export/backup").json()) == _semantic(backup)
     event = after["learning_events"][0]
     assert event["response"]["sentence_card_id"] == next(
@@ -303,7 +315,7 @@ def test_signed_submission_replays_after_restore_without_source_secret(ec, ec_fa
     assert first.status_code == 200, first.text
     backup = ec.client.get("/api/export/backup").json()
     other = ec_factory()
-    assert other.client.post("/api/import/cards", json=backup).status_code == 200
+    assert _confirmed_restore(other, backup).status_code == 200
     mapped = next(
         c["id"]
         for c in other.client.get("/api/cards").json()["cards"]
@@ -393,10 +405,10 @@ def test_response_started_before_restore_cannot_overwrite_restored_content(
     backup = ec.client.get("/api/export/backup").json()
     if sequence != "direct":
         empty = ec_factory().client.get("/api/export/backup").json()
-        assert ec.client.post("/api/import/cards", json=empty).status_code == 200
+        assert _confirmed_restore(ec, empty).status_code == 200
         if sequence == "empty_restart_full":
             ec.restart()
-    assert ec.client.post("/api/import/cards", json=backup).status_code == 200
+    assert _confirmed_restore(ec, backup).status_code == 200
     # Observe completion by the external connection lifecycle, without sleep races.
     from sqlalchemy import event
 
@@ -437,7 +449,7 @@ def test_full_restore_faults_preserve_entire_target_and_safety_copy(
         event.listen(target.engine, "before_cursor_execute", fail)
     else:
         target.fail_commit_once()
-    result = target.client.post("/api/import/cards", json=backup)
+    result = _confirmed_restore(target, backup)
     assert result.status_code == 500, result.text
     assert target.snapshot() == before
     if fault != "safety_disk":
@@ -596,7 +608,7 @@ def test_full_restore_accepts_legacy_new_state_without_fabricating_events(
     )
     backup = ec.client.get("/api/export/backup").json()
     other = ec_factory()
-    result = other.client.post("/api/import/cards", json=backup)
+    result = _confirmed_restore(other, backup)
     assert result.status_code == 200, result.text
     restored = other.client.get("/api/export/backup").json()
     assert restored["reviews"][0]["state"] == 0
@@ -630,3 +642,38 @@ def test_full_snapshot_rejects_invalid_audit_fields(ec, mutation):
         payload["version"] = 2.0
     result = ec.client.post("/api/import/preview", json=payload)
     assert result.status_code == 422, result.text
+
+
+@pytest.mark.parametrize(
+    "request_shape", ["flat", "missing", "null", "number", "object"]
+)
+def test_full_restore_requires_preview_revision_before_safety_backup(
+    ec, ec_factory, request_shape
+):
+    ec.seed_card("source")
+    backup = ec.client.get("/api/export/backup").json()
+    other = ec_factory()
+    cid = other.seed_card("new-progress")
+    assert (
+        other.client.post(
+            "/api/reviews",
+            json={"card_id": cid, "rating": 3, "source": "study"},
+        ).status_code
+        == 200
+    )
+    before = other.snapshot()
+    safety_before = sorted((other.root / "backups").glob("*"))
+    payload = {"backup": backup}
+    if request_shape == "flat":
+        payload = backup
+    elif request_shape != "missing":
+        payload["expected_revision"] = {"null": None, "number": 7, "object": {}}[
+            request_shape
+        ]
+    result = other.client.post("/api/import/cards", json=payload)
+    assert result.status_code == 422, result.text
+    assert any(
+        issue["field"] == "expected_revision" for issue in result.json()["detail"]
+    )
+    assert other.snapshot() == before
+    assert sorted((other.root / "backups").glob("*")) == safety_before
