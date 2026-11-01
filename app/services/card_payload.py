@@ -34,9 +34,10 @@ def card_payload(
     review=None,
     error=None,
     hard: bool = False,
+    revision: dict | None = None,
 ) -> dict:
     """全量载荷：含复习状态（毕业口径 card_is_graduated，全库唯一）。"""
-    return {
+    payload = {
         "id": card.id,
         "word": card.word,
         "kind": card.kind,
@@ -54,6 +55,9 @@ def card_payload(
         "error_count": error.error_count if error else 0,
         "is_hard": hard,
     }
+    if revision is not None:
+        payload["content_revision"] = revision
+    return payload
 
 
 def backup_payload(card: Card) -> dict:

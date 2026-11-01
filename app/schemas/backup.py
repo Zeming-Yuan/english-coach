@@ -86,9 +86,10 @@ class LegacyBackup(BaseModel):
 class ValidatedBackup(BaseModel):
     """校验后的备份：模式、集合与内容摘要。"""
 
-    version: Literal[1, 2]
+    version: Literal[1, 2, 3]
     mode: Literal["legacy_partial", "full_replace"]
     tables: dict[str, list[dict]]
+    extensions: dict[str, list[dict]] = Field(default_factory=dict)
     payload_digest: str
 
 
@@ -332,8 +333,12 @@ class FullBackup(FullRow):
 def validate_backup(payload: dict) -> ValidatedBackup:
     if "version" not in payload:
         return validate_legacy_backup(payload)
-    if type(payload["version"]) is not int or payload["version"] != 2:
+    if type(payload["version"]) is not int or payload["version"] not in (2, 3):
         raise UnsupportedBackupError("未知备份版本")
+    if payload["version"] == 3:
+        from app.schemas.backup_v3 import validate_v3
+
+        return validate_v3(payload)
     try:
         parsed = FullBackup.model_validate_json(json.dumps(payload))
     except ValidationError as error:

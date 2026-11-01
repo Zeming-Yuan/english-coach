@@ -29,7 +29,7 @@ class QuestionTokenExpired(InvalidQuestionToken):
 
 
 class QuestionTokenStale(InvalidQuestionToken):
-    """由其他应用实例签发（重启后旧 token，HTTP 409）。"""
+    """上下文已过期：其他实例签发、重启，或词卡内容已修改（HTTP 409）。"""
 
 
 def new_question_secret() -> bytes:
@@ -58,6 +58,7 @@ def issue_question(
     expected: str,
     secret: bytes,
     *,
+    revision: dict | None = None,
     now: datetime | None = None,
     ttl: timedelta = DEFAULT_TTL,
 ) -> dict:
@@ -78,6 +79,9 @@ def issue_question(
         "expires_at": (issued_at + ttl).astimezone(timezone.utc).isoformat(),
         "kid": _key_id(secret),
     }
+    if revision is not None:
+        payload["identity"] = revision["identity"]
+        payload["version"] = revision["version"]
     raw = _canonical(payload)
     token = base64.urlsafe_b64encode(raw).decode("ascii") + "." + _sign(raw, secret)
     return {**payload, "token": token}
@@ -130,6 +134,8 @@ def _validate_payload(payload: dict) -> None:
     options = payload.get("options")
     expected = payload.get("expected")
     expires_at = payload.get("expires_at")
+    identity = payload.get("identity")
+    version = payload.get("version")
     valid = (
         isinstance(card_id, int)
         and not isinstance(card_id, bool)
@@ -141,6 +147,15 @@ def _validate_payload(payload: dict) -> None:
         and isinstance(expected, str)
         and expected in options
         and isinstance(expires_at, str)
+        and (identity is None or isinstance(identity, str))
+        and (
+            version is None
+            or (
+                isinstance(version, int)
+                and not isinstance(version, bool)
+                and version >= 1
+            )
+        )
     )
     if valid:
         try:

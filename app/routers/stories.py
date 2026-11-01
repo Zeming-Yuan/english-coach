@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models.card import Card
 from app.models.story import Story, StoryWord
+from app.services.content_revisions import delete_content_revision
 from app.services.llm import generate_json
 from app.services.llm_client import LLMNotConfigured
 from app.services.story_generator import generate_story
@@ -80,6 +81,7 @@ def delete_story(story_id: int, db: Session = Depends(get_db)):
     if story is None:
         raise HTTPException(status_code=404, detail="Story not found")
     db.execute(delete(StoryWord).where(StoryWord.story_id == story_id))
+    delete_content_revision(db, "story", story_id)
     db.delete(story)
     db.commit()
     return {"deleted": story_id}

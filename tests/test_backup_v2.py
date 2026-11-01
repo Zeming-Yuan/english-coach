@@ -19,6 +19,8 @@ TOP_LEVEL_KEYS = {
     "version",
     "exported_at",
     "learning_timezone",
+    "features",
+    "extensions",
     "cards",
     "reviews",
     "learning_events",
@@ -49,7 +51,7 @@ def test_backup_contains_all_database_collections(ec):
     response = ec.client.get("/api/export/backup")
     assert response.status_code == 200
     data = response.json()
-    assert data["version"] == 2
+    assert data["version"] == 3
     assert len(data["cards"]) == 2
     assert {
         "reviews",
@@ -249,7 +251,7 @@ def test_snapshot_revision_normalizes_order_and_ignores_export_time():
     assert snapshot_revision(changed) != snapshot_revision(payload)
 
 
-def test_legacy_export_endpoint_remains_compatible_and_is_not_v2(ec):
+def test_legacy_export_endpoint_remains_compatible_and_is_not_v3(ec):
     card_id = ec.seed_card(
         word="apple",
         chunks=[{"text": "an apple", "role": "subject"}],
@@ -267,7 +269,7 @@ def test_legacy_export_endpoint_remains_compatible_and_is_not_v2(ec):
 
     complete = ec.client.get("/api/export/backup")
     assert complete.status_code == 200
-    assert complete.json()["version"] == 2
+    assert complete.json()["version"] == 3
 
 
 def test_backup_excludes_configuration_caches_and_browser_preferences(ec):

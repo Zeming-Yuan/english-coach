@@ -30,7 +30,16 @@ from app.schemas.backup import (
     validate_backup,
 )
 from app.schemas.learning import AttemptCommand
-from app.services.backup import BACKUP_COLLECTIONS, export_backup, snapshot_revision
+from app.services.backup import (
+    BACKUP_COLLECTIONS,
+    export_backup,
+    extension_collections,
+    snapshot_revision,
+)
+from app.services.content_revisions import (
+    advance_content_revision,
+    ensure_content_revisions,
+)
 from app.services.learning import canonical_attempt, get_memory_state
 from app.services.write_transaction import run_write
 
@@ -154,6 +163,9 @@ def _apply_restore(
             mapping[source_id] = (card, row)
             new_cards += 1
         else:
+            # 旧版部分恢复也会覆盖已匹配卡的内容；实质变化必须推进修订，
+            # 使旧证据不再证明新内容。相同内容重复导入不重复递增。
+            advance_content_revision(session, "card", target.id, fields)
             for key, value in fields.items():
                 setattr(target, key, value)
 
@@ -229,6 +241,7 @@ def _apply_restore(
         else:
             error.error_count = row["error_count"]
 
+    ensure_content_revisions(session)
     return {
         "imported_words": new_cards,
         "requests": len(validated.tables["cards"]),
@@ -237,15 +250,36 @@ def _apply_restore(
 
 
 def preview_legacy_restore(db: Session, payload: dict, runtime: Runtime) -> dict:
-    """只读预览：V2 全量替换 / 旧版部分恢复、影响与数据库修订。"""
+    """只读预览：全量替换 / 旧版部分恢复、影响与数据库修订。"""
     validated = validate_backup(payload)
+    registered = [name for name, _ in extension_collections()]
     if validated.mode == "full_replace":
         current = export_backup(db, runtime)
+        provided = [name for name in registered if name in validated.extensions]
         return {
             "mode": "full_replace",
-            "counts": {name: len(rows) for name, rows in validated.tables.items()},
+            "version": validated.version,
+            "counts": {
+                **{name: len(rows) for name, rows in validated.tables.items()},
+                **{name: len(rows) for name, rows in validated.extensions.items()},
+            },
+            "extensions": {
+                "provided": provided,
+                # Missing extensions are emptied and regenerated for restored
+                # entities; the caller must see that before confirming.
+                "missing": [name for name in registered if name not in provided],
+            },
             "impact": {
-                "replaced": {name: len(current[name]) for name, _ in BACKUP_COLLECTIONS}
+                "replaced": {
+                    **{
+                        name: len(current[name])
+                        for name, _ in BACKUP_COLLECTIONS
+                    },
+                    **{
+                        name: len(current["extensions"].get(name, []))
+                        for name in registered
+                    },
+                }
             },
             "expected_revision": snapshot_revision(current),
             "payload_digest": validated.payload_digest,
@@ -255,8 +289,14 @@ def preview_legacy_restore(db: Session, payload: dict, runtime: Runtime) -> dict
     revision = snapshot_revision(export_backup(db, runtime))
     return {
         "mode": "legacy_partial",
+        "version": validated.version,
         "counts": {
             collection: len(rows) for collection, rows in validated.tables.items()
+        },
+        "extensions": {
+            "provided": [],
+            # 部分恢复不清空未包含的集合，新修订只为新增卡补齐。
+            "missing": registered,
         },
         "impact": {
             "new_cards": len(mapping) - existing,
@@ -320,7 +360,8 @@ __all__ = [
 
 def _apply_full_restore(session: Session, validated: ValidatedBackup) -> dict:
     """Replace the validated graph under the existing coordinator's write lock."""
-    models = dict(BACKUP_COLLECTIONS)
+    extensions = extension_collections()
+    models = {**dict(BACKUP_COLLECTIONS), **dict(extensions)}
     order = (
         "cards",
         "lessons",
@@ -333,14 +374,15 @@ def _apply_full_restore(session: Session, validated: ValidatedBackup) -> dict:
         "learning_events",
         "story_words",
     )
+    extension_names = [name for name, _ in extensions]
     # Cards use the durable native allocator, including across empty restores.
     # Other integer identities only need remapping within this replacement.
     next_ids = {
         name: (session.scalar(select(func.max(model.id))) or 0) + 1
-        for name, model in BACKUP_COLLECTIONS
+        for name, model in models.items()
         if name not in ("cards", "learning_events", "review_baselines")
     }
-    for name in reversed(order):
+    for name in reversed([*order, *extension_names]):
         session.execute(delete(models[name]))
     mapping = {name: {} for name in order}
     for name in order:
@@ -376,9 +418,29 @@ def _apply_full_restore(session: Session, validated: ValidatedBackup) -> dict:
             session.add(target)
             session.flush()
             mapping[name][source["id"]] = target.id
+    # Core inserts may have created provisional identities; replace them with
+    # the snapshot's registered extensions, then fill any entity the snapshot
+    # did not cover (V2/V1 or an earlier V3).
+    for name in extension_names:
+        session.execute(delete(models[name]))
+    from app.schemas.backup_v3 import registered_extensions
+
+    specs = registered_extensions()
+    for name, rows in validated.extensions.items():
+        spec = specs[name]
+        for source in rows:
+            row = spec.remap(source, mapping)
+            row.pop("id", None)
+            row["id"] = next_ids[name]
+            next_ids[name] += 1
+            session.add(models[name](**row))
+    ensure_content_revisions(session)
     return {
         "mode": "full_replace",
         "imported_words": len(validated.tables["cards"]),
         "requests": len(validated.tables["cards"]),
-        "counts": {name: len(rows) for name, rows in validated.tables.items()},
+        "counts": {
+            **{name: len(rows) for name, rows in validated.tables.items()},
+            **{name: len(rows) for name, rows in validated.extensions.items()},
+        },
     }

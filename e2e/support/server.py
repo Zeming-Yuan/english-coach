@@ -91,6 +91,13 @@ def main() -> None:
         static_dir=Path(args.static_dir),
     )
 
+    # 外部 AI 替身：fixture 的 llm_responses 使用独立队列，只替换外部客户端。
+    llm_responses = payload.get("llm_responses")
+    if isinstance(llm_responses, list):
+        from tests.support.llm_queue import QueuedLLM
+
+        app.state.llm_client = QueuedLLM(llm_responses)
+
     # 外部 AI 替身：fixture 的 external.llm=timeout/unavailable 在适配处模拟失败，
     # 不发起真实网络请求；应用其余部分仍是真实实现。
     mode = str(external.get("llm", ""))

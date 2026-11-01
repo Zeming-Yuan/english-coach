@@ -240,9 +240,12 @@ def _semantic(payload):
     payload = copy.deepcopy(payload)
     cards = {row["id"]: (row["word"], row["kind"]) for row in payload["cards"]}
     stories = {row["id"]: row["title"] for row in payload["stories"]}
-    for key in ("exported_at", "learning_timezone", "version"):
+    lessons = {row["id"]: row["title"] for row in payload["lessons"]}
+    for key in ("exported_at", "learning_timezone", "version", "features"):
         payload.pop(key, None)
     for name, rows in payload.items():
+        if name == "extensions":
+            continue
         for row in rows:
             row.pop("id", None)
             if "card_id" in row:
@@ -258,6 +261,17 @@ def _semantic(payload):
                 for key in ("card_id", "sentence_card_id"):
                     if row["response"].get(key) is not None:
                         row["response"][key] = cards[row["response"][key]]
+        rows.sort(key=lambda row: repr(sorted(row.items())))
+    for name, rows in (payload.get("extensions") or {}).items():
+        for row in rows:
+            row.pop("id", None)
+            if name == "content_revisions":
+                references = {
+                    "card": cards,
+                    "lesson": lessons,
+                    "story": stories,
+                }[row["resource_kind"]]
+                row["resource_id"] = references[row["resource_id"]]
         rows.sort(key=lambda row: repr(sorted(row.items())))
     return payload
 
@@ -288,7 +302,7 @@ def test_full_roundtrip_all_entities_repeat_and_usable_safety_backup(ec, ec_fact
         after = other.client.get("/api/export/backup").json()
         assert _semantic(after) == _semantic(backup)
         preview = other.client.post("/api/import/preview", json=backup)
-    safety = json.loads(Path(result.json()["safety_backup_path"]).read_text())
+    safety = json.loads(Path(result.json()["safety_backup_path"]).read_text(encoding="utf-8"))
     third = ec_factory()
     assert _confirmed_restore(third, safety).status_code == 200
     assert _semantic(third.client.get("/api/export/backup").json()) == _semantic(backup)
@@ -455,7 +469,7 @@ def test_full_restore_faults_preserve_entire_target_and_safety_copy(
     if fault != "safety_disk":
         copies = list((target.root / "backups").glob("before-restore-*.json"))
         assert copies
-        saved = [json.loads(path.read_text()) for path in copies]
+        saved = [json.loads(path.read_text(encoding="utf-8")) for path in copies]
         assert any(
             {k: v for k, v in p.items() if k != "exported_at"} == before for p in saved
         )

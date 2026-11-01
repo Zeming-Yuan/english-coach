@@ -26,7 +26,7 @@ from app.models.review_event import ReviewEvent
 from app.models.story import Story, StoryWord
 from app.runtime import Runtime
 
-BACKUP_VERSION = 2
+BACKUP_VERSION = 3
 
 # 明确的模型白名单：新增业务表必须在这里显式登记才会进入备份。
 BACKUP_COLLECTIONS = (
@@ -57,6 +57,17 @@ def export_rows(db: Session, model) -> list[dict]:
     ]
 
 
+def extension_collections() -> tuple[tuple[str, type], ...]:
+    """已登记的 V3 扩展集合（顺序即导出顺序）；未绑定持久模型时拒绝导出。"""
+    from app.schemas.backup_v3 import registered_extensions
+
+    specs = registered_extensions()
+    missing = [name for name, spec in specs.items() if spec.model is None]
+    if missing:
+        raise RuntimeError(f"V3 扩展集合缺少持久模型：{','.join(missing)}")
+    return tuple((name, spec.model) for name, spec in specs.items())
+
+
 def export_backup(db: Session, runtime: Runtime) -> dict:
     """读取全部集合，形成同一读事务内的逻辑快照。
 
@@ -66,11 +77,16 @@ def export_backup(db: Session, runtime: Runtime) -> dict:
     if not db.in_transaction():
         db.execute(text("BEGIN"))
         started = True
+    extensions = extension_collections()
     try:
         payload = {
             "version": BACKUP_VERSION,
             "exported_at": runtime.clock.now().astimezone(UTC).isoformat(),
             "learning_timezone": runtime.learning_timezone,
+            "features": [name for name, _ in extensions],
+            "extensions": {
+                name: export_rows(db, model) for name, model in extensions
+            },
             **{name: export_rows(db, model) for name, model in BACKUP_COLLECTIONS},
         }
     finally:
@@ -84,17 +100,22 @@ def semantic_snapshot(payload: dict) -> dict:
     return {key: value for key, value in payload.items() if key != "exported_at"}
 
 
+def _canonical_rows(value, key: str | None = None):
+    """集合按 id 排序；事件保持保存次序，标量与 features 保持原样。"""
+    if isinstance(value, dict):
+        return {item: _canonical_rows(rows, item) for item, rows in value.items()}
+    if (
+        isinstance(value, list)
+        and key != "learning_events"
+        and all(isinstance(row, dict) and "id" in row for row in value)
+    ):
+        return sorted(value, key=lambda row: row["id"])
+    return value
+
+
 def snapshot_revision(payload: dict) -> str:
     """内容摘要保留事件保存次序，其余集合按 id；JSON 排序键后取 SHA256。"""
-    canonical = semantic_snapshot(payload)
-    canonical = {
-        key: (
-            sorted(value, key=lambda row: row["id"])
-            if isinstance(value, list) and key != "learning_events"
-            else value
-        )
-        for key, value in canonical.items()
-    }
+    canonical = _canonical_rows(semantic_snapshot(payload))
     encoded = json.dumps(
         canonical,
         sort_keys=True,

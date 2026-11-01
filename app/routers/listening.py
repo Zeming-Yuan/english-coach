@@ -13,6 +13,7 @@ from app.models.card import Card
 from app.models.review import Review
 from app.runtime import Runtime, get_runtime
 from app.schemas.learning import AttemptCommand
+from app.services.content_revisions import get_content_revision
 from app.services.learning import (
     CardNotFoundError,
     SubmissionConflictError,
@@ -108,6 +109,7 @@ def get_listening(
             options,
             card.word,
             runtime.question_secret,
+            revision=get_content_revision(db, "card", card.id),
             now=runtime.clock.now(),
         )
         questions.append(

@@ -10,6 +10,7 @@ from app.db import get_db
 from app.models.card import Card
 from app.runtime import Runtime, get_runtime
 from app.schemas.learning import AttemptCommand, TypingCheckIn
+from app.services.content_revisions import get_content_revision
 from app.services.learning import (
     CardNotFoundError,
     SubmissionConflictError,
@@ -113,6 +114,7 @@ def get_quiz(
                 options,
                 card.word,
                 runtime.question_secret,
+                revision=get_content_revision(db, "card", card.id),
                 now=runtime.clock.now(),
             )
             questions.append(
@@ -164,6 +166,7 @@ def get_quiz(
                             options,
                             expected,
                             runtime.question_secret,
+                            revision=get_content_revision(db, "card", card.id),
                             now=runtime.clock.now(),
                         )
                         questions.append(
@@ -215,6 +218,7 @@ def get_choice_quiz(
             options,
             card.word,
             runtime.question_secret,
+            revision=get_content_revision(db, "card", card.id),
             now=runtime.clock.now(),
         )
         questions.append(

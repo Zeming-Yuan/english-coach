@@ -383,9 +383,9 @@ def test_current_state_prefers_last_review_over_id(ec):
     """旧库多行时，详情与列表都必须按 last_review 选当前状态，而不是 id。"""
     from app.models.review import Review
 
+    card_id = ec.seed_card()
     config = _migration_config(ec.database_url)
     command.downgrade(config, "ec12_card_identity")
-    card_id = ec.seed_card()
     db = ec.SessionLocal()
     try:
         db.add(
