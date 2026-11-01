@@ -8,6 +8,7 @@ from app.models.learning_contact import LearningContact
 from app.models.lesson import Lesson
 from app.models.lesson_progress import LessonProgress
 from app.models.memo import Memo
+from app.models.practice import PracticeItem, PracticeSession
 from app.models.review import Review
 from app.models.review_baseline import ReviewBaseline
 from app.models.review_event import ReviewEvent
@@ -22,6 +23,8 @@ __all__ = [
     "Lesson",
     "LessonProgress",
     "Memo",
+    "PracticeItem",
+    "PracticeSession",
     "Review",
     "ReviewBaseline",
     "ReviewEvent",

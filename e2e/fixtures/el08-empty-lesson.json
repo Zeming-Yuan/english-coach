@@ -1,0 +1,12 @@
+{
+  "tables": {
+    "lessons": [
+      {
+        "id": 1,
+        "level": 1,
+        "title": "空课",
+        "content": {"words": [], "dialogue": [], "tips": []}
+      }
+    ]
+  }
+}

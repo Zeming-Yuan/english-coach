@@ -81,6 +81,16 @@ export const requirements = {
     "EL-07 twenty generated lessons never read as completed",
     "EL-07 invalid generation leaves no half lesson",
   ],
+  EL08: [
+    "EL-08 lesson check hides unshown answers",
+    "EL-08 correct first answer passes the course check",
+    "EL-08 assisted answer stays weak",
+    "EL-08 skip can retry without replacing first result",
+    "EL-08 assistance survives returning to the course",
+    "EL-08 lost attempt response retries once",
+    "EL-08 refresh continues the same session",
+    "EL-08 zero words is explained without a fake pass",
+  ],
 };
 export const projects = ["mobile", "desktop"];
 

@@ -8,12 +8,15 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.models.card import Card
 from app.models.lesson import Lesson
 from app.models.lesson_progress import LessonProgress
 from app.runtime import Runtime, get_runtime
 from app.services.contacts import visible_card_ids
-from app.services.content_revisions import content_revision_map, get_content_revision
+from app.services.content_revisions import (
+    content_revision_map,
+    get_content_revision,
+    lesson_word_cards,
+)
 from app.services.lesson_generator import (
     MAX_LEVEL,
     LessonCapReachedError,
@@ -66,38 +69,8 @@ def lesson_to_dict(
     }
 
 
-def _lesson_word_cards(lesson: Lesson, db: Session) -> list[dict]:
-    """课程词表对应的真实词卡与修订；没有词卡的目标不伪造接触。"""
-    words = lesson.content.get("words", [])
-    names = [word.get("word") for word in words if word.get("word")]
-    cards = (
-        db.execute(
-            select(Card).where(Card.kind == "word", Card.word.in_(names))
-        )
-        .scalars()
-        .all()
-    )
-    by_word = {card.word: card for card in cards}
-    revisions = content_revision_map(db, "card", [card.id for card in cards])
-    result = []
-    for word in words:
-        card = by_word.get(word.get("word"))
-        if card is None:
-            continue
-        result.append(
-            {
-                "id": card.id,
-                "word": card.word,
-                "phonetic": word.get("phonetic") or card.phonetic,
-                "meaning": word.get("meaning") or card.meaning,
-                "content_revision": revisions[card.id],
-            }
-        )
-    return result
-
-
 def _lesson_detail(lesson: Lesson, db: Session) -> dict:
-    words = _lesson_word_cards(lesson, db)
+    words = lesson_word_cards(db, lesson)
     dialogue = [
         {
             **line,

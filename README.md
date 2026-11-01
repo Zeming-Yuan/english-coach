@@ -176,6 +176,7 @@ npm --prefix frontend run build                        # 生产构建
 | 词卡 | GET/POST/PUT/DELETE /api/cards/*、POST /api/cards/{id}/regenerate、/hard |
 | 练习 | GET /api/quiz、/quiz/choice、POST /api/typing/check（判分+事件+排期一次提交）、POST /api/quiz/score（批量原子）、GET /api/listening、POST /api/listening/score（识别不排期） |
 | 课程 | GET /api/lessons*、POST /api/lessons/next（AI 20 级逐课生成）、POST /api/lessons/{level}/opened（打开记录）、POST /api/lessons/{level}/viewed（显式浏览确认） |
+| 短测 | POST/GET /api/practice-sessions（持久课程短测）、POST /api/practice-sessions/{id}/items/{item_id}/attempts（首答关联学习事件）、POST /api/practice-sessions/{id}/items/{item_id}/assistance（持久提示） |
 | 故事 | GET/POST/DELETE /api/stories* |
 | 记忆法 | GET/PUT /api/memos/{card_id} |
 | 发音 | GET /api/tts/audio/{word}（流式 + 缓存 + 预合成） |
@@ -230,6 +231,10 @@ data/           SQLite 数据文件（不提交）
 ### 课程进度
 
 课程数量只表示已生成内容，不代表学完。课程详情显示本课目标和学习状态；打开、点“内容已看完”浏览与后续检查分开记录，只有点击“内容已看完”才记录浏览时间（服务端确认、重复提交幂等）。尚无短测时显示“待检查”，不伪造通过；二十课全部生成也只显示已生成，不显示已学完。生成课程会先校验唯一词形、释义、例句翻译与对话配对，词卡、课程和生成状态在同一事务保存；失败不留下半课或跳级。课程状态随 V3 完整备份导出和恢复。
+
+### 课程短测
+
+课程详情可开始本课短测：最多三道不同目标词，少词按实际数量；优先选尚无独立回忆证据的本课词。测试只显示释义，不显示词表、答案、长度或播放答案语音；请求首字母提示后本题持续按辅助记录，刷新或回看课程不会清除。每题首答关联真实学习事件：全部实际题目首答无提示正确才通过，错误或辅助为待巩固，整轮跳过为未完成且不改写课程检查计数。可以只练薄弱项或新开一轮，即时重试不覆盖首次结果；刷新后继续同一轮。轮次、冻结题目与首答事件关联随 V3 完整备份恢复。
 
 ### 每日学习的有限巩固与反馈
 

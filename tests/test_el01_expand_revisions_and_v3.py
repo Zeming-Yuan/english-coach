@@ -158,6 +158,8 @@ def test_el01_v3_roundtrip_keeps_identity_and_continues(ec, ec_factory):
             "content_revisions",
             "learning_contacts",
             "lesson_progress",
+            "practice_sessions",
+            "practice_items",
         ],
         "missing": [],
     }
@@ -310,6 +312,8 @@ def test_el01_v2_preview_reports_missing_extensions_and_restore_regenerates(
         "content_revisions",
         "learning_contacts",
         "lesson_progress",
+        "practice_sessions",
+        "practice_items",
     ]
     assert preview.json()["impact"]["replaced"]["content_revisions"] >= 1
     assert target.snapshot() == untouched
@@ -352,6 +356,8 @@ def test_el01_v1_partial_keeps_matched_identity_and_adds_new(ec):
         "content_revisions",
         "learning_contacts",
         "lesson_progress",
+        "practice_sessions",
+        "practice_items",
     ]
     assert (
         ec.client.post(
