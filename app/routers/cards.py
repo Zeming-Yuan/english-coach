@@ -9,6 +9,7 @@ from app.db import get_db
 from app.models.card import Card
 from app.models.error_card import ErrorCard
 from app.models.hard_card import HardCard
+from app.models.learning_contact import LearningContact
 from app.models.memo import Memo
 from app.models.review import Review
 from app.models.review_baseline import ReviewBaseline
@@ -16,8 +17,10 @@ from app.models.review_event import ReviewEvent
 from app.runtime import Runtime, get_runtime
 from app.services.card_generator import generate_cards, regenerate_example
 from app.services.card_payload import card_payload
+from app.services.contacts import contact_summary
 from app.services.content_revisions import (
     advance_content_revision,
+    content_revision_map,
     delete_content_revision,
     get_content_revision,
 )
@@ -107,6 +110,9 @@ def delete_card(card_id: int, db: Session = Depends(get_db)):
     db.execute(
         ReviewBaseline.__table__.delete().where(ReviewBaseline.card_id == card_id)
     )
+    db.execute(
+        LearningContact.__table__.delete().where(LearningContact.card_id == card_id)
+    )
     delete_content_revision(db, "card", card_id)
     db.execute(Memo.__table__.delete().where(Memo.card_id == card_id))
     db.execute(ErrorCard.__table__.delete().where(ErrorCard.card_id == card_id))
@@ -145,10 +151,16 @@ def _card_to_dict_fast(
     error: ErrorCard | None,
     is_hard: bool,
     evidence: dict | None = None,
+    revision: dict | None = None,
 ) -> dict:
     """Card → 全量载荷（批量预加载版本，无额外查询）。"""
     return card_payload(
-        card, review=review, error=error, hard=is_hard, evidence=evidence
+        card,
+        review=review,
+        error=error,
+        hard=is_hard,
+        evidence=evidence,
+        revision=revision,
     )
 
 
@@ -246,6 +258,8 @@ def list_cards(
     }
     error_map = {e.card_id: e for e in errors}
     hard_set = {h.card_id for h in hards}
+    # 展示接触需要每张卡当前修订（含句子卡），批量一次读取。
+    revisions = content_revision_map(db, "card", card_ids)
     # 句子卡没有独立 typed 回忆，不应为它们扫描/分发无意义证据。
     evidence_map = bulk_evidence_summaries(
         db, [c.id for c in cards if c.kind == "word"], runtime
@@ -259,6 +273,7 @@ def list_cards(
                 error_map.get(c.id),
                 c.id in hard_set,
                 evidence_map.get(c.id),
+                revisions.get(c.id),
             )
             for c in cards
         ]
@@ -421,6 +436,7 @@ def get_card_detail(
     evidence = evidence_summary(
         db, card_id, runtime, incomplete_history=history_incomplete
     )
+    last_contact, contact_integrity = contact_summary(db, card_id)
 
     return {
         "id": card.id,
@@ -464,4 +480,6 @@ def get_card_detail(
         "history_incomplete": history_incomplete,
         "content_revision": evidence["revision"],
         "learning_evidence": evidence,
+        "last_contact": last_contact,
+        "contact_integrity": contact_integrity,
     }

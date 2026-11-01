@@ -45,6 +45,13 @@ export const requirements = {
     "EL-03 weak evidence reads the same on home, stats and list",
     "EL-03 share report downloads with the exported state",
   ],
+  EL04: [
+    "EL-04 visible list and detail display record an in-app contact",
+    "EL-04 prefetch and offscreen cards are not contacts",
+    "EL-04 failed audio playback is not a contact",
+    "EL-04 unavailable local storage marks the basis incomplete",
+    "EL-04 lost confirmation retries with one record",
+  ],
 };
 export const projects = ["mobile", "desktop"];
 

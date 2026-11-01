@@ -10,12 +10,14 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Literal, NoReturn, cast
 from uuid import UUID
 
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from app.models.content_revision import ContentRevision
+from app.models.learning_contact import LearningContact
 from app.schemas.backup import (
     BackupValidationError,
     FullBackup,
@@ -25,6 +27,7 @@ from app.schemas.backup import (
     _digest,
     _issues_from_error,
 )
+from app.schemas.learning import ContactKind, ContactSource
 
 # 修订资源类型 ↔ 备份集合：导出、校验、映射共用同一张表。
 RESOURCE_COLLECTIONS = {
@@ -45,6 +48,7 @@ class ExtensionSpec:
     remap: Callable[[dict, dict[str, dict[int, int]]], dict]
     model: type | None = None
     complete: bool = False
+    unique: tuple[str, ...] = ()
 
 
 _EXTENSIONS: dict[str, ExtensionSpec] = {}
@@ -58,15 +62,19 @@ def register_extension(
     *,
     model: type | None = None,
     complete: bool = False,
+    unique: tuple[str, ...] = (),
 ) -> None:
     """登记扩展集合；重复登记是编程错误，拒绝静默覆盖。
 
     model 是导出与恢复删除拓扑使用的持久模型；登记顺序即导出顺序。
     complete 表示快照必须为每个父实体包含一行（如当前修订身份）。
+    unique 表示集合内不得重复的字段（如提交标识）。
     """
     if name in _EXTENSIONS:
         raise ValueError(f"扩展集合已登记：{name}")
-    _EXTENSIONS[name] = ExtensionSpec(name, schema, parents, remap, model, complete)
+    _EXTENSIONS[name] = ExtensionSpec(
+        name, schema, parents, remap, model, complete, unique
+    )
 
 
 def registered_extensions() -> dict[str, ExtensionSpec]:
@@ -93,6 +101,42 @@ register_extension(
     _remap_content_revision,
     model=ContentRevision,
     complete=True,
+)
+
+
+class FullLearningContact(FullRow):
+    """已确认的应用内接触；旧 V2/V3 没有该集合时保持未知。"""
+
+    id: int = Field(gt=0, strict=True)
+    submission_id: str
+    card_id: int = Field(gt=0, strict=True)
+    card_identity: str
+    card_revision: int = Field(ge=1, strict=True)
+    source: ContactSource
+    kind: ContactKind
+    # 快照中的时间是 JSON 字符串；字段单独放宽，其余仍保持严格。
+    occurred_at: datetime = Field(strict=False)
+
+    @field_validator("submission_id", "card_identity")
+    @classmethod
+    def _uuid(cls, value: str) -> str:
+        try:
+            return str(UUID(value))
+        except (ValueError, TypeError) as error:
+            raise ValueError("必须是 UUID") from error
+
+
+def _remap_learning_contact(row: dict, mapping: dict[str, dict[int, int]]) -> dict:
+    return {**row, "card_id": mapping["cards"][row["card_id"]]}
+
+
+register_extension(
+    "learning_contacts",
+    FullLearningContact,
+    ("cards",),
+    _remap_learning_contact,
+    model=LearningContact,
+    unique=("submission_id",),
 )
 
 
@@ -179,6 +223,10 @@ def _validate_extension_graph(
                 if key in resource_keys:
                     _reject(name, index, "resource_id", "同一实体重复登记修订")
                 resource_keys.add(key)
+        for field in spec.unique:
+            values = [row[field] for row in rows]
+            if len(values) != len(set(values)):
+                _reject(name, "?", field, "唯一标识重复")
         if spec.complete:
             # Declared-but-incomplete snapshots would silently mint new
             # identities during restore; reject them before any write.
@@ -261,6 +309,28 @@ def validate_v3(payload: dict) -> ValidatedBackup:
         for name in features
     }
     _validate_extension_graph(validated_extensions, tables)
+    # 接触的修订归属必须能由快照自身解释：身份与当前修订一致，版本不晚于它。
+    card_revisions = {
+        row["resource_id"]: row
+        for row in validated_extensions.get("content_revisions", [])
+        if row["resource_kind"] == "card"
+    }
+    for index, contact in enumerate(validated_extensions.get("learning_contacts", [])):
+        revision = card_revisions.get(contact["card_id"])
+        if revision is None or str(UUID(revision["identity"])) != contact["card_identity"]:
+            _reject(
+                "learning_contacts",
+                index,
+                "card_identity",
+                "与快照中的内容修订身份不一致",
+            )
+        if contact["card_revision"] > revision["version"]:
+            _reject(
+                "learning_contacts",
+                index,
+                "card_revision",
+                "晚于快照中的当前内容修订",
+            )
     return ValidatedBackup(
         version=3,
         mode="full_replace",

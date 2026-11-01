@@ -15,11 +15,10 @@ from sqlalchemy import literal_column, or_, select
 from sqlalchemy.orm import Session
 
 from app.models.card import Card
-from app.models.content_revision import ContentRevision
 from app.models.review_baseline import ReviewBaseline
 from app.models.review_event import ReviewEvent
 from app.runtime import Runtime
-from app.services.content_revisions import get_content_revision
+from app.services.content_revisions import content_revision_map, get_content_revision
 from app.services.learning import has_incomplete_history
 
 RULE_VERSION = "el02-v1"
@@ -182,15 +181,7 @@ def bulk_evidence_summaries(
     ids = list(dict.fromkeys(card_ids))
     if not ids:
         return {}
-    revisions = {
-        row.resource_id: {"identity": row.identity, "version": row.version}
-        for row in db.execute(
-            select(ContentRevision).where(
-                ContentRevision.resource_kind == "card",
-                ContentRevision.resource_id.in_(ids),
-            )
-        ).scalars()
-    }
+    revisions = content_revision_map(db, "card", ids)
     events_by_card: dict[int, list[ReviewEvent]] = defaultdict(list)
     for event in db.execute(
         select(ReviewEvent)

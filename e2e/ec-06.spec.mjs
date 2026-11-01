@@ -267,6 +267,14 @@ async function ttsSnapshot(app) {
   const data = await response.json(); delete data.exported_at; return data;
 }
 
+// 展示词卡本身会写入接触记录；TTS 回归只关心它不写学习数据。
+function withoutContacts(snapshot) {
+  const copy = JSON.parse(JSON.stringify(snapshot));
+  copy.features = copy.features.filter((feature) => feature !== "learning_contacts");
+  delete copy.extensions.learning_contacts;
+  return copy;
+}
+
 test("EC-16 TTS uses controlled external adapter", async ({app, page}) => {
   await page.unroute("**/api/tts/**");
   expect((await app.request.get("/api/tts/audio/release/preload")).ok()).toBe(true);
@@ -376,7 +384,7 @@ test("EC-16 speech prewarming cannot block detail or saving", async ({appFactory
   // connections. API reads/learning must remain usable while they are pending.
   await expect.poll(async () => (await app.externalCalls()).filter(call => call === "tts").length).toBeGreaterThanOrEqual(2);
   await page.locator(".word-item").first().click();
-  expect(await ttsSnapshot(app)).toEqual(before);
+  expect(withoutContacts(await ttsSnapshot(app))).toEqual(withoutContacts(before));
   await expect(page.getByTestId("rate-good")).toBeVisible({timeout: 5000});
   await page.getByTestId("rate-good").click();
   await expect.poll(async () => (await ttsSnapshot(app)).learning_events, {timeout: 5000}).toHaveLength(1);

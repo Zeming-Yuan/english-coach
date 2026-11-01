@@ -35,13 +35,15 @@ export async function sendPending(pending) {
   return response.json();
 }
 
-const pendingKey = (scope) => "ec.pending." + scope;
+const DEFAULT_PREFIX = "ec.pending.";
 const memoryPending = new Map();
 
-export function savePending(scope, pending) {
-  memoryPending.set(scope, pending);
+const pendingKey = (scope, prefix) => prefix + scope;
+
+export function savePending(scope, pending, prefix = DEFAULT_PREFIX) {
+  memoryPending.set(pendingKey(scope, prefix), pending);
   try {
-    localStorage.setItem(pendingKey(scope), JSON.stringify(pending));
+    localStorage.setItem(pendingKey(scope, prefix), JSON.stringify(pending));
     return true;
   } catch {
     // storage 不可写：内存中的待确认请求仍然保留，不换提交标识
@@ -49,20 +51,21 @@ export function savePending(scope, pending) {
   }
 }
 
-export function loadPending(scope) {
-  if (memoryPending.has(scope)) return memoryPending.get(scope);
+export function loadPending(scope, prefix = DEFAULT_PREFIX) {
+  const key = pendingKey(scope, prefix);
+  if (memoryPending.has(key)) return memoryPending.get(key);
   try {
-    const saved = localStorage.getItem(pendingKey(scope));
+    const saved = localStorage.getItem(key);
     return saved ? JSON.parse(saved) : null;
   } catch {
     return null;
   }
 }
 
-export function clearPending(scope) {
-  memoryPending.delete(scope);
+export function clearPending(scope, prefix = DEFAULT_PREFIX) {
+  memoryPending.delete(pendingKey(scope, prefix));
   try {
-    localStorage.removeItem(pendingKey(scope));
+    localStorage.removeItem(pendingKey(scope, prefix));
   } catch {
     // storage 不可用时只清理内存
   }

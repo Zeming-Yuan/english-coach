@@ -102,6 +102,24 @@ def get_content_revision(
     return {"identity": row.identity, "version": row.version}
 
 
+def content_revision_map(
+    db: Session, resource_kind: str, resource_ids
+) -> dict[int, dict]:
+    """批量读取当前修订；每次调用只发一次查询。"""
+    ids = list(dict.fromkeys(resource_ids))
+    if not ids:
+        return {}
+    return {
+        row.resource_id: {"identity": row.identity, "version": row.version}
+        for row in db.execute(
+            select(ContentRevision).where(
+                ContentRevision.resource_kind == resource_kind,
+                ContentRevision.resource_id.in_(ids),
+            )
+        ).scalars()
+    }
+
+
 def delete_content_revision(db: Session, resource_kind: str, resource_id: int) -> None:
     """实体删除时同步移除修订身份，避免备份出现悬空引用。"""
     db.execute(
