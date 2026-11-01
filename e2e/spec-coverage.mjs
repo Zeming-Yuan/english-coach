@@ -70,6 +70,17 @@ export const requirements = {
     "EL-06 offscreen story target is not a contact until visible",
     "EL-06 contact failure does not block reading",
   ],
+  EL07: [
+    "EL-07 generated lesson shows goal and pending check",
+    "EL-07 opening is separate from browse completion",
+    "EL-07 explicit viewed confirmation changes status",
+    "EL-07 viewed confirmation response loss retries once",
+    "EL-07 generation records pending check and counts",
+    "EL-07 continue next lesson resets lesson state",
+    "EL-07 next lesson response loss replays without skipping",
+    "EL-07 twenty generated lessons never read as completed",
+    "EL-07 invalid generation leaves no half lesson",
+  ],
 };
 export const projects = ["mobile", "desktop"];
 

@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from app.models.content_revision import ContentRevision
 from app.models.learning_contact import LearningContact
+from app.models.lesson_progress import LessonProgress
 from app.schemas.backup import (
     BackupValidationError,
     FullBackup,
@@ -137,6 +138,59 @@ register_extension(
     _remap_learning_contact,
     model=LearningContact,
     unique=("submission_id",),
+)
+
+
+class FullLessonProgress(FullRow):
+    """课程的生成/浏览状态；旧 V3 没有该集合时保持状态未记录。"""
+
+    id: int = Field(gt=0, strict=True)
+    lesson_id: int = Field(gt=0, strict=True)
+    generation_id: str
+    generated: bool = Field(strict=True)
+    generated_at: datetime = Field(strict=False)
+    opened: bool = Field(strict=True)
+    opened_at: datetime | None = Field(default=None, strict=False)
+    browsed: bool = Field(strict=True)
+    browsed_at: datetime | None = Field(default=None, strict=False)
+    view_submission_id: str | None = None
+    view_submissions: list[str] = Field(default_factory=list)
+    checked_count: int = Field(ge=0, strict=True)
+    passed_count: int = Field(ge=0, strict=True)
+
+    @field_validator("generation_id", "view_submission_id")
+    @classmethod
+    def _uuid(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        try:
+            return str(UUID(value))
+        except (ValueError, TypeError) as error:
+            raise ValueError("必须是 UUID") from error
+
+    @field_validator("view_submissions")
+    @classmethod
+    def _uuid_list(cls, values: list[str]) -> list[str]:
+        result = []
+        for value in values:
+            try:
+                result.append(str(UUID(value)))
+            except (ValueError, TypeError) as error:
+                raise ValueError("必须是 UUID") from error
+        return result
+
+
+def _remap_lesson_progress(row: dict, mapping: dict[str, dict[int, int]]) -> dict:
+    return {**row, "lesson_id": mapping["lessons"][row["lesson_id"]]}
+
+
+register_extension(
+    "lesson_progress",
+    FullLessonProgress,
+    ("lessons",),
+    _remap_lesson_progress,
+    model=LessonProgress,
+    unique=("generation_id", "lesson_id"),
 )
 
 
@@ -330,6 +384,22 @@ def validate_v3(payload: dict) -> ValidatedBackup:
                 index,
                 "card_revision",
                 "晚于快照中的当前内容修订",
+            )
+    progress_rows = validated_extensions.get("lesson_progress", [])
+    view_ids = []
+    for row in progress_rows:
+        if row["view_submission_id"] is not None:
+            view_ids.append(row["view_submission_id"])
+        view_ids.extend(row["view_submissions"])
+    if len(view_ids) != len(set(view_ids)):
+        _reject("lesson_progress", "?", "view_submission_id", "浏览提交标识重复")
+    for index, row in enumerate(progress_rows):
+        if row["passed_count"] > row["checked_count"]:
+            _reject(
+                "lesson_progress",
+                index,
+                "passed_count",
+                "通过数不能超过检查数",
             )
     return ValidatedBackup(
         version=3,

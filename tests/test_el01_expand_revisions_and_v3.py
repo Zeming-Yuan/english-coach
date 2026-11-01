@@ -154,7 +154,11 @@ def test_el01_v3_roundtrip_keeps_identity_and_continues(ec, ec_factory):
     assert preview.status_code == 200, preview.text
     assert preview.json()["version"] == 3
     assert preview.json()["extensions"] == {
-        "provided": ["content_revisions", "learning_contacts"],
+        "provided": [
+            "content_revisions",
+            "learning_contacts",
+            "lesson_progress",
+        ],
         "missing": [],
     }
     restored = target.client.post(
@@ -305,6 +309,7 @@ def test_el01_v2_preview_reports_missing_extensions_and_restore_regenerates(
     assert preview.json()["extensions"]["missing"] == [
         "content_revisions",
         "learning_contacts",
+        "lesson_progress",
     ]
     assert preview.json()["impact"]["replaced"]["content_revisions"] >= 1
     assert target.snapshot() == untouched
@@ -346,6 +351,7 @@ def test_el01_v1_partial_keeps_matched_identity_and_adds_new(ec):
     assert preview.json()["extensions"]["missing"] == [
         "content_revisions",
         "learning_contacts",
+        "lesson_progress",
     ]
     assert (
         ec.client.post(

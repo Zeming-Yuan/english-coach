@@ -539,28 +539,45 @@ function QueueView({ setView, setStudyQueue, dailySession, onStartDaily, onResum
         <div className="lesson-entry">
           <div className="lesson-entry-body">
             <div className="lesson-entry-label">
-              {lessonData.is_done ? "全部完成 🎓" : "继续课程"}
+              {lessonData.is_done ? "20 课已全部生成" : "继续课程"}
             </div>
             <div className="lesson-entry-title">
               {lessonData.is_done
-                ? "20 级课程全部完成！"
+                ? "20 课已全部生成 · 尚无短测，待检查"
                 : lessonData.lessons.length > 0
                   ? `第 ${lessonData.lessons[lessonData.lessons.length - 1].level} 课 · ${lessonData.lessons[lessonData.lessons.length - 1].title}`
                   : "开始零基础课程"}
             </div>
             <div className="lesson-entry-sub">
-              {lessonData.is_done
-                ? "继续用队列/故事巩固吧"
-                : `已完成 ${lessonData.lessons.length}/20 课 · 下一课：${lessonData.next_level}`}
+              已生成 {lessonData.counts?.generated ?? lessonData.lessons.length}/20 课 · 已打开{" "}
+              {lessonData.counts?.opened ?? 0} 课 · 已浏览{" "}
+              {lessonData.counts?.browsed ?? 0} 课
+              {lessonData.counts?.old_content
+                ? ` · 旧内容 ${lessonData.counts.old_content} 课`
+                : ""}
+              {lessonData.counts?.unrecorded
+                ? ` · 状态未记录 ${lessonData.counts.unrecorded} 课`
+                : ""}
+              {lessonData.is_done ? "" : ` · 下一课：${lessonData.next_level}`}
             </div>
           </div>
           {!lessonData.is_done && (
-            <button className="btn btn-primary btn-small" onClick={() => setView("lessons")}>
+            <button
+              className="btn btn-primary btn-small"
+              data-testid="open-lessons"
+              onClick={() => setView("lessons")}
+            >
               {lessonData.lessons.length === 0 ? "开始" : "继续 →"}
             </button>
           )}
           {lessonData.is_done && (
-            <button className="btn btn-ghost btn-small" onClick={() => setView("lessons")}>回顾</button>
+            <button
+              className="btn btn-ghost btn-small"
+              data-testid="open-lessons"
+              onClick={() => setView("lessons")}
+            >
+              回顾
+            </button>
           )}
         </div>
       )}

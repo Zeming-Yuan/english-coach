@@ -175,7 +175,7 @@ npm --prefix frontend run build                        # 生产构建
 | 接触 | POST /api/learning/contacts（仅实际展示/播放后确认，不排期） |
 | 词卡 | GET/POST/PUT/DELETE /api/cards/*、POST /api/cards/{id}/regenerate、/hard |
 | 练习 | GET /api/quiz、/quiz/choice、POST /api/typing/check（判分+事件+排期一次提交）、POST /api/quiz/score（批量原子）、GET /api/listening、POST /api/listening/score（识别不排期） |
-| 课程 | GET /api/lessons*（AI 20 级逐课生成） |
+| 课程 | GET /api/lessons*、POST /api/lessons/next（AI 20 级逐课生成）、POST /api/lessons/{level}/opened（打开记录）、POST /api/lessons/{level}/viewed（显式浏览确认） |
 | 故事 | GET/POST/DELETE /api/stories* |
 | 记忆法 | GET/PUT /api/memos/{card_id} |
 | 发音 | GET /api/tts/audio/{word}（流式 + 缓存 + 预合成） |
@@ -226,6 +226,10 @@ data/           SQLite 数据文件（不提交）
 接触不是作答：不会写入 FSRS 排期、正确率、连续学习日或每日完成，重复确认按提交标识去重。详情“最近应用内接触”显示时间、来源、观察方式与当时修订；没有记录时显示“旧数据未记录，保持未知”，不宣称从未接触。待确认的接触只保存在浏览器 `ec.contact.*` 键，不会被评分恢复界面误当作学习提交；保存失败或本地存储不可用时，详情明确提示“接触依据不完整”。课程与故事阅读按正文实际出现的目标词记录接触；句子朗读实际开始后才记录答案语音，点词显示释义时记录该目标词。故事自动补翻晚到时会校验内容修订，已编辑或恢复的故事不会被旧翻译覆盖。
 
 接触记录随 V3 完整备份导出和恢复。
+
+### 课程进度
+
+课程数量只表示已生成内容，不代表学完。课程详情显示本课目标和学习状态；打开、点“内容已看完”浏览与后续检查分开记录，只有点击“内容已看完”才记录浏览时间（服务端确认、重复提交幂等）。尚无短测时显示“待检查”，不伪造通过；二十课全部生成也只显示已生成，不显示已学完。生成课程会先校验唯一词形、释义、例句翻译与对话配对，词卡、课程和生成状态在同一事务保存；失败不留下半课或跳级。课程状态随 V3 完整备份导出和恢复。
 
 ### 每日学习的有限巩固与反馈
 
