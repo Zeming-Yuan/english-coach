@@ -114,6 +114,38 @@ def get_content_revision(
     return {"identity": row.identity, "version": row.version}
 
 
+def lesson_word_cards(db: Session, lesson: Lesson) -> list[dict]:
+    """课程词表对应的真实词卡与修订；没有词卡的目标不伪造。"""
+    words = lesson.content.get("words", [])
+    names = [word.get("word") for word in words if word.get("word")]
+    cards = (
+        db.execute(
+            select(Card).where(Card.kind == "word", Card.word.in_(names))
+        )
+        .scalars()
+        .all()
+    )
+    by_word = {}
+    for card in cards:
+        by_word.setdefault(card.word, card)
+    revisions = content_revision_map(db, "card", [card.id for card in cards])
+    result = []
+    for word in words:
+        card = by_word.get(word.get("word"))
+        if card is None:
+            continue
+        result.append(
+            {
+                "id": card.id,
+                "word": card.word,
+                "phonetic": word.get("phonetic") or card.phonetic,
+                "meaning": word.get("meaning") or card.meaning,
+                "content_revision": revisions[card.id],
+            }
+        )
+    return result
+
+
 def content_revision_map(
     db: Session, resource_kind: str, resource_ids
 ) -> dict[int, dict]:

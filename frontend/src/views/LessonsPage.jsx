@@ -13,6 +13,7 @@ import {
 } from "../lib/learning.js";
 import { useLearningAttempt } from "../hooks/useLearningAttempt.js";
 import { showToast } from "../App.jsx";
+import PracticePage from "./PracticePage.jsx";
 
 function lessonProgressLabel(progress) {
   if (!progress) return "状态未记录";
@@ -70,6 +71,14 @@ export default function LessonsPage({ onExit }) {
     Boolean(loadPending(NEXT_SCOPE, NEXT_PREFIX)),
   );
   const [viewPending, setViewPending] = useState(pendingViewLevels);
+  const [practiceSessionId, setPracticeSessionId] = useState(() => {
+    try {
+      return localStorage.getItem("ec.practice.active");
+    } catch {
+      return null;
+    }
+  });
+  const [startingPractice, setStartingPractice] = useState(false);
   useEffect(() => {
     if (!activeLesson) setViewPending(pendingViewLevels());
   }, [activeLesson]);
@@ -91,6 +100,53 @@ export default function LessonsPage({ onExit }) {
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [loadLessons]);
+
+  const startPractice = async (
+    lessonId,
+    weakOnly = false,
+    forceNew = false,
+  ) => {
+    if (startingPractice) return;
+    setStartingPractice(true);
+    try {
+      if (!forceNew && !weakOnly) {
+        let stored = null;
+        try {
+          stored = localStorage.getItem("ec.practice.active");
+        } catch {}
+        if (stored) {
+          try {
+            const existing = await api(`/api/practice-sessions/${stored}`);
+            if (existing.lesson_id === lessonId) {
+              setPracticeSessionId(stored);
+              return;
+            }
+          } catch {}
+        }
+      }
+      const created = await api("/api/practice-sessions", {
+        method: "POST",
+        body: JSON.stringify({
+          id: crypto.randomUUID(),
+          purpose: "lesson_check",
+          lesson_id: lessonId,
+          weak_only: weakOnly,
+        }),
+      });
+      localStorage.setItem("ec.practice.active", created.id);
+      setPracticeSessionId(created.id);
+    } catch (error) {
+      showToast("短测创建失败：" + (error?.message || error));
+    } finally {
+      setStartingPractice(false);
+    }
+  };
+
+  const exitPractice = () => {
+    // 保留 ec.practice.active：回看课程后再次进入同一课可继续本题辅助。
+    setPracticeSessionId(null);
+    loadLessons().catch(() => {});
+  };
 
   const openLesson = async (level) => {
     try {
@@ -136,6 +192,18 @@ export default function LessonsPage({ onExit }) {
     }
   };
 
+  if (practiceSessionId) {
+    return (
+      <PracticePage
+        sessionId={practiceSessionId}
+        onExit={exitPractice}
+        onRestart={(lessonId, weakOnly) =>
+          startPractice(lessonId, weakOnly, true)
+        }
+      />
+    );
+  }
+
   if (loading) return <div className="story-empty">加载中…</div>;
 
   // 课程学习页
@@ -147,6 +215,7 @@ export default function LessonsPage({ onExit }) {
         onBack={() => setActiveLesson(null)}
         onNext={nextLesson}
         onViewed={loadLessons}
+        onStartPractice={startPractice}
         generating={generating}
       />
     );
@@ -240,7 +309,7 @@ export default function LessonsPage({ onExit }) {
 }
 
 /* ============ 课程学习详情 ============ */
-function LessonDetail({ lesson, onBack, onNext, onViewed, generating }) {
+function LessonDetail({ lesson, onBack, onNext, onViewed, onStartPractice, generating }) {
   const [mastered, setMastered] = useState(new Set());
   const [revealed, setRevealed] = useState(new Set());
   const [guesses, setGuesses] = useState({});
@@ -485,6 +554,12 @@ function LessonDetail({ lesson, onBack, onNext, onViewed, generating }) {
       </div>
 
       <div className="lesson-actions">
+        <button
+          className="btn btn-primary btn-wide"
+          onClick={() => onStartPractice?.(L.id)}
+        >
+          开始本课短测
+        </button>
         <button
           className="btn btn-primary btn-wide"
           onClick={markViewed}

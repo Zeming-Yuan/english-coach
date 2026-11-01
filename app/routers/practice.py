@@ -1,0 +1,113 @@
+"""持久练习上下文路由（EL-08）。"""
+
+from uuid import UUID
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.orm import Session
+
+from app.db import get_db
+from app.runtime import Runtime, get_runtime
+from app.schemas.practice import (
+    CreatePracticeIn,
+    PracticeAssistanceIn,
+    PracticeAttemptIn,
+)
+from app.services.learning import CardNotFoundError, SubmissionConflictError
+from app.services.practice import (
+    PracticeConflictError,
+    PracticeLessonNotFoundError,
+    PracticeNotFoundError,
+    PracticeStaleError,
+    PracticeUnavailableError,
+    create_session,
+    get_session,
+    set_assistance,
+    submit_practice,
+)
+
+router = APIRouter()
+
+
+def _not_found(error: Exception) -> HTTPException:
+    return HTTPException(status_code=404, detail=str(error))
+
+
+def _conflict(error: Exception) -> HTTPException:
+    return HTTPException(status_code=409, detail=str(error))
+
+
+def _unavailable(error: Exception) -> HTTPException:
+    return HTTPException(status_code=422, detail=str(error))
+
+
+@router.post("/practice-sessions")
+def create(
+    payload: CreatePracticeIn,
+    db: Session = Depends(get_db),
+    runtime: Runtime = Depends(get_runtime),
+):
+    """创建或重放一轮课程短测；冻结题目与内容修订。"""
+    try:
+        return create_session(
+            db,
+            payload.id,
+            payload.purpose,
+            payload.lesson_id,
+            payload.weak_only,
+            runtime,
+        )
+    except PracticeLessonNotFoundError as error:
+        raise _not_found(error)
+    except PracticeConflictError as error:
+        raise _conflict(error)
+    except PracticeUnavailableError as error:
+        raise _unavailable(error)
+
+
+@router.get("/practice-sessions/{session_id}")
+def read(session_id: UUID, db: Session = Depends(get_db)):
+    """读取同一轮次；不返回未作答题目的答案、长度或音频。"""
+    try:
+        return get_session(db, session_id)
+    except PracticeNotFoundError as error:
+        raise _not_found(error)
+
+
+@router.post("/practice-sessions/{session_id}/items/{item_id}/assistance")
+def assistance(
+    session_id: UUID,
+    item_id: UUID,
+    payload: PracticeAssistanceIn,
+    db: Session = Depends(get_db),
+    runtime: Runtime = Depends(get_runtime),
+):
+    """请求提示并持久标记本题辅助；提示只增不减。"""
+    try:
+        return set_assistance(db, session_id, item_id, payload.kind, runtime)
+    except PracticeNotFoundError as error:
+        raise _not_found(error)
+    except PracticeStaleError as error:
+        raise _conflict(error)
+    except PracticeUnavailableError as error:
+        raise _unavailable(error)
+
+
+@router.post("/practice-sessions/{session_id}/items/{item_id}/attempts")
+def attempt(
+    session_id: UUID,
+    item_id: UUID,
+    payload: PracticeAttemptIn,
+    db: Session = Depends(get_db),
+    runtime: Runtime = Depends(get_runtime),
+):
+    """提交一题；首答结果关联真实学习事件，重复提交按标识回放。"""
+    try:
+        return submit_practice(db, session_id, item_id, payload, runtime)
+    except PracticeNotFoundError as error:
+        raise _not_found(error)
+    except CardNotFoundError as error:
+        raise _not_found(error)
+    except (PracticeConflictError, PracticeStaleError, SubmissionConflictError) as error:
+        raise _conflict(error)
+    except PracticeUnavailableError as error:
+        raise _unavailable(error)

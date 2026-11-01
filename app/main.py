@@ -21,6 +21,7 @@ from app.routers import (
     listening,
     lookup,
     memos,
+    practice,
     quiz,
     reviews,
     sessions,
@@ -83,6 +84,7 @@ def create_app(
     app.include_router(memos.router, prefix="/api", tags=["memos"])
     app.include_router(export.router, prefix="/api", tags=["export"])
     app.include_router(lookup.router, prefix="/api", tags=["lookup"])
+    app.include_router(practice.router, prefix="/api", tags=["practice"])
 
     # 前端静态文件（防缓存：开发期保证加载最新构建）
     # 绝对路径：从任意工作目录启动/请求都能找到构建产物

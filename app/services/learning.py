@@ -132,7 +132,7 @@ def select_current_review(reviews: list[Review]) -> Review | None:
         reviews,
         key=lambda review: (
             review.last_review is not None,
-            review.last_review or datetime.min,
+            review.last_review or datetime.min,  # noqa: DTZ901 — 旧表为 naive UTC
             review.id,
         ),
     )
@@ -547,6 +547,18 @@ def submit_batch(
     return run_write(db, operation)
 
 
+def start_pending_upgrade(db: Session, upgrade=None) -> None:
+    """提交事务成功后才启动毕业句卡的 AI 升级。"""
+    upgrade_card_id = db.info.pop(UPGRADE_INFO_KEY, None)
+    if upgrade_card_id is None:
+        return
+    target = upgrade or upgrade_sentence_card
+    ctx = contextvars.copy_context()
+    threading.Thread(
+        target=ctx.run, args=(target, upgrade_card_id), daemon=True
+    ).start()
+
+
 def submit_attempt(
     db: Session,
     cmd: AttemptCommand,
@@ -577,12 +589,5 @@ def submit_attempt(
             raise
         result = AttemptResult.model_validate(existing.response)
 
-    upgrade_card_id = db.info.pop(UPGRADE_INFO_KEY, None)
-    if upgrade_card_id is not None:
-        # commit 之后才启动 AI；后台线程沿用本应用实例的 LLM 绑定。
-        target = upgrade or upgrade_sentence_card
-        ctx = contextvars.copy_context()
-        threading.Thread(
-            target=ctx.run, args=(target, upgrade_card_id), daemon=True
-        ).start()
+    start_pending_upgrade(db, upgrade)
     return result

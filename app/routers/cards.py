@@ -1,5 +1,7 @@
 """词卡路由：生成词卡 + 单词本列表。"""
 
+from datetime import UTC
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select, text
@@ -12,6 +14,7 @@ from app.models.error_card import ErrorCard
 from app.models.hard_card import HardCard
 from app.models.learning_contact import LearningContact
 from app.models.memo import Memo
+from app.models.practice import PracticeItem, PracticeSession
 from app.models.review import Review
 from app.models.review_baseline import ReviewBaseline
 from app.models.review_event import ReviewEvent
@@ -35,6 +38,7 @@ from app.services.learning import (
 )
 from app.services.learning_evidence import bulk_evidence_summaries, evidence_summary
 from app.services.llm_client import LLMNotConfigured
+from app.services.practice import refresh_practice_session
 from app.services.starter_cards import load_starter_cards, starter_card_rows
 from app.services.write_transaction import run_write
 
@@ -99,7 +103,11 @@ def update_card(card_id: int, payload: UpdateCardIn, db: Session = Depends(get_d
 
 
 @router.delete("/cards/{card_id}")
-def delete_card(card_id: int, db: Session = Depends(get_db)):
+def delete_card(
+    card_id: int,
+    db: Session = Depends(get_db),
+    runtime: Runtime = Depends(get_runtime),
+):
     """删除词卡（级联清复习/记忆法/错词/故事关联）。"""
     card = db.get(Card, card_id)
     if card is None:
@@ -114,6 +122,33 @@ def delete_card(card_id: int, db: Session = Depends(get_db)):
     db.execute(
         LearningContact.__table__.delete().where(LearningContact.card_id == card_id)
     )
+    practice_session_ids = set(
+        db.scalars(
+            select(PracticeItem.session_id).where(
+                PracticeItem.card_id == card_id
+            )
+        )
+    )
+    db.execute(
+        PracticeItem.__table__.delete().where(PracticeItem.card_id == card_id)
+    )
+    for public_id in practice_session_ids:
+        practice = (
+            db.execute(
+                select(PracticeSession).where(
+                    PracticeSession.session_id == public_id
+                )
+            )
+            .scalars()
+            .first()
+        )
+        if practice is None:
+            continue
+        refresh_practice_session(
+            db,
+            practice,
+            runtime.clock.now().astimezone(UTC).replace(tzinfo=None),
+        )
     delete_content_revision(db, "card", card_id)
     db.execute(Memo.__table__.delete().where(Memo.card_id == card_id))
     db.execute(ErrorCard.__table__.delete().where(ErrorCard.card_id == card_id))

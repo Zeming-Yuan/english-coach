@@ -88,25 +88,51 @@ def _row(session: Session, lesson_id: int) -> LessonProgress | None:
     )
 
 
+def _ensure_row(
+    session: Session, lesson: Lesson, now: datetime
+) -> LessonProgress:
+    """取得或建立课程状态行；旧课使用已知创建时间，不伪造“今天生成”。"""
+    row = _row(session, lesson.id)
+    if row is None:
+        row = LessonProgress(
+            lesson_id=lesson.id,
+            generation_id=str(uuid4()),
+            generated=False,
+            generated_at=lesson.created_at or now,
+        )
+        session.add(row)
+    return row
+
+
+def record_lesson_check(
+    session: Session,
+    lesson_id: int | None,
+    checked_count: int,
+    passed_count: int,
+    now: datetime,
+) -> None:
+    """在调用方写事务内同步课程短测的派生计数。"""
+    if lesson_id is None:
+        return
+    lesson = session.get(Lesson, lesson_id)
+    if lesson is None:
+        return
+    row = _ensure_row(session, lesson, now)
+    row.opened = True
+    row.opened_at = row.opened_at or now
+    row.checked_count = checked_count
+    row.passed_count = passed_count
+    session.flush()
+
+
 def record_lesson_opened(db: Session, level: int, runtime: Runtime) -> dict:
     """记录“打开了课程”；同一课只保留首次打开时间。"""
 
     def operation(session: Session) -> dict:
         lesson = _lesson(session, level)
-        row = _row(session, lesson.id)
         now = runtime.clock.now().astimezone(UTC).replace(tzinfo=None)
-        if row is None:
-            row = LessonProgress(
-                lesson_id=lesson.id,
-                generation_id=str(uuid4()),
-                generated=False,
-                # 旧课使用已知的内容创建时间，不伪造“今天生成”。
-                generated_at=lesson.created_at or now,
-                opened=True,
-                opened_at=now,
-            )
-            session.add(row)
-        elif not row.opened:
+        row = _ensure_row(session, lesson, now)
+        if not row.opened:
             row.opened = True
             row.opened_at = now
         session.flush()
@@ -140,17 +166,8 @@ def record_lesson_viewed(
                 return progress_payload(row)
         if get_content_revision(session, "lesson", lesson.id) != revision:
             raise LessonViewConflictError("课程内容已变化，请重新打开后再确认")
-        row = _row(session, lesson.id)
         now = runtime.clock.now().astimezone(UTC).replace(tzinfo=None)
-        if row is None:
-            row = LessonProgress(
-                lesson_id=lesson.id,
-                generation_id=str(uuid4()),
-                generated=False,
-                # 旧课使用已知的内容创建时间，不伪造“今天生成”。
-                generated_at=lesson.created_at or now,
-            )
-            session.add(row)
+        row = _ensure_row(session, lesson, now)
         history = [*(row.view_submissions or [])]
         if row.view_submission_id is not None:
             history.append(row.view_submission_id)
@@ -171,6 +188,7 @@ __all__ = [
     "LessonViewConflictError",
     "lesson_status",
     "progress_payload",
+    "record_lesson_check",
     "record_lesson_opened",
     "record_lesson_viewed",
 ]

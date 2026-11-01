@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 from app.models.content_revision import ContentRevision
 from app.models.learning_contact import LearningContact
 from app.models.lesson_progress import LessonProgress
+from app.models.practice import PracticeItem, PracticeSession
 from app.schemas.backup import (
     BackupValidationError,
     FullBackup,
@@ -29,6 +30,7 @@ from app.schemas.backup import (
     _issues_from_error,
 )
 from app.schemas.learning import ContactKind, ContactSource
+from app.schemas.practice import PracticeAssistance
 
 # 修订资源类型 ↔ 备份集合：导出、校验、映射共用同一张表。
 RESOURCE_COLLECTIONS = {
@@ -194,6 +196,81 @@ register_extension(
 )
 
 
+class FullPracticeSession(FullRow):
+    """一轮持久练习；status 是生命周期，检查结果由题目首答推导。"""
+
+    id: int = Field(gt=0, strict=True)
+    session_id: str
+    purpose: Literal["lesson_check"]
+    lesson_id: int = Field(gt=0, strict=True)
+    status: Literal["active", "completed", "unavailable"]
+    rule_version: str
+    created_at: datetime = Field(strict=False)
+    completed_at: datetime | None = Field(default=None, strict=False)
+
+    @field_validator("session_id")
+    @classmethod
+    def _uuid(cls, value: str) -> str:
+        try:
+            return str(UUID(value))
+        except (ValueError, TypeError) as error:
+            raise ValueError("必须是 UUID") from error
+
+
+class FullPracticeItem(FullRow):
+    """冻结的一道短测题；首答结果只关联真实学习事件。"""
+
+    id: int = Field(gt=0, strict=True)
+    item_id: str
+    session_id: str
+    position: int = Field(ge=1, strict=True)
+    card_id: int = Field(gt=0, strict=True)
+    card_identity: str
+    card_revision: int = Field(ge=1, strict=True)
+    prompt: str = Field(min_length=1)
+    kind: Literal["typed"]
+    assistance: list[PracticeAssistance]
+    first_event_id: str | None = None
+    created_at: datetime = Field(strict=False)
+
+    @field_validator("item_id", "session_id", "card_identity", "first_event_id")
+    @classmethod
+    def _uuid(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        try:
+            return str(UUID(value))
+        except (ValueError, TypeError) as error:
+            raise ValueError("必须是 UUID") from error
+
+
+def _remap_practice_session(row: dict, mapping: dict[str, dict[int, int]]) -> dict:
+    return {**row, "lesson_id": mapping["lessons"][row["lesson_id"]]}
+
+
+def _remap_practice_item(row: dict, mapping: dict[str, dict[int, int]]) -> dict:
+    return {**row, "card_id": mapping["cards"][row["card_id"]]}
+
+
+register_extension(
+    "practice_sessions",
+    FullPracticeSession,
+    ("lessons",),
+    _remap_practice_session,
+    model=PracticeSession,
+    unique=("session_id",),
+)
+
+register_extension(
+    "practice_items",
+    FullPracticeItem,
+    ("cards",),
+    _remap_practice_item,
+    model=PracticeItem,
+    unique=("item_id",),
+)
+
+
 class FullEventV3(FullEvent):
     """V3 events carry the revision seen when the submission was accepted.
 
@@ -243,7 +320,12 @@ def _validate_extension_graph(
         spec = _EXTENSIONS[name]
         resource_keys = set()
         identities = set()
+        extension_ids = set()
         for index, row in enumerate(rows):
+            if "id" in row:
+                if row["id"] in extension_ids:
+                    _reject(name, index, "id", "源 ID 重复")
+                extension_ids.add(row["id"])
             for parent in spec.parents:
                 singular = _COLLECTION_RESOURCES.get(
                     parent, parent.removesuffix("s")
@@ -401,6 +483,77 @@ def validate_v3(payload: dict) -> ValidatedBackup:
                 "passed_count",
                 "通过数不能超过检查数",
             )
+    sessions = validated_extensions.get("practice_sessions", [])
+    items = validated_extensions.get("practice_items", [])
+    session_ids = {row["session_id"] for row in sessions}
+    event_rows = {row["id"]: row for row in tables["learning_events"]}
+    items_by_session: dict[str, list[dict]] = {}
+    positions = set()
+    cards_in_session = set()
+    first_events = set()
+    for index, item in enumerate(items):
+        if item["session_id"] not in session_ids:
+            _reject(
+                "practice_items",
+                index,
+                "session_id",
+                "引用了快照中不存在的练习轮次",
+            )
+        position_key = (item["session_id"], item["position"])
+        if position_key in positions:
+            _reject("practice_items", index, "position", "轮次内题目序号重复")
+        positions.add(position_key)
+        card_key = (item["session_id"], item["card_id"])
+        if card_key in cards_in_session:
+            _reject("practice_items", index, "card_id", "轮次内目标词重复")
+        cards_in_session.add(card_key)
+        items_by_session.setdefault(item["session_id"], []).append(item)
+        revision = card_revisions.get(item["card_id"])
+        if (
+            revision is None
+            or str(UUID(revision["identity"])) != item["card_identity"]
+            or item["card_revision"] > revision["version"]
+        ):
+            _reject(
+                "practice_items",
+                index,
+                "card_identity/card_revision",
+                "与快照中的内容修订不一致",
+            )
+        if item["first_event_id"] is not None:
+            if item["first_event_id"] in first_events:
+                _reject("practice_items", index, "first_event_id", "首答事件重复")
+            first_events.add(item["first_event_id"])
+            event = event_rows.get(item["first_event_id"])
+            if (
+                event is None
+                or event["card_id"] != item["card_id"]
+                or event["source"] != "lesson"
+                or event["kind"] != "typed"
+                or event["session_id"] != item["session_id"]
+            ):
+                _reject(
+                    "practice_items",
+                    index,
+                    "first_event_id",
+                    "首答事件与题目不一致",
+                )
+    for index, practice in enumerate(sessions):
+        rows = items_by_session.get(practice["session_id"], [])
+        if practice["status"] == "unavailable" and rows:
+            _reject(
+                "practice_sessions",
+                index,
+                "status",
+                "不可用轮次不能包含题目",
+            )
+        if practice["status"] != "unavailable" and not rows:
+            _reject("practice_sessions", index, "status", "可作答轮次缺少题目")
+        processed = [row["first_event_id"] is not None for row in rows]
+        if practice["status"] == "completed" and not all(processed):
+            _reject("practice_sessions", index, "status", "完成轮次存在未作答题")
+        if practice["status"] == "active" and processed and all(processed):
+            _reject("practice_sessions", index, "status", "未完成轮次不应全部作答")
     return ValidatedBackup(
         version=3,
         mode="full_replace",
