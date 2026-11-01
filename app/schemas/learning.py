@@ -22,7 +22,16 @@ Assistance = Literal[
     "first_letter", "length", "live_feedback", "answer_audio", "answer_visible"
 ]
 Stage = Literal["main", "reinforcement", "standalone"]
-ContactSource = Literal["card_detail", "words_list"]
+ContactSource = Literal[
+    "card_detail",
+    "words_list",
+    "study",
+    "spelling",
+    "quiz",
+    "listening",
+    "mixed",
+    "reinforcement",
+]
 ContactKind = Literal["answer_visible", "answer_audio"]
 
 

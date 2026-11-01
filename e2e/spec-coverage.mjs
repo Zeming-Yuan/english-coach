@@ -52,6 +52,15 @@ export const requirements = {
     "EL-04 unavailable local storage marks the basis incomplete",
     "EL-04 lost confirmation retries with one record",
   ],
+  EL05: [
+    "EL-05 flashcard exposure reaches confirmed contact",
+    "EL-05 spelling hint stays assisted after closing and records answer contact",
+    "EL-05 practice response loss retries with one assisted event",
+    "EL-05 listening options and audio record contact",
+    "EL-05 quiz choice options record contact",
+    "EL-05 mixed practice records answer contact",
+    "EL-05 reinforcement answer display records contact",
+  ],
 };
 export const projects = ["mobile", "desktop"];
 

@@ -56,6 +56,7 @@ def main() -> None:
 
     from app.config import Settings
     from app.main import create_app
+    from app.models.learning_contact import LearningContact
     from app.runtime import Runtime
     from tests.support.ec_env import MutableClock
 
@@ -70,13 +71,31 @@ def main() -> None:
         control["external_calls"] = [*control.get("external_calls", []), name]
         control_file.write_text(json.dumps(control), encoding="utf-8")
 
+    @event.listens_for(Session, "before_flush")
+    def _remember_flush(session, _flush_context, _instances) -> None:
+        # before_commit 触发时 new/dirty 已被 flush 清空；先记下本次写入的对象。
+        session.info["flush_changes"] = [
+            *session.new,
+            *session.dirty,
+            *session.deleted,
+        ]
+
+    @event.listens_for(Session, "after_commit")
+    @event.listens_for(Session, "after_rollback")
+    def _clear_flush(session) -> None:
+        session.info.pop("flush_changes", None)
+
     @event.listens_for(Session, "before_commit")
-    def _maybe_fail_commit(_session) -> None:
+    def _maybe_fail_commit(session) -> None:
         try:
             control = json.loads(control_file.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             return
         if control.get("fail_commit_once"):
+            # 后台接触确认不消耗“下一次作答写入失败”的注入。
+            changed = session.info.get("flush_changes", [])
+            if changed and all(isinstance(obj, LearningContact) for obj in changed):
+                return
             control["fail_commit_once"] = False
             control_file.write_text(json.dumps(control), encoding="utf-8")
             raise OSError("injected commit failure")

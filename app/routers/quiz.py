@@ -10,7 +10,7 @@ from app.db import get_db
 from app.models.card import Card
 from app.runtime import Runtime, get_runtime
 from app.schemas.learning import AttemptCommand, TypingCheckIn
-from app.services.content_revisions import get_content_revision
+from app.services.content_revisions import content_revision_map
 from app.services.learning import (
     CardNotFoundError,
     SubmissionConflictError,
@@ -85,6 +85,7 @@ def get_quiz(
         .all()
     )
     selected = random.sample(cards, min(limit, len(cards)))
+    revisions = content_revision_map(db, "card", [c.id for c in selected])
 
     # 2. 前 3 张 → cn2en，第 4 张 → choice，第 5 张 → fill
     # note: 下发 word 供前端拼写格子实时红/绿着色（本地自用工具，无防作弊需求）
@@ -98,6 +99,7 @@ def get_quiz(
                 "card_id": card.id,
                 "word_length": len(card.word),
                 "word": card.word,
+                "content_revision": revisions[card.id],
             }
         )
 
@@ -114,7 +116,7 @@ def get_quiz(
                 options,
                 card.word,
                 runtime.question_secret,
-                revision=get_content_revision(db, "card", card.id),
+                revision=revisions[card.id],
                 now=runtime.clock.now(),
             )
             questions.append(
@@ -125,6 +127,7 @@ def get_quiz(
                     "card_id": card.id,
                     "options": options,
                     "question_token": issued["token"],
+                    "content_revision": revisions[card.id],
                 }
             )
         # fill:example 挖掉第一次出现的 word
@@ -139,6 +142,7 @@ def get_quiz(
                     "word_length": len(card.word),
                     "word": card.word,
                     "hint": card.meaning,  # 中文释义：让用户知道要填哪个词
+                    "content_revision": revisions[card.id],
                 }
             )
             # related: 相关词选择题；标准答案是相关词而不是原词
@@ -166,7 +170,7 @@ def get_quiz(
                             options,
                             expected,
                             runtime.question_secret,
-                            revision=get_content_revision(db, "card", card.id),
+                            revision=revisions[card.id],
                             now=runtime.clock.now(),
                         )
                         questions.append(
@@ -182,6 +186,7 @@ def get_quiz(
                                 "question_token": issued["token"],
                                 # 旧字段仅兼容；判分只用签名上下文。
                                 "answer": expected,
+                                "content_revision": revisions[card.id],
                             }
                         )
     return {"questions": questions}
@@ -204,6 +209,7 @@ def get_choice_quiz(
         .all()
     )
     selected = random.sample(cards, min(limit, len(cards)))
+    revisions = content_revision_map(db, "card", [c.id for c in selected])
     questions = []
     for card in selected:
         options = _choice_options(
@@ -218,7 +224,7 @@ def get_choice_quiz(
             options,
             card.word,
             runtime.question_secret,
-            revision=get_content_revision(db, "card", card.id),
+            revision=revisions[card.id],
             now=runtime.clock.now(),
         )
         questions.append(
@@ -229,6 +235,7 @@ def get_choice_quiz(
                 "card_id": card.id,
                 "options": options,
                 "question_token": issued["token"],
+                "content_revision": revisions[card.id],
             }
         )
     return {"questions": questions}

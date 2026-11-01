@@ -13,7 +13,7 @@ from app.models.card import Card
 from app.models.review import Review
 from app.runtime import Runtime, get_runtime
 from app.schemas.learning import AttemptCommand
-from app.services.content_revisions import get_content_revision
+from app.services.content_revisions import content_revision_map
 from app.services.learning import (
     CardNotFoundError,
     SubmissionConflictError,
@@ -96,6 +96,7 @@ def get_listening(
     other_texts = other_texts(selected)
 
     # 3. 生成题目：每题 4 选项（1 正确 + 最多 3 干扰）；无法形成选择时不出假题。
+    revisions = content_revision_map(db, "card", [c.id for c in selected])
     questions = []
     for card in selected:
         distractors = random.sample(other_texts, min(3, len(other_texts)))
@@ -109,7 +110,7 @@ def get_listening(
             options,
             card.word,
             runtime.question_secret,
-            revision=get_content_revision(db, "card", card.id),
+            revision=revisions[card.id],
             now=runtime.clock.now(),
         )
         questions.append(
@@ -121,6 +122,7 @@ def get_listening(
                 # 旧字段仅兼容展示；判分使用签名题目上下文，不采信客户端下标。
                 "correct_index": options.index(card.word),
                 "question_token": issued["token"],
+                "content_revision": revisions[card.id],
             }
         )
 

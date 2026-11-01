@@ -264,15 +264,11 @@ async function openSpecialistPractice(page) {
 async function ttsSnapshot(app) {
   const response = await app.request.get("/api/export/backup");
   expect(response.ok()).toBe(true);
-  const data = await response.json(); delete data.exported_at; return data;
-}
-
-// 展示词卡本身会写入接触记录；TTS 回归只关心它不写学习数据。
-function withoutContacts(snapshot) {
-  const copy = JSON.parse(JSON.stringify(snapshot));
-  copy.features = copy.features.filter((feature) => feature !== "learning_contacts");
-  delete copy.extensions.learning_contacts;
-  return copy;
+  const data = await response.json(); delete data.exported_at;
+  // 打开练习页会合法写入应用内接触；TTS 回归只关心它不写学习数据。
+  data.features = data.features.filter((feature) => feature !== "learning_contacts");
+  delete data.extensions.learning_contacts;
+  return data;
 }
 
 test("EC-16 TTS uses controlled external adapter", async ({app, page}) => {
@@ -384,7 +380,7 @@ test("EC-16 speech prewarming cannot block detail or saving", async ({appFactory
   // connections. API reads/learning must remain usable while they are pending.
   await expect.poll(async () => (await app.externalCalls()).filter(call => call === "tts").length).toBeGreaterThanOrEqual(2);
   await page.locator(".word-item").first().click();
-  expect(withoutContacts(await ttsSnapshot(app))).toEqual(withoutContacts(before));
+  expect(await ttsSnapshot(app)).toEqual(before);
   await expect(page.getByTestId("rate-good")).toBeVisible({timeout: 5000});
   await page.getByTestId("rate-good").click();
   await expect.poll(async () => (await ttsSnapshot(app)).learning_events, {timeout: 5000}).toHaveLength(1);

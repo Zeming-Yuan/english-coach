@@ -3,6 +3,12 @@ import { api } from "../lib/api.js";
 import { speak } from "../lib/tts.js";
 import { fetchSpellPool } from "../lib/practiceSession.js";
 import { makePending, sendPending } from "../lib/learning.js";
+import {
+  assistanceFor as storedAssistance,
+  clearAssistance,
+  markAssistance,
+} from "../lib/assistance.js";
+import { recordPracticeContact } from "../lib/practiceContacts.js";
 import SpellingBoard from "../components/SpellingBoard.jsx";
 
 // 队列上下文随唯一待确认请求保存；不交给只恢复单个结果的全局自评恢复条。
@@ -38,6 +44,8 @@ function clearMixedPending(expected) {
   } catch {}
   return true;
 }
+const itemIdFor = (item) =>
+  item?.q ? `${item.q.card_id}:${item.type}` : null;
 const shuffle = (list) => {
   for (let i = list.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -71,8 +79,55 @@ export default function MixedPage({ onExit }) {
   const item = items[idx];
   const q = item?.q;
   const total = items.length;
+  const itemId = itemIdFor(item);
+  const contactedRef = useRef(new Set());
+
+  // 恢复同一待确认题时沿用其提示；否则读取本题已保存的提示。
+  useEffect(() => {
+    if (!item) return;
+    const pending = pendingRef.current;
+    if (pending && pending.idx === idx) {
+      setAssistance(pending.assistance || []);
+      return;
+    }
+    setAssistance(storedAssistance("mixed", itemId));
+  }, [idx, items, itemId]);
+
+  const addHints = (kinds) => {
+    if (!itemId) return;
+    let next = assistance;
+    for (const kind of kinds) next = markAssistance("mixed", itemId, kind);
+    setAssistance(next);
+  };
+
+  // 选项里已经显示目标英文，构成接触；反馈显示正确答案同样算一次。
+  useEffect(() => {
+    if (!q || !q.content_revision || feedback) return;
+    if (!["listen", "choice"].includes(item.type)) return;
+    const key = `${q.card_id}:${item.type}:options`;
+    if (contactedRef.current.has(key)) return;
+    contactedRef.current.add(key);
+    recordPracticeContact({
+      cardId: q.card_id,
+      revision: q.content_revision,
+      source: "mixed",
+      kind: "answer_visible",
+    });
+  }, [idx, items, feedback, q?.card_id, q?.content_revision, item?.type]);
+
+  useEffect(() => {
+    if (!q || !q.content_revision || !feedback) return;
+    if (feedback.skipped || feedback.correct !== false) return;
+    recordPracticeContact({
+      cardId: q.card_id,
+      revision: q.content_revision,
+      source: "mixed",
+      kind: "answer_visible",
+    });
+  }, [feedback, q?.card_id]);
 
   const load = useCallback(async () => {
+    contactedRef.current = new Set();
     requestRef.current = null;
     busyRef.current = false;
     setSaving(false);
@@ -109,7 +164,7 @@ export default function MixedPage({ onExit }) {
           .slice(0, 4)
           .map((c) => ({
             type: "spell",
-            q: { card_id: c.id, word: c.word, meaning: c.meaning },
+            q: { ...c, card_id: c.id },
           })),
       ]);
       setItems(list);
@@ -127,18 +182,33 @@ export default function MixedPage({ onExit }) {
     };
   }, [load]);
 
-  const play = useCallback(async (word) => {
-    const mode = await speak(word);
-    setAudioHint(
-      mode === "online"
-        ? ""
-        : mode === "local"
-          ? "在线发音不可用，已使用本地语音。"
-          : "发音不可用，可根据释义继续作答。",
-    );
-  }, []);
+  const play = useCallback(
+    async (word, contact = false) => {
+      const mode = await speak(
+        word,
+        null,
+        contact && q?.content_revision
+          ? () =>
+              recordPracticeContact({
+                cardId: q.card_id,
+                revision: q.content_revision,
+                source: "mixed",
+                kind: "answer_audio",
+              })
+          : null,
+      );
+      setAudioHint(
+        mode === "online"
+          ? ""
+          : mode === "local"
+            ? "在线发音不可用，已使用本地语音。"
+            : "发音不可用，可根据释义继续作答。",
+      );
+    },
+    [q?.card_id, q?.content_revision],
+  );
   useEffect(() => {
-    if (phase === "ready" && item?.type === "listen") play(q.word);
+    if (phase === "ready" && item?.type === "listen") play(q.word, true);
   }, [phase, idx, item?.type, q?.word, play]);
 
   // 同一题的按钮、Enter 与自动计时共享推进门闩。
@@ -195,6 +265,8 @@ export default function MixedPage({ onExit }) {
         skipped: record.skipped,
         userInput: record.value,
       });
+      const savedItemId = itemIdFor(record.items[record.idx]);
+      if (savedItemId) clearAssistance("mixed", savedItemId);
       setStats((s) =>
         result.correct
           ? { ...s, correct: s.correct + 1 }
@@ -367,16 +439,7 @@ export default function MixedPage({ onExit }) {
                 className="diff-btn"
                 disabled={locked}
                 onClick={() =>
-                  setAssistance((a) =>
-                    Array.from(
-                      new Set([
-                        ...a,
-                        "first_letter",
-                        "length",
-                        "live_feedback",
-                      ]),
-                    ),
-                  )
+                  addHints(["first_letter", "length", "live_feedback"])
                 }
               >
                 提示首字母
@@ -384,11 +447,7 @@ export default function MixedPage({ onExit }) {
               <button
                 className="diff-btn"
                 disabled={locked}
-                onClick={() =>
-                  setAssistance((a) =>
-                    Array.from(new Set([...a, "length", "live_feedback"])),
-                  )
-                }
+                onClick={() => addHints(["length", "live_feedback"])}
               >
                 提示长度
               </button>
@@ -413,7 +472,7 @@ export default function MixedPage({ onExit }) {
               {item.type === "listen" && (
                 <button
                   className="btn-speak-large"
-                  onClick={() => play(q.word)}
+                  onClick={() => play(q.word, true)}
                 >
                   🔊
                 </button>

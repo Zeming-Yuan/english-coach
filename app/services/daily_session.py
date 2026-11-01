@@ -9,6 +9,7 @@ from app.models.hard_card import HardCard
 from app.models.review import Review
 from app.runtime import Runtime
 from app.services.card_payload import queue_payload
+from app.services.content_revisions import content_revision_map
 from app.services.learning import select_current_review
 
 
@@ -59,9 +60,10 @@ def build_daily_queue(db: Session, limit: int, runtime: Runtime, due_limit: int 
         [card for card in cards if card.id not in current],
         key=lambda card: (*priority(card), card.id),
     )[: max(0, limit)]
+    revisions = content_revision_map(db, "card", [c.id for c in [*due, *new]])
     return assemble_daily_queue(
-        [queue_payload(card) for card in due],
-        [queue_payload(card) for card in new],
+        [queue_payload(card, revisions[card.id]) for card in due],
+        [queue_payload(card, revisions[card.id]) for card in new],
         max(0, min(20, due_limit)),
     )
 

@@ -1,6 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
 import { storageGet, storageSet } from "../lib/utils.js";
+import {
+  assistanceFor as storedAssistance,
+  clearAssistance,
+  markAssistance,
+} from "../lib/assistance.js";
 import { fetchSpellPool, usePracticeSession } from "../lib/practiceSession.js";
+import { recordPracticeContact } from "../lib/practiceContacts.js";
 import SpellingBoard from "../components/SpellingBoard.jsx";
 
 /**
@@ -14,25 +20,38 @@ const ASSISTANCE_BY_DIFFICULTY = {
   2: ["length", "live_feedback"],
   3: [],
 };
-const assistanceFor = (difficulty) => ASSISTANCE_BY_DIFFICULTY[difficulty] || [];
+const difficultyAssistance = (difficulty) =>
+  ASSISTANCE_BY_DIFFICULTY[difficulty] || [];
 
 export default function SpellingPage({ onExit, singleCard }) {
   // 默认独立回忆：只有用户主动选择提示才降级为辅助练习。
   const [difficulty, setDifficulty] = useState(() => storageGet("spellingDiff", 3));
-  const [assistance, setAssistance] = useState(() => assistanceFor(difficulty));
+  const [assistance, setAssistance] = useState(() =>
+    difficultyAssistance(storageGet("spellingDiff", 3)),
+  );
   const [resumeNotice, setResumeNotice] = useState("");
   const inputRef = useRef(null);
 
   const s = usePracticeSession({
     speakOnAnswer: true,
     autoAdvanceMs: null,
+    onAnswerAudio: (item) =>
+      recordPracticeContact({
+        cardId: item.q.card_id,
+        revision: item.q.content_revision,
+        source: "spelling",
+        kind: "answer_audio",
+      }),
     typedAttempt: () => ({ source: "spelling", assistance }),
     buildItems: async () => {
       if (singleCard) {
-        return [{ type: "spell", q: { card_id: singleCard.id, word: singleCard.word, meaning: singleCard.meaning } }];
+        return [{ type: "spell", q: { ...singleCard, card_id: singleCard.id } }];
       }
       const pool = await fetchSpellPool();
-      return pool.map((c) => ({ type: "spell", q: { card_id: c.id, word: c.word, meaning: c.meaning } }));
+      return pool.map((c) => ({
+        type: "spell",
+        q: { ...c, card_id: c.id, word: c.word, meaning: c.meaning },
+      }));
     },
   });
   const {
@@ -40,18 +59,46 @@ export default function SpellingPage({ onExit, singleCard }) {
     saving, saveError, pendingResume, retry, resumePending,
   } = s;
 
-  // 新题重置提示标记；当前难度为辅助档时，新题仍以该档开始。
+  const itemId = q ? `${q.card_id}:spell` : null;
+
+  // 新题读取已保存的提示；难度档是显式提示请求，也并入本题。
   useEffect(() => {
-    setAssistance(assistanceFor(difficulty));
+    if (!q) return;
+    setAssistance(
+      Array.from(
+        new Set([
+          ...storedAssistance("spelling", itemId),
+          ...difficultyAssistance(difficulty),
+        ]),
+      ).sort(),
+    );
     setResumeNotice("");
-  }, [idx]);
+  }, [idx, q?.card_id, difficulty]);
 
   const chooseDifficulty = (d) => {
     setDifficulty(d);
     storageSet("spellingDiff", d);
+    if (!itemId) return;
     // 已请求的辅助保持到本题结束，切回独立也不会撤销。
-    setAssistance((prev) => Array.from(new Set([...prev, ...assistanceFor(d)])));
+    let next = assistance;
+    for (const kind of difficultyAssistance(d)) {
+      next = markAssistance("spelling", itemId, kind);
+    }
+    setAssistance(next);
   };
+
+  // 反馈显示正确答案后才算一次答案接触；答对只显示用户自己的输入，不算展示答案。
+  useEffect(() => {
+    if (!feedback || !q) return;
+    clearAssistance("spelling", `${q.card_id}:spell`);
+    if (feedback.correct === true) return;
+    recordPracticeContact({
+      cardId: q.card_id,
+      revision: q.content_revision,
+      source: "spelling",
+      kind: "answer_visible",
+    });
+  }, [feedback, q?.card_id]);
 
   if (phase === "loading") return <div className="story-empty">加载中…</div>;
   if (phase === "empty") return <div className="story-empty">还没有单词，先去加词吧</div>;
@@ -70,7 +117,7 @@ export default function SpellingPage({ onExit, singleCard }) {
   }
   if (!q) return null;
 
-  const independent = difficulty === 3;
+  const independent = assistance.length === 0;
   const diffLabels = {
     1: "提示首字母：本题按带提示记录，不更新排期",
     2: "提示长度 / 逐字反馈：本题按带提示记录，不更新排期",
@@ -110,11 +157,16 @@ export default function SpellingPage({ onExit, singleCard }) {
           mode={independent ? "independent" : "assisted"}
           target={independent ? null : q.word}
           onSubmit={submit}
-          showFirstHint={difficulty === 1}
+          showFirstHint={assistance.includes("first_letter")}
           disabled={!!feedback || saving}
           inputRef={inputRef}
         />
-        <div className="spelling-hint">输入上面的英文单词 · {diffLabels[difficulty]}</div>
+        <div className="spelling-hint">
+          输入上面的英文单词 ·{" "}
+          {assistance.length > 0
+            ? "本题已使用提示，仍按辅助记录"
+            : diffLabels[difficulty]}
+        </div>
         {pendingResume && !feedback && (
           <div className="spelling-hint">
             上次提交尚未确认保存

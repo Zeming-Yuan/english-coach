@@ -4,6 +4,12 @@ import StudyPage from "./StudyPage.jsx";
 import SpellingBoard from "../components/SpellingBoard.jsx";
 import { useLearningAttempt } from "../hooks/useLearningAttempt.js";
 import { clearPending, loadPending } from "../lib/learning.js";
+import {
+  assistanceFor as storedAssistance,
+  clearAssistance,
+  markAssistance,
+} from "../lib/assistance.js";
+import { recordPracticeContact } from "../lib/practiceContacts.js";
 
 /** Daily orchestration only; main progress and attempt commits keep their existing owners. */
 export default function DailySessionPage({ session, onSessionChange, onFinish, ...studyProps }) {
@@ -21,7 +27,36 @@ export default function DailySessionPage({ session, onSessionChange, onFinish, .
   const ownsRead = (request) => ownsSession() && request === readSequence.current;
   const [questions, setQuestions] = useState(null);
   const [assisted, setAssisted] = useState(false);
-  useEffect(() => { setAssisted(false); }, [questions?.[0]?.card_id]);
+  const current = questions?.[0] || null;
+  const itemId = current ? `${current.card_id}:typed` : null;
+  useEffect(() => {
+    if (!itemId) {
+      setAssisted(false);
+      return;
+    }
+    setAssisted(storedAssistance("reinforcement", itemId).length > 0);
+  }, [itemId]);
+  const markHint = () => {
+    if (!itemId) return;
+    for (const kind of ["first_letter", "length", "live_feedback"]) {
+      markAssistance("reinforcement", itemId, kind);
+    }
+    setAssisted(true);
+  };
+  useEffect(() => {
+    if (attempt.phase !== "saved" || !current) return;
+    if (attempt.result?.correct !== false) {
+      clearAssistance("reinforcement", itemId);
+      return;
+    }
+    recordPracticeContact({
+      cardId: current.card_id,
+      revision: current.content_revision,
+      source: "reinforcement",
+      kind: "answer_visible",
+    });
+    clearAssistance("reinforcement", itemId);
+  }, [attempt.phase, itemId]);
   const [summary, setSummary] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -99,7 +134,7 @@ export default function DailySessionPage({ session, onSessionChange, onFinish, .
     {questions?.length > 0 && attempt.phase !== "saved" && <>
       <p>本轮最多三题，可直接结束。</p>
       <div className="spelling-meaning">{questions[0].meaning}</div>
-      <button className="btn btn-ghost" disabled={attempt.phase !== "idle" || loading} onClick={() => setAssisted(true)}>提示首字母</button>
+      <button className="btn btn-ghost" disabled={attempt.phase !== "idle" || loading} onClick={markHint}>提示首字母</button>
       <p>{assisted ? "带提示练习，不更新排期" : "独立回忆：提交前不显示答案、长度或逐字正误"}</p>
       <SpellingBoard key={questions[0].card_id} mode={assisted ? "assisted" : "independent"} target={assisted ? questions[0].word : null} showFirstHint={assisted} onSubmit={submit} disabled={attempt.phase !== "idle" || loading} />
     </>}

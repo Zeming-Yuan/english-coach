@@ -215,10 +215,12 @@ test("EC-16 upgraded old database continues through UI", async ({appFactory, pag
 
 test("EC-16 server error retains unsaved answer", async ({app, page}) => {
   await app.seedCards([{word: "apple", meaning: "苹果"}]);
-  const before = await snapshot(app);
   await page.goto(app.baseURL);
   await keyboardActivate(page, page.getByRole("button", {name: "开始今天的学习", exact: true}));
   await page.locator(".flip-hint").first().click();
+  // 翻面本身会合法记录展示接触；先等它落库，再以该状态核对失败作答不写入。
+  await expect.poll(async () => (await snapshot(app)).extensions.learning_contacts.length).toBe(1);
+  const before = await snapshot(app);
   await page.route("**/api/reviews", route => route.fulfill({status: 500, contentType: "application/json", body: JSON.stringify({detail: "release test server failure"})}), {times: 1});
   await keyboardActivate(page, page.locator(".rating-3"));
   await expect(page.getByRole("alert")).toContainText("保存");

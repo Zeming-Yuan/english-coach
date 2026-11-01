@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import get_args
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -15,9 +16,11 @@ from sqlalchemy.orm import Session
 from app.models.card import Card
 from app.models.learning_contact import LearningContact
 from app.runtime import Runtime
-from app.schemas.learning import ContactCommand
+from app.schemas.learning import Assistance, ContactCommand
 from app.services.content_revisions import get_content_revision
 from app.services.write_transaction import run_write
+
+ASSISTANCE_VALUES = frozenset(get_args(Assistance))
 
 
 class ContactTargetNotFoundError(LookupError):
@@ -39,6 +42,14 @@ def contact_time(
     if not displayed or prefetch:
         return None
     return confirmed_at
+
+
+def merge_assistance(previous: list[str], added: list[str]) -> list[str]:
+    """提示只增不减；同一题一旦辅助，后续提交必须保留。"""
+    values = set(previous) | set(added)
+    if not values <= ASSISTANCE_VALUES:
+        raise ValueError("unknown assistance")
+    return sorted(values)
 
 
 def _iso(value: datetime) -> str:
@@ -147,10 +158,12 @@ def record_contact(db: Session, payload: ContactCommand, runtime: Runtime) -> di
 
 
 __all__ = [
+    "ASSISTANCE_VALUES",
     "ContactRevisionConflictError",
     "ContactSubmissionConflictError",
     "ContactTargetNotFoundError",
     "contact_summary",
     "contact_time",
+    "merge_assistance",
     "record_contact",
 ]

@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { api } from "../lib/api.js";
 import { makePending, sendPending } from "../lib/learning.js";
 import { speak } from "../lib/tts.js";
 import { escapeHtml } from "../lib/utils.js";
 import { usePracticeSession } from "../lib/practiceSession.js";
+import { recordPracticeContact } from "../lib/practiceContacts.js";
 import SpellingBoard from "../components/SpellingBoard.jsx";
 
 /** 选择题：一次提交保存并返回服务端判分；重试沿用同一 submission_id。 */
@@ -73,6 +74,13 @@ export default function QuizPage({ onExit }) {
     },
     speakOnAnswer: true,
     autoAdvanceMs: null,
+    onAnswerAudio: (item) =>
+      recordPracticeContact({
+        cardId: item.q.card_id,
+        revision: item.q.content_revision,
+        source: "quiz",
+        kind: "answer_audio",
+      }),
     // EC-05 只迁移输入题（cn2en/fill）；choice/related 留给 EC-06。
     typedAttempt: (item) =>
       item.type === "cn2en" || item.type === "fill"
@@ -87,10 +95,31 @@ export default function QuizPage({ onExit }) {
   const [selected, setSelected] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [choiceError, setChoiceError] = useState(null);
+  const contactedRef = useRef(new Set());
   useEffect(() => {
     setSelected(null);
     setChoiceError(null);
   }, [idx]);
+
+  // 识别选项里已经出现目标英文；反馈显示正确答案时同样算一次接触。
+  useEffect(() => {
+    if (!q || !q.content_revision) return;
+    const optionsVisible = !feedback && ["choice", "related"].includes(q.type);
+    const answerShown =
+      feedback &&
+      feedback.correct !== true &&
+      ["cn2en", "fill"].includes(q.type);
+    if (!optionsVisible && !answerShown) return;
+    const key = `${q.card_id}:${q.type}:${optionsVisible ? "options" : "feedback"}`;
+    if (contactedRef.current.has(key)) return;
+    contactedRef.current.add(key);
+    recordPracticeContact({
+      cardId: q.card_id,
+      revision: q.content_revision,
+      source: "quiz",
+      kind: "answer_visible",
+    });
+  }, [idx, q?.card_id, q?.type, q?.content_revision, feedback]);
 
   const saveFailure = (error, retry) =>
     error?.status === 409
@@ -154,6 +183,7 @@ export default function QuizPage({ onExit }) {
   };
 
   const reloadQuiz = () => {
+    contactedRef.current = new Set();
     setChoiceError(null);
     setSelected(null);
     replay();
@@ -192,7 +222,7 @@ export default function QuizPage({ onExit }) {
             </>
           )}
         </div>
-        <button className="btn btn-ghost" onClick={replay}>再测一次</button>
+        <button className="btn btn-ghost" onClick={reloadQuiz}>再测一次</button>
         <button className="btn btn-primary" onClick={onExit}>回到队列</button>
       </section>
     );
@@ -203,7 +233,7 @@ export default function QuizPage({ onExit }) {
     return (
       <section className="view view-center">
         <div role="alert" className="quiz-feedback err">题目加载失败，请重试。</div>
-        <button className="btn btn-primary" onClick={replay}>重新加载</button>
+        <button className="btn btn-primary" onClick={reloadQuiz}>重新加载</button>
         <button className="btn btn-ghost" style={{ marginTop: 8 }} onClick={onExit}>
           回到队列
         </button>

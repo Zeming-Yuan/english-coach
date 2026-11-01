@@ -12,9 +12,12 @@ from app.models.card import Card
 from app.services.graduation import card_is_graduated
 
 
-def queue_payload(card: Card) -> dict:
-    """今日队列载荷（轻量：不含复习状态，避免逐卡查询）。"""
-    return {
+def queue_payload(card: Card, revision: dict | None = None) -> dict:
+    """今日队列载荷（轻量：不含复习状态，避免逐卡查询）。
+
+    revision 用于练习入口的实际展示接触；批量调用方一次读取后传入。
+    """
+    payload = {
         "id": card.id,
         "word": card.word,
         "phonetic": card.phonetic,
@@ -26,6 +29,9 @@ def queue_payload(card: Card) -> dict:
         "related_words": card.related_words,
         "kind": card.kind,
     }
+    if revision is not None:
+        payload["content_revision"] = revision
+    return payload
 
 
 def card_payload(
