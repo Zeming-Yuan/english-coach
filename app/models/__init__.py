@@ -4,7 +4,9 @@ from app.models.card import Card
 from app.models.content_revision import ContentRevision
 from app.models.error_card import ErrorCard
 from app.models.hard_card import HardCard
+from app.models.learning_contact import LearningContact
 from app.models.lesson import Lesson
+from app.models.lesson_progress import LessonProgress
 from app.models.memo import Memo
 from app.models.review import Review
 from app.models.review_baseline import ReviewBaseline
@@ -16,7 +18,9 @@ __all__ = [
     "ContentRevision",
     "ErrorCard",
     "HardCard",
+    "LearningContact",
     "Lesson",
+    "LessonProgress",
     "Memo",
     "Review",
     "ReviewBaseline",

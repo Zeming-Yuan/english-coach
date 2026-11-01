@@ -1,0 +1,49 @@
+{
+ "llm_responses": [
+  {
+   "title": "水果课",
+   "words": [
+    {
+     "word": "apple",
+     "phonetic": "/ˈæpəl/",
+     "meaning": "苹果",
+     "example": "An apple a day.",
+     "example_cn": "一天一苹果。"
+    }
+   ],
+   "dialogue": [
+    {
+     "speaker": "A",
+     "en": "An apple a day.",
+     "cn": "一天一苹果。"
+    }
+   ],
+   "tips": [
+    "注意发音"
+   ]
+  },
+  {
+   "title": "水果课",
+   "words": [
+    {
+     "word": "apple",
+     "phonetic": "/ˈæpəl/",
+     "meaning": "苹果",
+     "example": "An apple a day.",
+     "example_cn": "一天一苹果。"
+    }
+   ],
+   "dialogue": [
+    {
+     "speaker": "A",
+     "en": "An apple a day.",
+     "cn": "一天一苹果。"
+    }
+   ],
+   "tips": [
+    "注意发音"
+   ]
+  }
+ ],
+ "tables": {}
+}

@@ -264,7 +264,11 @@ async function openSpecialistPractice(page) {
 async function ttsSnapshot(app) {
   const response = await app.request.get("/api/export/backup");
   expect(response.ok()).toBe(true);
-  const data = await response.json(); delete data.exported_at; return data;
+  const data = await response.json(); delete data.exported_at;
+  // 打开练习页会合法写入应用内接触；TTS 回归只关心它不写学习数据。
+  data.features = data.features.filter((feature) => feature !== "learning_contacts");
+  delete data.extensions.learning_contacts;
+  return data;
 }
 
 test("EC-16 TTS uses controlled external adapter", async ({app, page}) => {

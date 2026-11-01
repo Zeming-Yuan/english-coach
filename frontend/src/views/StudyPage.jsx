@@ -6,6 +6,7 @@ import { cleanToken, escapeHtml, highlightWord, storageGet, storageSet } from ".
 import { splitSentence } from "../lib/chunks.js";
 import { useWordLookup } from "../lib/wordLookup.js";
 import { useLearningAttempt } from "../hooks/useLearningAttempt.js";
+import { recordPracticeContact } from "../lib/practiceContacts.js";
 import { showToast } from "../App.jsx";
 import ChunkChips from "../components/ChunkChips.jsx";
 import RatingButtons from "../components/RatingButtons.jsx";
@@ -26,6 +27,7 @@ export default function StudyPage({ queue, session, recoveryVersion, onProgress,
   const [flipStartedAt, setFlipStartedAt] = useState(null);
   const [memoText, setMemoText] = useState(null);
   const cardRef = useRef(null);
+  const contactedRef = useRef(new Set());
   const [exiting, setExiting] = useState(false);
   const [standaloneDone, setStandaloneDone] = useState(false);
   const done = session ? session.complete === true : standaloneDone;
@@ -67,21 +69,28 @@ export default function StudyPage({ queue, session, recoveryVersion, onProgress,
     api(`/api/memos/${card.id}`).then((d) => setMemoText(d.content)).catch(() => {});
   }, [idx, done]);
 
-  // 翻面（支持翻回）
+  // 翻面（支持翻回）；翻到背面才显示答案，也才记录接触。
   const flip = useCallback(() => {
     if (!card || exiting || done) return;
-    setFlipped((f) => {
-      const next = !f;
-      if (next) {
-        const elapsed = (Date.now() - (flipStartedAt || Date.now())) / 1000;
-        if (elapsed < 2) {
-          showToast("先自己回想一下这个词的含义，再翻面对照效果更好 ✍️");
-        }
-        speak(isSentence ? (card.example || card.word) : card.word, null);
+    const next = !flipped;
+    if (next) {
+      const elapsed = (Date.now() - (flipStartedAt || Date.now())) / 1000;
+      if (elapsed < 2) {
+        showToast("先自己回想一下这个词的含义，再翻面对照效果更好 ✍️");
       }
-      return next;
-    });
-  }, [card, flipStartedAt, isSentence, exiting, done]);
+      speak(isSentence ? (card.example || card.word) : card.word, null);
+      if (!contactedRef.current.has(card.id)) {
+        contactedRef.current.add(card.id);
+        recordPracticeContact({
+          cardId: card.id,
+          revision: card.content_revision,
+          source: "study",
+          kind: "answer_visible",
+        });
+      }
+    }
+    setFlipped(next);
+  }, [card, flipStartedAt, isSentence, exiting, done, flipped]);
 
   // 只有服务端确认保存才推进；失败停留当前题并保留同一提交标识。
   const advance = useCallback((command, result) => {

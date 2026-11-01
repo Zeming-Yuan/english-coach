@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { api } from "../lib/api.js";
 import { speak } from "../lib/tts.js";
 import { cleanToken, escapeHtml } from "../lib/utils.js";
+import { recordVisibleCards } from "../lib/contacts.js";
+import { recordPracticeContact } from "../lib/practiceContacts.js";
 import { useWordLookup } from "../lib/wordLookup.js";
 import { useLearningAttempt } from "../hooks/useLearningAttempt.js";
 import { showToast } from "../App.jsx";
@@ -87,6 +89,86 @@ function StoryRead({ story, onBack }) {
   const enLines = (story.content || "").split("\n").filter(Boolean);
   const cnLines = (story.content_cn || "").split("\n").filter(Boolean);
 
+  // 只有真正进入视口的句子中出现的目标词才算接触；预取与未展示不算。
+  const seenContacts = useRef(new Set());
+  const observedStory = useRef(null);
+  useEffect(() => {
+    if (observedStory.current !== story.id) {
+      observedStory.current = story.id;
+      seenContacts.current = new Set();
+    }
+    if (mode === "cn" || typeof IntersectionObserver === "undefined") return;
+    const record = (ids) => {
+      const fresh = Array.from(new Set(ids)).filter(
+        (id) => !seenContacts.current.has(id),
+      );
+      if (fresh.length === 0) return;
+      fresh.forEach((id) => seenContacts.current.add(id));
+      const targets = fresh
+        .map((id) => story.words.find((word) => word.id === id))
+        .filter((word) => word?.content_revision);
+      recordVisibleCards(targets, "story").then(({ failed, retryable }) => {
+        if (failed.length === 0) return;
+        failed.forEach((target) => seenContacts.current.delete(target.id));
+        const message = `接触依据不完整：${failed.length} 个目标词`;
+        if (retryable.length === 0) {
+          showToast(message);
+          return;
+        }
+        showToast(message, "重试", () =>
+          record(retryable.map((target) => target.id)),
+        );
+      });
+    };
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const ids = [];
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const raw = entry.target.dataset.contactIds;
+          if (raw) ids.push(...raw.split(",").map(Number).filter(Boolean));
+        }
+        record(ids);
+      },
+      {threshold: 0.5},
+    );
+    document
+      .querySelectorAll("[data-contact-ids]")
+      .forEach((element) => observer.observe(element));
+    return () => observer.disconnect();
+  }, [mode, story.id]);
+
+  const contactAudio = (text, ids) =>
+    speak(text, null, () => {
+      for (const id of ids || []) {
+        const target = story.words.find((word) => word.id === id);
+        if (target?.content_revision) {
+          recordPracticeContact({
+            cardId: id,
+            revision: target.content_revision,
+            source: "story",
+            kind: "answer_audio",
+          });
+        }
+      }
+    });
+
+  // 点词弹层真正显示释义后才算接触；暂无释义不记录。
+  useEffect(() => {
+    if (!activeWord?.meaning || lookupResult.status !== "found") return;
+    const target = story.words.find(
+      (word) => word.word.toLowerCase() === activeWord.word.toLowerCase(),
+    );
+    if (target?.content_revision) {
+      recordPracticeContact({
+        cardId: target.id,
+        revision: target.content_revision,
+        source: "story",
+        kind: "answer_visible",
+      });
+    }
+  }, [activeWord?.word, activeWord?.meaning, lookupResult.status, story.id]);
+
   // 添加到词库
   const addToLibrary = async (word) => {
     if (!word || addingWord) return;
@@ -152,8 +234,11 @@ function StoryRead({ story, onBack }) {
           <div key={i} className="story-pair">
             {/* 英文句子 */}
             {mode !== "cn" && (
-              <div className="story-sentence-row">
-                <button className="speak-mini sentence-speak" title="朗读整句" onClick={() => speak(enSent.trim())}>🔊</button>
+              <div
+                data-contact-ids={(story.line_card_ids?.[i] || []).join(",")}
+                className="story-sentence-row"
+              >
+                <button className="speak-mini sentence-speak" title="朗读整句" onClick={() => contactAudio(enSent.trim(), story.line_card_ids?.[i])}>🔊</button>
                 <span className="story-sentence-en">{renderTokens(enSent)}</span>
               </div>
             )}
@@ -165,6 +250,10 @@ function StoryRead({ story, onBack }) {
         ))}
 
         <div className="story-tap-tip">👆 点击任意英文单词查释义 · 点击 🔊 朗读整句</div>
+        <div data-testid="content-contact-status" className="story-tap-tip">
+          应用内接触：本故事正文包含{" "}
+          {story.visible_card_ids?.length || 0} 个目标词
+        </div>
       </div>
 
       {/* 词表 */}

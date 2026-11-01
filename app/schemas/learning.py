@@ -22,6 +22,36 @@ Assistance = Literal[
     "first_letter", "length", "live_feedback", "answer_audio", "answer_visible"
 ]
 Stage = Literal["main", "reinforcement", "standalone"]
+ContactSource = Literal[
+    "card_detail",
+    "words_list",
+    "study",
+    "spelling",
+    "quiz",
+    "listening",
+    "mixed",
+    "reinforcement",
+    "lesson",
+    "story",
+]
+ContactKind = Literal["answer_visible", "answer_audio"]
+
+
+class ContactRevision(BaseModel):
+    """展示时的内容修订；接触归属于该修订。"""
+
+    identity: UUID
+    version: int = Field(ge=1)
+
+
+class ContactCommand(BaseModel):
+    """一次实际展示或播放后的接触确认。"""
+
+    submission_id: UUID
+    card_id: int = Field(gt=0)
+    revision: ContactRevision
+    source: ContactSource
+    kind: ContactKind
 
 
 class AttemptCommand(BaseModel):

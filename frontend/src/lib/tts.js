@@ -36,13 +36,23 @@ export function setTtsRate(rate) {
   _ttsRate = rate;
 }
 
+function notifyStarted(onStarted) {
+  if (!onStarted) return;
+  try {
+    onStarted();
+  } catch {
+    // 接触回调失败不能打断朗读本身。
+  }
+}
+
 /**
  * 朗读（TTS 在线 + 本地兜底）。
  * @param {string} word
  * @param {HTMLElement|null} btn - 发音时加 .speaking 样式
+ * @param {Function|null} onStarted - 实际开始播放时回调；预热、下载与失败不回调
  * @returns {Promise<"online"|"local"|"none">} 实际使用的发音来源；调用方可提示降级
  */
-export function speak(word, btn = null) {
+export function speak(word, btn = null, onStarted = null) {
   if (!word) return Promise.resolve("none");
   if (hasSpeech) speechSynthesis.cancel();
 
@@ -54,12 +64,12 @@ export function speak(word, btn = null) {
       if (btn) btn.classList.remove("speaking");
       resolve(mode);
     };
-    speakOnline(word, done, () => speakLocal(word, done));
+    speakOnline(word, done, () => speakLocal(word, done, onStarted), onStarted);
     if (btn && !settled) btn.classList.add("speaking");
   });
 }
 
-function speakOnline(word, done, fallback) {
+function speakOnline(word, done, fallback, onStarted) {
   let audio = audioCache.get(word);
   if (!audio) {
     // Browsers can retain a failed 200/empty media resource beyond the Audio
@@ -112,10 +122,16 @@ function speakOnline(word, done, fallback) {
   audio.onended = finish;
   audio.onerror = failed;
   audio.currentTime = 0;
-  audio.play().catch(failed);
+  let started = false;
+  const begin = () => {
+    if (finished || started) return;
+    started = true;
+    notifyStarted(onStarted);
+  };
+  audio.play().then(begin).catch(failed);
 }
 
-function speakLocal(word, done) {
+function speakLocal(word, done, onStarted) {
   if (!hasSpeech || !hasEnVoice || typeof SpeechSynthesisUtterance === "undefined") {
     done("none");
     return;
@@ -133,6 +149,9 @@ function speakLocal(word, done) {
   u.lang = "en-US";
   u.rate = _ttsRate;
   if (ttsVoice) u.voice = ttsVoice;
+  u.onstart = () => {
+    if (!finished) notifyStarted(onStarted);
+  };
   u.onend = () => finish("local");
   u.onerror = () => finish("none");
   speechSynthesis.speak(u);

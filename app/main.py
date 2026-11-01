@@ -16,6 +16,7 @@ from app.routers import (
     cards,
     export,
     health,
+    learning_observations,
     lessons,
     listening,
     lookup,
@@ -73,6 +74,9 @@ def create_app(
     app.include_router(quiz.router, prefix="/api", tags=["quiz"])
     app.include_router(stories.router, prefix="/api", tags=["stories"])
     app.include_router(cards.router, prefix="/api", tags=["cards"])
+    app.include_router(
+        learning_observations.router, prefix="/api", tags=["learning-observations"]
+    )
     app.include_router(tts.router, prefix="/api", tags=["tts"])
     app.include_router(lessons.router, prefix="/api", tags=["lessons"])
     app.include_router(listening.router, prefix="/api", tags=["listening"])

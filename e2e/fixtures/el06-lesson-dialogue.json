@@ -1,0 +1,22 @@
+{
+  "tables": {
+    "cards": [
+      {"id": 1, "word": "apple", "kind": "word", "meaning": "苹果"}
+    ],
+    "lessons": [
+      {
+        "id": 1,
+        "level": 1,
+        "title": "对话课",
+        "content": {
+          "words": [{"word": "apple", "phonetic": "/ˈæpəl/", "meaning": "苹果"}],
+          "dialogue": [
+            {"speaker": "A", "en": "An apple a day.", "cn": "一天一苹果。"},
+            {"speaker": "B", "en": "I eat an apple.", "cn": "我吃一个苹果。"}
+          ],
+          "tips": []
+        }
+      }
+    ]
+  }
+}

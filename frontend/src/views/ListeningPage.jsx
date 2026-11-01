@@ -3,6 +3,7 @@ import { api } from "../lib/api.js";
 import { makePending, sendPending } from "../lib/learning.js";
 import { speak } from "../lib/tts.js";
 import { escapeHtml } from "../lib/utils.js";
+import { recordPracticeContact } from "../lib/practiceContacts.js";
 
 /**
  * 听写练习视图：播发音 → 4 选 1。
@@ -21,8 +22,10 @@ export default function ListeningPage({ onExit }) {
   const [stats, setStats] = useState({ correct: 0, wrong: 0, skipped: 0 });
   const pendingRef = useRef(null);
   const skipPendingRef = useRef(null);
+  const contactedRef = useRef(new Set());
 
   const load = useCallback(async () => {
+    contactedRef.current = new Set();
     setPhase("loading");
     setFeedback(null);
     setError(null);
@@ -52,7 +55,14 @@ export default function ListeningPage({ onExit }) {
   const play = useCallback(
     async (announce) => {
       if (!q?.word) return;
-      const mode = await speak(q.word);
+      const mode = await speak(q.word, null, () =>
+        recordPracticeContact({
+          cardId: q.card_id,
+          revision: q.content_revision,
+          source: "listening",
+          kind: "answer_audio",
+        }),
+      );
       if (!announce) return;
       if (mode === "online") setAudioHint("");
       else if (mode === "local") {
@@ -61,13 +71,27 @@ export default function ListeningPage({ onExit }) {
         setAudioHint("发音不可用，可直接根据释义选择答案。");
       }
     },
-    [q?.word]
+    [q?.word, q?.card_id, q?.content_revision]
   );
 
   // 进入新题自动发音；失败只影响发音提示，不影响作答。
   useEffect(() => {
     if (phase === "ready" && q?.word) play(false);
   }, [phase, index, q?.word, play]);
+
+  // 选项里已经显示了目标英文，构成一次应用内接触。
+  useEffect(() => {
+    if (phase !== "ready" || !q || feedback || !q.content_revision) return;
+    const key = `${q.card_id}:options`;
+    if (contactedRef.current.has(key)) return;
+    contactedRef.current.add(key);
+    recordPracticeContact({
+      cardId: q.card_id,
+      revision: q.content_revision,
+      source: "listening",
+      kind: "answer_visible",
+    });
+  }, [phase, index, q?.card_id, q?.content_revision, feedback]);
 
   const handleFailure = (cause, retry) => {
     if (cause && cause.status === 409) {

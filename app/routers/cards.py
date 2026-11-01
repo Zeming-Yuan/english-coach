@@ -4,11 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.exc import ObjectDeletedError
 
 from app.db import get_db
 from app.models.card import Card
 from app.models.error_card import ErrorCard
 from app.models.hard_card import HardCard
+from app.models.learning_contact import LearningContact
 from app.models.memo import Memo
 from app.models.review import Review
 from app.models.review_baseline import ReviewBaseline
@@ -16,8 +18,10 @@ from app.models.review_event import ReviewEvent
 from app.runtime import Runtime, get_runtime
 from app.services.card_generator import generate_cards, regenerate_example
 from app.services.card_payload import card_payload
+from app.services.contacts import contact_summary
 from app.services.content_revisions import (
     advance_content_revision,
+    content_revision_map,
     delete_content_revision,
     get_content_revision,
 )
@@ -107,6 +111,9 @@ def delete_card(card_id: int, db: Session = Depends(get_db)):
     db.execute(
         ReviewBaseline.__table__.delete().where(ReviewBaseline.card_id == card_id)
     )
+    db.execute(
+        LearningContact.__table__.delete().where(LearningContact.card_id == card_id)
+    )
     delete_content_revision(db, "card", card_id)
     db.execute(Memo.__table__.delete().where(Memo.card_id == card_id))
     db.execute(ErrorCard.__table__.delete().where(ErrorCard.card_id == card_id))
@@ -145,10 +152,16 @@ def _card_to_dict_fast(
     error: ErrorCard | None,
     is_hard: bool,
     evidence: dict | None = None,
+    revision: dict | None = None,
 ) -> dict:
     """Card → 全量载荷（批量预加载版本，无额外查询）。"""
     return card_payload(
-        card, review=review, error=error, hard=is_hard, evidence=evidence
+        card,
+        review=review,
+        error=error,
+        hard=is_hard,
+        evidence=evidence,
+        revision=revision,
     )
 
 
@@ -194,19 +207,38 @@ def regenerate_card_example(card_id: int, db: Session = Depends(get_db)):
     card = db.get(Card, card_id)
     if card is None:
         raise HTTPException(status_code=404, detail="Card not found")
+    before = get_content_revision(db, "card", card_id)
     try:
         example, example_cn, explanation = regenerate_example(card.word)
     except (ValueError, TypeError) as e:
         raise HTTPException(status_code=502, detail=str(e))
-    if example:
+    if not example:
+        return card_to_dict(card, db)
+
+    def operation(session: Session) -> dict:
+        try:
+            current = session.get(Card, card_id, populate_existing=True)
+        except ObjectDeletedError:
+            current = None
+        if current is None:
+            raise HTTPException(status_code=404, detail="Card not found")
+        try:
+            current_revision = get_content_revision(session, "card", card_id)
+        except LookupError:
+            raise HTTPException(status_code=404, detail="Card not found")
+        # 晚到生成不覆盖编辑或恢复后的内容；响应必须反映当前内容。
+        if current_revision != before:
+            return card_to_dict(current, session)
         advance_content_revision(
-            db, "card", card.id, {"example": example, "example_cn": example_cn}
+            session, "card", card_id, {"example": example, "example_cn": example_cn}
         )
-        card.example = example
-        card.example_cn = example_cn
-        card.explanation = explanation
-        db.commit()
-    return card_to_dict(card, db)
+        current.example = example
+        current.example_cn = example_cn
+        current.explanation = explanation
+        session.flush()
+        return card_to_dict(current, session)
+
+    return run_write(db, operation)
 
 
 @router.get("/cards")
@@ -246,6 +278,8 @@ def list_cards(
     }
     error_map = {e.card_id: e for e in errors}
     hard_set = {h.card_id for h in hards}
+    # 展示接触需要每张卡当前修订（含句子卡），批量一次读取。
+    revisions = content_revision_map(db, "card", card_ids)
     # 句子卡没有独立 typed 回忆，不应为它们扫描/分发无意义证据。
     evidence_map = bulk_evidence_summaries(
         db, [c.id for c in cards if c.kind == "word"], runtime
@@ -259,6 +293,7 @@ def list_cards(
                 error_map.get(c.id),
                 c.id in hard_set,
                 evidence_map.get(c.id),
+                revisions.get(c.id),
             )
             for c in cards
         ]
@@ -288,46 +323,93 @@ def refresh_examples(limit: int = 10, db: Session = Depends(get_db)):
         return {"refreshed": 0, "remaining": 0, "total_weak": 0}
 
     batch = needs_refresh[:limit]
-    refreshed = 0
+    before = {
+        card.id: get_content_revision(db, "card", card.id) for card in batch
+    }
+    sentence_before = {}
+    for card in batch:
+        sentence = (
+            db.execute(
+                select(Card).where(Card.word == card.word, Card.kind == "sentence")
+            )
+            .scalars()
+            .first()
+        )
+        if sentence is not None:
+            sentence_before[card.id] = (
+                sentence.id,
+                get_content_revision(db, "card", sentence.id),
+            )
+
+    generated = []
     for card in batch:
         try:
             example, example_cn, explanation = regenerate_example(card.word)
             if example:
-                advance_content_revision(
-                    db,
-                    "card",
-                    card.id,
-                    {"example": example, "example_cn": example_cn},
-                )
-                card.example = example
-                card.example_cn = example_cn
-                card.explanation = explanation
-                refreshed += 1
-                # 同步更新对应的句子卡
-                sentence_card = (
-                    db.execute(
-                        select(Card).where(
-                            Card.word == card.word, Card.kind == "sentence"
-                        )
-                    )
-                    .scalars()
-                    .first()
-                )
-                if sentence_card:
-                    advance_content_revision(
-                        db,
-                        "card",
-                        sentence_card.id,
-                        {"example": example, "example_cn": example_cn},
-                    )
-                    sentence_card.example = example
-                    sentence_card.example_cn = example_cn
+                generated.append((card.id, example, example_cn, explanation))
         except LLMNotConfigured:
             raise  # AI 未配置是整批不可用，不能伪装成“刷新了 0 条”
         except Exception:  # noqa: BLE001, S112 — 单个失败不阻塞整批
             continue
 
-    db.commit()
+    if not generated:
+        return {
+            "refreshed": 0,
+            "remaining": len(needs_refresh),
+            "total_weak": len(needs_refresh),
+        }
+
+    def operation(session: Session) -> int:
+        refreshed = 0
+        for card_id, example, example_cn, explanation in generated:
+            try:
+                card = session.get(Card, card_id, populate_existing=True)
+            except ObjectDeletedError:
+                continue
+            if card is None:
+                continue
+            try:
+                card_revision = get_content_revision(session, "card", card_id)
+            except LookupError:
+                continue
+            if card_revision != before[card_id]:
+                continue  # 晚到生成不覆盖编辑或恢复后的内容
+            advance_content_revision(
+                session, "card", card_id, {"example": example, "example_cn": example_cn}
+            )
+            card.example = example
+            card.example_cn = example_cn
+            card.explanation = explanation
+            refreshed += 1
+            sentence = sentence_before.get(card_id)
+            if sentence is None:
+                continue
+            sentence_id, revision = sentence
+            try:
+                sentence_card = session.get(
+                    Card, sentence_id, populate_existing=True
+                )
+            except ObjectDeletedError:
+                continue
+            if sentence_card is None:
+                continue
+            try:
+                sentence_revision = get_content_revision(session, "card", sentence_id)
+            except LookupError:
+                continue
+            if sentence_revision != revision:
+                continue
+            advance_content_revision(
+                session,
+                "card",
+                sentence_id,
+                {"example": example, "example_cn": example_cn},
+            )
+            sentence_card.example = example
+            sentence_card.example_cn = example_cn
+        return refreshed
+
+    refreshed = run_write(db, operation)
     return {
         "refreshed": refreshed,
         "remaining": len(needs_refresh) - refreshed,
@@ -421,6 +503,7 @@ def get_card_detail(
     evidence = evidence_summary(
         db, card_id, runtime, incomplete_history=history_incomplete
     )
+    last_contact, contact_integrity = contact_summary(db, card_id)
 
     return {
         "id": card.id,
@@ -464,4 +547,6 @@ def get_card_detail(
         "history_incomplete": history_incomplete,
         "content_revision": evidence["revision"],
         "learning_evidence": evidence,
+        "last_contact": last_contact,
+        "contact_integrity": contact_integrity,
     }

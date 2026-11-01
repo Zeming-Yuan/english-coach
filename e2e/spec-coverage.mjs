@@ -45,6 +45,42 @@ export const requirements = {
     "EL-03 weak evidence reads the same on home, stats and list",
     "EL-03 share report downloads with the exported state",
   ],
+  EL04: [
+    "EL-04 visible list and detail display record an in-app contact",
+    "EL-04 prefetch and offscreen cards are not contacts",
+    "EL-04 failed audio playback is not a contact",
+    "EL-04 unavailable local storage marks the basis incomplete",
+    "EL-04 lost confirmation retries with one record",
+  ],
+  EL05: [
+    "EL-05 flashcard exposure reaches confirmed contact",
+    "EL-05 spelling hint stays assisted after closing and records answer contact",
+    "EL-05 practice response loss retries with one assisted event",
+    "EL-05 listening options and audio record contact",
+    "EL-05 quiz choice options record contact",
+    "EL-05 mixed practice records answer contact",
+    "EL-05 reinforcement answer display records contact",
+  ],
+  EL06: [
+    "EL-06 story reading records visible target contacts",
+    "EL-06 story sentence playback records answer audio",
+    "EL-06 lesson reading records word contacts",
+    "EL-06 lesson dialogue playback records answer audio",
+    "EL-06 story point-word records contact after meaning",
+    "EL-06 offscreen story target is not a contact until visible",
+    "EL-06 contact failure does not block reading",
+  ],
+  EL07: [
+    "EL-07 generated lesson shows goal and pending check",
+    "EL-07 opening is separate from browse completion",
+    "EL-07 explicit viewed confirmation changes status",
+    "EL-07 viewed confirmation response loss retries once",
+    "EL-07 generation records pending check and counts",
+    "EL-07 continue next lesson resets lesson state",
+    "EL-07 next lesson response loss replays without skipping",
+    "EL-07 twenty generated lessons never read as completed",
+    "EL-07 invalid generation leaves no half lesson",
+  ],
 };
 export const projects = ["mobile", "desktop"];
 

@@ -17,8 +17,9 @@ V2 协议，新增记录会先被允许丢失，再等最终集成票补救。
    `id`、`resource_kind ∈ {card, lesson, story}`、`resource_id`、`identity`（UUID
    字符串）、`version ≥ 1`，唯一约束 `(resource_kind, resource_id)`。现有实体在
    迁移中补齐当前身份，不生成旧作答或推断历史。
-2. **修订规则。** `word`、`meaning`、`example`、`example_cn`、`contexts` 的语义
-   变化使 `version + 1`；字符串按折叠空白比较，因此仅排版差异不增加版本。音标、
+2. **修订规则。** 词卡的 `word`、`meaning`、`example`、`example_cn`、`contexts`，
+   课程的 `title`、`content`，故事的 `title`、`content`、`title_cn`、`content_cn`
+   的语义变化使 `version + 1`；字符串按折叠空白比较，因此仅排版差异不增加版本。音标、
    讲解与记忆法不改变修订。`identity` 表示实体身份，编辑时保持不变；`version`
    表示当前内容，编辑实质变化时递增。`GET/PUT /api/cards/{id}` 增加
    `content_revision: {identity, version}`，编辑与修订在同一 `BEGIN IMMEDIATE`
@@ -42,7 +43,10 @@ V2 协议，新增记录会先被允许丢失，再等最终集成票补救。
 6. **恢复保留身份。** V3 恢复时 `content_revisions.identity` 随实体保留，仅
    按资源类型重映射 `resource_id`；恢复后继续编辑从原版本递增。恢复前启动的
    后台 AI 任务同时校验卡片内容与修订身份/版本，过期结果不能写入恢复后的实体。
-7. **新增集合当票登记。** 后续票据引入新的持久集合时，必须在同一票登记导出、
+7. **新增集合当票登记。** EL-04 在登记表中加入 `learning_contacts`：父引用
+   `cards`、恢复时重映射 `card_id`、校验提交标识与修订身份 UUID、拒绝重复
+   提交标识；该集合随 V3 导出/恢复，旧 V2 或早期 V3 缺少时保持未知。
+   后续票据引入新的持久集合时，必须在同一票登记导出、
    校验、引用映射与恢复，不把数据保护推迟到最终集成票。EL-20 只负责把登记与
    映射 owner 收口到 `app/services/backup_v3_registry.py` 并保留兼容导入。
 
@@ -62,3 +66,11 @@ V2 协议，新增记录会先被允许丢失，再等最终集成票补救。
   静默漏数据。
 - 回退应用时保留 `content_revisions` 与 V3 适配；不得删除新列或恢复旧快照来覆盖
   已产生的新学习。
+
+## 补充：课程/故事修订字段（EL-06）
+
+- 课程（lesson）的 `title`、`content` 与故事（story）的 `title`、`content`、
+  `title_cn`、`content_cn` 属于语义内容；实质变化推进对应修订。故事自动补翻接受时
+  推进修订；晚到翻译先校验 identity+version，不一致则丢弃，避免覆盖编辑或恢复后的实体。
+- 本票只增加读取端的修订与可见目标载荷，不新增持久集合；`content_revisions` 中
+  lesson/story 的导出、校验、映射与恢复沿用既有 V3 登记。

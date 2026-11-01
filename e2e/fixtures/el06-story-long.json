@@ -1,0 +1,18 @@
+{
+  "tables": {
+    "cards": [
+      {"id": 1, "word": "apple", "kind": "word", "meaning": "苹果"}
+    ],
+    "stories": [
+      {
+        "id": 1,
+        "title": "Long Story",
+        "content": "Line one.\nLine two.\nLine three.\nLine four.\nLine five.\nLine six.\nLine seven.\nLine eight.\nLine nine.\nLine ten.\nAn apple is here.",
+        "content_cn": "第一行。\n第二行。\n第三行。\n第四行。\n第五行。\n第六行。\n第七行。\n第八行。\n第九行。\n第十行。\n苹果在这里。"
+      }
+    ],
+    "story_words": [
+      {"id": 1, "story_id": 1, "card_id": 1}
+    ]
+  }
+}

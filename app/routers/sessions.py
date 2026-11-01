@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models.card import Card
 from app.models.review_event import ReviewEvent
+from app.services.content_revisions import content_revision_map
 from app.services.daily_session import build_reinforcement
 from app.services.learning import _event_payload
 
@@ -38,14 +39,23 @@ def reinforcement(session_id: UUID, db: Session = Depends(get_db)):
     answered = {
         event["card_id"] for event in events if event["stage"] == "reinforcement"
     }
+    candidates = build_reinforcement(events)
+    revisions = content_revision_map(
+        db, "card", [item["card_id"] for item in candidates]
+    )
     questions = []
-    for item in build_reinforcement(events):
+    for item in candidates:
         if item["card_id"] in answered:
             continue
         card = db.get(Card, item["card_id"])
         if card and card.kind == "word" and card.meaning and card.word:
             questions.append(
-                {"card_id": card.id, "word": card.word, "meaning": card.meaning}
+                {
+                    "card_id": card.id,
+                    "word": card.word,
+                    "meaning": card.meaning,
+                    "content_revision": revisions[card.id],
+                }
             )
     return {"questions": questions}
 

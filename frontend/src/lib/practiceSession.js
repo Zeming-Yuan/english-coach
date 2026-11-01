@@ -92,6 +92,7 @@ async function judgeAnswer(item, value, fsrsOnSpell) {
  * @param {boolean} [opts.fsrsOnSpell=false] 专属拼写练习：拼写也写 FSRS（默认只记错词）
  * @param {(correct: boolean) => number | null} [opts.autoAdvanceMs=null] 反馈后自动切题延时；null=手动
  * @param {boolean} [opts.speakOnAnswer=false] 反馈后朗读正确答案
+ * @param {(item: object) => void} [opts.onAnswerAudio] 正确答案语音真正开始播放
  * @param {boolean} [opts.speakListenOnNewItem=false] 进入听写题自动播发音
  * @param {boolean} [opts.enterToNext=true] 反馈阶段 Enter → 下一题
  */
@@ -101,6 +102,7 @@ export function usePracticeSession({
   fsrsOnSpell = false,
   autoAdvanceMs = null,
   speakOnAnswer = false,
+  onAnswerAudio = null,
   speakListenOnNewItem = false,
   enterToNext = true,
   typedAttempt = null,
@@ -123,6 +125,8 @@ export function usePracticeSession({
   autoAdvanceMsRef.current = autoAdvanceMs;
   const typedAttemptRef = useRef(typedAttempt);
   typedAttemptRef.current = typedAttempt;
+  const onAnswerAudioRef = useRef(onAnswerAudio);
+  onAnswerAudioRef.current = onAnswerAudio;
 
   const load = useCallback(async () => {
     setPhase("loading");
@@ -203,7 +207,11 @@ export function usePracticeSession({
       const correct = outcome.correct;
       if (correct) sfxSuccess();
       else sfxFail();
-      if (speakOnAnswer && outcome.expected) speak(outcome.expected, null);
+      if (speakOnAnswer && outcome.expected) {
+        speak(outcome.expected, null, () => {
+          if (onAnswerAudioRef.current) onAnswerAudioRef.current(item);
+        });
+      }
       setFeedback({
         correct,
         expected: outcome.expected,
@@ -320,7 +328,11 @@ export function usePracticeSession({
     }
     sfxFail();
     const expected = q?.word || q?.answer || "";
-    if (speakOnAnswer && expected) speak(expected, null);
+    if (speakOnAnswer && expected) {
+      speak(expected, null, () => {
+        if (onAnswerAudioRef.current) onAnswerAudioRef.current(item);
+      });
+    }
     setFeedback({ correct: false, expected, userInput: null, skipped: true });
     setStats((s) => ({ ...s, wrongList: [...s.wrongList, { item, userInput: null, expected }] }));
   }, [item, feedback, phase, q, speakOnAnswer, sendTypedAttempt, applySaved]);

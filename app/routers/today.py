@@ -13,6 +13,7 @@ from app.models.review_baseline import ReviewBaseline
 from app.models.review_event import ReviewEvent
 from app.runtime import Runtime, get_runtime
 from app.services.card_payload import queue_payload
+from app.services.content_revisions import content_revision_map
 from app.services.daily_session import build_daily_queue
 from app.services.graduation import card_is_graduated
 from app.services.learning_evidence import (
@@ -57,7 +58,6 @@ def get_today(
         .limit(new_limit)
     )
     new_cards = db.execute(stmt).scalars().all()
-    new_cards_dict = [queue_payload(card) for card in new_cards]
     stmt = (
         select(Card)
         .join(Review, Review.card_id == Card.id)
@@ -69,7 +69,6 @@ def get_today(
         .limit(due_limit)
     )
     due_cards = db.execute(stmt).scalars().all()
-    due_cards_dict = [queue_payload(card) for card in due_cards]
     # 错词优先：有错词记录的卡排到队列最前面（错误增强效应）
     error_first = (
         db.execute(
@@ -83,9 +82,6 @@ def get_today(
         .all()
     )
     error_ids = {c.id for c in error_first}
-    if error_ids:
-        new_cards_dict = [c for c in new_cards_dict if c["id"] not in error_ids]
-        due_cards_dict = [c for c in due_cards_dict if c["id"] not in error_ids]
     # 困难词优先（自主增强）：并入 error_cards 列表尾部
     hard_first = (
         db.execute(
@@ -101,9 +97,16 @@ def get_today(
         .all()
     )
     hard_ids = {c.id for c in hard_first}
-    if hard_ids:
-        new_cards_dict = [c for c in new_cards_dict if c["id"] not in hard_ids]
-        due_cards_dict = [c for c in due_cards_dict if c["id"] not in hard_ids]
+    excluded = error_ids | hard_ids
+    new_cards = [c for c in new_cards if c.id not in excluded]
+    due_cards = [c for c in due_cards if c.id not in excluded]
+    revisions = content_revision_map(
+        db,
+        "card",
+        [c.id for c in [*new_cards, *due_cards, *error_first, *hard_first]],
+    )
+    new_cards_dict = [queue_payload(card, revisions[card.id]) for card in new_cards]
+    due_cards_dict = [queue_payload(card, revisions[card.id]) for card in due_cards]
     word_ids = list(db.scalars(select(Card.id).where(Card.kind == "word")))
     summaries = bulk_evidence_summaries(db, word_ids, runtime)
     overview = evidence_overview(summaries)
@@ -119,7 +122,10 @@ def get_today(
     return {
         **queue,
         "error_cards": with_progress_label(
-            [queue_payload(c) for c in list(error_first) + list(hard_first)]
+            [
+                queue_payload(c, revisions[c.id])
+                for c in list(error_first) + list(hard_first)
+            ]
         ),
         "new_cards": with_progress_label(new_cards_dict),
         "due_cards": with_progress_label(due_cards_dict),
@@ -337,8 +343,11 @@ def get_recommended(limit: int = 5, db: Session = Depends(get_db)):
     # 按优先级排序，取前 limit 个
     candidates.sort(key=lambda x: x[2])
     selected = candidates[:limit]
+    revisions = content_revision_map(db, "card", [card.id for card, _, _ in selected])
 
     return {
-        "recommended": [queue_payload(card) for card, _, _ in selected],
+        "recommended": [
+            queue_payload(card, revisions[card.id]) for card, _, _ in selected
+        ],
         "total_candidates": len(candidates),
     }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { api } from "../lib/api.js";
+import { recordContact, recordVisibleCards } from "../lib/contacts.js";
 import { speak, prewarmTts } from "../lib/tts.js";
 import { escapeHtml } from "../lib/utils.js";
 import { useLearningAttempt } from "../hooks/useLearningAttempt.js";
@@ -75,6 +76,72 @@ export default function WordsPage({ onBack }) {
   // A-Z 导航
   const usedLetters = new Set(grouped.filter((g) => g.type === "header").map((g) => g.letter));
 
+  // EL-04：只有真正进入视口的卡片才算一次展示接触；预取、预热与未展示都不算。
+  const contactCards = useMemo(
+    () => new Map(allCards.map((c) => [c.id, c])),
+    [allCards],
+  );
+  useEffect(() => {
+    if (loading || detail || typeof IntersectionObserver === "undefined") return;
+    const seen = new Set();
+    const observer = new IntersectionObserver((entries) => {
+      const shown = [];
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        const card = contactCards.get(Number(entry.target.dataset.contactCardId));
+        if (!card || seen.has(card.id)) continue;
+        seen.add(card.id);
+        shown.push(card);
+      }
+      if (shown.length === 0) return;
+      recordVisibleCards(shown, "words_list").then(({ failed, retryable }) => {
+        if (failed.length === 0) return;
+        const finalCount = failed.length - retryable.length;
+        const message = (remaining, final) =>
+          final > 0
+            ? `接触依据不完整：${remaining} 张未确认（${final} 张无法确认）`
+            : `接触依据不完整：${remaining} 张尚未确认`;
+        const retry = (cards, final) => {
+          recordVisibleCards(cards, "words_list").then((again) => {
+            const remaining = final + again.failed.length;
+            if (remaining === 0) {
+              showToast("接触记录已确认");
+            } else if (again.retryable.length === 0) {
+              showToast(message(remaining, final));
+            } else {
+              showToast(message(remaining, final), "重试", () =>
+                retry(again.retryable, final),
+              );
+            }
+          });
+        };
+        if (retryable.length === 0) {
+          showToast(message(failed.length, finalCount));
+        } else {
+          showToast(message(failed.length, finalCount), "重试", () =>
+            retry(retryable, finalCount),
+          );
+        }
+      });
+    }, { threshold: 0.5 });
+    document
+      .querySelectorAll("[data-contact-card-id]")
+      .forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [loading, detail, tab, query, contactCards]);
+
+  const speakCard = (card, text, source) =>
+    speak(text, null, () => {
+      recordContact({
+        cardId: card.id,
+        revision: card.content_revision,
+        source,
+        kind: "answer_audio",
+      }).catch((error) => {
+        showToast("接触记录尚未确认：" + (error?.message || error));
+      });
+    });
+
   if (loading) return <div className="story-empty">加载中…</div>;
 
   // 详情页
@@ -113,7 +180,7 @@ export default function WordsPage({ onBack }) {
             if (c.graduated) badges.push("已解锁");
             if (c.error_count > 0) badges.push(`错词×${c.error_count}`);
             return (
-              <div key={c.id} className="word-item" onClick={() => setDetail(c.id)} onContextMenu={(e) => {
+              <div key={c.id} className="word-item" data-contact-card-id={c.id} onClick={() => setDetail(c.id)} onContextMenu={(e) => {
                 e.preventDefault();
                 setQuickPeek(c);
                 setPeekPos({ x: Math.min(e.clientX, window.innerWidth - 280), y: Math.min(e.clientY, window.innerHeight - 200) });
@@ -138,7 +205,7 @@ export default function WordsPage({ onBack }) {
                     </>
                   )}
                 </div>
-                <button className="speak-mini" title="朗读" onClick={(e) => { e.stopPropagation(); speak(c.kind === "sentence" ? (c.example || c.word) : c.word); }}>🔊</button>
+                <button className="speak-mini" title="朗读" onClick={(e) => { e.stopPropagation(); speakCard(c, c.kind === "sentence" ? (c.example || c.word) : c.word, "words_list"); }}>🔊</button>
               </div>
             );
           })}
@@ -158,7 +225,7 @@ export default function WordsPage({ onBack }) {
         <div className="quick-peek" style={{ left: peekPos.x, top: peekPos.y }}>
           <div className="quick-peek-head">
             <span className="qp-word">{quickPeek.kind === "sentence" ? (quickPeek.example || quickPeek.word) : quickPeek.word}</span>
-            <button className="speak-mini" onClick={() => speak(quickPeek.kind === "sentence" ? (quickPeek.example || quickPeek.word) : quickPeek.word)}>🔊</button>
+            <button className="speak-mini" onClick={() => speakCard(quickPeek, quickPeek.kind === "sentence" ? (quickPeek.example || quickPeek.word) : quickPeek.word, "words_list")}>🔊</button>
           </div>
           {quickPeek.kind !== "sentence" && quickPeek.phonetic && <div className="qp-phonetic">{quickPeek.phonetic}</div>}
           <div className="qp-meaning">{quickPeek.kind === "sentence" ? (quickPeek.example_cn || "") : (quickPeek.meaning || "")}</div>
@@ -193,6 +260,7 @@ const SOURCE_LABELS = {
   lesson: "课程",
   story: "故事",
   card_detail: "词卡详情",
+  words_list: "词表",
   spelling: "拼写",
   quiz: "测验",
   listening: "听力",
@@ -207,6 +275,7 @@ const KIND_LABELS = {
   related: "相关词",
 };
 const RATING_LABELS = { 1: "忘了", 2: "模糊", 3: "记得", 4: "太简单" };
+const CONTACT_KIND_LABELS = { answer_visible: "看到答案", answer_audio: "播放答案" };
 const ASSISTANCE_LABELS = {
   first_letter: "首字母",
   length: "字母数",
@@ -318,6 +387,50 @@ function WordDetail({ cardId, onBack, allCards, setDetail, onCardChanged }) {
     } catch {}
   };
 
+  // EL-04：详情实际显示后才确认接触；失败时明确标注依据不完整。
+  const [contactState, setContactState] = useState({
+    phase: "idle",
+    kind: null,
+    error: null,
+    durable: true,
+    retryable: true,
+  });
+
+  const confirmContact = async (kind = "answer_visible") => {
+    if (!c?.content_revision) return;
+    setContactState({ phase: "saving", kind, error: null, durable: true, retryable: true });
+    try {
+      await recordContact({
+        cardId: c.id,
+        revision: c.content_revision,
+        source: "card_detail",
+        kind,
+      });
+      setContactState({ phase: "saved", kind, error: null, durable: true, retryable: true });
+      await refreshDetail();
+    } catch (error) {
+      setContactState({
+        phase: "failed",
+        kind,
+        error: error?.message || String(error),
+        durable: error?.durable !== false,
+        retryable: error?.retryable !== false,
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (!c?.content_revision) return;
+    confirmContact("answer_visible");
+    // 只在本卡或内容修订变化（重新显示）时确认一次。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [c?.id, c?.content_revision?.identity, c?.content_revision?.version]);
+
+  // 只有目标答案的语音才算“听到答案”；例句与意群朗读不冒充答案播放。
+  const speakAnswer = (text) =>
+    speak(text, null, () => confirmContact("answer_audio"));
+  const speakPlain = (text) => speak(text);
+
   const regenerate = async () => {
     try {
       // 保存旧例句用于对比
@@ -365,6 +478,11 @@ function WordDetail({ cardId, onBack, allCards, setDetail, onCardChanged }) {
   // 讲解三要素分行（用 | 分隔）
   const explanationParts = c.explanation ? c.explanation.split("|").map((s) => s.trim()).filter(Boolean) : [];
 
+  const lastContact = c.last_contact;
+  const contactText = lastContact
+    ? `${new Date(lastContact.occurred_at).toLocaleString()} · ${SOURCE_LABELS[lastContact.source] || lastContact.source} · ${CONTACT_KIND_LABELS[lastContact.kind] || lastContact.kind} · 第 ${lastContact.card_revision} 版`
+    : "暂无记录（旧数据未记录，保持未知）";
+
   return (
     <section className="view">
       <div className="page-head">
@@ -381,17 +499,17 @@ function WordDetail({ cardId, onBack, allCards, setDetail, onCardChanged }) {
           <>
             <div className="word-detail-header">
               <div className="word-detail-word word-detail-sentence">{c.example || c.word}</div>
-              <button className="speak-btn" title="朗读" onClick={() => speak(c.example || c.word)}>🔊</button>
+              <button className="speak-btn" title="朗读" onClick={() => speakAnswer(c.example || c.word)}>🔊</button>
             </div>
             {c.difficulty === "reading" && <span className="diff-chip">📖 阅读句</span>}
             {/* 意群切分（初学辅助）— 点击单块朗读，可跟读 */}
-            <ChunkChips chunks={c.chunks} onSpeak={(t) => speak(t)} style={{ marginTop: 10 }} />
+            <ChunkChips chunks={c.chunks} onSpeak={speakPlain} style={{ marginTop: 10 }} />
           </>
         ) : (
           <>
             <div className="word-detail-header">
               <div className="word-detail-word">{c.word}</div>
-              <button className="speak-btn" title="朗读" onClick={() => speak(c.word)}>🔊</button>
+              <button className="speak-btn" title="朗读" onClick={() => speakAnswer(c.word)}>🔊</button>
             </div>
             {c.phonetic && <div className="word-detail-phonetic">{c.phonetic}</div>}
           </>
@@ -405,6 +523,41 @@ function WordDetail({ cardId, onBack, allCards, setDetail, onCardChanged }) {
 
         {/* 回忆证据：真实样本/日期/适用性，不用复习次数推断掌握 */}
         <LearningEvidence evidence={c.learning_evidence} />
+
+        {/* 应用内接触：只来自实际展示/播放，不作为作答或完成量 */}
+        <div className="word-detail-status" data-testid="last-contact">
+          <div className="status-item">
+            <span className="status-label">最近应用内接触</span>
+            <span className="status-value">{contactText}</span>
+          </div>
+          <div className="status-item">
+            <span className="status-label">接触依据</span>
+            <span className="status-value">{c.contact_integrity?.label || "未知"}</span>
+          </div>
+        </div>
+        {contactState.phase === "saving" && (
+          <p role="status" className="save-state">正在确认接触记录…</p>
+        )}
+        {contactState.phase === "failed" && (
+          <div role="alert" className="save-state save-state-error">
+            <p>
+              接触依据不完整：{contactState.error}
+              {contactState.durable === false
+                ? "（本地存储不可用，刷新后无法继续确认）"
+                : ""}
+            </p>
+            {contactState.retryable && (
+              <div className="save-state-actions">
+                <button
+                  className="btn btn-primary btn-small"
+                  onClick={() => confirmContact(contactState.kind || "answer_visible")}
+                >
+                  继续确认保存
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="word-detail-meaning">{c.kind === "sentence" ? (c.example_cn || "") : (c.meaning || "")}</div>
 
@@ -444,7 +597,7 @@ function WordDetail({ cardId, onBack, allCards, setDetail, onCardChanged }) {
             {c.example && c.kind !== "sentence" && (
               <div className="word-detail-example">
                 <span>{c.example}</span>
-                <button className="speak-mini" title="朗读例句" onClick={() => speak(c.example)}>🔊</button>
+                <button className="speak-mini" title="朗读例句" onClick={() => speakPlain(c.example)}>🔊</button>
                 <button className="memo-edit-btn" title="换一个例句" onClick={regenerate}>🔄</button>
               </div>
             )}
