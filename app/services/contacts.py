@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 from typing import get_args
 
@@ -50,6 +51,20 @@ def merge_assistance(previous: list[str], added: list[str]) -> list[str]:
     if not values <= ASSISTANCE_VALUES:
         raise ValueError("unknown assistance")
     return sorted(values)
+
+
+def visible_card_ids(text: str, cards: list[dict]) -> list[int]:
+    """文本中按完整词边界出现的目标卡；子串、大小写变化与重复不改变身份。"""
+    found = set()
+    for card in cards:
+        word = card.get("word", "").strip()
+        if word and re.search(
+            r"(?<![A-Za-z])" + re.escape(word) + r"(?![A-Za-z])",
+            text,
+            re.IGNORECASE,
+        ):
+            found.add(card["id"])
+    return sorted(found)
 
 
 def _iso(value: datetime) -> str:
@@ -166,4 +181,5 @@ __all__ = [
     "contact_time",
     "merge_assistance",
     "record_contact",
+    "visible_card_ids",
 ]

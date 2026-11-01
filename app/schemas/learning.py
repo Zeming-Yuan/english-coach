@@ -31,6 +31,8 @@ ContactSource = Literal[
     "listening",
     "mixed",
     "reinforcement",
+    "lesson",
+    "story",
 ]
 ContactKind = Literal["answer_visible", "answer_audio"]
 

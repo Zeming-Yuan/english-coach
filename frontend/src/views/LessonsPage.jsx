@@ -1,7 +1,9 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { api } from "../lib/api.js";
 import { speak } from "../lib/tts.js";
 import { escapeHtml } from "../lib/utils.js";
+import { recordVisibleCards } from "../lib/contacts.js";
+import { recordPracticeContact } from "../lib/practiceContacts.js";
 import { useLearningAttempt } from "../hooks/useLearningAttempt.js";
 import { showToast } from "../App.jsx";
 
@@ -117,13 +119,82 @@ function LessonDetail({ lesson, onBack, onNext }) {
   const [revealed, setRevealed] = useState(new Set());
   const [guesses, setGuesses] = useState({});
   const L = lesson;
-  const words = L.content.words || [];
-  const dialogue = L.content.dialogue || [];
+  const words = L.words || L.content.words || [];
+  const dialogue = L.dialogue || L.content.dialogue || [];
   const tips = L.content.tips || [];
 
   const revealWord = (word) => {
     setRevealed((s) => new Set(s).add(word));
+    const target = words.find((entry) => entry.word === word);
+    if (target?.content_revision) {
+      recordPracticeContact({
+        cardId: target.id,
+        revision: target.content_revision,
+        source: "lesson",
+        kind: "answer_visible",
+      });
+    }
   };
+
+  // 只有真正进入视口的目标词/对话句才算接触；预取与未展示不算。
+  const seenContacts = useRef(new Set());
+  useEffect(() => {
+    seenContacts.current = new Set();
+    if (typeof IntersectionObserver === "undefined") return;
+    const record = (ids) => {
+      const fresh = Array.from(new Set(ids)).filter(
+        (id) => !seenContacts.current.has(id),
+      );
+      if (fresh.length === 0) return;
+      fresh.forEach((id) => seenContacts.current.add(id));
+      const targets = fresh
+        .map((id) => words.find((word) => word.id === id))
+        .filter((word) => word?.content_revision);
+      recordVisibleCards(targets, "lesson").then(({ failed, retryable }) => {
+        if (failed.length === 0) return;
+        failed.forEach((target) => seenContacts.current.delete(target.id));
+        const message = `接触依据不完整：${failed.length} 个目标词`;
+        if (retryable.length === 0) {
+          showToast(message);
+          return;
+        }
+        showToast(message, "重试", () =>
+          record(retryable.map((target) => target.id)),
+        );
+      });
+    };
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const ids = [];
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const raw = entry.target.dataset.contactIds;
+          if (raw) ids.push(...raw.split(",").map(Number).filter(Boolean));
+        }
+        record(ids);
+      },
+      {threshold: 0.5},
+    );
+    document
+      .querySelectorAll("[data-contact-ids]")
+      .forEach((element) => observer.observe(element));
+    return () => observer.disconnect();
+  }, [lesson.id]);
+
+  const contactAudio = (text, ids) =>
+    speak(text, null, () => {
+      for (const id of ids || []) {
+        const target = words.find((word) => word.id === id);
+        if (target?.content_revision) {
+          recordPracticeContact({
+            cardId: id,
+            revision: target.content_revision,
+            source: "lesson",
+            kind: "answer_audio",
+          });
+        }
+      }
+    });
 
   return (
     <section className="view">
@@ -172,7 +243,7 @@ function LessonDetail({ lesson, onBack, onNext }) {
                   </>
                 )}
               </div>
-              <button className="speak-mini" title="朗读" onClick={(e) => { e.stopPropagation(); speak(w.word); }}>🔊</button>
+              <button type="button" className="speak-mini" title="朗读" onClick={(e) => { e.stopPropagation(); contactAudio(w.word, [w.id]); }}>🔊</button>
               {isRevealed && (
                 <LessonMastery
                   cardId={L.card_ids?.[w.word]}
@@ -184,13 +255,18 @@ function LessonDetail({ lesson, onBack, onNext }) {
         })}
       </div>
 
+      <div data-testid="content-contact-status" className="story-tap-tip">
+        应用内接触：本课目标词按实际显示记录
+      </div>
+
       <h3 className="lesson-section">对话 · 点句子听发音</h3>
       <div className="bubble-list">
         {dialogue.map((line, i) => (
           <div
             key={i}
+            data-contact-ids={(line.visible_card_ids || []).join(",")}
             className={`bubble ${i % 2 === 0 ? "bubble-a" : "bubble-b"} lesson-dialogue-row`}
-            onClick={() => speak(line.en)}
+            onClick={() => contactAudio(line.en, line.visible_card_ids)}
           >
             <span className="spk">{escapeHtml(line.speaker)}</span>
             <div className="bubble-en">{escapeHtml(line.en)}</div>

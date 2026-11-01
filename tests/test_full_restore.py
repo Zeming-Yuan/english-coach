@@ -940,8 +940,22 @@ def test_full_restore_canonicalizes_outer_session_for_reading_and_replay(
     assert mapped != cid
     reinforcement = target.client.get(f"/api/sessions/{session_id}/reinforcement")
     assert reinforcement.status_code == 200, reinforcement.text
+    restored_backup = target.client.get("/api/export/backup").json()
+    restored_revision = next(
+        row
+        for row in restored_backup["extensions"]["content_revisions"]
+        if row["resource_kind"] == "card" and row["resource_id"] == mapped
+    )
     assert reinforcement.json()["questions"] == [
-        {"card_id": mapped, "word": "apple", "meaning": "苹果"}
+        {
+            "card_id": mapped,
+            "word": "apple",
+            "meaning": "苹果",
+            "content_revision": {
+                "identity": restored_revision["identity"],
+                "version": restored_revision["version"],
+            },
+        }
     ]
     event = target.client.get("/api/export/backup").json()["learning_events"][0]
     assert event["session_id"] == session_id

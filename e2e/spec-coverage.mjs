@@ -61,6 +61,15 @@ export const requirements = {
     "EL-05 mixed practice records answer contact",
     "EL-05 reinforcement answer display records contact",
   ],
+  EL06: [
+    "EL-06 story reading records visible target contacts",
+    "EL-06 story sentence playback records answer audio",
+    "EL-06 lesson reading records word contacts",
+    "EL-06 lesson dialogue playback records answer audio",
+    "EL-06 story point-word records contact after meaning",
+    "EL-06 offscreen story target is not a contact until visible",
+    "EL-06 contact failure does not block reading",
+  ],
 };
 export const projects = ["mobile", "desktop"];
 

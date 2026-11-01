@@ -1,7 +1,8 @@
 """内容修订：实体身份与语义版本。
 
-只有 word/meaning/example/example_cn/contexts 的实质变化增加版本；
-纯排版差异（空白、换行）不算变化，记忆法/音标/讲解也不改变修订。
+词卡：word/meaning/example/example_cn/contexts；课程：title/content；
+故事：title/content/title_cn/content_cn 的实质变化增加版本。
+纯排版差异（空白、换行）不算变化，记忆法/音标/讲解也不改变词卡修订。
 """
 
 from __future__ import annotations
@@ -17,7 +18,16 @@ from app.models.lesson import Lesson
 from app.models.story import Story
 
 RESOURCE_MODELS = {"card": Card, "lesson": Lesson, "story": Story}
-SEMANTIC_FIELDS = frozenset({"word", "meaning", "example", "example_cn", "contexts"})
+CARD_SEMANTIC_FIELDS = frozenset(
+    {"word", "meaning", "example", "example_cn", "contexts"}
+)
+SEMANTIC_FIELDS_BY_KIND = {
+    "card": CARD_SEMANTIC_FIELDS,
+    "lesson": frozenset({"title", "content"}),
+    "story": frozenset({"title", "content", "title_cn", "content_cn"}),
+}
+# 兼容既有词卡规则测试与 next_revision 默认参数。
+SEMANTIC_FIELDS = CARD_SEMANTIC_FIELDS
 
 
 class UnknownResourceKindError(ValueError):
@@ -35,10 +45,12 @@ def semantic_value(value):
     return value
 
 
-def next_revision(before: dict, changes: dict, current: int) -> int:
+def next_revision(
+    before: dict, changes: dict, current: int, fields=SEMANTIC_FIELDS
+) -> int:
     """返回下一修订号；没有语义变化时保持 current。"""
     changed = any(
-        key in SEMANTIC_FIELDS
+        key in fields
         and semantic_value(before.get(key)) != semantic_value(value)
         for key, value in changes.items()
     )
@@ -138,15 +150,14 @@ def advance_content_revision(
     entity = db.get(model, resource_id)
     if entity is None:
         raise LookupError(f"{resource_kind}:{resource_id} 不存在")
+    fields = SEMANTIC_FIELDS_BY_KIND[resource_kind]
     before = {
-        key: getattr(entity, key, None)
-        for key in SEMANTIC_FIELDS
-        if hasattr(entity, key)
+        key: getattr(entity, key, None) for key in fields if hasattr(entity, key)
     }
     row = _revision_row(db, resource_kind, resource_id)
     if row is None:
         row = _new_revision(resource_kind, resource_id)
         db.add(row)
-    row.version = next_revision(before, changes, row.version)
+    row.version = next_revision(before, changes, row.version, fields)
     db.flush()
     return {"identity": row.identity, "version": row.version}
