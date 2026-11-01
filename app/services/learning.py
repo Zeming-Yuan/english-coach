@@ -361,6 +361,7 @@ def _apply_attempt_in_transaction(
     card = db.get(Card, cmd.card_id)
     if card is None:
         raise CardNotFoundError(cmd.card_id)
+    revision = get_content_revision(db, "card", card.id)
     _validate_verified_question(cmd, verified)
 
     expected: str | None = None
@@ -456,6 +457,8 @@ def _apply_attempt_in_transaction(
             id=event_id,
             submission_id=submission_id,
             card_id=card.id,
+            card_identity=revision["identity"],
+            card_revision=revision["version"],
             source=cmd.source,
             kind=cmd.kind,
             stage=cmd.stage,

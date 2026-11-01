@@ -19,6 +19,7 @@ from app.models.content_revision import ContentRevision
 from app.schemas.backup import (
     BackupValidationError,
     FullBackup,
+    FullEvent,
     FullRow,
     ValidatedBackup,
     _digest,
@@ -95,10 +96,22 @@ register_extension(
 )
 
 
+class FullEventV3(FullEvent):
+    """V3 events carry the revision seen when the submission was accepted.
+
+    Older V3 snapshots (EL-01) lack the fields; null means "history
+    incomplete" rather than an invented link.
+    """
+
+    card_identity: str | None = None
+    card_revision: int | None = Field(default=None, ge=1)
+
+
 class FullBackupV3(FullBackup):
     version: Literal[3]  # type: ignore[assignment] — pydantic 收窄字面量
     features: list[str]
     extensions: dict[str, list[dict]]
+    learning_events: list[FullEventV3]
 
 
 def _reject(collection: str, index, field: str, reason: str) -> NoReturn:
@@ -228,6 +241,21 @@ def validate_v3(payload: dict) -> ValidatedBackup:
     from app.schemas.backup import _validate_full_graph
 
     _validate_full_graph(tables, payload)
+    for index, row in enumerate(tables["learning_events"]):
+        identity = row.get("card_identity")
+        version = row.get("card_revision")
+        if (identity is None) != (version is None):
+            _reject(
+                "learning_events",
+                index,
+                "card_identity/card_revision",
+                "事件修订关联不完整",
+            )
+        if identity is not None:
+            try:
+                UUID(identity)
+            except (ValueError, TypeError):
+                _reject("learning_events", index, "card_identity", "必须是 UUID")
     validated_extensions = {
         name: _validate_extension_rows(name, extensions.get(name) or [])
         for name in features

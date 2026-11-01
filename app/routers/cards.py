@@ -13,6 +13,7 @@ from app.models.memo import Memo
 from app.models.review import Review
 from app.models.review_baseline import ReviewBaseline
 from app.models.review_event import ReviewEvent
+from app.runtime import Runtime, get_runtime
 from app.services.card_generator import generate_cards, regenerate_example
 from app.services.card_payload import card_payload
 from app.services.content_revisions import (
@@ -28,6 +29,7 @@ from app.services.learning import (
     has_incomplete_history,
     select_current_review,
 )
+from app.services.learning_evidence import evidence_summary
 from app.services.llm_client import LLMNotConfigured
 from app.services.starter_cards import load_starter_cards, starter_card_rows
 from app.services.write_transaction import run_write
@@ -375,8 +377,12 @@ def regenerate_sentences(limit: int = 5, db: Session = Depends(get_db)):
 
 
 @router.get("/cards/{card_id}")
-def get_card_detail(card_id: int, db: Session = Depends(get_db)):
-    """单词详情：全部字段 + 复习历史 + 毕业状态。"""
+def get_card_detail(
+    card_id: int,
+    db: Session = Depends(get_db),
+    runtime: Runtime = Depends(get_runtime),
+):
+    """单词详情：全部字段 + 复习历史 + 毕业状态 + 回忆证据。"""
     card = db.get(Card, card_id)
     if card is None:
         raise HTTPException(status_code=404, detail="Card not found")
@@ -389,6 +395,10 @@ def get_card_detail(card_id: int, db: Session = Depends(get_db)):
         .first()
     )
     memo = db.execute(select(Memo).where(Memo.card_id == card_id)).scalars().first()
+    history_incomplete = has_incomplete_history(db, card_id)
+    evidence = evidence_summary(
+        db, card_id, runtime, incomplete_history=history_incomplete
+    )
 
     return {
         "id": card.id,
@@ -428,6 +438,7 @@ def get_card_detail(card_id: int, db: Session = Depends(get_db)):
             else None
         ),
         "learning_events": get_card_events(db, card_id),
-        "history_incomplete": has_incomplete_history(db, card_id),
-        "content_revision": get_content_revision(db, "card", card_id),
+        "history_incomplete": history_incomplete,
+        "content_revision": evidence["revision"],
+        "learning_evidence": evidence,
     }

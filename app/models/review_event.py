@@ -22,6 +22,9 @@ class ReviewEvent(Base):
     card_id: Mapped[int] = mapped_column(
         ForeignKey("cards.id", ondelete="CASCADE"), index=True, nullable=False
     )
+    # 事件发生时的当前内容修订；升级前旧事件保持空值，不补造关联。
+    card_identity: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    card_revision: Mapped[int | None] = mapped_column(Integer, nullable=True)
     source: Mapped[str] = mapped_column(String(20), nullable=False)
     kind: Mapped[str] = mapped_column(String(20), nullable=False)
     stage: Mapped[str] = mapped_column(
