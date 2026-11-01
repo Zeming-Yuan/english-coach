@@ -29,7 +29,7 @@ from app.services.learning import (
     has_incomplete_history,
     select_current_review,
 )
-from app.services.learning_evidence import evidence_summary
+from app.services.learning_evidence import bulk_evidence_summaries, evidence_summary
 from app.services.llm_client import LLMNotConfigured
 from app.services.starter_cards import load_starter_cards, starter_card_rows
 from app.services.write_transaction import run_write
@@ -140,10 +140,16 @@ def card_to_dict(card: Card, db: Session) -> dict:
 
 
 def _card_to_dict_fast(
-    card: Card, review: Review | None, error: ErrorCard | None, is_hard: bool
+    card: Card,
+    review: Review | None,
+    error: ErrorCard | None,
+    is_hard: bool,
+    evidence: dict | None = None,
 ) -> dict:
     """Card → 全量载荷（批量预加载版本，无额外查询）。"""
-    return card_payload(card, review=review, error=error, hard=is_hard)
+    return card_payload(
+        card, review=review, error=error, hard=is_hard, evidence=evidence
+    )
 
 
 @router.post("/cards/generate")
@@ -204,8 +210,11 @@ def regenerate_card_example(card_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/cards")
-def list_cards(db: Session = Depends(get_db)):
-    """单词本：全库卡片，按创建时间倒序。"""
+def list_cards(
+    db: Session = Depends(get_db),
+    runtime: Runtime = Depends(get_runtime),
+):
+    """单词本：全库卡片，按创建时间倒序；批量附带当前证据标签。"""
     cards = (
         db.execute(select(Card).order_by(Card.created_at.desc(), Card.id.desc()))
         .scalars()
@@ -237,11 +246,19 @@ def list_cards(db: Session = Depends(get_db)):
     }
     error_map = {e.card_id: e for e in errors}
     hard_set = {h.card_id for h in hards}
+    # 句子卡没有独立 typed 回忆，不应为它们扫描/分发无意义证据。
+    evidence_map = bulk_evidence_summaries(
+        db, [c.id for c in cards if c.kind == "word"], runtime
+    )
 
     return {
         "cards": [
             _card_to_dict_fast(
-                c, review_map.get(c.id), error_map.get(c.id), c.id in hard_set
+                c,
+                review_map.get(c.id),
+                error_map.get(c.id),
+                c.id in hard_set,
+                evidence_map.get(c.id),
             )
             for c in cards
         ]
@@ -395,6 +412,11 @@ def get_card_detail(
         .first()
     )
     memo = db.execute(select(Memo).where(Memo.card_id == card_id)).scalars().first()
+    hard = (
+        db.execute(select(HardCard).where(HardCard.card_id == card_id))
+        .scalars()
+        .first()
+    )
     history_incomplete = has_incomplete_history(db, card_id)
     evidence = evidence_summary(
         db, card_id, runtime, incomplete_history=history_incomplete
@@ -417,6 +439,7 @@ def get_card_detail(
         "graduated": card_is_graduated(card, latest),
         "review_count": latest.review_count if latest else 0,
         "error_count": error.error_count if error else 0,
+        "is_hard": hard is not None,
         "memo": memo.content if memo else None,
         "next_due": latest.due.isoformat() if latest else None,
         "review_history": history,

@@ -157,7 +157,7 @@ export default function StudyPage({ queue, session, recoveryVersion, onProgress,
           <div className="done-emoji">🎉</div>
           <h2>{session ? "本轮主队列已保存" : "今天的词都过了一遍"}</h2>
           <p className="done-detail">
-            {graduated.length > 0 && `${graduated.length} 个词毕业了：${graduated.join("、")} — 例句已变成句子卡。`}
+            {graduated.length > 0 && `${graduated.length} 个词解锁了句子练习：${graduated.join("、")} — 例句已变成句子卡。`}
             {session ? `${answered} 张卡已保存，可返回查看剩余到期任务。` : `${answered} 张卡已复习，明天的队列会按你的记忆自动安排。`}
           </p>
           <div className="done-actions">

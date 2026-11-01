@@ -480,6 +480,20 @@ function QueueView({ setView, setStudyQueue, dailySession, onStartDaily, onResum
             今日完成 <b>{stats.reviewed_today}</b> 词 · 练习 <b>{stats.attempted_today}</b> 次 ·
             跳过 <b>{stats.skipped_today}</b> 次 · 累计 <b>{stats.total_cards}</b> 词
           </span>
+          {data?.evidence_counts && (
+            <span style={{ display: "block", fontSize: 12, color: "var(--muted)", marginTop: 4 }}>
+              {data.evidence_labels?.verified || "独立回忆已有证据"}{" "}
+              {data.evidence_counts.verified || 0} 张 ·{" "}
+              {data.evidence_labels?.weak || "仍需巩固"}{" "}
+              {data.evidence_counts.weak || 0} 张 ·{" "}
+              {data.evidence_labels?.stale || "历史证据，待复测"}{" "}
+              {data.evidence_counts.stale || 0} 张 ·{" "}
+              {data.evidence_labels?.history_incomplete || "历史依据不完整"}{" "}
+              {data.evidence_counts.history_incomplete || 0} 张 ·{" "}
+              {data.evidence_labels?.insufficient || "独立证据不足"}{" "}
+              {data.evidence_counts.insufficient || 0} 张
+            </span>
+          )}
         </div>
       )}
 
