@@ -20,7 +20,7 @@ from app.services.practice import (
     PracticeNotFoundError,
     PracticeStaleError,
     PracticeUnavailableError,
-    active_delayed_sessions,
+    active_sessions,
     create_session,
     get_session,
     set_assistance,
@@ -32,12 +32,14 @@ router = APIRouter()
 
 @router.get("/practice-sessions")
 def active(
-    purpose: Literal["delayed_check"],
-    window: Literal["day", "week"],
+    purpose: Literal["delayed_check", "targeted"],
+    window: Literal["day", "week"] | None = None,
     db: Session = Depends(get_db),
 ):
     """恢复其他浏览器/V3 中的待处理轮次；只返回轮次身份。"""
-    return {"sessions": active_delayed_sessions(db, window)}
+    if (purpose == "delayed_check") != (window is not None):
+        raise HTTPException(status_code=422, detail="回测需要窗口，专项练习不使用窗口")
+    return {"sessions": active_sessions(db, purpose, window)}
 
 
 def _not_found(error: Exception) -> HTTPException:
@@ -69,10 +71,11 @@ def create(
             runtime,
             payload.window,
             payload.pending_contact_ids,
+            [target.model_dump() for target in payload.targets],
         )
-    except PracticeLessonNotFoundError as error:
+    except (PracticeLessonNotFoundError, PracticeNotFoundError) as error:
         raise _not_found(error)
-    except PracticeConflictError as error:
+    except (PracticeConflictError, PracticeStaleError) as error:
         raise _conflict(error)
     except PracticeUnavailableError as error:
         raise _unavailable(error)

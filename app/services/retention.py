@@ -73,6 +73,7 @@ def delayed_items(
     runtime: Runtime,
     *,
     issued_at: datetime | None = None,
+    target_ids: list[int] | None = None,
 ) -> list[dict]:
     if pending:
         return []  # 未确认接触只能降低资格，不能提供时间依据。
@@ -90,6 +91,8 @@ def delayed_items(
         .outerjoin(Review, Review.card_id == Card.id)
         .where(Card.kind == "word")
     ):
+        if target_ids is not None and card.id not in target_ids:
+            continue
         if not (card.meaning or "").strip():
             continue
         revision = get_content_revision(db, "card", card.id)
@@ -180,7 +183,7 @@ def first_results(
     return list(first.values())
 
 
-def retention_overview(db: Session) -> dict:
+def retention_overview(db: Session, revisions: dict[int, dict] | None = None) -> dict:
     overview = {
         window: {
             "successes": 0,
@@ -195,6 +198,11 @@ def retention_overview(db: Session) -> dict:
     }
     covered = {window: set() for window in overview}
     for item, event, result in first_results(db):
+        if revisions is not None and revisions.get(item.card_id) != {
+            "identity": item.card_identity,
+            "version": item.card_revision,
+        }:
+            continue
         row = overview[result["window"]]
         covered[result["window"]].add(item.card_id)
         if result["gap_seconds"] is not None:
@@ -296,9 +304,9 @@ def validate_retention_graph(
     contact_rows = {row["submission_id"]: row for row in contacts}
     for index, practice in enumerate(sessions.values()):
         delayed = practice["purpose"] == "delayed_check"
-        if delayed != (practice["window"] is not None) or delayed == (
-            practice["lesson_id"] is not None
-        ):
+        if delayed != (practice["window"] is not None) or (
+            practice["purpose"] == "lesson_check"
+        ) != (practice["lesson_id"] is not None):
             reject("practice_sessions", index, "purpose", "用途与课程/窗口不一致")
     for index, item in enumerate(items):
         practice = sessions[item["session_id"]]

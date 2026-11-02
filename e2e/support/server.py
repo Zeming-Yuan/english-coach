@@ -48,6 +48,9 @@ def main() -> None:
     os.environ["DELAYED_RECALL_ENABLED"] = str(
         settings_payload.get("delayed_recall_enabled", True)
     )
+    os.environ["LEARNING_ADVICE_ENABLED"] = str(
+        settings_payload.get("learning_advice_enabled", True)
+    )
     # 空值覆盖用户 .env 中的旧配置，测试服务器不读取真实密钥
     os.environ["DEEPSEEK_API_KEY"] = ""
     os.environ["DEEPSEEK_BASE_URL"] = ""

@@ -296,7 +296,8 @@ export default function LessonsPage({ onExit }) {
                 <div className="lesson-list-item-title">第 {l.level} 课 · {escapeHtml(l.title)}</div>
                 <div className="lesson-list-item-sub">
                   {(l.content.dialogue || []).length} 句对话 ·{" "}
-                  {lessonProgressLabel(l.learning_progress)}
+                  短测：{l.learning_progress?.checked_count ? `通过 ${l.learning_progress.passed_count}/${l.learning_progress.checked_count} 题` : "尚无（待检查）"} · {lessonProgressLabel(l.learning_progress)}
+                  <LessonRetention retention={l.learning_progress?.retention} />
                 </div>
               </div>
               <span className="story-delete-lesson">›</span>
@@ -309,6 +310,18 @@ export default function LessonsPage({ onExit }) {
 }
 
 /* ============ 课程学习详情 ============ */
+function LessonRetention({retention}) {
+  return <div data-testid="lesson-retention">
+    {[['day', '隔日回测'], ['week', '一周回测']].map(([key, label]) => {
+      const result = retention?.[key];
+      return <p key={key}>本课{label}：{result?.count ? `独立成功/样本 ${result.successes}/${result.count}` : '暂无数据'}
+        {result?.count > 0 && result.count < 10 ? ' · 样本较少，依据有限' : ''}
+        {` · 辅助 ${result?.assisted || 0} · 跳过 ${result?.skipped || 0}`}
+      </p>;
+    })}
+  </div>;
+}
+
 function LessonDetail({ lesson, onBack, onNext, onViewed, onStartPractice, generating }) {
   const [mastered, setMastered] = useState(new Set());
   const [revealed, setRevealed] = useState(new Set());
@@ -481,6 +494,8 @@ function LessonDetail({ lesson, onBack, onNext, onViewed, onStartPractice, gener
             : "尚无（待检查）"}
         </span>
       </div>
+
+      <LessonRetention retention={L.learning_progress?.retention} />
 
       {tips.length > 0 && (
         <div className="lesson-tips">{tips.join("；")}</div>

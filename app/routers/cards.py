@@ -4,7 +4,7 @@ from datetime import UTC
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
-from sqlalchemy import select, text
+from sqlalchemy import delete, select, text
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import ObjectDeletedError
 
@@ -114,46 +114,40 @@ def delete_card(
         raise HTTPException(status_code=404, detail="Card not found")
     from app.models.story import StoryWord
 
-    db.execute(Review.__table__.delete().where(Review.card_id == card_id))
-    db.execute(ReviewEvent.__table__.delete().where(ReviewEvent.card_id == card_id))
-    db.execute(
-        ReviewBaseline.__table__.delete().where(ReviewBaseline.card_id == card_id)
-    )
-    db.execute(
-        LearningContact.__table__.delete().where(LearningContact.card_id == card_id)
-    )
+    db.execute(delete(Review).where(Review.card_id == card_id))
+    db.execute(delete(ReviewEvent).where(ReviewEvent.card_id == card_id))
+    db.execute(delete(ReviewBaseline).where(ReviewBaseline.card_id == card_id))
+    db.execute(delete(LearningContact).where(LearningContact.card_id == card_id))
     practice_session_ids = set(
         db.scalars(
-            select(PracticeItem.session_id).where(
-                PracticeItem.card_id == card_id
-            )
+            select(PracticeItem.session_id).where(PracticeItem.card_id == card_id)
         )
     )
-    db.execute(
-        PracticeItem.__table__.delete().where(PracticeItem.card_id == card_id)
-    )
+    db.execute(delete(PracticeItem).where(PracticeItem.card_id == card_id))
     for public_id in practice_session_ids:
         practice = (
             db.execute(
-                select(PracticeSession).where(
-                    PracticeSession.session_id == public_id
-                )
+                select(PracticeSession).where(PracticeSession.session_id == public_id)
             )
             .scalars()
             .first()
         )
         if practice is None:
             continue
+        if practice.purpose != "lesson_check":
+            # 冻结的专项/回测目标被删，不能把余下题目冒充原轮次完成。
+            practice.status = "unavailable"
+            practice.completed_at = None
         refresh_practice_session(
             db,
             practice,
             runtime.clock.now().astimezone(UTC).replace(tzinfo=None),
         )
     delete_content_revision(db, "card", card_id)
-    db.execute(Memo.__table__.delete().where(Memo.card_id == card_id))
-    db.execute(ErrorCard.__table__.delete().where(ErrorCard.card_id == card_id))
-    db.execute(HardCard.__table__.delete().where(HardCard.card_id == card_id))
-    db.execute(StoryWord.__table__.delete().where(StoryWord.card_id == card_id))
+    db.execute(delete(Memo).where(Memo.card_id == card_id))
+    db.execute(delete(ErrorCard).where(ErrorCard.card_id == card_id))
+    db.execute(delete(HardCard).where(HardCard.card_id == card_id))
+    db.execute(delete(StoryWord).where(StoryWord.card_id == card_id))
     db.delete(card)
     db.commit()
     return {"deleted": card_id}
@@ -358,9 +352,7 @@ def refresh_examples(limit: int = 10, db: Session = Depends(get_db)):
         return {"refreshed": 0, "remaining": 0, "total_weak": 0}
 
     batch = needs_refresh[:limit]
-    before = {
-        card.id: get_content_revision(db, "card", card.id) for card in batch
-    }
+    before = {card.id: get_content_revision(db, "card", card.id) for card in batch}
     sentence_before = {}
     for card in batch:
         sentence = (
@@ -421,9 +413,7 @@ def refresh_examples(limit: int = 10, db: Session = Depends(get_db)):
                 continue
             sentence_id, revision = sentence
             try:
-                sentence_card = session.get(
-                    Card, sentence_id, populate_existing=True
-                )
+                sentence_card = session.get(Card, sentence_id, populate_existing=True)
             except ObjectDeletedError:
                 continue
             if sentence_card is None:

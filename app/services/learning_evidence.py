@@ -75,7 +75,7 @@ def _no_unlinked_events(db: Session, card_id: int) -> bool:
     return unlinked is None
 
 
-def _samples_from_events(events, revision: dict):
+def independent_recall_samples(events, revision: dict):
     # 先按学习日取首个 typed 作答（无论是否辅助/跳过），再要求它独立。
     # 否则“先辅助、后同日重试”会被误算成当天的独立首答。
     first_by_day = {}
@@ -170,7 +170,10 @@ def evidence_summary(
         .order_by(ReviewEvent.occurred_at, literal_column("review_events.rowid"))
     ).scalars()
     result = _summarize(
-        revision, _samples_from_events(events, revision), history_complete, runtime
+        revision,
+        independent_recall_samples(events, revision),
+        history_complete,
+        runtime,
     )
     from app.services.retention import retention_dimensions
 
@@ -218,7 +221,7 @@ def bulk_evidence_summaries(db: Session, card_ids, runtime: Runtime) -> dict[int
         )
         summaries[card_id] = _summarize(
             revision,
-            _samples_from_events(events, revision),
+            independent_recall_samples(events, revision),
             history_complete,
             runtime,
         )

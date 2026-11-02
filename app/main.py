@@ -16,6 +16,7 @@ from app.routers import (
     cards,
     export,
     health,
+    learning_advice,
     learning_observations,
     lessons,
     listening,
@@ -84,6 +85,7 @@ def create_app(
     app.include_router(memos.router, prefix="/api", tags=["memos"])
     app.include_router(export.router, prefix="/api", tags=["export"])
     app.include_router(lookup.router, prefix="/api", tags=["lookup"])
+    app.include_router(learning_advice.router, prefix="/api", tags=["learning-advice"])
     app.include_router(practice.router, prefix="/api", tags=["practice"])
 
     # 前端静态文件（防缓存：开发期保证加载最新构建）

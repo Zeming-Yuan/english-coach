@@ -156,14 +156,17 @@ def test_release_runner_interrupted_fails_with_retained_diagnostics():
 
 
 @pytest.mark.parametrize(
-    "missing_title",
+    "coverage_key,missing_title",
     [
-        "EC-16 TTS retries the same word after provider recovery",
-        "EC-16 a newer replay owns its playback deadline",
-        "EC-16 speech prewarming cannot block detail or saving",
+        ("EL10", "EL-10 failed advice starts the exact independent practice"),
+        ("T20", "EC-16 TTS retries the same word after provider recovery"),
+        ("T20", "EC-16 a newer replay owns its playback deadline"),
+        ("T20", "EC-16 speech prewarming cannot block detail or saving"),
     ],
 )
-def test_release_gate_requires_tts_regression_branches(tmp_path, missing_title):
+def test_release_gate_requires_registered_regression_branches(
+    tmp_path, coverage_key, missing_title
+):
     mapping = subprocess.run(
         [
             "node",
@@ -212,8 +215,8 @@ def test_release_gate_requires_tts_regression_branches(tmp_path, missing_title):
         capture_output=True,
     )
     assert result.returncode == 1
-    assert f"T20/mobile: {missing_title}" in result.stderr
-    assert f"T20/desktop: {missing_title}" in result.stderr
+    assert f"{coverage_key}/mobile: {missing_title}" in result.stderr
+    assert f"{coverage_key}/desktop: {missing_title}" in result.stderr
 
 
 @pytest.mark.skipif(
