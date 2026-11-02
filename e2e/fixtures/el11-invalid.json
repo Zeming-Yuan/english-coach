@@ -1,0 +1,55 @@
+{
+  "llm_responses": [
+    {
+      "title": "My apple",
+      "title_cn": "我的苹果",
+      "targets": [
+        "apple"
+      ],
+      "sentences": [
+        {
+          "en": "My apple is on the small table.",
+          "cn": "我的苹果在小桌上。"
+        },
+        {
+          "en": "I sit by the table and look at it.",
+          "cn": "我坐在桌边看着它。"
+        },
+        {
+          "en": "A book is near my cup of water.",
+          "cn": "水杯旁有一本书。"
+        },
+        {
+          "en": "I take the book and open it.",
+          "cn": "我拿起书并打开。"
+        },
+        {
+          "en": "Now I read by the table and smile.",
+          "cn": "现在我在桌边读书，笑了。"
+        },
+        {
+          "en": "This is a good day at home.",
+          "cn": "这是在家里度过的美好一天。"
+        }
+      ],
+      "check": {
+        "question": "What is on the small table?",
+        "question_cn": "小桌上有什么？",
+        "options": [
+          "apple",
+          "book",
+          "water"
+        ],
+        "options_cn": [
+          "苹果",
+          "书",
+          "水"
+        ],
+        "expected": "apple",
+        "evidence_index": 0
+      }
+    },
+    {},
+    {}
+  ]
+}

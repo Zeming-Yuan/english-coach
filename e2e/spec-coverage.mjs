@@ -3,6 +3,23 @@ import fs from "node:fs";
 import {fileURLToPath} from "node:url";
 
 export const requirements = {
+  EL11: [
+    "EL-11 evidence based story shows checked coverage",
+    "EL-11 empty library offers checked starter without fake mastery",
+    "EL-11 self-rating library offers checked starter without fake mastery",
+    "EL-11 new target requires explicit consent without adding cards",
+    "EL-11 commit retains operation through refresh and confirms once",
+    "EL-11 response-loss retains operation through refresh and confirms once",
+    "EL-11 invalid generation keeps saved story and offers starter",
+    "EL-11 missing AI explains failure and keeps legacy reading",
+    "EL-11 timeout AI explains failure and keeps legacy reading",
+    "EL-11 V3 restore preserves version materials and operation replay",
+    "EL-11 late detail cannot replace current selection",
+    "EL-11 functional rollback hides generation and preserves compatibility",
+    "EL-11 deletion failure is visible and replay cannot resurrect deleted story",
+    "EL-11 old backup explicitly has no story versions or checks",
+    "EL-11 early V3 missing versions does not claim revisions are missing"
+],
   T01: ["EC-01 no-key-home", "EC-01 external-missing"],
   T02: ["EC-16 installation configuration contracts"],
   T03: ["EC-16 old database upgrade contracts", "EC-16 upgraded old database continues through UI"],

@@ -1,8 +1,10 @@
 """故事路由。"""
 
 import logging
+from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel
 from sqlalchemy import delete, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -10,6 +12,8 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.models.card import Card
 from app.models.story import Story, StoryWord
+from app.models.story_version import StoryVersion
+from app.runtime import Runtime, get_runtime
 from app.services.contacts import visible_card_ids
 from app.services.content_revisions import (
     advance_content_revision,
@@ -20,24 +24,41 @@ from app.services.content_revisions import (
 from app.services.llm import generate_json
 from app.services.llm_client import LLMNotConfigured
 from app.services.story_generator import generate_story
+from app.services.story_quality import starter_payload
 from app.services.write_transaction import run_write
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
+class GenerateStoryIn(BaseModel):
+    operation_id: UUID | None = None
+    include_new_target: bool = False
+
+
+@router.get("/stories/starter")
+def get_starter():
+    return starter_payload(known_basis="starter_material")
+
+
 @router.post("/stories/generate")
-def create_story(db: Session = Depends(get_db)):
-    """生成一篇 AI 故事。"""
-    try:
-        story = generate_story(db)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    return _story_to_dict(story, db)
+def create_story(
+    request: Request,
+    body: GenerateStoryIn | None = None,
+    db: Session = Depends(get_db),
+    runtime: Runtime = Depends(get_runtime),
+):
+    if not request.app.state.settings.bounded_stories_enabled:
+        raise HTTPException(403, "故事生成入口已关闭，已有故事仍可阅读")
+    body = body or GenerateStoryIn()
+    story = generate_story(
+        db, runtime, str(body.operation_id or uuid4()), body.include_new_target
+    )
+    return story if isinstance(story, dict) else _story_to_dict(story, db)
 
 
 @router.get("/stories")
-def list_stories(db: Session = Depends(get_db)):
+def list_stories(request: Request, db: Session = Depends(get_db)):
     """故事列表（按创建时间倒序）。"""
     stories = (
         db.execute(select(Story).order_by(Story.created_at.desc(), Story.id.desc()))
@@ -45,7 +66,10 @@ def list_stories(db: Session = Depends(get_db)):
         .all()
     )
     if not stories:
-        return {"stories": []}
+        return {
+            "stories": [],
+            "generation_enabled": request.app.state.settings.bounded_stories_enabled,
+        }
     # 批量加载所有 story-card 关系
     story_ids = [s.id for s in stories]
     rows = db.execute(
@@ -67,6 +91,7 @@ def list_stories(db: Session = Depends(get_db)):
             }
         )
     return {
+        "generation_enabled": request.app.state.settings.bounded_stories_enabled,
         "stories": [
             {
                 "id": s.id,
@@ -78,7 +103,7 @@ def list_stories(db: Session = Depends(get_db)):
                 "words": story_words.get(s.id, []),
             }
             for s in stories
-        ]
+        ],
     }
 
 
@@ -95,9 +120,7 @@ def get_story(story_id: int, db: Session = Depends(get_db)):
     exists = db.scalar(select(Story.id).where(Story.id == story_id))
     if exists is None:
         raise HTTPException(status_code=404, detail="Story not found")
-    return _story_to_dict(
-        db.get(Story, story_id, populate_existing=True), db
-    )
+    return _story_to_dict(db.get(Story, story_id, populate_existing=True), db)
 
 
 @router.delete("/stories/{story_id}")
@@ -106,10 +129,19 @@ def delete_story(story_id: int, db: Session = Depends(get_db)):
     story = db.get(Story, story_id)
     if story is None:
         raise HTTPException(status_code=404, detail="Story not found")
-    db.execute(delete(StoryWord).where(StoryWord.story_id == story_id))
-    delete_content_revision(db, "story", story_id)
-    db.delete(story)
-    db.commit()
+
+    def operation(session):
+        version = session.scalar(
+            select(StoryVersion).where(StoryVersion.story_id == story_id)
+        )
+        if version is not None:
+            version.story_id = None
+            session.flush()
+        session.execute(delete(StoryWord).where(StoryWord.story_id == story_id))
+        delete_content_revision(session, "story", story_id)
+        session.delete(story)
+
+    run_write(db, operation)
     return {"deleted": story_id}
 
 
@@ -180,8 +212,18 @@ def _story_to_dict(story: Story, db: Session) -> dict:
         for c in cards
     ]
     lines = [line for line in (story.content or "").split("\n") if line]
+    version = db.scalar(select(StoryVersion).where(StoryVersion.story_id == story.id))
+    current = get_content_revision(db, "story", story.id)
+    valid = version is not None and current == {
+        "identity": version.story_identity,
+        "version": version.story_revision,
+    }
     return {
         "id": story.id,
+        "mode": "normal" if valid else "legacy",
+        "version_id": version.version_id if valid else None,
+        "quality": version.quality if valid else None,
+        "check_material": version.material["check"] if valid else None,
         "title": story.title,
         "title_cn": story.title_cn,
         "content": story.content,

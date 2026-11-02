@@ -7,6 +7,7 @@ import { recordPracticeContact } from "../lib/practiceContacts.js";
 import { useWordLookup } from "../lib/wordLookup.js";
 import { useLearningAttempt } from "../hooks/useLearningAttempt.js";
 import { showToast } from "../App.jsx";
+import StoryGeneration, {StoryQuality} from "../components/StoryGeneration.jsx";
 import RatingButtons from "../components/RatingButtons.jsx";
 
 /**
@@ -16,10 +17,14 @@ export default function StoriesPage() {
   const [stories, setStories] = useState([]);
   const [activeStory, setActiveStory] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
+  const [starter, setStarter] = useState(null);
+  const [generated, setGenerated] = useState(null);
+  const [generationEnabled, setGenerationEnabled] = useState(true);
+  const selection = useRef(0);
+  useEffect(() => () => { selection.current += 1; }, []);
 
   useEffect(() => {
-    api("/api/stories").then((d) => { setStories(d.stories); setLoading(false); }).catch(() => setLoading(false));
+    api("/api/stories").then((d) => { setStories(d.stories); setGenerationEnabled(d.generation_enabled !== false); setLoading(false); }).catch(() => setLoading(false));
   }, []);
 
   const deleteStory = async (id, title) => {
@@ -27,40 +32,39 @@ export default function StoriesPage() {
     try {
       await api(`/api/stories/${id}`, { method: "DELETE" });
       setStories((s) => s.filter((x) => x.id !== id));
-    } catch {}
+    } catch (e) { showToast("删除失败：" + e.message); }
   };
 
   const openStory = async (id) => {
+    const request = ++selection.current;
     try {
       const s = await api(`/api/stories/${id}`);
-      setActiveStory(s);
-    } catch {}
+      if (request === selection.current) setActiveStory(s);
+    } catch (e) { if (request === selection.current) showToast("读取失败：" + e.message); }
   };
 
   if (loading) return <div className="story-empty">加载中…</div>;
 
   // 阅读视图
   if (activeStory) {
-    return <StoryRead story={activeStory} onBack={() => setActiveStory(null)} />;
+    return <StoryRead story={activeStory} onBack={() => {selection.current += 1; setActiveStory(null);}} />;
   }
 
   return (
     <section className="view">
       <div className="page-head">
         <h2 className="page-title">故事</h2>
-        <button className="btn btn-primary btn-small" disabled={generating} onClick={async () => {
-          setGenerating(true);
-          try {
-            await api("/api/stories/generate", { method: "POST" });
-            const d = await api("/api/stories");
-            setStories(d.stories);
-          } catch (e) {
-            showToast("生成失败：" + e.message, "重试");
-          } finally {
-            setGenerating(false);
-          }
-        }}>{generating ? "生成中…" : "生成新故事"}</button>
+        {generationEnabled && <StoryGeneration onStarter={(story) => {setGenerated(null); setStarter(story);}} onSaved={(story) => {
+          setStarter(null);
+          setGenerated(story);
+          setStories((rows) => [story, ...rows.filter(row => row.id !== story.id)]);
+        }} />}
       </div>
+      {generated && <StoryQuality story={generated} />}
+      {starter && <div>
+        <StoryQuality story={starter} />
+        <button className="btn btn-ghost btn-small" onClick={() => {selection.current += 1; setActiveStory(starter);}}>打开入门故事</button>
+      </div>}
       <div className="story-list">
         {stories.length === 0 && <div className="story-empty">还没有故事。「生成新故事」会用你学过的词编一篇</div>}
         {stories.map((s) => (
@@ -212,7 +216,7 @@ function StoryRead({ story, onBack }) {
   const isLearnedWord = activeWord && (lookupResult.isLearned || story.words.some((w) => w.word === activeWord.word));
 
   return (
-    <section className="view">
+    <section data-story-version={story.version_id || ""} className="view">
       <div className="page-head">
         <button className="btn btn-ghost btn-small" onClick={onBack}>← 返回</button>
         <div className="story-mode-switch">
@@ -228,6 +232,7 @@ function StoryRead({ story, onBack }) {
         {story.title_cn && mode !== "en" && <span className="story-title-cn">{story.title_cn}</span>}
       </h2>
 
+      <StoryQuality story={story} />
       {/* 故事内容：逐句中英对照 */}
       <div className="story-read-content">
         {enLines.map((enSent, i) => (
