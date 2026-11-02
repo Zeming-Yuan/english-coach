@@ -145,7 +145,11 @@ function PracticeItemForm({ session, item, onSession, onFeedback }) {
             <button className="btn btn-primary btn-small" onClick={retry}>
               继续确认保存
             </button>
-            <button className="btn btn-ghost btn-small" onClick={attempt.clear}>
+            <button className="btn btn-ghost btn-small" onClick={() => {
+              attempt.clear();
+              // Pending storage changed; reselect from the saved server results.
+              onSession({...session});
+            }}>
               放弃这条待确认
             </button>
           </div>

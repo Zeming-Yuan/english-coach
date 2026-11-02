@@ -4,6 +4,8 @@ import {fileURLToPath} from "node:url";
 
 export const requirements = {
   EL13: [
+    "EL-13 abandoning recovered choice selects the saved next state",
+    "EL-13 abandoning recovered typed selects the saved next state",
     "EL-13 stale creation after restore can be abandoned for the imported round",
     "EL-13 recognition and independent input show separate results",
     "EL-13 commit refresh confirms the original answer once",

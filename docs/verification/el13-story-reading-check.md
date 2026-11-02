@@ -77,3 +77,25 @@ ESLint/前端类型配置、CI/Makefile、Docker Compose、独立安全扫描、
   预览修订正确返回 409。改为等待实际接触确认并离开原文后准备夹具；该分支双视口重跑 2 passed。
 - 同浏览器恢复后，旧创建请求的 story_id 会过期；原本没有明确放弃入口，具名回归双视口失败。
   新增稳定确认/明确放弃创建控件后双视口 2 passed，可继续导入轮次且不追加重复轮次。
+
+## 固定 diff 双轴审查与修复
+
+首轮：`6a6e41f...c81f50e`，两个独立 reviewer（Standards / Spec）并行、只读审查。
+
+### Standards
+
+1 项 P2：恢复已保存的 pending 后，放弃仅清理子组件，父组件 activeItem 仍缓存旧题。
+新增 choice/typed 两个具名分支，双视口先 4 failed，再通知父组件按已存轮次重选后 4 passed（39.3 秒）。
+没有删除已存结果、重新判分或重复排期。同步 ADR、覆盖登记及生产构建。
+
+### Spec
+
+0 项发现。Reviewer 独立运行本票 HTTP 22 passed；未代替根代理浏览器/门禁证据。
+
+汇总：首轮 Standards 1 项（最严重 P2，已修复），Spec 0 项；修复后复审待记录。
+
+## 冻结实现的受影响验证
+
+- `.venv/bin/python -m pytest tests/test_el13_story_reading_check.py tests/test_el08_lesson_recall_check.py tests/test_el09_delayed_recall_check.py tests/test_el11_bounded_personalized_story.py tests/test_stories.py tests/test_full_restore.py tests/test_backup_v2.py tests/test_installation.py tests/test_release_coverage.py tests/test_recognition_attempts.py tests/test_typed_attempts.py -q`：**305 passed**（326.82 秒）。两条历史 downgrade 问题仍明确归 #64，本轮未降低它们的断言。
+- `c81f50e` 上正式 `npm --prefix frontend run test:e2e -- --ticket EL-13`：**32 passed**（16 分支×双视口，4.1 分钟），`ec-e2e-static-pBhtWV`。修复后新总数为 18 分支；最终完整本票结果随后补记。
+- 修复回归使用已构建静态产物的 Playwright 公开配置运行：choice/typed × mobile/desktop **4 passed**；对应 `/tmp/el13-review-abandon-{red,green}.log`，生产构建 `/tmp/el13-review-fix-build.log`。

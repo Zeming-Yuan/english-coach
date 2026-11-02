@@ -247,3 +247,32 @@ test('EL-13 stale creation after restore can be abandoned for the imported round
   const after = await (await app.request.get('/api/export/backup')).json();
   expect(after.extensions.practice_sessions).toHaveLength(1);
 });
+
+for (const kind of ['choice', 'typed']) {
+  test(`EL-13 abandoning recovered ${kind} selects the saved next state`, async ({appFactory, page}) => {
+    const app = await appFactory({fixture: 'el11-stories.json'});
+    await prepare(app, page);
+    if (kind === 'typed') {
+      await page.getByRole('button', {name: 'apple', exact: true}).click();
+      await page.getByRole('button', {name: '下一题', exact: true}).click();
+    }
+    await page.route('**/api/practice-sessions/*/items/*/attempts', async route => {await route.fetch(); await route.abort('failed');}, {times: 1});
+    if (kind === 'typed') {
+      await page.getByRole('textbox', {name: '你的答案', exact: true}).fill('apple');
+      await page.getByRole('button', {name: '提交答案', exact: true}).click();
+    } else await page.getByRole('button', {name: 'apple', exact: true}).click();
+    await expect(page.getByTestId('practice-session').getByRole('button', {name: '继续确认保存', exact: true})).toBeVisible();
+    await openSavedStory(page, app);
+    const check = page.getByTestId('practice-session');
+    await check.getByRole('button', {name: '放弃这条待确认', exact: true}).click();
+    if (kind === 'choice') {
+      await expect(check.getByRole('textbox', {name: '你的答案', exact: true})).toBeVisible();
+      await expect(check.getByRole('button', {name: 'apple', exact: true})).toHaveCount(0);
+    } else {
+      await expect(check).toContainText('阅读识别 1 · 词汇独立 1 · 辅助 0');
+      await expect(check.getByRole('textbox', {name: '你的答案', exact: true})).toHaveCount(0);
+    }
+    const after = await (await app.request.get('/api/export/backup')).json();
+    expect(after.learning_events.filter(e => e.source === 'story')).toHaveLength(kind === 'choice' ? 1 : 2);
+  });
+}
