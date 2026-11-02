@@ -12,7 +12,7 @@ from app.models.content_revision import ContentRevision
 from app.models.story import Story, StoryWord
 from app.models.story_version import StoryVersion
 from app.runtime import Runtime
-from app.services.content_revisions import get_content_revision
+from app.services.content_revisions import content_revision_map, get_content_revision
 from app.services.learning_evidence import bulk_evidence_summaries
 from app.services.llm import generate_json
 from app.services.story_quality import (
@@ -63,6 +63,12 @@ def generate_story(
 ):
     parent_id = parent.version_id if parent else None
     mode = "short" if parent else "normal"
+    parent_story_id = parent.story_id if parent else None
+    parent_revision = (
+        {"identity": parent.story_identity, "version": parent.story_revision}
+        if parent
+        else None
+    )
     replay = _replay(db, operation_id, include_new_target, parent_id)
     if replay is not None:
         return replay
@@ -181,6 +187,14 @@ def generate_story(
         replay = _replay(session, operation_id, include_new_target, parent_id)
         if replay is not None:
             return replay
+        if (
+            parent_story_id is not None
+            and content_revision_map(session, "story", [parent_story_id]).get(
+                parent_story_id
+            )
+            != parent_revision
+        ):
+            raise HTTPException(409, "原故事已修订、删除或恢复，请重新读取")
         current_fence = list(
             session.execute(
                 select(

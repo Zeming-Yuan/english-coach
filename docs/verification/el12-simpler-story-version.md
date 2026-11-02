@@ -34,3 +34,9 @@
 ## 明确未验证
 
 按本轮“只跑修改涉及部分”的范围，未运行未过滤全量 pytest/E2E，不宣称 AC43 最终集成资格通过。EL-11 浏览器回归与双轴审查结论在最终复核后追加。未运行发布/部署、安全扫描、变异测试、Docker Compose；未新增依赖、账号权限或不可逆数据清理，相关发布门禁 N/A。应用仍是既有本地单用户数据范围，不引入账号或远端租户。
+
+## 第一轮审查与并发修复
+
+固定 diff：`6a6e41f...fc3ff68`。Standards 独立审查发现一项 P2：初检后、生成快照前修改原版可能保存基于旧材料的简化。Spec 独立审查 0 findings；各自上下文审查，无全量门禁。
+
+补充 SQLite I/O 时序注入的公开 HTTP 回归：修复前期望 409 实得 200；冻结父版 identity/version，在写锁中、已保存操作重放之后再次比较。删除/恢复导致父引用不在当前映射时同样明确 409，不抛 500。修复后 `.venv/bin/python -m pytest tests/test_el12_simpler_story_version.py tests/test_el11_bounded_personalized_story.py -q`：**72 passed**（EL12 33 + EL11 39），77.88 秒。九文件 Pyright 0 errors，Ruff/格式/差异检查通过。浏览器源码与生产 JS 未变化。第二轮审查及最终浏览器复跑另附。

@@ -366,3 +366,42 @@ def test_el12_source_scope_and_operation_conflicts_never_cross_stories(ec):
         == 409
     )
     assert ec.snapshot() == before
+
+
+def test_el12_source_revision_before_generation_snapshot_is_rejected(ec):
+    """A concurrent writer changes the source after the request's first read."""
+    from sqlalchemy import event
+
+    from app.models.story import Story
+    from app.services.content_revisions import advance_content_revision
+    from app.services.write_transaction import run_write
+
+    original, operation = prepare(ec)
+    changed = False
+
+    def concurrent_writer(connection, cursor, statement, parameters, context, many):
+        nonlocal changed
+        # Database I/O seam: interleave one real write before vocabulary loading.
+        if changed or "FROM cards" not in statement:
+            return
+        changed = True
+        with ec.SessionLocal() as db:
+
+            def revise(session):
+                advance_content_revision(
+                    session, "story", original["id"], {"content": "Changed source."}
+                )
+                session.get(Story, original["id"]).content = "Changed source."
+
+            run_write(db, revise)
+
+    event.listen(ec.engine, "before_cursor_execute", concurrent_writer)
+    try:
+        response = ec.client.post(
+            f"/api/stories/{original['id']}/simplify", json=operation
+        )
+    finally:
+        event.remove(ec.engine, "before_cursor_execute", concurrent_writer)
+    assert changed, "race interleaving must actually execute"
+    assert response.status_code == 409, response.text
+    assert len(ec.snapshot()["extensions"]["story_versions"]) == 1
