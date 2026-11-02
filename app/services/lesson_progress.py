@@ -15,7 +15,8 @@ from sqlalchemy.orm import Session
 from app.models.lesson import Lesson
 from app.models.lesson_progress import LessonProgress
 from app.runtime import Runtime
-from app.services.content_revisions import get_content_revision
+from app.services.content_revisions import get_content_revision, lesson_word_cards
+from app.services.retention import retention_overview
 from app.services.write_transaction import run_write
 
 
@@ -54,9 +55,7 @@ def progress_payload(row: LessonProgress | None) -> dict:
             "passed_count": 0,
         }
     return {
-        "status": lesson_status(
-            True, row.browsed, row.checked_count, row.passed_count
-        ),
+        "status": lesson_status(True, row.browsed, row.checked_count, row.passed_count),
         "tracked": True,
         "generated": row.generated,
         "opened": row.opened,
@@ -69,9 +68,7 @@ def progress_payload(row: LessonProgress | None) -> dict:
 
 def _lesson(session: Session, level: int) -> Lesson:
     lesson = (
-        session.execute(select(Lesson).where(Lesson.level == level))
-        .scalars()
-        .first()
+        session.execute(select(Lesson).where(Lesson.level == level)).scalars().first()
     )
     if lesson is None:
         raise LessonNotFoundError("课程不存在")
@@ -88,9 +85,7 @@ def _row(session: Session, lesson_id: int) -> LessonProgress | None:
     )
 
 
-def _ensure_row(
-    session: Session, lesson: Lesson, now: datetime
-) -> LessonProgress:
+def _ensure_row(session: Session, lesson: Lesson, now: datetime) -> LessonProgress:
     """取得或建立课程状态行；旧课使用已知创建时间，不伪造“今天生成”。"""
     row = _row(session, lesson.id)
     if row is None:
@@ -160,9 +155,7 @@ def record_lesson_viewed(
             seen = [row.view_submission_id, *(row.view_submissions or [])]
             if submission in seen:
                 if row.lesson_id != lesson.id:
-                    raise LessonViewConflictError(
-                        "该提交标识已用于其他课程的浏览确认"
-                    )
+                    raise LessonViewConflictError("该提交标识已用于其他课程的浏览确认")
                 return progress_payload(row)
         if get_content_revision(session, "lesson", lesson.id) != revision:
             raise LessonViewConflictError("课程内容已变化，请重新打开后再确认")
@@ -192,3 +185,11 @@ __all__ = [
     "record_lesson_opened",
     "record_lesson_viewed",
 ]
+
+
+def lesson_retention(db: Session, lesson: Lesson) -> dict:
+    """仅汇总本课当前目标修订上的实际首测；不把全库样本变成本课通过。"""
+    revisions = {
+        row["id"]: row["content_revision"] for row in lesson_word_cards(db, lesson)
+    }
+    return retention_overview(db, revisions)

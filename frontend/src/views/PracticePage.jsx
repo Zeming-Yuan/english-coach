@@ -148,7 +148,7 @@ function PracticeItemForm({ session, item, onSession, onFeedback }) {
   );
 }
 
-export default function PracticePage({ sessionId, onExit, onRestart, onNormal }) {
+export default function PracticePage({ sessionId, onExit, onRestart, onNormal, advice = false, browserStored = true }) {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -174,7 +174,7 @@ export default function PracticePage({ sessionId, onExit, onRestart, onNormal })
   }, [sessionId]);
 
   const activeItem = useMemo(
-    () => session?.items.find((item) => item.status === "pending") || null,
+    () => session?.lifecycle !== "unavailable" ? session?.items.find((item) => item.status === "pending") || null : null,
     [session],
   );
   const staleItem = useMemo(
@@ -186,16 +186,17 @@ export default function PracticePage({ sessionId, onExit, onRestart, onNormal })
     [session, retryItemId],
   );
   const processed = session?.items.filter((item) => item.status !== "pending" && item.status !== "stale") || [];
-  const showSummary = session && session.items.length > 0 && !activeItem && !staleItem;
+  const showSummary = session && session.lifecycle !== "unavailable" && session.items.length > 0 && !activeItem && !staleItem;
 
   const restart = (weakOnly) => {
+    if (advice) return onExit();
     if (session?.purpose === "delayed_check") onRestart();
     else if (session?.lesson_id) onRestart(session.lesson_id, weakOnly);
   };
 
   const delayed = session?.purpose === "delayed_check";
-  const title = delayed ? (session.window === "week" ? "一周回测" : "隔日回测") : "本课短测";
-  const back = delayed ? "返回统计" : "返回课程";
+  const title = delayed ? (session.window === "week" ? "一周回测" : "隔日回测") : session?.purpose === "targeted" ? "专项练习" : "本课短测";
+  const back = advice ? "返回建议" : delayed ? "返回统计" : "返回课程";
   const feedbackItem = session?.items.find(item => item.id === feedback?.itemId);
   const feedbackContactRef = usePracticeAnswerContact(feedbackItem, Boolean(feedback?.expected) && feedback?.correct !== true, session?.purpose === "lesson_check" ? "lesson" : "spelling");
 
@@ -207,6 +208,7 @@ export default function PracticePage({ sessionId, onExit, onRestart, onNormal })
         </button>
         <h2 className="page-title">{title}</h2>
       </div>
+      {browserStored === false && <p role="note">浏览器未保存轮次标识；刷新后请从建议区继续已保存的轮次。</p>}
       {loading && <div className="story-empty">加载中…</div>}
       {error && (
         <div role="alert" className="quiz-feedback err">

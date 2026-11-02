@@ -1,3 +1,4 @@
+import LearningAdvice from "../components/LearningAdvice.jsx";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "../lib/api.js";
 import { storageGet } from "../lib/utils.js";
@@ -6,7 +7,7 @@ import { showToast } from "../App.jsx";
 /**
  * 学习统计视图：数字卡片/周正确率/热力图/导出。
  */
-export default function StatsPage({ onBack, onDelayed }) {
+export default function StatsPage({ onBack, onDelayed, onAdvice }) {
   const [stats, setStats] = useState(null);
   const [history, setHistory] = useState(null);
   const [weekly, setWeekly] = useState(null);
@@ -223,6 +224,7 @@ export default function StatsPage({ onBack, onDelayed }) {
 
   return (
     <section className="view">
+      <LearningAdvice onStart={onAdvice} />
       <div className="page-head">
         <button className="btn btn-ghost btn-small" onClick={onBack}>← 返回</button>
         <h2 className="page-title">学习统计</h2>

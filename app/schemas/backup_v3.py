@@ -201,7 +201,7 @@ class FullPracticeSession(FullRow):
 
     id: int = Field(gt=0, strict=True)
     session_id: str
-    purpose: Literal["lesson_check", "delayed_check"]
+    purpose: Literal["lesson_check", "delayed_check", "targeted"]
     lesson_id: int | None = Field(default=None, gt=0, strict=True)
     window: Literal["day", "week"] | None = None
     pending_contact_ids: list[str] = Field(default_factory=list)
@@ -572,7 +572,11 @@ def validate_v3(payload: dict) -> ValidatedBackup:
                 )
     for index, practice in enumerate(sessions):
         rows = items_by_session.get(practice["session_id"], [])
-        if practice["status"] == "unavailable" and rows:
+        if (
+            practice["status"] == "unavailable"
+            and rows
+            and practice["purpose"] == "lesson_check"
+        ):
             _reject(
                 "practice_sessions",
                 index,

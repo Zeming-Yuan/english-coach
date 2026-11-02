@@ -27,6 +27,7 @@ from app.services.lesson_generator import (
 from app.services.lesson_progress import (
     LessonNotFoundError,
     LessonViewConflictError,
+    lesson_retention,
     progress_payload,
     record_lesson_opened,
     record_lesson_viewed,
@@ -63,9 +64,11 @@ def lesson_to_dict(
         "content": lesson.content,
         "created_at": lesson.created_at,
         "goal": lesson_goal(lesson.level),
-        "content_revision": revision
-        or get_content_revision(db, "lesson", lesson.id),
-        "learning_progress": progress_payload(progress),
+        "content_revision": revision or get_content_revision(db, "lesson", lesson.id),
+        "learning_progress": {
+            **progress_payload(progress),
+            "retention": lesson_retention(db, lesson),
+        },
     }
 
 
@@ -79,9 +82,7 @@ def _lesson_detail(lesson: Lesson, db: Session) -> dict:
         for line in lesson.content.get("dialogue", [])
     ]
     progress = (
-        db.execute(
-            select(LessonProgress).where(LessonProgress.lesson_id == lesson.id)
-        )
+        db.execute(select(LessonProgress).where(LessonProgress.lesson_id == lesson.id))
         .scalars()
         .first()
     )

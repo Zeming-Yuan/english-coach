@@ -189,6 +189,55 @@ def _lesson_check_items(
     ]
 
 
+def _targeted_items(db: Session, targets: list[dict]) -> list[dict]:
+    specs = []
+    for position, target in enumerate(targets, 1):
+        card = db.get(Card, target["card_id"])
+        if card is None:
+            raise PracticeNotFoundError("原目标已删除，请返回建议重新查看")
+        revision = get_content_revision(db, "card", card.id)
+        if revision != target["revision"]:
+            raise PracticeStaleError("原目标内容已修订，请返回建议重新查看")
+        if card.kind != "word" or not (card.meaning or "").strip():
+            raise PracticeUnavailableError("原目标不再适用于无提示提取")
+        specs.append(
+            {
+                "item_id": str(uuid4()),
+                "card_id": card.id,
+                "card_identity": revision["identity"],
+                "card_revision": revision["version"],
+                "prompt": card.meaning,
+                "kind": "typed",
+                "position": position,
+            }
+        )
+    return specs
+
+
+def _check_replay_targets(
+    db: Session, practice: PracticeSession, targets: list[dict]
+) -> None:
+    if not targets and practice.purpose != "targeted":
+        return
+    rows = list(
+        db.scalars(
+            select(PracticeItem)
+            .where(PracticeItem.session_id == practice.session_id)
+            .order_by(PracticeItem.position)
+        )
+    )
+    frozen = [
+        {
+            "card_id": row.card_id,
+            "revision": {"identity": row.card_identity, "version": row.card_revision},
+        }
+        for row in rows
+    ]
+    if frozen != targets:
+        raise PracticeConflictError("该轮次的原目标与请求不同或已删除，请返回建议")
+
+
+register_purpose("targeted", _targeted_items)
 register_purpose("lesson_check", _lesson_check_items)
 register_purpose("delayed_check", delayed_items)
 
@@ -303,7 +352,10 @@ def _session_payload(db: Session, practice: PracticeSession) -> dict:
                 (event.response or {}).get("expected") if event is not None else None
             )
         out_items.append(payload_item)
-    check_status = lesson_check_status(results)
+    invalidated = (
+        practice.status == "unavailable" and practice.purpose != "lesson_check"
+    )
+    check_status = "unavailable" if invalidated else lesson_check_status(results)
     counts = {
         "total": len(out_items),
         "processed": sum(
@@ -326,11 +378,15 @@ def _session_payload(db: Session, practice: PracticeSession) -> dict:
         "rule_version": practice.rule_version,
         "window": practice.window,
         "message": (
-            "暂无符合窗口的词；旧记录不足时可先做普通练习建立依据"
+            "原目标已删除，本轮不可继续，请返回建议"
+            if invalidated and out_items
+            else "原目标不可用或暂无符合窗口的词；旧记录不足时可先做普通练习建立依据"
             if practice.purpose == "delayed_check"
+            else "原目标已不可用，请返回建议"
+            if practice.purpose == "targeted"
             else "本课没有可测试的词"
         )
-        if not out_items
+        if not out_items or invalidated
         else None,
         "items": out_items,
         "counts": counts,
@@ -346,10 +402,12 @@ def create_session(
     runtime: Runtime,
     window: str | None = None,
     pending_contact_ids: list[str] | None = None,
+    targets: list[dict] | None = None,
 ) -> dict:
     if purpose not in PURPOSES:
         raise PracticeUnavailableError("未知练习用途")
     pending_contact_ids = sorted(set(pending_contact_ids or []))
+    targets = targets or []
     public_id = str(session_id)
     existing = (
         db.execute(
@@ -366,6 +424,7 @@ def create_session(
             or existing.pending_contact_ids != pending_contact_ids
         ):
             raise PracticeConflictError("该轮次标识已用于其他课程或用途")
+        _check_replay_targets(db, existing, targets)
         return _session_payload(db, existing)
 
     def operation(session: Session) -> dict:
@@ -384,22 +443,45 @@ def create_session(
                 or replay.pending_contact_ids != pending_contact_ids
             ):
                 raise PracticeConflictError("该轮次标识已用于其他课程或用途")
+            _check_replay_targets(session, replay, targets)
             return _session_payload(session, replay)
         issued_at = runtime.clock.now().astimezone(UTC)
         now = issued_at.replace(tzinfo=None)
-        specs = (
-            PURPOSES[purpose](
-                session, window, pending_contact_ids, runtime, issued_at=issued_at
+        if purpose == "targeted":
+            specs = PURPOSES[purpose](session, targets)
+        elif purpose == "delayed_check":
+            if targets:
+                _targeted_items(session, targets)  # 先验证原目标存在且修订未变。
+            specs = PURPOSES[purpose](
+                session,
+                window,
+                pending_contact_ids,
+                runtime,
+                issued_at=issued_at,
+                target_ids=[row["card_id"] for row in targets] if targets else None,
             )
-            if purpose == "delayed_check"
-            else PURPOSES[purpose](session, lesson_id, weak_only, runtime)
-        )
+            if targets and {row["card_id"] for row in specs} != {
+                row["card_id"] for row in targets
+            }:
+                raise PracticeStaleError("原目标不再符合回测窗口，请返回建议重新查看")
+            if targets:
+                by_card = {row["card_id"]: row for row in specs}
+                specs = [
+                    {**by_card[target["card_id"]], "position": position}
+                    for position, target in enumerate(targets, 1)
+                ]
+        else:
+            specs = PURPOSES[purpose](session, lesson_id, weak_only, runtime)
         practice = PracticeSession(
             session_id=public_id,
             purpose=purpose,
             lesson_id=lesson_id,
             status="active" if specs else "unavailable",
-            rule_version="el09-v1" if purpose == "delayed_check" else RULE_VERSION,
+            rule_version="el10-v1"
+            if purpose == "targeted"
+            else "el09-v1"
+            if purpose == "delayed_check"
+            else RULE_VERSION,
             window=window,
             pending_contact_ids=pending_contact_ids,
             created_at=now,
@@ -425,11 +507,11 @@ def get_session(db: Session, session_id) -> dict:
     return _session_payload(db, _session_by_public(db, session_id))
 
 
-def active_delayed_sessions(db: Session, window: str) -> list[dict]:
+def active_sessions(db: Session, purpose: str, window: str | None) -> list[dict]:
     rows = db.scalars(
         select(PracticeSession)
         .where(
-            PracticeSession.purpose == "delayed_check",
+            PracticeSession.purpose == purpose,
             PracticeSession.window == window,
             PracticeSession.status == "active",
         )
@@ -471,6 +553,10 @@ def refresh_practice_session(
     session: Session, practice: PracticeSession, now: datetime
 ) -> None:
     """按当前题目结果统一刷新轮次生命周期与课程派生计数。"""
+    if practice.purpose != "lesson_check" and practice.status == "unavailable":
+        # 部分目标删除后的不可用状态持续到恢复；不能被余下题目的结果重新激活。
+        session.flush()
+        return
     items = (
         session.execute(
             select(PracticeItem)

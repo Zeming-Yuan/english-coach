@@ -13,6 +13,8 @@ import MixedPage from "./views/MixedPage.jsx";
 import WordsPage from "./views/WordsPage.jsx";
 import StoriesPage from "./views/StoriesPage.jsx";
 import AddPage from "./views/AddPage.jsx";
+import LearningAdvice from "./components/LearningAdvice.jsx";
+import AdvicePracticePage from "./views/AdvicePracticePage.jsx";
 import StatsPage from "./views/StatsPage.jsx";
 import DelayedCheckPage from "./views/DelayedCheckPage.jsx";
 import SettingsPage from "./views/SettingsPage.jsx";
@@ -166,6 +168,8 @@ class ErrorBoundary extends Component {
 
 /* ============ 主应用 ============ */
 export default function App() {
+  const [adviceRequest, setAdviceRequest] = useState(null);
+  const startAdvice = request => {setAdviceRequest(request); setView("advice");};
   const [delayedWindow, setDelayedWindow] = useState("week");
   const startDelayed = (window) => { setDelayedWindow(window); setView("delayed"); };
   const [view, setView] = useState("queue");
@@ -249,16 +253,19 @@ export default function App() {
           confirmDailyCard(pending.payload, result);
           setQueueVersion((v) => v + 1);
         }} />}
-        {view === "queue" && <QueueView key={queueVersion} setView={setView} onDelayed={startDelayed} setStudyQueue={(cards) => { setIsDailyStudy(false); setStudyQueue(cards); }} dailySession={dailySession} onStartDaily={startDaily} onResumeDaily={() => {
+        {view === "queue" && <QueueView onAdvice={startAdvice} key={queueVersion} setView={setView} onDelayed={startDelayed} setStudyQueue={(cards) => { setIsDailyStudy(false); setStudyQueue(cards); }} dailySession={dailySession} onStartDaily={startDaily} onResumeDaily={() => {
           setIsDailyStudy(true); setStudyQueue(dailySession.queue); setView("study");
         }} onAddStarter={addStarterCards} />}
         {view === "words" && <WordsPage />}
         {view === "stories" && <StoriesPage />}
         {view === "add" && <AddPage onAddStarter={addStarterCards} onGoWords={() => setView("words")} onStartStudy={(cards) => { setIsDailyStudy(false); setStudyQueue(cards); setView("study"); }} />}
-        {view === "stats" && <StatsPage onBack={() => setView("queue")} onDelayed={startDelayed} />}
+        {view === "stats" && <StatsPage onAdvice={startAdvice} onBack={() => setView("queue")} onDelayed={startDelayed} />}
+        {view === "advice" && <AdvicePracticePage request={adviceRequest} onExit={() => setView("stats")} onNormal={() => setView("spelling")} />}
         {view === "delayed" && <DelayedCheckPage key={delayedWindow} window={delayedWindow} onExit={() => setView("stats")} onNormal={() => setView("spelling")} />}
         {view === "settings" && <SettingsPage darkMode={darkMode} setDarkMode={setDarkMode} onOpenBackup={() => setView("backup")} />}
         {view === "backup" && <BackupPage restoring={restoringBackup} onRestoringChange={setRestoringBackup} onBack={() => setView("settings")} onRestored={() => {
+          setAdviceRequest(null);
+          try { localStorage.removeItem("ec.advice.request"); } catch {}
           setIsDailyStudy(false);
           updateDaily(null);
           setStudyQueue([]);
@@ -295,7 +302,7 @@ export default function App() {
 }
 
 /* ============ 队列页 ============ */
-function QueueView({ onDelayed, setView, setStudyQueue, dailySession, onStartDaily, onResumeDaily, onAddStarter }) {
+function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, onStartDaily, onResumeDaily, onAddStarter }) {
   const [data, setData] = useState(null);
   const [stats, setStats] = useState(null);
   const [lessonData, setLessonData] = useState(null);
@@ -504,6 +511,7 @@ function QueueView({ onDelayed, setView, setStudyQueue, dailySession, onStartDai
         </div>
       )}
 
+      <LearningAdvice onStart={onAdvice} />
       {stats?.delayed_recall_enabled !== false && <div className="save-state-actions" aria-label="延迟回测">
         <button className="btn btn-ghost btn-small" onClick={() => onDelayed("day")}>隔日回测</button>
         <button className="btn btn-ghost btn-small" onClick={() => onDelayed("week")}>一周回测</button>

@@ -12,7 +12,9 @@ export async function api(path, opts = {}) {
     try {
       detail = (await resp.json()).detail || detail;
     } catch {}
-    throw new Error(detail);
+    const error = new Error(detail);
+    error.status = resp.status;
+    throw error;
   }
   return resp.json();
 }
