@@ -18,6 +18,7 @@ export default defineConfig({
   reporter: [["list"], ["json", {outputFile: process.env.EC_REPORT_PATH || path.join(root, "e2e", "test-results", "results.json")}]],
   use: {
     headless: true,
+    ...(process.env.EC_CHROMIUM_EXECUTABLE ? {launchOptions: {executablePath: process.env.EC_CHROMIUM_EXECUTABLE}} : {}),
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },

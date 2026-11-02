@@ -57,6 +57,7 @@ def main() -> None:
     os.environ["STORY_CHECKS_ENABLED"] = str(
         settings_payload.get("story_checks_enabled", True)
     )
+    os.environ["SCENES_ENABLED"] = str(settings_payload.get("scenes_enabled", True))
     os.environ["SIMPLER_STORIES_ENABLED"] = str(
         settings_payload.get("simpler_stories_enabled", True)
     )

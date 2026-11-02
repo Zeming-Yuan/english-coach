@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
 
-PracticeAssistance = Literal["first_letter", "answer_visible"]
+PracticeAssistance = Literal["first_letter", "answer_visible", "hint", "answer_audio"]
 
 
 class PracticeTarget(BaseModel):
@@ -24,7 +24,10 @@ class PracticeTarget(BaseModel):
 
 class CreatePracticeIn(BaseModel):
     id: UUID
-    purpose: Literal["lesson_check", "delayed_check", "targeted", "story_check"]
+    purpose: Literal[
+        "lesson_check", "delayed_check", "targeted", "story_check", "scene"
+    ]
+    scene_id: str | None = None
     lesson_id: int | None = Field(default=None, gt=0)
     story_id: int | None = Field(default=None, gt=0)
     version_id: UUID | None = None
@@ -36,6 +39,22 @@ class CreatePracticeIn(BaseModel):
 
     @model_validator(mode="after")
     def _purpose_fields(self) -> "CreatePracticeIn":
+        if self.purpose == "scene":
+            if not self.scene_id or any(
+                (
+                    self.lesson_id,
+                    self.story_id,
+                    self.version_id,
+                    self.window,
+                    self.weak_only,
+                    self.targets,
+                    self.card_ids,
+                    self.pending_contact_ids,
+                )
+            ):
+                raise ValueError("场景需要 scene_id 且不能混合其他练习用途")
+        elif self.scene_id is not None:
+            raise ValueError("只有场景可以指定 scene_id")
         if self.purpose == "lesson_check" and (
             self.lesson_id is None
             or self.window is not None
@@ -74,7 +93,8 @@ class CreatePracticeIn(BaseModel):
 
 class PracticeAttemptIn(BaseModel):
     submission_id: UUID
-    answer: str | None = None
+    answer: str | None = Field(default=None, max_length=2000)
+    client_assistance: list[PracticeAssistance] = Field(default_factory=list)
     skipped: bool = False
     pending_contact_ids: list[str] = Field(default_factory=list, max_length=1000)
 

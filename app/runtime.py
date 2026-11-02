@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Protocol
 from zoneinfo import ZoneInfo
 
@@ -25,7 +25,7 @@ class SystemClock:
     """生产时钟：真实当前时间（aware UTC）。"""
 
     def now(self) -> datetime:
-        return datetime.now(timezone.utc)
+        return datetime.now(UTC)
 
 
 class Runtime:
@@ -38,6 +38,7 @@ class Runtime:
         question_secret: bytes | None = None,
     ):
         ZoneInfo(learning_timezone)  # 无效 IANA 名称直接失败，不以错误时区静默运行
+        self.scene_evidence_enabled = True
         self.clock = clock
         self.learning_timezone = learning_timezone
         # 题目上下文签名密钥：默认启动随机生成，测试可注入固定值。

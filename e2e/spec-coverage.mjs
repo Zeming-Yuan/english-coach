@@ -3,6 +3,21 @@ import fs from "node:fs";
 import {fileURLToPath} from "node:url";
 
 export const requirements = {
+  EL14: [
+    "EL-14 preparation keeps English answers hidden before starting",
+    "EL-14 successful standard audio records its actual contact time",
+    "EL-14 rollback hides new entry and preserves restored historical evidence",
+    "EL-14 independent three-turn drink task shows separate application evidence",
+    "EL-14 commit answer refresh confirms the same response once",
+    "EL-14 response-loss answer refresh confirms the same response once",
+    "EL-14 commit creation refresh confirms the same scene once",
+    "EL-14 response-loss creation refresh confirms the same scene once",
+    "EL-14 unknown rejected retry and skip never become independent",
+    "EL-14 assistance survives refresh and TTS failure keeps the saved result",
+    "EL-14 V3 browser restore resumes the original tasks and help",
+    "EL-14 revision rejects stale input and preserves historical answers",
+    "EL-14 deletion rejects stale input and preserves historical answers",
+  ],
   EL13: [
     "EL-13 simpler version checks stay separate when switching versions",
     "EL-13 abandoning recovered choice selects the saved next state",

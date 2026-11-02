@@ -85,7 +85,11 @@ def create(
             [target.model_dump() for target in payload.targets],
             payload.story_id,
             str(payload.version_id) if payload.version_id else None,
+            payload.scene_id,
+            request.app.state.settings.scenes_enabled,
         )
+    except PermissionError as error:
+        raise HTTPException(403, str(error))
     except (PracticeLessonNotFoundError, PracticeNotFoundError) as error:
         raise _not_found(error)
     except (PracticeConflictError, PracticeStaleError) as error:
@@ -97,10 +101,14 @@ def create(
 
 
 @router.get("/practice-sessions/{session_id}")
-def read(session_id: UUID, db: Session = Depends(get_db)):
+def read(
+    session_id: UUID,
+    db: Session = Depends(get_db),
+    runtime: Runtime = Depends(get_runtime),
+):
     """读取同一轮次；不返回未作答题目的答案、长度或音频。"""
     try:
-        return get_session(db, session_id)
+        return get_session(db, session_id, runtime)
     except PracticeNotFoundError as error:
         raise _not_found(error)
 
@@ -151,3 +159,35 @@ def attempt(
         raise _conflict(error)
     except (PracticeUnavailableError, InvalidQuestionToken) as error:
         raise _unavailable(error)
+
+
+@router.get("/scenes")
+def scenes(
+    request: Request,
+    db: Session = Depends(get_db),
+    runtime: Runtime = Depends(get_runtime),
+):
+    from sqlalchemy import select
+
+    from app.models.practice import PracticeSession
+    from app.services.scenes import scene_preparation, scene_rules
+
+    rules = scene_rules("drinks")
+    latest = db.scalar(
+        select(PracticeSession)
+        .where(PracticeSession.purpose == "scene")
+        .order_by(PracticeSession.created_at.desc(), PracticeSession.id.desc())
+        .limit(1)
+    )
+    return {
+        "enabled": request.app.state.settings.scenes_enabled,
+        "scenes": [
+            {
+                "id": "drinks",
+                "title": rules["title"],
+                "task_goal": [t["goal"] for t in rules["tasks"]],
+                "preparation": scene_preparation(db, runtime),
+                "session_id": latest.session_id if latest else None,
+            }
+        ],
+    }

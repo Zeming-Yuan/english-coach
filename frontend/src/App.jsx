@@ -4,6 +4,7 @@ import { storageGet, storageSet } from "./lib/utils.js";
 import { setTtsRate } from "./lib/tts.js";
 import { refreshPendingContacts } from "./lib/contacts.js";
 import { loadPending, sendPending, clearPending, savePending } from "./lib/learning.js";
+import ScenePage from "./views/ScenePage.jsx";
 import StudyPage from "./views/StudyPage.jsx";
 import DailySessionPage from "./views/DailySessionPage.jsx";
 import QuizPage from "./views/QuizPage.jsx";
@@ -249,13 +250,14 @@ export default function App() {
       {/* 内容区 */}
       <ErrorBoundary>
       <main className="stage">
-        {view !== "study" && <PendingRecovery onConfirmed={(result, pending) => {
+        {view !== "study" && view !== "scene" && <PendingRecovery onConfirmed={(result, pending) => {
           confirmDailyCard(pending.payload, result);
           setQueueVersion((v) => v + 1);
         }} />}
         {view === "queue" && <QueueView onAdvice={startAdvice} key={queueVersion} setView={setView} onDelayed={startDelayed} setStudyQueue={(cards) => { setIsDailyStudy(false); setStudyQueue(cards); }} dailySession={dailySession} onStartDaily={startDaily} onResumeDaily={() => {
           setIsDailyStudy(true); setStudyQueue(dailySession.queue); setView("study");
         }} onAddStarter={addStarterCards} />}
+        {view === "scene" && <ScenePage onExit={() => setView("queue")} />}
         {view === "words" && <WordsPage />}
         {view === "stories" && <StoriesPage />}
         {view === "add" && <AddPage onAddStarter={addStarterCards} onGoWords={() => setView("words")} onStartStudy={(cards) => { setIsDailyStudy(false); setStudyQueue(cards); setView("study"); }} />}
@@ -511,6 +513,7 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
         </div>
       )}
 
+      {data?.scenes_enabled !== false && <button className="btn btn-primary" onClick={() => setView("scene")}>场景练习</button>}
       <LearningAdvice onStart={onAdvice} />
       {stats?.delayed_recall_enabled !== false && <div className="save-state-actions" aria-label="延迟回测">
         <button className="btn btn-ghost btn-small" onClick={() => onDelayed("day")}>隔日回测</button>

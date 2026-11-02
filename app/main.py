@@ -50,6 +50,7 @@ def create_app(
         description="面向零基础英语学习者的 AI 个性化学习工具",
         version="0.1.0",
     )
+    runtime.scene_evidence_enabled = settings.scenes_enabled
     app.state.settings = settings
     app.state.runtime = runtime
     app.state.llm_client = LazyLLMClient(settings)

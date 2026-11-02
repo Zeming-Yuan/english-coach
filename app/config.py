@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     bounded_stories_enabled: bool = True
     simpler_stories_enabled: bool = True
     story_checks_enabled: bool = True
+    scenes_enabled: bool = True
 
     # 旧版配置项仅用于识别并给出迁移说明，不参与运行
     deepseek_api_key: str = ""

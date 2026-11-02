@@ -40,9 +40,7 @@ def _contact(
 
 
 def _contacts(ec):
-    return ec.client.get("/api/export/backup").json()["extensions"][
-        "learning_contacts"
-    ]
+    return ec.client.get("/api/export/backup").json()["extensions"]["learning_contacts"]
 
 
 def _without_contacts(payload):
@@ -102,7 +100,12 @@ def test_el04_review_focus(arguments, expected):
         {"kind": "heardsay"},
         {"card_id": 0},
         {"revision": {"identity": "not-a-uuid", "version": 1}},
-        {"revision": {"identity": "00000000-0000-0000-0000-000000000000", "version": 0}},
+        {
+            "revision": {
+                "identity": "00000000-0000-0000-0000-000000000000",
+                "version": 0,
+            }
+        },
         {"submission_id": "not-a-uuid"},
     ],
 )
@@ -116,9 +119,7 @@ def test_el04_invalid_combinations_are_rejected(ec, change):
         "kind": "answer_visible",
         **change,
     }
-    assert (
-        ec.client.post("/api/learning/contacts", json=payload).status_code == 422
-    )
+    assert ec.client.post("/api/learning/contacts", json=payload).status_code == 422
     assert _contacts(ec) == []
 
 
@@ -284,10 +285,12 @@ def test_el04_v3_roundtrip_keeps_contact_time_and_revision(ec, ec_factory):
     assert preview.json()["extensions"] == {
         "provided": [
             "content_revisions",
+            "story_versions",
             "learning_contacts",
             "lesson_progress",
             "practice_sessions",
             "practice_items",
+            "scene_attempts",
         ],
         "missing": [],
     }
@@ -301,7 +304,8 @@ def test_el04_v3_roundtrip_keeps_contact_time_and_revision(ec, ec_factory):
     assert restored.status_code == 200, restored.text
 
     card = next(
-        row for row in target.client.get("/api/export/backup").json()["cards"]
+        row
+        for row in target.client.get("/api/export/backup").json()["cards"]
         if row["word"] == "apple"
     )
     detail = target.client.get(f"/api/cards/{card['id']}").json()
@@ -313,9 +317,7 @@ def test_el04_v3_roundtrip_keeps_contact_time_and_revision(ec, ec_factory):
     assert detail["last_contact"]["kind"] == "answer_audio"
     assert detail["contact_integrity"]["status"] == "confirmed"
     # 恢复后的新接触仍按当前修订确认，旧记录不被改写。
-    assert (
-        _contact(target, card["id"], detail["content_revision"]).status_code == 200
-    )
+    assert _contact(target, card["id"], detail["content_revision"]).status_code == 200
     assert len(_contacts(target)) == 2
 
 
@@ -340,7 +342,8 @@ def test_el04_old_v3_without_contacts_stays_unknown(ec, ec_factory):
         == 200
     )
     card = next(
-        row for row in target.client.get("/api/export/backup").json()["cards"]
+        row
+        for row in target.client.get("/api/export/backup").json()["cards"]
         if row["word"] == "apple"
     )
     detail = target.client.get(f"/api/cards/{card['id']}").json()
@@ -355,14 +358,11 @@ def test_el04_old_v3_without_contacts_stays_unknown(ec, ec_factory):
 def test_el04_full_replace_clears_existing_contacts(ec, ec_factory):
     source = ec_factory()
     source.seed_card()
-    backup = _without_contacts(
-        source.client.get("/api/export/backup").json()
-    )
+    backup = _without_contacts(source.client.get("/api/export/backup").json())
     target = ec_factory()
     target_card = target.seed_card()
     assert (
-        _contact(target, target_card, _revision(target, target_card)).status_code
-        == 200
+        _contact(target, target_card, _revision(target, target_card)).status_code == 200
     )
     assert len(_contacts(target)) == 1
 
@@ -381,7 +381,8 @@ def test_el04_full_replace_clears_existing_contacts(ec, ec_factory):
     )
     assert _contacts(target) == []
     card = next(
-        row for row in target.client.get("/api/export/backup").json()["cards"]
+        row
+        for row in target.client.get("/api/export/backup").json()["cards"]
         if row["word"] == "apple"
     )
     detail = target.client.get(f"/api/cards/{card['id']}").json()

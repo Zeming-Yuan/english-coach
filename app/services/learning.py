@@ -343,6 +343,15 @@ def _apply_attempt_in_transaction(
         cmd = cmd.model_copy(update={"submission_id": uuid4()})
     submission_id = str(cmd.submission_id)
 
+    from app.models.scene_attempt import SceneAttempt
+
+    if (
+        db.scalar(
+            select(SceneAttempt.id).where(SceneAttempt.submission_id == submission_id)
+        )
+        is not None
+    ):
+        raise SubmissionConflictError(submission_id)
     existing = _event_by_submission(db, submission_id)
     # 回放先比对已验证业务上下文，成功旧提交不因 24 小时过期再失败；
     # 新提交或换 token 的提交必须重新验签。

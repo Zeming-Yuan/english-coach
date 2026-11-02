@@ -92,7 +92,7 @@ def test_each_story_branch_upgrades_to_the_same_head_without_losing_rows(
         assert connection.scalar(text("SELECT word FROM cards")) == "preserved"
         assert (
             connection.scalar(text("SELECT version_num FROM alembic_version"))
-            == "el13_merge_story_heads"
+            == "el14_scene_attempts"
         )
     assert {c["name"] for c in inspect(engine).get_columns("story_versions")} >= {
         "mode",
