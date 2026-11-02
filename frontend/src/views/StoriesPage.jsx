@@ -21,6 +21,7 @@ export default function StoriesPage() {
   const [generated, setGenerated] = useState(null);
   const [generationEnabled, setGenerationEnabled] = useState(true);
   const selection = useRef(0);
+  const openingStory = useRef(null);
   useEffect(() => () => { selection.current += 1; }, []);
 
   useEffect(() => {
@@ -32,11 +33,16 @@ export default function StoriesPage() {
     try {
       await api(`/api/stories/${id}`, { method: "DELETE" });
       setStories((s) => s.filter((x) => x.id !== id));
+      if (openingStory.current === id) {
+        selection.current += 1;
+        openingStory.current = null;
+      }
     } catch (e) { showToast("删除失败：" + e.message); }
   };
 
   const openStory = async (id) => {
     const request = ++selection.current;
+    openingStory.current = id;
     try {
       const s = await api(`/api/stories/${id}`);
       if (request === selection.current) setActiveStory(s);
@@ -47,7 +53,7 @@ export default function StoriesPage() {
 
   // 阅读视图
   if (activeStory) {
-    return <StoryRead story={activeStory} onBack={() => {selection.current += 1; setActiveStory(null);}} />;
+    return <StoryRead story={activeStory} onBack={() => {selection.current += 1; openingStory.current = null; setActiveStory(null);}} />;
   }
 
   return (

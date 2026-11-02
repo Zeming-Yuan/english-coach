@@ -126,11 +126,11 @@ def get_story(story_id: int, db: Session = Depends(get_db)):
 @router.delete("/stories/{story_id}")
 def delete_story(story_id: int, db: Session = Depends(get_db)):
     """删除故事（关联表 story_words 一并删除，词卡保留）。"""
-    story = db.get(Story, story_id)
-    if story is None:
-        raise HTTPException(status_code=404, detail="Story not found")
 
     def operation(session):
+        story = session.get(Story, story_id)
+        if story is None:
+            raise HTTPException(status_code=404, detail="Story not found")
         version = session.scalar(
             select(StoryVersion).where(StoryVersion.story_id == story_id)
         )

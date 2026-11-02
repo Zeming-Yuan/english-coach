@@ -27,6 +27,7 @@ export default function StoryGeneration({onSaved, onStarter}) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [storageNote, setStorageNote] = useState("");
+  const [starterError, setStarterError] = useState("");
   const alive = useRef(true);
   const saving = useRef(false);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
@@ -65,9 +66,11 @@ export default function StoryGeneration({onSaved, onStarter}) {
       <button className="btn btn-ghost btn-small" onClick={() => {remember(null); setError("");}}>放弃待确认生成</button>
     </div>}
     {storageNote && <p role="note">{storageNote}</p>}
+    {starterError && <p role="alert">{starterError}</p>}
     <button className="btn btn-ghost btn-small" onClick={async () => {
+      setStarterError("");
       try { const story = await api("/api/stories/starter"); if (alive.current) onStarter(story); }
-      catch (e) { if (alive.current) setError(e.message); }
+      catch (e) { if (alive.current) setStarterError("读取入门材料失败：" + e.message); }
     }}>阅读入门材料</button>
   </div>;
 }

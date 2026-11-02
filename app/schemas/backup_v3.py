@@ -546,7 +546,7 @@ def validate_v3(payload: dict) -> ValidatedBackup:
                 "passed_count",
                 "通过数不能超过检查数",
             )
-    from app.services.story_quality import tokens, validate_story
+    from app.services.story_quality import story_coverage, validate_story
 
     story_revisions = {
         r["resource_id"]: r
@@ -591,18 +591,8 @@ def validate_v3(payload: dict) -> ValidatedBackup:
             _reject(
                 "story_versions", index, "material.check", "证据句与固定上下文不一致"
             )
-        all_texts = [
-            material["title"],
-            *[r["en"] for r in material["sentences"]],
-            check["question"],
-            *check["options"],
-        ]
-        unknown = sorted(
-            {t for text in all_texts for t in tokens(text)} - known - support
-        )
-        if quality["unknown_forms"] != unknown or quality.get("word_count") != sum(
-            len(tokens(r["en"])) for r in material["sentences"]
-        ):
+        coverage = story_coverage(material, known, support)
+        if any(quality.get(field) != value for field, value in coverage.items()):
             _reject("story_versions", index, "quality", "覆盖检查与材料不一致")
         if row["story_id"] is not None:
             if row["story_id"] in version_stories:

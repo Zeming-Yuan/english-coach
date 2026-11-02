@@ -8,13 +8,20 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.card import Card
+from app.models.content_revision import ContentRevision
 from app.models.story import Story, StoryWord
 from app.models.story_version import StoryVersion
 from app.runtime import Runtime
 from app.services.content_revisions import get_content_revision
 from app.services.learning_evidence import bulk_evidence_summaries
 from app.services.llm import generate_json
-from app.services.story_quality import SUPPORT, starter_payload
+from app.services.story_quality import (
+    SUPPORT,
+    starter_payload,
+    story_coverage,
+    tokens,
+    validate_story,
+)
 from app.services.write_transaction import run_write
 
 SYSTEM_PROMPT = (
@@ -59,8 +66,6 @@ def generate_story(
     if not known_cards:
         return starter_payload()
     # Exact single word forms only; phrases are not individual vocabulary targets.
-    from app.services.story_quality import tokens
-
     known_cards = [c for c in known_cards if tokens(c.word) == [c.word.lower()]]
     if not known_cards:
         return starter_payload()
@@ -84,8 +89,6 @@ def generate_story(
     revisions = {c.id: get_content_revision(db, "card", c.id) for c in selected}
     # Restore changes internal story IDs even when the snapshot retains identities.
     # Keep a core revision map as a generation fence without holding the write lock.
-    from app.models.content_revision import ContentRevision
-
     fence = list(
         db.execute(
             select(
@@ -101,8 +104,6 @@ def generate_story(
         "new_targets": [c.word.lower() for c in new_target],
     }
     db.rollback()  # External call holds neither a SQLite read snapshot nor a write lock.
-    from app.services.story_quality import validate_story
-
     data = None
     errors = []
     for _ in range(2):
@@ -129,20 +130,8 @@ def generate_story(
         "known_words": sorted(known),
         "support_version": SUPPORT["version"],
         "support_words": SUPPORT["words"],
-        "unknown_forms": [],
-        "word_count": sum(len(tokens(r["en"])) for r in data["sentences"]),
+        **story_coverage(data, known, set(SUPPORT["words"])),
     }
-    all_text = " ".join(
-        [
-            data["title"],
-            *[r["en"] for r in data["sentences"]],
-            data["check"]["question"],
-            *data["check"]["options"],
-        ]
-    )
-    quality["unknown_forms"] = sorted(
-        set(tokens(all_text)) - known - set(SUPPORT["words"])
-    )
     material = {
         **data,
         "check": {

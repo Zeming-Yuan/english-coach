@@ -18,7 +18,9 @@ export const requirements = {
     "EL-11 functional rollback hides generation and preserves compatibility",
     "EL-11 deletion failure is visible and replay cannot resurrect deleted story",
     "EL-11 old backup explicitly has no story versions or checks",
-    "EL-11 early V3 missing versions does not claim revisions are missing"
+    "EL-11 early V3 missing versions does not claim revisions are missing",
+    "EL-11 deleted selection rejects an already fetched late detail",
+    "EL-11 starter read transport failure is visible and retryable"
 ],
   T01: ["EC-01 no-key-home", "EC-01 external-missing"],
   T02: ["EC-16 installation configuration contracts"],

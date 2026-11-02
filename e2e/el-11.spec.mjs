@@ -213,3 +213,38 @@ test("EL-11 early V3 missing versions does not claim revisions are missing", asy
   await expect(page.getByText(/此备份没有故事版本与检查材料/)).toBeVisible();
   await expect(page.getByText(/此备份缺少内容修订/)).toHaveCount(0);
 });
+
+test("EL-11 deleted selection rejects an already fetched late detail", async ({appFactory, page}) => {
+  const app = await appFactory({fixture: "ec04-story.json"});
+  await library(page, app);
+  let release, fetched;
+  const ready = new Promise(resolve => {fetched = resolve;});
+  const gate = new Promise(resolve => {release = resolve;});
+  await page.route("**/api/stories/1", async route => {
+    if (route.request().method() !== "GET") return route.continue();
+    const result = await route.fetch(); fetched(); await gate; await route.fulfill({response: result});
+  });
+  await page.locator(".story-item-main").click();
+  await ready;
+  page.on("dialog", dialog => dialog.accept());
+  await page.locator(".story-delete").click();
+  await expect(page.locator(".story-item")).toHaveCount(0);
+  expect((await app.request.get("/api/stories/1")).status()).toBe(404);
+  const arrived = page.waitForResponse(response => response.url().endsWith("/api/stories/1") && response.request().method() === "GET");
+  release();
+  await (await arrived).finished();
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await expect(page.locator(".story-read-title")).toHaveCount(0);
+  await expect(page.getByRole("button", {name: "生成新故事", exact: true})).toBeVisible();
+});
+
+test("EL-11 starter read transport failure is visible and retryable", async ({appFactory, page}) => {
+  const app = await appFactory();
+  await library(page, app);
+  await page.route("**/api/stories/starter", async route => {await route.fetch(); await route.abort("failed");}, {times: 1});
+  await page.getByRole("button", {name: "阅读入门材料", exact: true}).click();
+  await expect(page.getByRole("alert")).toContainText("读取入门材料失败");
+  await page.getByRole("button", {name: "阅读入门材料", exact: true}).click();
+  await expect(page.getByTestId("story-quality")).toContainText("已核对的入门材料");
+  await expect(page.getByRole("alert")).toHaveCount(0);
+});

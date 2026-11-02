@@ -1,6 +1,7 @@
 """Versioned teaching support; allowed word forms are not personal mastery."""
 
 import json
+import re
 from pathlib import Path
 
 SUPPORT = json.loads(
@@ -52,11 +53,27 @@ def starter_payload(*, known_basis="insufficient"):
     }
 
 
-import re
-
-
 def tokens(text: str) -> list[str]:
     return re.findall(r"[a-z]+(?:'[a-z]+)?", text.lower())
+
+
+def _english_texts(data: dict) -> list[str]:
+    return [
+        data["title"],
+        *[r["en"] for r in data["sentences"]],
+        data["check"]["question"],
+        *data["check"]["options"],
+    ]
+
+
+def story_coverage(data: dict, known: set[str], support: set[str]) -> dict:
+    """Reproducible coverage report shared by publication, validation and restore."""
+    return {
+        "word_count": sum(len(tokens(r["en"])) for r in data["sentences"]),
+        "unknown_forms": sorted(
+            {t for text in _english_texts(data) for t in tokens(text)} - known - support
+        ),
+    }
 
 
 def story_profile(mode: str) -> dict:
@@ -95,13 +112,9 @@ def validate_story(
         return ["structure"]
     errors = []
     body = [t for r in rows for t in tokens(r["en"])]
-    texts = [
-        data["title"],
-        *[r["en"] for r in rows],
-        check["question"],
-        *check["options"],
-    ]
-    if not profile["min_words"] <= len(body) <= profile["max_words"]:
+    texts = _english_texts(data)
+    coverage = story_coverage(data, known, support)
+    if not profile["min_words"] <= coverage["word_count"] <= profile["max_words"]:
         errors.append("length")
     if any(
         len(tokens(sentence)) > profile["max_sentence"]
@@ -130,10 +143,7 @@ def validate_story(
         or any(t != t.lower() or tokens(t) != [t] or t not in body for t in targets)
     ):
         errors.append("target")
-    if (
-        len({t for text in texts for t in tokens(text)} - known - support)
-        > profile["max_unknown"]
-    ):
+    if len(coverage["unknown_forms"]) > profile["max_unknown"]:
         errors.append("unknown")
     index = check.get("evidence_index")
     options = check["options"]
