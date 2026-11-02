@@ -50,7 +50,7 @@ def check_items(db, story_id, version_id):
         material,
         set(quality.get("known_words", [])),
         set(quality.get("support_words", [])),
-        "normal",
+        version.mode,
     )
     if valid_choice:
         valid_choice = (

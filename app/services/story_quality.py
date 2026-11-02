@@ -80,6 +80,8 @@ def story_coverage(data: dict, known: set[str], support: set[str]) -> dict:
 
 
 def story_profile(mode: str) -> dict:
+    if mode == "short":
+        return {"min_words": 20, "max_words": 40, "max_sentence": 8, "max_unknown": 2}
     if mode != "normal":
         raise ValueError("unsupported story mode")
     return {"min_words": 40, "max_words": 70, "max_sentence": 12, "max_unknown": 2}

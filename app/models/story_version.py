@@ -16,5 +16,9 @@ class StoryVersion(Base):
     include_new_target: Mapped[bool] = mapped_column(Boolean, nullable=False)
     story_identity: Mapped[str] = mapped_column(String(36), nullable=False)
     story_revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    mode: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="normal", server_default="normal"
+    )
+    parent_version_id: Mapped[str | None] = mapped_column(String(36))
     material: Mapped[dict] = mapped_column(JSON, nullable=False)
     quality: Mapped[dict] = mapped_column(JSON, nullable=False)

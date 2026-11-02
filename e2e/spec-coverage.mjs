@@ -4,6 +4,7 @@ import {fileURLToPath} from "node:url";
 
 export const requirements = {
   EL13: [
+    "EL-13 simpler version checks stay separate when switching versions",
     "EL-13 abandoning recovered choice selects the saved next state",
     "EL-13 abandoning recovered typed selects the saved next state",
     "EL-13 stale creation after restore can be abandoned for the imported round",
@@ -22,6 +23,17 @@ export const requirements = {
     "EL-13 deletion rejects a stale answer and returns to the story",
     "EL-13 failed help confirmation keeps the original text hidden",
     "EL-13 functional rollback hides entry and keeps restored records",
+  ],
+  EL12: [
+    "EL-12 simpler story preserves original and separate unchecked versions",
+    "EL-12 commit refresh confirms the same simplification once",
+    "EL-12 response-loss refresh confirms the same simplification once",
+    "EL-12 a late simplification cannot replace selected original",
+    "EL-12 invalid simpler content keeps original readable",
+    "EL-12 deleted source during generation offers explicit failure",
+    "EL-12 V3 restore keeps versions materials and replay identity",
+    "EL-12 functional rollback hides simplify and retains saved versions",
+    "EL-12 pending confirmation after restore uses mapped original identity",
   ],
   EL11: [
     "EL-11 evidence based story shows checked coverage",

@@ -24,7 +24,7 @@ from app.services.content_revisions import (
 )
 from app.services.llm import generate_json
 from app.services.llm_client import LLMNotConfigured
-from app.services.story_generator import generate_story
+from app.services.story_generator import generate_story, simplify_story
 from app.services.story_quality import starter_payload
 from app.services.write_transaction import run_write
 
@@ -35,6 +35,27 @@ logger = logging.getLogger(__name__)
 class GenerateStoryIn(BaseModel):
     operation_id: UUID | None = None
     include_new_target: bool = False
+
+
+class SimplifyStoryIn(BaseModel):
+    operation_id: UUID
+    version_id: UUID
+
+
+@router.post("/stories/{story_id}/simplify")
+def create_simpler_story(
+    story_id: int,
+    body: SimplifyStoryIn,
+    request: Request,
+    db: Session = Depends(get_db),
+    runtime: Runtime = Depends(get_runtime),
+):
+    if not request.app.state.settings.simpler_stories_enabled:
+        raise HTTPException(403, "简化入口已关闭，已有版本仍可阅读")
+    story = simplify_story(
+        db, runtime, story_id, str(body.version_id), str(body.operation_id)
+    )
+    return _story_to_dict(story, db, request.app.state.settings.story_checks_enabled)
 
 
 @router.get("/stories/starter")
@@ -55,7 +76,11 @@ def create_story(
     story = generate_story(
         db, runtime, str(body.operation_id or uuid4()), body.include_new_target
     )
-    return story if isinstance(story, dict) else _story_to_dict(story, db)
+    return (
+        story
+        if isinstance(story, dict)
+        else _story_to_dict(story, db, request.app.state.settings.story_checks_enabled)
+    )
 
 
 @router.get("/stories")
@@ -70,6 +95,7 @@ def list_stories(request: Request, db: Session = Depends(get_db)):
         return {
             "stories": [],
             "generation_enabled": request.app.state.settings.bounded_stories_enabled,
+            "simplification_enabled": request.app.state.settings.simpler_stories_enabled,
         }
     # 批量加载所有 story-card 关系
     story_ids = [s.id for s in stories]
@@ -80,6 +106,24 @@ def list_stories(request: Request, db: Session = Depends(get_db)):
     ).all()
     card_revisions = content_revision_map(db, "card", [c.id for _, c in rows])
     story_revisions = content_revision_map(db, "story", story_ids)
+    versions = {
+        v.story_id: v
+        for v in db.scalars(
+            select(StoryVersion).where(StoryVersion.story_id.in_(story_ids))
+        )
+    }
+    check_sessions = {
+        row.version_id: row.session_id
+        for row in db.scalars(
+            select(PracticeSession)
+            .where(
+                PracticeSession.version_id.in_(
+                    [v.version_id for v in versions.values()]
+                )
+            )
+            .order_by(PracticeSession.created_at, PracticeSession.id)
+        )
+    }
     story_words: dict[int, list[dict]] = {}
     for sw, c in rows:
         story_words.setdefault(sw.story_id, []).append(
@@ -93,9 +137,21 @@ def list_stories(request: Request, db: Session = Depends(get_db)):
         )
     return {
         "generation_enabled": request.app.state.settings.bounded_stories_enabled,
+        "simplification_enabled": request.app.state.settings.simpler_stories_enabled,
         "stories": [
             {
                 "id": s.id,
+                "mode": versions[s.id].mode
+                if s.id in versions
+                and story_revisions[s.id]
+                == {
+                    "identity": versions[s.id].story_identity,
+                    "version": versions[s.id].story_revision,
+                }
+                else "legacy",
+                "check_session_id": check_sessions.get(versions[s.id].version_id)
+                if s.id in versions
+                else None,
                 "title": s.title,
                 "title_cn": s.title_cn,
                 "content": s.content,
@@ -124,9 +180,9 @@ def get_story(story_id: int, request: Request, db: Session = Depends(get_db)):
     current_story = db.get(Story, story_id, populate_existing=True)
     if current_story is None:
         raise HTTPException(status_code=404, detail="Story not found")
-    payload = _story_to_dict(current_story, db)
-    payload["checks_enabled"] = request.app.state.settings.story_checks_enabled
-    return payload
+    return _story_to_dict(
+        current_story, db, request.app.state.settings.story_checks_enabled
+    )
 
 
 @router.delete("/stories/{story_id}")
@@ -198,7 +254,7 @@ def _translate_story(story: Story, db: Session) -> None:
         logger.warning("story translation write failed", exc_info=True)
 
 
-def _story_to_dict(story: Story, db: Session) -> dict:
+def _story_to_dict(story: Story, db: Session, checks_enabled: bool) -> dict:
     """故事 → 字典（含当前修订、关联词卡和逐行可见目标）。"""
     stmt = (
         select(Card)
@@ -220,29 +276,33 @@ def _story_to_dict(story: Story, db: Session) -> dict:
     lines = [line for line in (story.content or "").split("\n") if line]
     version = db.scalar(select(StoryVersion).where(StoryVersion.story_id == story.id))
     current = get_content_revision(db, "story", story.id)
-    valid = version is not None and current == {
+    if version is not None and current != {
         "identity": version.story_identity,
         "version": version.story_revision,
-    }
-    if valid:
-        assert version is not None
-    return {
-        "id": story.id,
-        "mode": "normal" if valid else "legacy",
-        "version_id": version.version_id if valid and version is not None else None,
-        "check_session_id": db.scalar(
+    }:
+        version = None
+    check_session_id = (
+        db.scalar(
             select(PracticeSession.session_id)
-            .where(
-                PracticeSession.version_id == version.version_id,
-            )
+            .where(PracticeSession.version_id == version.version_id)
             .order_by(PracticeSession.created_at.desc(), PracticeSession.id.desc())
             .limit(1)
         )
-        if valid and version is not None
-        else None,
-        "quality": version.quality if valid and version is not None else None,
+        if version is not None
+        else None
+    )
+    return {
+        "id": story.id,
+        "mode": version.mode if version is not None else "legacy",
+        "parent_version_id": version.parent_version_id if version is not None else None,
+        "versions": _related_versions(version, db) if version is not None else [],
+        "check_session_id": check_session_id,
+        "check_status": "recorded" if check_session_id else "unchecked",
+        "checks_enabled": checks_enabled,
+        "version_id": version.version_id if version is not None else None,
+        "quality": version.quality if version is not None else None,
         "check_material": version.material.get("check")
-        if valid and version is not None
+        if version is not None
         else None,
         "title": story.title,
         "title_cn": story.title_cn,
@@ -253,3 +313,19 @@ def _story_to_dict(story: Story, db: Session) -> dict:
         "visible_card_ids": visible_card_ids(story.content or "", words),
         "line_card_ids": [visible_card_ids(line, words) for line in lines],
     }
+
+
+def _related_versions(version, db):
+    root = version.parent_version_id or version.version_id
+    rows = db.scalars(
+        select(StoryVersion)
+        .where(
+            (StoryVersion.version_id == root) | (StoryVersion.parent_version_id == root)
+        )
+        .order_by(StoryVersion.id)
+    )
+    return [
+        {"story_id": row.story_id, "version_id": row.version_id, "mode": row.mode}
+        for row in rows
+        if row.story_id is not None
+    ]

@@ -4,7 +4,7 @@ import {loadPending, savePending, clearPending} from '../lib/learning.js';
 import PracticePage from '../views/PracticePage.jsx';
 
 // Keep the original text outside the practice tree. Showing it requires a saved help marker.
-export default function StoryCheck({story, children}) {
+export default function StoryCheck({story, onCreated, children}) {
   const scope = `story-check:${story.version_id}`;
   const prefix = 'ec.context.';
   const pending = useRef(loadPending(scope, prefix)?.payload || null);
@@ -24,6 +24,7 @@ export default function StoryCheck({story, children}) {
       const run = await api('/api/practice-sessions', {method: 'POST', body: JSON.stringify(body)});
       clearPending(scope, prefix); pending.current = null;
       setSessionId(run.id); setChecking(true);
+      onCreated?.(run.id);
     } catch (e) {setError('检查尚未确认保存：' + e.message);}
     finally {setBusy(false);}
   };

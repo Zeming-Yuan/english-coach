@@ -276,3 +276,31 @@ for (const kind of ['choice', 'typed']) {
     expect(after.learning_events.filter(e => e.source === 'story')).toHaveLength(kind === 'choice' ? 1 : 2);
   });
 }
+
+test('EL-13 simpler version checks stay separate when switching versions', async ({appFactory, page}) => {
+  const app = await appFactory({fixture: 'el12-stories.json'});
+  await prepare(app, page, false);
+  const original = await page.locator('[data-story-version]').getAttribute('data-story-version');
+  await page.getByRole('button', {name: '更简单', exact: true}).click();
+  await expect(page.getByTestId('story-check-status')).toHaveText('简化版 · 未检查');
+  await page.getByRole('button', {name: '读后检查', exact: true}).click();
+  await expect(page.getByTestId('practice-session')).toContainText('阅读理解');
+  await page.getByRole('button', {name: 'apple', exact: true}).click();
+  await page.getByRole('button', {name: '下一题', exact: true}).click();
+  await expect(page.getByRole('button', {name: '查看原版', exact: true})).toHaveCount(0);
+  await page.getByRole('textbox', {name: '你的答案', exact: true}).fill('apple');
+  await page.getByRole('button', {name: '提交答案', exact: true}).click();
+  await page.getByRole('button', {name: '查看结果', exact: true}).click();
+  await expect(page.getByTestId('practice-session')).toContainText('阅读识别 1 · 词汇独立 1 · 辅助 0');
+  await page.getByRole('button', {name: '← 回看原文', exact: true}).click();
+  await expect(page.getByTestId('story-check-status')).toHaveText('简化版 · 已有检查记录');
+  await page.getByRole('button', {name: '查看原版', exact: true}).click();
+  await expect(page.locator('[data-story-version]')).toHaveAttribute('data-story-version', original);
+  await expect(page.getByTestId('story-check-status')).toHaveText('原版 · 未检查');
+  await page.getByRole('button', {name: '查看简化版', exact: true}).click();
+  await expect(page.getByTestId('practice-session')).toContainText('阅读识别 1 · 词汇独立 1 · 辅助 0');
+  await page.reload();
+  await page.getByRole('button', {name: /故事/}).click();
+  await expect(page.locator('.story-item-main').filter({hasText: '简化版 · 已有检查记录'})).toHaveCount(1);
+  await expect(page.locator('.story-item-main').filter({hasText: '原版 · 未检查'})).toHaveCount(1);
+});
