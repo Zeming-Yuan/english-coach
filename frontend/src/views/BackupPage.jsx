@@ -171,11 +171,12 @@ export default function BackupPage({ onBack, onRestored, restoring, onRestoringC
           <div style={{ marginTop: 14, padding: 12, background: "var(--card, #f5f7f6)", borderRadius: 10 }}>
             <p style={{ margin: 0, fontWeight: 700 }}>{full ? "全量恢复" : "旧版部分恢复"}</p>
             {candidate.preview.targeted_history === "not_recorded" && <p role="note">此备份没有专项练习记录；建议仅从可用学习证据重新计算，不补造薄弱项或练习成绩。</p>}
+            {candidate.preview.extensions?.missing?.includes("story_versions") && <p role="note">此备份没有故事版本与检查材料；旧故事仍可读，不补造题目或成绩。已有故事版本与操作去重记录将按本次备份替换。</p>}
             {candidate.preview.retention_history === "not_recorded" && <p role="note">此备份没有延迟回测记录；旧接触依据不足时仅能普通练习，不会补造隔日或一周保持证据。</p>}
             {full ? <>
               <p style={{ fontSize: 13, margin: "6px 0" }}>备份格式：V{candidate.preview.version ?? 2}。现有数据库学习内容将被备份替换。</p>
               <p style={{ fontSize: 13 }}>备份包含 {candidate.preview.counts.cards} 张卡、{candidate.preview.counts.learning_events} 条学习事件；将替换现有 {candidate.preview.impact.replaced.cards} 张卡、{candidate.preview.impact.replaced.learning_events} 条学习事件。</p>
-              {candidate.preview.extensions?.missing?.length > 0 && (
+              {candidate.preview.extensions?.missing?.includes("content_revisions") && (
                 <p role="alert" style={{ fontSize: 13 }}>
                   此备份缺少内容修订：确认后将清空现有修订，并为恢复的词卡、课程和故事重新生成身份；旧修订不再适用。
                 </p>

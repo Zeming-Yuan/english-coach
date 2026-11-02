@@ -5,18 +5,6 @@ from unittest.mock import patch
 from app.models.card import Card
 from app.models.story import Story, StoryWord
 
-MOCK_STORY_DATA = {
-    "title": "A Day at School",
-    "title_cn": "学校的一天",
-    "sentences": [
-        {"en": "Tom likes apple and banana.", "cn": "汤姆喜欢苹果和香蕉。"}
-    ],
-    "words": [
-        {"word": "apple", "phonetic": "/ˈæpəl/", "meaning": "苹果"},
-        {"word": "banana", "phonetic": "/bəˈnænə/", "meaning": "香蕉"},
-    ],
-}
-
 
 def make_word_card(db, count=3):
     """创建几张新词卡（无复习记录）。"""
@@ -77,19 +65,20 @@ def test_get_story_without_ai_stays_readable(mock_generate, client, db_session):
 
 
 @patch("app.services.story_generator.generate_json")
-def test_generate_story(mock_generate, client, db_session):
-    """POST /api/stories/generate 生成故事并入库。"""
+def test_generate_story_without_recall_uses_starter(mock_generate, client, db_session):
+    """Unreviewed cards are not known vocabulary; checked starter needs no AI."""
     make_word_card(db_session, 3)
-    mock_generate.return_value = MOCK_STORY_DATA
     resp = client.post("/api/stories/generate")
     assert resp.status_code == 200
-    data = resp.json()
-    assert data["title"] == "A Day at School"
-    assert len(data["words"]) == 3
+    assert resp.json()["mode"] == "starter"
+    assert resp.json()["quality"]["known_targets"] == []
+    assert client.get("/api/stories").json()["stories"] == []
+    mock_generate.assert_not_called()
 
 
 def test_generate_story_no_words(client, db_session):
-    """新词不足 → 400。"""
+    """Empty vocabulary gets checked reading material without adding cards."""
     resp = client.post("/api/stories/generate")
-    assert resp.status_code == 400
-    assert "新词不足" in resp.json()["detail"]
+    assert resp.status_code == 200
+    assert resp.json()["mode"] == "starter"
+    assert client.get("/api/cards").json()["cards"] == []

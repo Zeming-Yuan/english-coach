@@ -28,8 +28,15 @@ test("EC-15 details-stats-story-backup-restore-delete-agree", async ({appFactory
   const llm = http.createServer(async (request, response) => {
     let body = "";
     for await (const chunk of request) body += chunk;
-    picked = JSON.parse(JSON.parse(body).messages[1].content).words;
-    const content = JSON.stringify({title: "Contract story", title_cn: "故事", sentences: [{en: picked.join(" "), cn: "故事"}], words: []});
+    picked = JSON.parse(JSON.parse(body).messages[1].content).targets;
+    const content = JSON.stringify({title: "My book", title_cn: "我的书", targets: picked,
+      sentences: [
+        {en: "My book is on the small table.", cn: "我的书在小桌上。"},
+        {en: "A cat and a dog are near me.", cn: "一只猫和一只狗在我身边。"},
+        {en: "I sit by the table and open it.", cn: "我坐在桌旁，把它打开。"},
+        {en: "Now I read and smile at my cat.", cn: "现在我读着书，对猫笑了。"},
+        {en: "This is a good day at home with my dog.", cn: "这是和狗在家度过的美好一天。"},
+      ], check: {question: "What is on the table?", question_cn: "桌上有什么？", options: ["book", "cat", "dog"], options_cn: ["书", "猫", "狗"], expected: "book", evidence_index: 0}});
     response.setHeader("Content-Type", "application/json");
     response.end(JSON.stringify({choices: [{message: {content}}]}));
   });
@@ -54,6 +61,16 @@ test("EC-15 details-stats-story-backup-restore-delete-agree", async ({appFactory
     for (const url of ["/api/export/cards", "/api/today", "/api/recommended", "/api/stats/history", "/api/stats/weekly"]) {
       expect((await app.request.get(url)).status()).toBe(200);
     }
+    // EL-11 uses verified current recall, never unreviewed vocabulary or self-rating.
+    const seeded = (await backup(app)).cards;
+    for (const now of ["2026-10-01T01:00:00Z", "2026-10-02T02:00:00Z"]) {
+      await app.setTime(now);
+      for (const card of seeded.filter(card => ["book", "cat", "dog"].includes(card.word))) {
+        expect((await app.request.post("/api/typing/check", {data: {card_id: card.id, user_input: card.word, source: "spelling", submission_id: crypto.randomUUID()}})).ok()).toBeTruthy();
+      }
+    }
+    await app.setTime("2026-10-30T12:00:00Z");
+    const beforeStory = await backup(app);
     const story = await app.request.post("/api/stories/generate");
     expect(story.status()).toBe(200);
     expect(picked).toEqual(["book", "cat", "dog"]);
@@ -69,8 +86,8 @@ test("EC-15 details-stats-story-backup-restore-delete-agree", async ({appFactory
     await expect(page.getByRole("status")).toContainText("恢复成功");
     const restored = await backup(target);
     const apple = restored.cards.find(card => card.word === "apple");
-    expect(restored.reviews).toHaveLength(1);
-    expect(restored.learning_events).toHaveLength(1);
+    expect(restored.reviews).toHaveLength(beforeStory.reviews.length);
+    expect(restored.learning_events).toHaveLength(beforeStory.learning_events.length);
     expect(restored.stories).toHaveLength(1);
     expect((await detail(target, apple.id)).memory_state).toEqual(d.memory_state);
     expect((await target.request.delete(`/api/cards/${apple.id}`)).status()).toBe(200);

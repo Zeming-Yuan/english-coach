@@ -54,7 +54,11 @@ def test_el01_edit_and_v3_contract(ec):
         ([{"example": "A"}, {"example": "B"}, 8], 9),
         ([{"example": "A small apple."}, {"example": " A  small\n apple. "}, 8], 8),
         (
-            [{"contexts": [{"en": "An apple"}]}, {"contexts": [{"en": "An  apple "}]}, 8],
+            [
+                {"contexts": [{"en": "An apple"}]},
+                {"contexts": [{"en": "An  apple "}]},
+                8,
+            ],
             8,
         ),
     ],
@@ -109,16 +113,24 @@ def test_el01_non_semantic_edits_keep_revision(ec):
     first = _revision(ec, card_id)
 
     # 仅排版差异不增加修订。
-    assert ec.client.put(
-        f"/api/cards/{card_id}", json={"example": "  An   apple.\n"}
-    ).status_code == 200
+    assert (
+        ec.client.put(
+            f"/api/cards/{card_id}", json={"example": "  An   apple.\n"}
+        ).status_code
+        == 200
+    )
     # 音标/讲解不改变语义证据。
-    assert ec.client.put(
-        f"/api/cards/{card_id}", json={"phonetic": "/x/", "explanation": "新讲解"}
-    ).status_code == 200
+    assert (
+        ec.client.put(
+            f"/api/cards/{card_id}", json={"phonetic": "/x/", "explanation": "新讲解"}
+        ).status_code
+        == 200
+    )
     # 记忆法不改变修订。
     assert (
-        ec.client.put(f"/api/memos/{card_id}", json={"content": "谐音：阿婆"}).status_code
+        ec.client.put(
+            f"/api/memos/{card_id}", json={"content": "谐音：阿婆"}
+        ).status_code
         == 200
     )
     assert _revision(ec, card_id) == first
@@ -156,6 +168,7 @@ def test_el01_v3_roundtrip_keeps_identity_and_continues(ec, ec_factory):
     assert preview.json()["extensions"] == {
         "provided": [
             "content_revisions",
+            "story_versions",
             "learning_contacts",
             "lesson_progress",
             "practice_sessions",
@@ -207,8 +220,7 @@ def test_el01_v3_roundtrip_preserves_lesson_and_story_revisions(ec, ec_factory):
         db.close()
     backup = _backup(source)
     before = {
-        row["resource_kind"]: row
-        for row in backup["extensions"]["content_revisions"]
+        row["resource_kind"]: row for row in backup["extensions"]["content_revisions"]
     }
 
     target = ec_factory()
@@ -243,8 +255,7 @@ def test_el01_v3_roundtrip_preserves_lesson_and_story_revisions(ec, ec_factory):
         "story": {row["id"]: row["title"] for row in restored["stories"]},
     }
     after = {
-        row["resource_kind"]: row
-        for row in restored["extensions"]["content_revisions"]
+        row["resource_kind"]: row for row in restored["extensions"]["content_revisions"]
     }
     for kind in ("lesson", "story"):
         # Identity/version survive; only the resource ID is remapped.
@@ -276,9 +287,7 @@ def test_el01_v3_restore_invalidates_source_question_token(ec, ec_factory):
         == 200
     )
     restored = _backup(target)
-    card = next(
-        row for row in restored["cards"] if row["word"] == question["word"]
-    )
+    card = next(row for row in restored["cards"] if row["word"] == question["word"])
     response = target.client.post(
         "/api/listening/score",
         json={
@@ -310,6 +319,7 @@ def test_el01_v2_preview_reports_missing_extensions_and_restore_regenerates(
     assert preview.json()["version"] == 2
     assert preview.json()["extensions"]["missing"] == [
         "content_revisions",
+        "story_versions",
         "learning_contacts",
         "lesson_progress",
         "practice_sessions",
@@ -354,6 +364,7 @@ def test_el01_v1_partial_keeps_matched_identity_and_adds_new(ec):
     assert preview.json()["mode"] == "legacy_partial"
     assert preview.json()["extensions"]["missing"] == [
         "content_revisions",
+        "story_versions",
         "learning_contacts",
         "lesson_progress",
         "practice_sessions",
@@ -712,7 +723,9 @@ def test_el01_question_token_stale_only_after_semantic_change(ec):
 
     stale = question_for(apple_id)
     assert (
-        ec.client.put(f"/api/cards/{apple_id}", json={"meaning": "一个苹果"}).status_code
+        ec.client.put(
+            f"/api/cards/{apple_id}", json={"meaning": "一个苹果"}
+        ).status_code
         == 200
     )
     assert submit(stale).status_code == 409
@@ -760,9 +773,7 @@ def test_el01_outline_sentence_upgrade_advances_revision(ec, monkeypatch):
     from tests.support.llm_queue import QueuedLLM
 
     word_id = ec.seed_card(word="apple", example="An apple.")
-    sentence_id = ec.seed_card(
-        word="apple", kind="sentence", example="An apple."
-    )
+    sentence_id = ec.seed_card(word="apple", kind="sentence", example="An apple.")
     before = _revision(ec, sentence_id)
     monkeypatch.setattr(app.db, "SessionLocal", ec.SessionLocal)
     monkeypatch.setattr(
@@ -795,9 +806,7 @@ def test_el01_queued_llm_is_explicit_and_never_falls_back():
 
     llm = QueuedLLM([{"example": "An apple."}])
     response = llm.chat.completions.create(model="test", messages=[])
-    assert json.loads(response.choices[0].message.content) == {
-        "example": "An apple."
-    }
+    assert json.loads(response.choices[0].message.content) == {"example": "An apple."}
     with pytest.raises(RuntimeError, match="exhausted"):
         llm.chat.completions.create(model="test", messages=[])
 

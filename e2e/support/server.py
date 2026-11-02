@@ -51,6 +51,9 @@ def main() -> None:
     os.environ["LEARNING_ADVICE_ENABLED"] = str(
         settings_payload.get("learning_advice_enabled", True)
     )
+    os.environ["BOUNDED_STORIES_ENABLED"] = str(
+        settings_payload.get("bounded_stories_enabled", True)
+    )
     # 空值覆盖用户 .env 中的旧配置，测试服务器不读取真实密钥
     os.environ["DEEPSEEK_API_KEY"] = ""
     os.environ["DEEPSEEK_BASE_URL"] = ""

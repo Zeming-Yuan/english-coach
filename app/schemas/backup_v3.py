@@ -20,6 +20,7 @@ from app.models.content_revision import ContentRevision
 from app.models.learning_contact import LearningContact
 from app.models.lesson_progress import LessonProgress
 from app.models.practice import PracticeItem, PracticeSession
+from app.models.story_version import StoryVersion
 from app.schemas.backup import (
     BackupValidationError,
     FullBackup,
@@ -104,6 +105,42 @@ register_extension(
     _remap_content_revision,
     model=ContentRevision,
     complete=True,
+)
+
+
+class FullStoryVersion(FullRow):
+    id: int = Field(gt=0, strict=True)
+    story_id: int | None = Field(default=None, gt=0, strict=True)
+    version_id: str
+    operation_id: str
+    include_new_target: bool
+    story_identity: str
+    story_revision: int = Field(ge=1, strict=True)
+    material: dict
+    quality: dict
+
+    @field_validator("version_id", "operation_id", "story_identity")
+    @classmethod
+    def _uuid(cls, value):
+        return str(UUID(value))
+
+
+def _remap_story_version(row, mapping):
+    return {
+        **row,
+        "story_id": mapping["stories"][row["story_id"]]
+        if row["story_id"] is not None
+        else None,
+    }
+
+
+register_extension(
+    "story_versions",
+    FullStoryVersion,
+    ("stories",),
+    _remap_story_version,
+    model=StoryVersion,
+    unique=("version_id", "operation_id"),
 )
 
 
@@ -509,6 +546,76 @@ def validate_v3(payload: dict) -> ValidatedBackup:
                 "passed_count",
                 "通过数不能超过检查数",
             )
+    from app.services.story_quality import story_coverage, validate_story
+
+    story_revisions = {
+        r["resource_id"]: r
+        for r in validated_extensions.get("content_revisions", [])
+        if r["resource_kind"] == "story"
+    }
+    stories_by_id = {r["id"]: r for r in tables["stories"]}
+    version_stories = set()
+    for index, row in enumerate(validated_extensions.get("story_versions", [])):
+        quality = row["quality"]
+        material = row["material"]
+        for field in (
+            "known_words",
+            "support_words",
+            "known_targets",
+            "new_targets",
+            "unknown_forms",
+        ):
+            if not isinstance(quality.get(field), list) or any(
+                not isinstance(v, str) for v in quality[field]
+            ):
+                _reject("story_versions", index, "quality", "词形依据必须为字符串数组")
+        known = set(quality["known_words"])
+        support = set(quality["support_words"])
+        errors = validate_story(material, known, support, "normal")
+        if (
+            errors
+            or quality.get("known_basis") != "verified"
+            or not isinstance(quality.get("support_version"), str)
+            or not 1 <= len(quality["known_targets"]) <= 3
+            or len(quality["new_targets"]) > int(row["include_new_target"])
+            or any(t not in known for t in quality["known_targets"])
+            or material.get("targets")
+            != quality["known_targets"] + quality["new_targets"]
+        ):
+            _reject("story_versions", index, "material", "故事质量或目标依据不合法")
+        check = material["check"]
+        if (
+            check.get("evidence_sentence")
+            != material["sentences"][check["evidence_index"]]["en"]
+        ):
+            _reject(
+                "story_versions", index, "material.check", "证据句与固定上下文不一致"
+            )
+        coverage = story_coverage(material, known, support)
+        if any(quality.get(field) != value for field, value in coverage.items()):
+            _reject("story_versions", index, "quality", "覆盖检查与材料不一致")
+        if row["story_id"] is not None:
+            if row["story_id"] in version_stories:
+                _reject("story_versions", index, "story_id", "故事当前版本重复")
+            version_stories.add(row["story_id"])
+            revision = story_revisions.get(row["story_id"])
+            if (
+                revision is None
+                or revision["identity"] != row["story_identity"]
+                or revision["version"] < row["story_revision"]
+            ):
+                _reject("story_versions", index, "story_identity", "故事修订引用不一致")
+            story = stories_by_id[row["story_id"]]
+            if revision["version"] == row["story_revision"] and any(
+                story[k] != v
+                for k, v in {
+                    "title": material["title"],
+                    "title_cn": material["title_cn"],
+                    "content": "\n".join(r["en"] for r in material["sentences"]),
+                    "content_cn": "\n".join(r["cn"] for r in material["sentences"]),
+                }.items()
+            ):
+                _reject("story_versions", index, "material", "故事原文与版本材料不一致")
     sessions = validated_extensions.get("practice_sessions", [])
     items = validated_extensions.get("practice_items", [])
     session_ids = {row["session_id"] for row in sessions}

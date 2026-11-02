@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     learning_timezone: str = "Asia/Shanghai"
     delayed_recall_enabled: bool = True
     learning_advice_enabled: bool = True
+    bounded_stories_enabled: bool = True
 
     # 旧版配置项仅用于识别并给出迁移说明，不参与运行
     deepseek_api_key: str = ""
