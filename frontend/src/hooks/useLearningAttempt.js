@@ -15,7 +15,7 @@ import {
 const STORAGE_WARNING = "本次操作尚未确认保存；刷新后可能需要重新核对";
 const RECOVERED_WARNING = "尚未确认保存；请继续确认保存或明确放弃";
 
-export function useLearningAttempt(scope) {
+export function useLearningAttempt(scope, preparePending) {
   const pending = useRef(loadPending(scope));
   const busy = useRef(false);
   const mounted = useRef(true);
@@ -35,6 +35,8 @@ export function useLearningAttempt(scope) {
   const run = useCallback(
     async (target) => {
       if (!target || busy.current) throw new Error("提交不存在或正在保存");
+      if (preparePending) target = preparePending(target);
+      pending.current = target;
       busy.current = true;
       const durable = savePending(scope, target);
       if (mounted.current) {
@@ -65,7 +67,7 @@ export function useLearningAttempt(scope) {
         busy.current = false;
       }
     },
-    [scope],
+    [scope, preparePending],
   );
 
   const submit = useCallback(

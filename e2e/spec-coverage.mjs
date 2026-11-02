@@ -91,6 +91,21 @@ export const requirements = {
     "EL-08 refresh continues the same session",
     "EL-08 zero words is explained without a fake pass",
   ],
+  EL09: [
+    "EL-09 reopened results record contact before another delayed answer",
+    "EL-09 pending contact refresh on form confirmation",
+    "EL-09 pending contact refresh on global confirmation",
+    "EL-09 pending contact refresh on accepted-replay confirmation",
+    "EL-09 week check hides answers and displays real retention",
+    "EL-09 another tab seeing the answer reclassifies the result",
+    "EL-09 assisted first result survives refresh and retry",
+    "EL-09 skip then retry never replaces first sample",
+    "EL-09 lost response confirms once and preserves retention",
+    "EL-09 commit failure retains answer across refresh",
+    "EL-09 missing history offers ordinary practice without fake evidence",
+    "EL-09 V3 restore continues the frozen delayed session",
+    "EL-09 functional rollback hides entries and keeps saved evidence",
+  ],
 };
 export const projects = ["mobile", "desktop"];
 

@@ -20,7 +20,7 @@
 
 - **复习记录**（`Review`）：FSRS 的当前记忆状态入库形态（state/step/due/stability/difficulty/rating/review_count）；迁移 `b1c2d3e4f503` 先归档旧重复行，再以单卡唯一索引收口；`get_memory_state` 只读唯一当前行，旧行仍可从基线追溯
 - **学习事件**（`ReviewEvent`）：每次被接受的学习提交追加一行（来源/题型/提示/可空正误/自评/排期摘要/提交标识/当前修订身份与版本）；只追加，不覆盖历史；`submission_id` 唯一保证重试幂等；升级前旧事件的修订关联为空，不补造
-- **回忆证据**（LearningEvidence）：按当前内容修订的独立 typed 首答计算——同学习日只取首答，两个不同学习日且相隔 ≥24 小时才 `verified`；最近独立首答错误为 `weak`，超过 30 天为 `stale`，存在基线/legacy 事件/未绑定修订事件为 `history_incomplete`；辅助、识别、自评、跳过不进入独立样本；`retention`/`application` 在后续票前显式 `insufficient`
+- **回忆证据**（LearningEvidence）：按当前内容修订的独立 typed 首答计算——同学习日只取首答，两个不同学习日且相隔 ≥24 小时才 `verified`；最近独立首答错误为 `weak`，超过 30 天为 `stale`，存在基线/legacy 事件/未绑定修订事件为 `history_incomplete`；辅助、识别、自评、跳过不进入独立样本；`retention` 只认有效一周回测独立首测成功；新独立错误待巩固，超过 30 天待复测；`application` 在对应功能前显式 `insufficient`
 - **迁移基线**（`ReviewBaseline`）：升级前旧 Review 行的原始快照，`selected` 标出当前状态来源；不是作答事件，不纳入客观正确率
 - **学习提交**（LearningSubmission，`app/services/learning.py`）：所有评分入口的统一原子写模块——判分、事件、FSRS、错词与幂等回放；`run_write` 持有 `BEGIN IMMEDIATE`，路由不提交
 - **复习提交适配器**（ReviewSubmission，`app/services/review_submission.py`）：旧函数签名（闪卡/听写）与后台升级接缝，内部委托学习提交模块
@@ -62,3 +62,5 @@
 - 2026-10-31 最终集成验收：冻结实现 `3d1c453` 的完整 pytest 416 项、未过滤双视口 E2E 244 项及 T01–T21 全分支通过；生产构建/Ruff/audit 已验证，具体来源和未验证边界见发行证据。验后记录提交只改文档，不替代测试版本。
 
 - 分票发布：EC12/EC07/EC13/EC15/EC14 已按序通过 PR31–35 合并；EC16 候选核心/测试/锁/样式/JS 与已验 d0351fb 相同，缓存元数据递增至 v8。完整 416/244 仍归原冻结 3d1c453；本次定向 34 pytest/14 双视口场景、构建与 HTTP smoke 另见发行证据。合并记录以 GitHub 为准，未部署。
+
+- **延迟回测**（DelayedCheck）：最多三道当前修订词题，按距应用内最后确认接触/非跳过作答的 UTC 实际间隔分隔日 `[24,72)` 小时、一周 `[7,14)` 天和其他；每词/学习日/窗口首测冻结，辅助/跳过不能被重做换成独立样本；轮次及真实锚点随 V3 恢复。

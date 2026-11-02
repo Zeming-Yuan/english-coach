@@ -17,6 +17,27 @@ const FINAL_STATUS = new Set([404, 409, 422]);
 // 本页会话内被拒绝的存储范围；重试失败时仍要保留“依据不完整”的提示。
 const deniedScopes = new Set();
 
+// 请求不提供可信日期；任何未确认/不可持久化标记只会降低回测完整性。
+export function pendingContactIds() {
+  const ids = [...deniedScopes];
+  try {
+    localStorage.setItem("ec.contact.probe", "1");
+    localStorage.removeItem("ec.contact.probe");
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (key?.startsWith(PREFIX)) ids.push(key);
+    }
+  } catch { ids.push("storage-unavailable"); }
+  return ids.slice(0, 1000);
+}
+
+export function refreshPendingContacts(pending) {
+  if (!Array.isArray(pending?.payload?.pending_contact_ids)) return pending;
+  return {...pending, payload: {...pending.payload,
+    pending_contact_ids: [...new Set([...pending.payload.pending_contact_ids, ...pendingContactIds()])].slice(0, 1000),
+  }};
+}
+
 const scopeFor = ({source, kind, cardId}) => `${source}:${kind}:${cardId}`;
 
 async function send(scope, pending) {

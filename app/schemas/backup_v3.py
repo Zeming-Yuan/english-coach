@@ -201,8 +201,10 @@ class FullPracticeSession(FullRow):
 
     id: int = Field(gt=0, strict=True)
     session_id: str
-    purpose: Literal["lesson_check"]
-    lesson_id: int = Field(gt=0, strict=True)
+    purpose: Literal["lesson_check", "delayed_check"]
+    lesson_id: int | None = Field(default=None, gt=0, strict=True)
+    window: Literal["day", "week"] | None = None
+    pending_contact_ids: list[str] = Field(default_factory=list)
     status: Literal["active", "completed", "unavailable"]
     rule_version: str
     created_at: datetime = Field(strict=False)
@@ -215,6 +217,15 @@ class FullPracticeSession(FullRow):
             return str(UUID(value))
         except (ValueError, TypeError) as error:
             raise ValueError("必须是 UUID") from error
+
+
+class RetentionRecord(FullRow):
+    anchor_at: str | None
+    anchor_kind: Literal["event", "contact"] | None = None
+    anchor_id: str | None = None
+    gap_seconds: int | None = Field(ge=0, strict=True)
+    window: Literal["day", "week", "other"]
+    integrity: Literal["confirmed", "incomplete"]
 
 
 class FullPracticeItem(FullRow):
@@ -231,6 +242,8 @@ class FullPracticeItem(FullRow):
     kind: Literal["typed"]
     assistance: list[PracticeAssistance]
     first_event_id: str | None = None
+    retention_basis: RetentionRecord | None = None
+    retention_result: RetentionRecord | None = None
     created_at: datetime = Field(strict=False)
 
     @field_validator("item_id", "session_id", "card_identity", "first_event_id")
@@ -245,7 +258,12 @@ class FullPracticeItem(FullRow):
 
 
 def _remap_practice_session(row: dict, mapping: dict[str, dict[int, int]]) -> dict:
-    return {**row, "lesson_id": mapping["lessons"][row["lesson_id"]]}
+    return {
+        **row,
+        "lesson_id": mapping["lessons"][row["lesson_id"]]
+        if row["lesson_id"] is not None
+        else None,
+    }
 
 
 def _remap_practice_item(row: dict, mapping: dict[str, dict[int, int]]) -> dict:
@@ -286,7 +304,7 @@ class FullBackupV3(FullBackup):
     version: Literal[3]  # type: ignore[assignment] — pydantic 收窄字面量
     features: list[str]
     extensions: dict[str, list[dict]]
-    learning_events: list[FullEventV3]
+    learning_events: list[FullEventV3]  # type: ignore[reportIncompatibleVariableOverride] — Pydantic V3 narrows event schema
 
 
 def _reject(collection: str, index, field: str, reason: str) -> NoReturn:
@@ -327,9 +345,7 @@ def _validate_extension_graph(
                     _reject(name, index, "id", "源 ID 重复")
                 extension_ids.add(row["id"])
             for parent in spec.parents:
-                singular = _COLLECTION_RESOURCES.get(
-                    parent, parent.removesuffix("s")
-                )
+                singular = _COLLECTION_RESOURCES.get(parent, parent.removesuffix("s"))
                 if row.get("resource_kind") is not None:
                     if (
                         row["resource_kind"] == singular
@@ -338,6 +354,7 @@ def _validate_extension_graph(
                         _reject(name, index, "resource_id", "引用了备份中不存在的实体")
                 elif (
                     f"{singular}_id" in row
+                    and row[f"{singular}_id"] is not None
                     and row[f"{singular}_id"] not in ids[parent]
                 ):
                     _reject(
@@ -420,7 +437,13 @@ def validate_v3(payload: dict) -> ValidatedBackup:
         raise BackupValidationError(issues) from error
 
     tables = parsed.model_dump(
-        exclude={"version", "exported_at", "learning_timezone", "features", "extensions"}
+        exclude={
+            "version",
+            "exported_at",
+            "learning_timezone",
+            "features",
+            "extensions",
+        }
     )
     from app.schemas.backup import _validate_full_graph
 
@@ -453,7 +476,10 @@ def validate_v3(payload: dict) -> ValidatedBackup:
     }
     for index, contact in enumerate(validated_extensions.get("learning_contacts", [])):
         revision = card_revisions.get(contact["card_id"])
-        if revision is None or str(UUID(revision["identity"])) != contact["card_identity"]:
+        if (
+            revision is None
+            or str(UUID(revision["identity"])) != contact["card_identity"]
+        ):
             _reject(
                 "learning_contacts",
                 index,
@@ -486,6 +512,7 @@ def validate_v3(payload: dict) -> ValidatedBackup:
     sessions = validated_extensions.get("practice_sessions", [])
     items = validated_extensions.get("practice_items", [])
     session_ids = {row["session_id"] for row in sessions}
+    sessions_by_id = {row["session_id"]: row for row in sessions}
     event_rows = {row["id"]: row for row in tables["learning_events"]}
     items_by_session: dict[str, list[dict]] = {}
     positions = set()
@@ -528,7 +555,12 @@ def validate_v3(payload: dict) -> ValidatedBackup:
             if (
                 event is None
                 or event["card_id"] != item["card_id"]
-                or event["source"] != "lesson"
+                or event["source"]
+                != (
+                    "lesson"
+                    if sessions_by_id[item["session_id"]]["purpose"] == "lesson_check"
+                    else "spelling"
+                )
                 or event["kind"] != "typed"
                 or event["session_id"] != item["session_id"]
             ):
@@ -554,6 +586,15 @@ def validate_v3(payload: dict) -> ValidatedBackup:
             _reject("practice_sessions", index, "status", "完成轮次存在未作答题")
         if practice["status"] == "active" and processed and all(processed):
             _reject("practice_sessions", index, "status", "未完成轮次不应全部作答")
+    from app.services.retention import validate_retention_graph
+
+    validate_retention_graph(
+        sessions_by_id,
+        items,
+        event_rows,
+        validated_extensions.get("learning_contacts", []),
+        _reject,
+    )
     return ValidatedBackup(
         version=3,
         mode="full_replace",

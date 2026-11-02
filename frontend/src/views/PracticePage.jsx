@@ -1,6 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api } from "../lib/api.js";
 import { useLearningAttempt } from "../hooks/useLearningAttempt.js";
+import { pendingContactIds, refreshPendingContacts } from "../lib/contacts.js";
+import { usePracticeAnswerContact } from "../hooks/usePracticeAnswerContact.js";
+import { loadPending } from "../lib/learning.js";
 import { showToast } from "../App.jsx";
 
 const STATUS_LABELS = {
@@ -18,9 +21,20 @@ const ITEM_LABELS = {
   stale: "内容已修订",
 };
 
+function PracticeResult({item, delayed, source}) {
+  const ref = usePracticeAnswerContact(item, Boolean(item.expected) && !item.stale, source);
+  return <li ref={ref}>
+    {item.prompt} · {ITEM_LABELS[item.status] || item.status}
+    {delayed && ` · ${item.window === "week" ? "一周回测" : item.window === "day" ? "隔日回测" : "其他间隔"} · ${item.integrity === "confirmed" ? "依据已确认" : "依据不完整"}`}
+    {item.stale ? " · 内容已修订，历史结果" : item.expected ? ` · 正确拼写：${item.expected}` : ""}
+  </li>;
+}
+
 function PracticeItemForm({ session, item, onSession, onFeedback }) {
-  const attempt = useLearningAttempt(`practice:${session.id}:${item.id}`);
-  const [answer, setAnswer] = useState("");
+  const scope = `practice:${session.id}:${item.id}`;
+  const attempt = useLearningAttempt(scope, refreshPendingContacts);
+  const hintContactRef = usePracticeAnswerContact(item, Boolean(item.hint), session.purpose === "lesson_check" ? "lesson" : "spelling");
+  const [answer, setAnswer] = useState(() => loadPending(scope)?.payload.answer || "");
   const [helping, setHelping] = useState(false);
 
   const finish = (result) => {
@@ -41,7 +55,7 @@ function PracticeItemForm({ session, item, onSession, onFeedback }) {
       finish(
         await attempt.submit(
           `/api/practice-sessions/${session.id}/items/${item.id}/attempts`,
-          skipped ? { skipped: true } : { answer: answer.trim() },
+          { ...(skipped ? { skipped: true } : { answer: answer.trim() }), ...(session.purpose === "delayed_check" ? {pending_contact_ids: pendingContactIds()} : {}) },
         ),
       );
     } catch {}
@@ -72,14 +86,16 @@ function PracticeItemForm({ session, item, onSession, onFeedback }) {
   return (
     <div className="practice-item">
       <div className="spelling-meaning">{item.prompt}</div>
+      {session.purpose === "delayed_check" && <p role="status">距应用内上次记录：{item.gap_seconds == null ? "依据不完整" : `${Number((item.gap_seconds / 3600).toFixed(2))} 小时`} · 发题依据已冻结，提交时复核</p>}
       {item.hint?.kind === "first_letter" && (
-        <p role="status" className="spelling-hint">
+        <p ref={hintContactRef} role="status" className="spelling-hint">
           首字母：{item.hint.value}（本题按辅助记录）
         </p>
       )}
       <input
         className="spelling-input"
         name="practice-answer"
+        aria-label="英文答案"
         value={answer}
         onChange={(event) => setAnswer(event.target.value)}
         onKeyDown={(event) => {
@@ -132,7 +148,7 @@ function PracticeItemForm({ session, item, onSession, onFeedback }) {
   );
 }
 
-export default function PracticePage({ sessionId, onExit, onRestart }) {
+export default function PracticePage({ sessionId, onExit, onRestart, onNormal }) {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -173,23 +189,30 @@ export default function PracticePage({ sessionId, onExit, onRestart }) {
   const showSummary = session && session.items.length > 0 && !activeItem && !staleItem;
 
   const restart = (weakOnly) => {
-    if (session?.lesson_id) onRestart(session.lesson_id, weakOnly);
+    if (session?.purpose === "delayed_check") onRestart();
+    else if (session?.lesson_id) onRestart(session.lesson_id, weakOnly);
   };
+
+  const delayed = session?.purpose === "delayed_check";
+  const title = delayed ? (session.window === "week" ? "一周回测" : "隔日回测") : "本课短测";
+  const back = delayed ? "返回统计" : "返回课程";
+  const feedbackItem = session?.items.find(item => item.id === feedback?.itemId);
+  const feedbackContactRef = usePracticeAnswerContact(feedbackItem, Boolean(feedback?.expected) && feedback?.correct !== true, session?.purpose === "lesson_check" ? "lesson" : "spelling");
 
   return (
     <section className="view view-practice" data-testid="practice-session">
       <div className="page-head">
         <button className="btn btn-ghost btn-small" onClick={onExit}>
-          ← 返回课程
+          ← {back}
         </button>
-        <h2 className="page-title">本课短测</h2>
+        <h2 className="page-title">{title}</h2>
       </div>
       {loading && <div className="story-empty">加载中…</div>}
       {error && (
         <div role="alert" className="quiz-feedback err">
           {error}
           <button className="btn btn-ghost btn-small" onClick={onExit}>
-            返回课程
+            {back}
           </button>
         </div>
       )}
@@ -205,10 +228,7 @@ export default function PracticePage({ sessionId, onExit, onRestart }) {
           {processed.length > 0 && (
             <ul className="practice-results">
               {processed.map((item) => (
-                <li key={item.id}>
-                  {item.prompt} · {ITEM_LABELS[item.status] || item.status}
-                  {item.expected ? ` · 正确拼写：${item.expected}` : ""}
-                </li>
+                <PracticeResult key={item.id} item={item} delayed={delayed} source={session.purpose === "lesson_check" ? "lesson" : "spelling"} />
               ))}
             </ul>
           )}
@@ -240,7 +260,7 @@ export default function PracticePage({ sessionId, onExit, onRestart }) {
           )}
           {feedback && (
             <div className={`quiz-feedback ${feedback.correct ? "ok" : "err"}`}>
-              <p role="status">
+              <p ref={feedbackContactRef} role="status">
                 {feedback.skipped
                   ? `已跳过${feedback.expected ? ` · 正确拼写：${feedback.expected}` : ""}`
                   : feedback.correct
@@ -273,15 +293,15 @@ export default function PracticePage({ sessionId, onExit, onRestart }) {
           )}
           {showSummary && (
             <div className="study-done">
-              <h3>本课短测：{STATUS_LABELS[session.status] || session.status}</h3>
+              <h3>{title}：{delayed ? "已处理" : STATUS_LABELS[session.status] || session.status}</h3>
               <p>
                 共 {session.counts.total} 题 · 通过 {session.counts.passed} · 待巩固{" "}
                 {session.counts.weak + session.counts.skipped}
                 {session.counts.stale ? ` · 已修订 ${session.counts.stale}` : ""}
               </p>
-              <p>只有全部实际题目首答无提示正确才算通过；本结果只说明所测内容。</p>
+              <p>{delayed ? "首测按词、学习日和实际窗口保留；辅助与跳过单列，重试不替换首测。" : "只有全部实际题目首答无提示正确才算通过；本结果只说明所测内容。"}</p>
               <div className="save-state-actions">
-                {session.counts.weak + session.counts.skipped > 0 && (
+                {!delayed && session.counts.weak + session.counts.skipped > 0 && (
                   <button className="btn btn-primary btn-small" onClick={() => restart(true)}>
                     只练薄弱项
                   </button>
@@ -290,14 +310,16 @@ export default function PracticePage({ sessionId, onExit, onRestart }) {
                   新开一轮
                 </button>
                 <button className="btn btn-ghost btn-small" onClick={onExit}>
-                  返回课程
+                  {back}
                 </button>
               </div>
             </div>
           )}
+          {delayed && <button className="btn btn-ghost" onClick={onNormal}>普通练习</button>}
+          {delayed && !session.items.length && <button className="btn btn-primary" onClick={() => restart(false)}>重新查找候选</button>}
           {!session.items.length && !showSummary && (
             <button className="btn btn-ghost" onClick={onExit}>
-              返回课程
+              {back}
             </button>
           )}
         </>

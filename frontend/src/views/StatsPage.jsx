@@ -6,7 +6,7 @@ import { showToast } from "../App.jsx";
 /**
  * 学习统计视图：数字卡片/周正确率/热力图/导出。
  */
-export default function StatsPage({ onBack }) {
+export default function StatsPage({ onBack, onDelayed }) {
   const [stats, setStats] = useState(null);
   const [history, setHistory] = useState(null);
   const [weekly, setWeekly] = useState(null);
@@ -261,6 +261,20 @@ export default function StatsPage({ onBack }) {
             ? new Date(stats.evidence_latest_at).toLocaleDateString()
             : "暂无"}
         </p>
+      </div>
+      <div data-testid="retention-overview" className="metrics-panel">
+        <h3>延迟保持 · 距应用内上次记录</h3>
+        <p>每轮最多三题；首测结果按词、学习日和窗口保留，不代表全部词汇。</p>
+        {[["day", "隔日回测"], ["week", "一周回测"], ["other", "其他间隔"]].map(([key, label]) => {
+          const row = stats.retention?.[key];
+          return <div key={key}>
+            <h4>{label}</h4>
+            <p>独立成功/样本 {row?.successes || 0}/{row?.count || 0} · 辅助 {row?.assisted || 0} · 跳过 {row?.skipped || 0} · 覆盖 {row?.covered || 0} 词 · 依据不完整 {row?.incomplete || 0}</p>
+            <p>{!row?.count ? "暂无数据" : row.count < 10 ? "样本较少，仅说明所测内容" : "仅说明所测内容"}</p>
+            <p>实际间隔：{row?.gap_seconds?.length ? row.gap_seconds.map(seconds => `${Number((seconds / 3600).toFixed(2))} 小时`).join("、") : "暂无"}</p>
+            {key !== "other" && stats.delayed_recall_enabled !== false && <button className="btn btn-ghost btn-small" onClick={() => onDelayed(key)}>{label}</button>}
+          </div>;
+        })}
       </div>
       {stats.history_incomplete && (
         <p role="note" className="add-hint">

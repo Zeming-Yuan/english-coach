@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     # 学习参数
     daily_new_words: int = 10
     learning_timezone: str = "Asia/Shanghai"
+    delayed_recall_enabled: bool = True
 
     # 旧版配置项仅用于识别并给出迁移说明，不参与运行
     deepseek_api_key: str = ""
