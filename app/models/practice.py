@@ -34,6 +34,9 @@ class PracticeSession(Base):
     lesson_id: Mapped[int | None] = mapped_column(
         ForeignKey("lessons.id", ondelete="CASCADE"), index=True, nullable=True
     )
+    version_id: Mapped[str | None] = mapped_column(
+        ForeignKey("story_versions.version_id"), nullable=True, index=True
+    )
     # active | completed | unavailable
     status: Mapped[str] = mapped_column(String(20), nullable=False)
     rule_version: Mapped[str] = mapped_column(
@@ -53,7 +56,9 @@ class PracticeItem(Base):
     __tablename__ = "practice_items"
     __table_args__ = (
         UniqueConstraint("session_id", "position", name="uq_practice_item_position"),
-        UniqueConstraint("session_id", "card_id", name="uq_practice_item_card"),
+        UniqueConstraint(
+            "session_id", "card_id", "kind", name="uq_practice_item_card_kind"
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -73,6 +78,7 @@ class PracticeItem(Base):
     card_revision: Mapped[int] = mapped_column(Integer, nullable=False)
     prompt: Mapped[str] = mapped_column(String(500), nullable=False)
     kind: Mapped[str] = mapped_column(String(20), nullable=False, default="typed")
+    question: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     assistance: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     first_event_id: Mapped[str | None] = mapped_column(
         String(36), unique=True, index=True, nullable=True

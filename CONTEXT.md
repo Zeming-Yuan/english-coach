@@ -38,7 +38,7 @@
 
 - **内容修订**（ContentRevision）：可编辑实体（card/lesson/story）的当前修订身份；`identity`（UUID）随实体保留，`version` 仅在词卡词形/释义/例句/语境、课程 title/content 或故事 title/content/翻译实质变化时递增（按资源类型取值），改排版、音标、讲解或记忆法不增加；迁移只为现有实体补当前身份，不造历史；作为 V3 扩展集合 `content_revisions` 导出/校验/重映射/恢复
 
-- **练习轮次**（PracticeSession / PracticeItem）：持久短测轮次冻结用途、题序、内容修订与规则；题目只通过真实学习事件记录首答结果，未作答不暴露答案/长度/音频；提示持久标记为辅助，首答无提示全部正确才通过；作为 V3 扩展 `practice_sessions` / `practice_items` 导出/恢复
+- **练习轮次**（PracticeSession / PracticeItem）：持久短测轮次冻结用途、题序、内容修订与规则；题目只通过真实学习事件记录首答结果，未作答不暴露答案/长度/音频；提示持久标记为辅助，首答无提示全部正确才通过；作为 V3 扩展 `practice_sessions` / `practice_items` 导出/恢复。读后检查（story_check）绑定不可变故事版本，最多阅读识别与词汇输入各一道；回看先保存辅助标记，即时正确不等于延迟保持
 
 - **课程进度**（LessonProgress）：每课一行 `lesson_progress`，记录生成身份/时间、显式浏览确认与后续检查计数；生成和浏览都不等于掌握，尚无短测时保持待检查；作为 V3 扩展 `lesson_progress` 导出/恢复，旧课缺行保持状态未记录
 

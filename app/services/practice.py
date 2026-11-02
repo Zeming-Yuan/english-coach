@@ -31,7 +31,14 @@ from app.services.learning import (
 )
 from app.services.learning_evidence import bulk_evidence_summaries
 from app.services.lesson_progress import record_lesson_check
+from app.services.questions import issue_question
 from app.services.retention import classify_result, delayed_items, latest_basis
+from app.services.story_checks import (
+    check_items,
+    reading_counts,
+    story_version,
+    version_is_current,
+)
 from app.services.write_transaction import run_write
 
 RULE_VERSION = "el08-v1"
@@ -237,6 +244,7 @@ def _check_replay_targets(
         raise PracticeConflictError("该轮次的原目标与请求不同或已删除，请返回建议")
 
 
+register_purpose("story_check", check_items)
 register_purpose("targeted", _targeted_items)
 register_purpose("lesson_check", _lesson_check_items)
 register_purpose("delayed_check", delayed_items)
@@ -292,12 +300,17 @@ def _session_payload(db: Session, practice: PracticeSession) -> dict:
             )
         ).scalars()
     }
+    version = story_version(db, practice.version_id) if practice.version_id else None
+    story_stale = practice.purpose == "story_check" and not version_is_current(
+        db, version
+    )
     results = []
     out_items = []
     for item in items:
         current = revisions.get(item.card_id)
         stale = (
-            current is None
+            story_stale
+            or current is None
             or current["identity"] != item.card_identity
             or current["version"] != item.card_revision
         )
@@ -344,6 +357,9 @@ def _session_payload(db: Session, practice: PracticeSession) -> dict:
             "skipped": skipped if processed else False,
             "hint": hint,
         }
+        if item.kind == "reading_choice":
+            assert item.question is not None
+            payload_item["options"] = item.question["options"]
         if item.retention_basis:
             payload_item.update(item.retention_result or item.retention_basis)
         if processed:
@@ -372,13 +388,20 @@ def _session_payload(db: Session, practice: PracticeSession) -> dict:
     return {
         "id": practice.session_id,
         "purpose": practice.purpose,
+        "version_id": practice.version_id,
+        "story_id": version.story_id if version else None,
+        "reading_checks": reading_counts(out_items)
+        if practice.purpose == "story_check"
+        else None,
         "lesson_id": practice.lesson_id,
         "status": check_status,
         "lifecycle": practice.status,
         "rule_version": practice.rule_version,
         "window": practice.window,
         "message": (
-            "原目标已删除，本轮不可继续，请返回建议"
+            "本版本暂无可用检查题，原文仍可阅读"
+            if practice.purpose == "story_check"
+            else "原目标已删除，本轮不可继续，请返回建议"
             if invalidated and out_items
             else "原目标不可用或暂无符合窗口的词；旧记录不足时可先做普通练习建立依据"
             if practice.purpose == "delayed_check"
@@ -393,6 +416,17 @@ def _session_payload(db: Session, practice: PracticeSession) -> dict:
     }
 
 
+def _check_replay_story(db, practice, story_id):
+    if practice.purpose == "story_check":
+        version = story_version(db, practice.version_id)
+        if (
+            version is not None
+            and version.story_id is not None
+            and version.story_id != story_id
+        ):
+            raise PracticeConflictError("该轮次标识已用于其他故事")
+
+
 def create_session(
     db: Session,
     session_id,
@@ -403,6 +437,8 @@ def create_session(
     window: str | None = None,
     pending_contact_ids: list[str] | None = None,
     targets: list[dict] | None = None,
+    story_id: int | None = None,
+    version_id: str | None = None,
 ) -> dict:
     if purpose not in PURPOSES:
         raise PracticeUnavailableError("未知练习用途")
@@ -419,11 +455,13 @@ def create_session(
     if existing is not None:
         if (
             existing.purpose != purpose
+            or existing.version_id != version_id
             or existing.lesson_id != lesson_id
             or existing.window != window
             or existing.pending_contact_ids != pending_contact_ids
         ):
             raise PracticeConflictError("该轮次标识已用于其他课程或用途")
+        _check_replay_story(db, existing, story_id)
         _check_replay_targets(db, existing, targets)
         return _session_payload(db, existing)
 
@@ -438,16 +476,20 @@ def create_session(
         if replay is not None:
             if (
                 replay.purpose != purpose
+                or replay.version_id != version_id
                 or replay.lesson_id != lesson_id
                 or replay.window != window
                 or replay.pending_contact_ids != pending_contact_ids
             ):
                 raise PracticeConflictError("该轮次标识已用于其他课程或用途")
+            _check_replay_story(session, replay, story_id)
             _check_replay_targets(session, replay, targets)
             return _session_payload(session, replay)
         issued_at = runtime.clock.now().astimezone(UTC)
         now = issued_at.replace(tzinfo=None)
-        if purpose == "targeted":
+        if purpose == "story_check":
+            specs = PURPOSES[purpose](session, story_id, version_id)
+        elif purpose == "targeted":
             specs = PURPOSES[purpose](session, targets)
         elif purpose == "delayed_check":
             if targets:
@@ -476,8 +518,11 @@ def create_session(
             session_id=public_id,
             purpose=purpose,
             lesson_id=lesson_id,
+            version_id=version_id,
             status="active" if specs else "unavailable",
-            rule_version="el10-v1"
+            rule_version="el13-v1"
+            if purpose == "story_check"
+            else "el10-v1"
             if purpose == "targeted"
             else "el09-v1"
             if purpose == "delayed_check"
@@ -530,6 +575,10 @@ def set_assistance(
     def operation(session: Session) -> dict:
         practice = _session_by_public(session, session_id)
         item = _item(session, practice, item_id)
+        if practice.purpose == "story_check" and not version_is_current(
+            session, story_version(session, practice.version_id)
+        ):
+            raise PracticeStaleError("故事已删除或版本已变化，请返回故事")
         try:
             current = get_content_revision(session, "card", item.card_id)
         except LookupError:
@@ -539,6 +588,10 @@ def set_assistance(
             or current["version"] != item.card_revision
         ):
             raise PracticeStaleError("内容已修订，请新开一轮")
+        if kind == "answer_visible" and practice.purpose != "story_check":
+            raise PracticeUnavailableError("仅词汇输入可记录回看原文帮助")
+        if item.first_event_id:
+            return _session_payload(session, practice)
         try:
             item.assistance = merge_assistance(item.assistance or [], [kind])
         except ValueError:
@@ -629,11 +682,46 @@ def submit_practice(
                 ReviewEvent.submission_id == str(payload.submission_id)
             )
         )
+        skipped_question = None
+        if item.kind == "reading_choice" and payload.skipped:
+            assert item.question is not None
+            skipped_question = {
+                "card_id": item.card_id,
+                "kind": "choice",
+                "options": item.question["options"],
+                "expected": item.question["expected"],
+            }
+        question_token = None
+        if item.kind == "reading_choice" and not payload.skipped:
+            assert item.question is not None
+            if existing is not None:
+                question_token = (existing.command_json or {}).get("question_token")
+            else:
+                card = session.get(Card, item.card_id)
+                if card is None:
+                    raise PracticeNotFoundError("目标词卡已删除，请返回故事")
+                question_token = issue_question(
+                    card,
+                    "choice",
+                    item.question["options"],
+                    item.question["expected"],
+                    runtime.question_secret,
+                    revision={
+                        "identity": item.card_identity,
+                        "version": item.card_revision,
+                    },
+                    now=runtime.clock.now(),
+                )["token"]
         command = AttemptCommand(
             card_id=item.card_id,
             submission_id=payload.submission_id,
-            source="lesson" if practice.purpose == "lesson_check" else "spelling",
-            kind="typed",
+            source="story"
+            if practice.purpose == "story_check"
+            else "lesson"
+            if practice.purpose == "lesson_check"
+            else "spelling",
+            kind="choice" if item.kind == "reading_choice" else "typed",
+            question_token=question_token,
             answer=None if payload.skipped else payload.answer,
             skipped=payload.skipped,
             assistance=list(
@@ -642,7 +730,9 @@ def submit_practice(
             session_id=UUID(practice.session_id),
         )
         if existing is not None:
-            result = apply_attempt_in_transaction(session, command, runtime)
+            result = apply_attempt_in_transaction(
+                session, command, runtime, verified_question=skipped_question
+            )
             return {
                 "committed": True,
                 "event_id": result.event_id,
@@ -651,11 +741,17 @@ def submit_practice(
                 "skipped": payload.skipped,
                 "session": _session_payload(session, practice),
             }
+        if practice.purpose == "story_check" and item.first_event_id is not None:
+            raise PracticeConflictError("本题首答已保存，请继续下一题或新开一轮")
         if practice.status == "unavailable":
             raise PracticeUnavailableError("本轮没有可测试的词")
         card = session.get(Card, item.card_id)
         if card is None:
             raise PracticeNotFoundError("目标词卡不存在或已删除")
+        if practice.purpose == "story_check" and not version_is_current(
+            session, story_version(session, practice.version_id)
+        ):
+            raise PracticeStaleError("故事已删除或版本已变化，请返回故事")
         try:
             current = get_content_revision(session, "card", item.card_id)
         except LookupError:
@@ -670,7 +766,9 @@ def submit_practice(
             if practice.purpose == "delayed_check"
             else None
         )
-        result = apply_attempt_in_transaction(session, command, runtime)
+        result = apply_attempt_in_transaction(
+            session, command, runtime, verified_question=skipped_question
+        )
         if item.first_event_id is None:
             if practice.purpose == "delayed_check":
                 accepted = session.get(ReviewEvent, result.event_id)

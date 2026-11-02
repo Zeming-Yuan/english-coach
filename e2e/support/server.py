@@ -54,6 +54,9 @@ def main() -> None:
     os.environ["BOUNDED_STORIES_ENABLED"] = str(
         settings_payload.get("bounded_stories_enabled", True)
     )
+    os.environ["STORY_CHECKS_ENABLED"] = str(
+        settings_payload.get("story_checks_enabled", True)
+    )
     # 空值覆盖用户 .env 中的旧配置，测试服务器不读取真实密钥
     os.environ["DEEPSEEK_API_KEY"] = ""
     os.environ["DEEPSEEK_BASE_URL"] = ""

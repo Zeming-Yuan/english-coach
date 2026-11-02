@@ -3,6 +3,24 @@ import fs from "node:fs";
 import {fileURLToPath} from "node:url";
 
 export const requirements = {
+  EL13: [
+    "EL-13 stale creation after restore can be abandoned for the imported round",
+    "EL-13 recognition and independent input show separate results",
+    "EL-13 commit refresh confirms the original answer once",
+    "EL-13 response-loss refresh confirms the original answer once",
+    "EL-13 reopening the story keeps typed answer assisted",
+    "EL-13 commit creation refresh confirms the same round",
+    "EL-13 response-loss creation refresh confirms the same round",
+    "EL-13 V3 another instance resumes assistance and original version",
+    "EL-13 choice-only version reports actual question count",
+    "EL-13 typed-only version reports actual question count",
+    "EL-13 empty version reports actual question count",
+    "EL-13 legacy story stays readable without invented checks",
+    "EL-13 revision rejects a stale answer and returns to the story",
+    "EL-13 deletion rejects a stale answer and returns to the story",
+    "EL-13 failed help confirmation keeps the original text hidden",
+    "EL-13 functional rollback hides entry and keeps restored records",
+  ],
   EL11: [
     "EL-11 evidence based story shows checked coverage",
     "EL-11 empty library offers checked starter without fake mastery",

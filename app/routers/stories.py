@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models.card import Card
+from app.models.practice import PracticeSession
 from app.models.story import Story, StoryWord
 from app.models.story_version import StoryVersion
 from app.runtime import Runtime, get_runtime
@@ -108,7 +109,7 @@ def list_stories(request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/stories/{story_id}")
-def get_story(story_id: int, db: Session = Depends(get_db)):
+def get_story(story_id: int, request: Request, db: Session = Depends(get_db)):
     """读取一篇故事（含关联词）。旧故事无中文翻译时自动补翻。"""
     story = db.get(Story, story_id)
     if story is None:
@@ -120,7 +121,12 @@ def get_story(story_id: int, db: Session = Depends(get_db)):
     exists = db.scalar(select(Story.id).where(Story.id == story_id))
     if exists is None:
         raise HTTPException(status_code=404, detail="Story not found")
-    return _story_to_dict(db.get(Story, story_id, populate_existing=True), db)
+    current_story = db.get(Story, story_id, populate_existing=True)
+    if current_story is None:
+        raise HTTPException(status_code=404, detail="Story not found")
+    payload = _story_to_dict(current_story, db)
+    payload["checks_enabled"] = request.app.state.settings.story_checks_enabled
+    return payload
 
 
 @router.delete("/stories/{story_id}")
@@ -218,12 +224,26 @@ def _story_to_dict(story: Story, db: Session) -> dict:
         "identity": version.story_identity,
         "version": version.story_revision,
     }
+    if valid:
+        assert version is not None
     return {
         "id": story.id,
         "mode": "normal" if valid else "legacy",
-        "version_id": version.version_id if valid else None,
-        "quality": version.quality if valid else None,
-        "check_material": version.material["check"] if valid else None,
+        "version_id": version.version_id if valid and version is not None else None,
+        "check_session_id": db.scalar(
+            select(PracticeSession.session_id)
+            .where(
+                PracticeSession.version_id == version.version_id,
+            )
+            .order_by(PracticeSession.created_at.desc(), PracticeSession.id.desc())
+            .limit(1)
+        )
+        if valid and version is not None
+        else None,
+        "quality": version.quality if valid and version is not None else None,
+        "check_material": version.material.get("check")
+        if valid and version is not None
+        else None,
         "title": story.title,
         "title_cn": story.title_cn,
         "content": story.content,

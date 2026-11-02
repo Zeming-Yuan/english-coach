@@ -132,7 +132,7 @@ def select_current_review(reviews: list[Review]) -> Review | None:
         reviews,
         key=lambda review: (
             review.last_review is not None,
-            review.last_review or datetime.min,  # noqa: DTZ901 — 旧表为 naive UTC
+            review.last_review or datetime.min,
             review.id,
         ),
     )
@@ -318,7 +318,7 @@ def _resolve_verified_question(
 
 
 def _validate_verified_question(cmd: AttemptCommand, verified: dict | None) -> None:
-    if verified is None:
+    if verified is None or cmd.skipped:
         return
     if verified.get("card_id") != cmd.card_id or verified.get("kind") != cmd.kind:
         raise InvalidQuestionToken("题目上下文与提交不匹配，请重新加载题目")
@@ -391,6 +391,7 @@ def _apply_attempt_in_transaction(
     next_due = _utc_iso(review.due) if review is not None else None
 
     if scheduled:
+        assert fsrs_rating is not None
         new_card = schedule(fsrs_card, fsrs_rating, now)
         after = _memory_summary(new_card)
         if review is None:

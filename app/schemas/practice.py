@@ -5,7 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
 
-PracticeAssistance = Literal["first_letter"]
+PracticeAssistance = Literal["first_letter", "answer_visible"]
 
 
 class PracticeTarget(BaseModel):
@@ -24,8 +24,10 @@ class PracticeTarget(BaseModel):
 
 class CreatePracticeIn(BaseModel):
     id: UUID
-    purpose: Literal["lesson_check", "delayed_check", "targeted"]
+    purpose: Literal["lesson_check", "delayed_check", "targeted", "story_check"]
     lesson_id: int | None = Field(default=None, gt=0)
+    story_id: int | None = Field(default=None, gt=0)
+    version_id: UUID | None = None
     weak_only: bool = False
     card_ids: list[int] = Field(default_factory=list, max_length=3)
     targets: list[PracticeTarget] = Field(default_factory=list, max_length=3)
@@ -44,6 +46,20 @@ class CreatePracticeIn(BaseModel):
             self.window is None or self.lesson_id is not None or self.weak_only
         ):
             raise ValueError("延迟回测需要窗口且不能指定课程或薄弱项")
+        if self.purpose == "story_check":
+            if (
+                self.story_id is None
+                or self.version_id is None
+                or self.lesson_id is not None
+                or self.window is not None
+                or self.weak_only
+                or self.targets
+                or self.card_ids
+                or self.pending_contact_ids
+            ):
+                raise ValueError("读后检查需要故事和版本，不能指定其他练习目标")
+        elif self.story_id is not None or self.version_id is not None:
+            raise ValueError("只有读后检查可以指定故事版本")
         ids = [target.card_id for target in self.targets]
         if self.card_ids != ids or len(set(ids)) != len(ids):
             raise ValueError("指定目标与词集合不一致或重复")

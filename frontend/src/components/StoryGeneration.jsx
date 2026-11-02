@@ -17,7 +17,7 @@ export function StoryQuality({story}) {
     <p>词形覆盖检查 · 基础支撑词表 {q.support_version}（教学材料，不代表个人掌握）</p>
     {q.known_targets.length > 0 && <p>已有回忆依据的目标词：{q.known_targets.join("、")}</p>}
     <p>新目标：{q.new_targets.join("、") || "无"}；未覆盖词形：{q.unknown_forms.join("、") || "无"}。新词不会自动加入词库。</p>
-    <p>词形覆盖不保证理解全文。{story.check_material ? "理解题材料已校验保存，读后作答入口待开放。" : "本篇暂无检查题"}</p>
+    <p>词形覆盖不保证理解全文。{story.check_material ? "理解题材料已校验保存。" : story.mode === "normal" ? "本篇暂无理解选择题；可检查可用目标词。" : "本篇暂无检查题"}</p>
   </div>;
 }
 

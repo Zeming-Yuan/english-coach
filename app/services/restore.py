@@ -259,6 +259,12 @@ def preview_legacy_restore(db: Session, payload: dict, runtime: Runtime) -> dict
         return {
             "mode": "full_replace",
             "version": validated.version,
+            "reading_check_history": "recorded"
+            if any(
+                row["purpose"] == "story_check"
+                for row in validated.extensions.get("practice_sessions", [])
+            )
+            else "not_recorded",
             "targeted_history": "recorded"
             if any(
                 row["purpose"] == "targeted"
@@ -298,6 +304,7 @@ def preview_legacy_restore(db: Session, payload: dict, runtime: Runtime) -> dict
     revision = snapshot_revision(export_backup(db, runtime))
     return {
         "mode": "legacy_partial",
+        "reading_check_history": "not_recorded",
         "targeted_history": "not_recorded",
         "retention_history": "not_recorded",
         "version": validated.version,

@@ -238,7 +238,8 @@ class FullPracticeSession(FullRow):
 
     id: int = Field(gt=0, strict=True)
     session_id: str
-    purpose: Literal["lesson_check", "delayed_check", "targeted"]
+    purpose: Literal["lesson_check", "delayed_check", "targeted", "story_check"]
+    version_id: str | None = None
     lesson_id: int | None = Field(default=None, gt=0, strict=True)
     window: Literal["day", "week"] | None = None
     pending_contact_ids: list[str] = Field(default_factory=list)
@@ -276,7 +277,8 @@ class FullPracticeItem(FullRow):
     card_identity: str
     card_revision: int = Field(ge=1, strict=True)
     prompt: str = Field(min_length=1)
-    kind: Literal["typed"]
+    kind: Literal["typed", "reading_choice"]
+    question: dict | None = None
     assistance: list[PracticeAssistance]
     first_event_id: str | None = None
     retention_basis: RetentionRecord | None = None
@@ -310,7 +312,7 @@ def _remap_practice_item(row: dict, mapping: dict[str, dict[int, int]]) -> dict:
 register_extension(
     "practice_sessions",
     FullPracticeSession,
-    ("lessons",),
+    ("lessons", "story_versions"),
     _remap_practice_session,
     model=PracticeSession,
     unique=("session_id",),
@@ -571,7 +573,7 @@ def validate_v3(payload: dict) -> ValidatedBackup:
                 _reject("story_versions", index, "quality", "词形依据必须为字符串数组")
         known = set(quality["known_words"])
         support = set(quality["support_words"])
-        errors = validate_story(material, known, support, "normal")
+        errors = validate_story(material, known, support, "normal", require_check=False)
         if (
             errors
             or quality.get("known_basis") != "verified"
@@ -583,8 +585,8 @@ def validate_v3(payload: dict) -> ValidatedBackup:
             != quality["known_targets"] + quality["new_targets"]
         ):
             _reject("story_versions", index, "material", "故事质量或目标依据不合法")
-        check = material["check"]
-        if (
+        check = material.get("check")
+        if check is not None and (
             check.get("evidence_sentence")
             != material["sentences"][check["evidence_index"]]["en"]
         ):
@@ -637,7 +639,7 @@ def validate_v3(payload: dict) -> ValidatedBackup:
         if position_key in positions:
             _reject("practice_items", index, "position", "轮次内题目序号重复")
         positions.add(position_key)
-        card_key = (item["session_id"], item["card_id"])
+        card_key = (item["session_id"], item["card_id"], item["kind"])
         if card_key in cards_in_session:
             _reject("practice_items", index, "card_id", "轮次内目标词重复")
         cards_in_session.add(card_key)
@@ -664,11 +666,14 @@ def validate_v3(payload: dict) -> ValidatedBackup:
                 or event["card_id"] != item["card_id"]
                 or event["source"]
                 != (
-                    "lesson"
+                    "story"
+                    if sessions_by_id[item["session_id"]]["purpose"] == "story_check"
+                    else "lesson"
                     if sessions_by_id[item["session_id"]]["purpose"] == "lesson_check"
                     else "spelling"
                 )
-                or event["kind"] != "typed"
+                or event["kind"]
+                != ("choice" if item["kind"] == "reading_choice" else "typed")
                 or event["session_id"] != item["session_id"]
             ):
                 _reject(
@@ -677,8 +682,86 @@ def validate_v3(payload: dict) -> ValidatedBackup:
                     "first_event_id",
                     "首答事件与题目不一致",
                 )
+    versions_by_id = {
+        r["version_id"]: r for r in validated_extensions.get("story_versions", [])
+    }
     for index, practice in enumerate(sessions):
         rows = items_by_session.get(practice["session_id"], [])
+        if practice["purpose"] == "story_check":
+            version = versions_by_id.get(practice["version_id"])
+            if (
+                version is None
+                or practice["lesson_id"] is not None
+                or practice["window"] is not None
+                or practice["pending_contact_ids"]
+            ):
+                _reject(
+                    "practice_sessions",
+                    index,
+                    "version_id",
+                    "读后检查缺少版本或混合其他用途",
+                )
+            if len(rows) > 2 or len({r["kind"] for r in rows}) != len(rows):
+                _reject("practice_items", index, "kind", "读后检查最多各一种题目")
+            targets = version["material"]["targets"]
+            cards_by_id = {c["id"]: c for c in tables["cards"]}
+            for item in rows:
+                if (
+                    item["card_revision"] == card_revisions[item["card_id"]]["version"]
+                    and cards_by_id[item["card_id"]]["word"].lower() not in targets
+                ):
+                    _reject("practice_items", index, "card_id", "不是版本中的目标词")
+                if item["kind"] == "reading_choice" and (
+                    not isinstance(item["question"], dict)
+                    or item["question"] != version["material"].get("check")
+                    or item["prompt"] != item["question"]["question"]
+                ):
+                    _reject("practice_items", index, "question", "题目与版本材料不一致")
+                if item["kind"] == "typed" and item["question"] is not None:
+                    _reject(
+                        "practice_items", index, "question", "输入题不得携带选择上下文"
+                    )
+                if item["first_event_id"]:
+                    event = event_rows[item["first_event_id"]]
+                    if (
+                        event["stage"] != "standalone"
+                        or event["assistance"] != item["assistance"]
+                        or event["card_identity"] != item["card_identity"]
+                        or event["card_revision"] != item["card_revision"]
+                    ):
+                        _reject(
+                            "practice_items",
+                            index,
+                            "first_event_id",
+                            "首答帮助或阶段不一致",
+                        )
+                    question = item["question"] or {}
+                    if item["kind"] == "reading_choice" and event["command_json"].get(
+                        "question"
+                    ) != {
+                        "card_id": item["card_id"],
+                        "kind": "choice",
+                        "options": question["options"],
+                        "expected": question["expected"],
+                    }:
+                        _reject(
+                            "practice_items",
+                            index,
+                            "first_event_id",
+                            "首答判分上下文与版本不一致",
+                        )
+        elif practice["version_id"] is not None or any(
+            r["kind"] != "typed"
+            or r["question"] is not None
+            or "answer_visible" in r["assistance"]
+            for r in rows
+        ):
+            _reject(
+                "practice_sessions",
+                index,
+                "purpose",
+                "其他用途不能携带故事题或回看帮助",
+            )
         if (
             practice["status"] == "unavailable"
             and rows

@@ -8,6 +8,7 @@ import { useWordLookup } from "../lib/wordLookup.js";
 import { useLearningAttempt } from "../hooks/useLearningAttempt.js";
 import { showToast } from "../App.jsx";
 import StoryGeneration, {StoryQuality} from "../components/StoryGeneration.jsx";
+import StoryCheck from "../components/StoryCheck.jsx";
 import RatingButtons from "../components/RatingButtons.jsx";
 
 /**
@@ -54,7 +55,9 @@ export default function StoriesPage() {
 
   // 阅读视图
   if (activeStory) {
-    return <StoryRead story={activeStory} onBack={() => {selection.current += 1; openingStory.current = null; setActiveStory(null);}} />;
+    const reader = <StoryRead story={activeStory} onBack={() => {selection.current += 1; openingStory.current = null; setActiveStory(null);}} />;
+    return activeStory.mode === "normal" && activeStory.version_id
+      ? <StoryCheck key={activeStory.version_id} story={activeStory}>{reader}</StoryCheck> : reader;
   }
 
   return (

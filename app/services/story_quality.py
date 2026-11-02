@@ -61,8 +61,11 @@ def _english_texts(data: dict) -> list[str]:
     return [
         data["title"],
         *[r["en"] for r in data["sentences"]],
-        data["check"]["question"],
-        *data["check"]["options"],
+        *(
+            ([data["check"]["question"], *data["check"]["options"]])
+            if data.get("check")
+            else []
+        ),
     ]
 
 
@@ -83,7 +86,12 @@ def story_profile(mode: str) -> dict:
 
 
 def validate_story(
-    data: dict, known: set[str], support: set[str], mode: str
+    data: dict,
+    known: set[str],
+    support: set[str],
+    mode: str,
+    *,
+    require_check: bool = True,
 ) -> list[str]:
     profile = story_profile(mode)
     if not isinstance(data, dict):
@@ -94,19 +102,25 @@ def validate_story(
         not isinstance(rows, list)
         or not rows
         or any(not isinstance(r, dict) for r in rows)
-        or not isinstance(check, dict)
+        or (not isinstance(check, dict) and (require_check or check is not None))
         or any(not isinstance(data.get(k), str) for k in ("title", "title_cn"))
         or not isinstance(data.get("targets"), list)
         or any(not isinstance(t, str) for t in data["targets"])
         or any(not isinstance(r.get(k), str) for r in rows for k in ("en", "cn"))
-        or any(
-            not isinstance(check.get(k), str)
-            for k in ("question", "question_cn", "expected")
+        or (
+            check is not None
+            and any(
+                not isinstance(check.get(k), str)
+                for k in ("question", "question_cn", "expected")
+            )
         )
-        or any(
-            not isinstance(check.get(k), list)
-            or any(not isinstance(v, str) for v in check[k])
-            for k in ("options", "options_cn")
+        or (
+            check is not None
+            and any(
+                not isinstance(check.get(k), list)
+                or any(not isinstance(v, str) for v in check[k])
+                for k in ("options", "options_cn")
+            )
         )
     ):
         return ["structure"]
@@ -125,14 +139,13 @@ def validate_story(
     translations = [
         data["title_cn"],
         *[r["cn"] for r in rows],
-        check["question_cn"],
-        *check["options_cn"],
+        *([check["question_cn"], *check["options_cn"]] if check is not None else []),
     ]
     if (
         any(not r["en"].strip() for r in rows)
         or any(not re.search(r"[\u3400-\u9fff]", text) for text in translations)
         or not tokens(data["title"])
-        or not tokens(check["question"])
+        or (check is not None and not tokens(check["question"]))
     ):
         errors.append("translation")
     targets = data["targets"]
@@ -145,6 +158,8 @@ def validate_story(
         errors.append("target")
     if len(coverage["unknown_forms"]) > profile["max_unknown"]:
         errors.append("unknown")
+    if check is None:
+        return errors
     index = check.get("evidence_index")
     options = check["options"]
     expected = check["expected"]
