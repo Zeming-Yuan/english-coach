@@ -23,7 +23,7 @@ from app.services.content_revisions import (
 )
 from app.services.llm import generate_json
 from app.services.llm_client import LLMNotConfigured
-from app.services.story_generator import generate_story
+from app.services.story_generator import generate_story, simplify_story
 from app.services.story_quality import starter_payload
 from app.services.write_transaction import run_write
 
@@ -34,6 +34,27 @@ logger = logging.getLogger(__name__)
 class GenerateStoryIn(BaseModel):
     operation_id: UUID | None = None
     include_new_target: bool = False
+
+
+class SimplifyStoryIn(BaseModel):
+    operation_id: UUID
+    version_id: UUID
+
+
+@router.post("/stories/{story_id}/simplify")
+def create_simpler_story(
+    story_id: int,
+    body: SimplifyStoryIn,
+    request: Request,
+    db: Session = Depends(get_db),
+    runtime: Runtime = Depends(get_runtime),
+):
+    if not request.app.state.settings.simpler_stories_enabled:
+        raise HTTPException(403, "简化入口已关闭，已有版本仍可阅读")
+    story = simplify_story(
+        db, runtime, story_id, str(body.version_id), str(body.operation_id)
+    )
+    return _story_to_dict(story, db)
 
 
 @router.get("/stories/starter")
@@ -69,6 +90,7 @@ def list_stories(request: Request, db: Session = Depends(get_db)):
         return {
             "stories": [],
             "generation_enabled": request.app.state.settings.bounded_stories_enabled,
+            "simplification_enabled": request.app.state.settings.simpler_stories_enabled,
         }
     # 批量加载所有 story-card 关系
     story_ids = [s.id for s in stories]
@@ -79,6 +101,12 @@ def list_stories(request: Request, db: Session = Depends(get_db)):
     ).all()
     card_revisions = content_revision_map(db, "card", [c.id for _, c in rows])
     story_revisions = content_revision_map(db, "story", story_ids)
+    versions = {
+        v.story_id: v
+        for v in db.scalars(
+            select(StoryVersion).where(StoryVersion.story_id.in_(story_ids))
+        )
+    }
     story_words: dict[int, list[dict]] = {}
     for sw, c in rows:
         story_words.setdefault(sw.story_id, []).append(
@@ -92,9 +120,18 @@ def list_stories(request: Request, db: Session = Depends(get_db)):
         )
     return {
         "generation_enabled": request.app.state.settings.bounded_stories_enabled,
+        "simplification_enabled": request.app.state.settings.simpler_stories_enabled,
         "stories": [
             {
                 "id": s.id,
+                "mode": versions[s.id].mode
+                if s.id in versions
+                and story_revisions[s.id]
+                == {
+                    "identity": versions[s.id].story_identity,
+                    "version": versions[s.id].story_revision,
+                }
+                else "legacy",
                 "title": s.title,
                 "title_cn": s.title_cn,
                 "content": s.content,
@@ -120,7 +157,10 @@ def get_story(story_id: int, db: Session = Depends(get_db)):
     exists = db.scalar(select(Story.id).where(Story.id == story_id))
     if exists is None:
         raise HTTPException(status_code=404, detail="Story not found")
-    return _story_to_dict(db.get(Story, story_id, populate_existing=True), db)
+    current_story = db.get(Story, story_id, populate_existing=True)
+    if current_story is None:
+        raise HTTPException(404, "Story not found")
+    return _story_to_dict(current_story, db)
 
 
 @router.delete("/stories/{story_id}")
@@ -214,16 +254,20 @@ def _story_to_dict(story: Story, db: Session) -> dict:
     lines = [line for line in (story.content or "").split("\n") if line]
     version = db.scalar(select(StoryVersion).where(StoryVersion.story_id == story.id))
     current = get_content_revision(db, "story", story.id)
-    valid = version is not None and current == {
+    if version is not None and current != {
         "identity": version.story_identity,
         "version": version.story_revision,
-    }
+    }:
+        version = None
     return {
         "id": story.id,
-        "mode": "normal" if valid else "legacy",
-        "version_id": version.version_id if valid else None,
-        "quality": version.quality if valid else None,
-        "check_material": version.material["check"] if valid else None,
+        "mode": version.mode if version is not None else "legacy",
+        "parent_version_id": version.parent_version_id if version is not None else None,
+        "versions": _related_versions(version, db) if version is not None else [],
+        "check_status": "unchecked",
+        "version_id": version.version_id if version is not None else None,
+        "quality": version.quality if version is not None else None,
+        "check_material": version.material["check"] if version is not None else None,
         "title": story.title,
         "title_cn": story.title_cn,
         "content": story.content,
@@ -233,3 +277,19 @@ def _story_to_dict(story: Story, db: Session) -> dict:
         "visible_card_ids": visible_card_ids(story.content or "", words),
         "line_card_ids": [visible_card_ids(line, words) for line in lines],
     }
+
+
+def _related_versions(version, db):
+    root = version.parent_version_id or version.version_id
+    rows = db.scalars(
+        select(StoryVersion)
+        .where(
+            (StoryVersion.version_id == root) | (StoryVersion.parent_version_id == root)
+        )
+        .order_by(StoryVersion.id)
+    )
+    return [
+        {"story_id": row.story_id, "version_id": row.version_id, "mode": row.mode}
+        for row in rows
+        if row.story_id is not None
+    ]

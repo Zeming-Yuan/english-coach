@@ -3,6 +3,17 @@ import fs from "node:fs";
 import {fileURLToPath} from "node:url";
 
 export const requirements = {
+  EL12: [
+    "EL-12 simpler story preserves original and separate unchecked versions",
+    "EL-12 commit refresh confirms the same simplification once",
+    "EL-12 response-loss refresh confirms the same simplification once",
+    "EL-12 a late simplification cannot replace selected original",
+    "EL-12 invalid simpler content keeps original readable",
+    "EL-12 deleted source during generation offers explicit failure",
+    "EL-12 V3 restore keeps versions materials and replay identity",
+    "EL-12 functional rollback hides simplify and retains saved versions",
+    "EL-12 pending confirmation after restore uses mapped original identity",
+  ],
   EL11: [
     "EL-11 evidence based story shows checked coverage",
     "EL-11 empty library offers checked starter without fake mastery",

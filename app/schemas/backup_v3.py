@@ -116,8 +116,15 @@ class FullStoryVersion(FullRow):
     include_new_target: bool
     story_identity: str
     story_revision: int = Field(ge=1, strict=True)
+    mode: Literal["normal", "short"] = "normal"
+    parent_version_id: str | None = None
     material: dict
     quality: dict
+
+    @field_validator("parent_version_id")
+    @classmethod
+    def _parent_uuid(cls, value):
+        return str(UUID(value)) if value is not None else None
 
     @field_validator("version_id", "operation_id", "story_identity")
     @classmethod
@@ -554,8 +561,23 @@ def validate_v3(payload: dict) -> ValidatedBackup:
         if r["resource_kind"] == "story"
     }
     stories_by_id = {r["id"]: r for r in tables["stories"]}
+    versions_by_id = {
+        r["version_id"]: r for r in validated_extensions.get("story_versions", [])
+    }
     version_stories = set()
     for index, row in enumerate(validated_extensions.get("story_versions", [])):
+        parent = versions_by_id.get(row["parent_version_id"])
+        if row["mode"] == "normal" and row["parent_version_id"] is not None:
+            _reject("story_versions", index, "parent_version_id", "原版不能引用父版本")
+        if row["mode"] == "short" and (
+            parent is None
+            or parent["mode"] != "normal"
+            or parent["material"].get("targets") != row["material"].get("targets")
+            or parent["include_new_target"] != row["include_new_target"]
+        ):
+            _reject(
+                "story_versions", index, "parent_version_id", "简化版须引用同目标原版"
+            )
         quality = row["quality"]
         material = row["material"]
         for field in (
@@ -571,7 +593,7 @@ def validate_v3(payload: dict) -> ValidatedBackup:
                 _reject("story_versions", index, "quality", "词形依据必须为字符串数组")
         known = set(quality["known_words"])
         support = set(quality["support_words"])
-        errors = validate_story(material, known, support, "normal")
+        errors = validate_story(material, known, support, row["mode"])
         if (
             errors
             or quality.get("known_basis") != "verified"
