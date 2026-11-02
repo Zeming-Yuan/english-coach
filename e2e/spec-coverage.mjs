@@ -20,7 +20,9 @@ export const requirements = {
     "EL-11 old backup explicitly has no story versions or checks",
     "EL-11 early V3 missing versions does not claim revisions are missing",
     "EL-11 deleted selection rejects an already fetched late detail",
-    "EL-11 starter read transport failure is visible and retryable"
+    "EL-11 starter read transport failure is visible and retryable",
+    "EL-11 deletion confirmation clears detail that arrived during saving",
+    "EL-11 deleting a previous selection preserves a different current story"
 ],
   T01: ["EC-01 no-key-home", "EC-01 external-missing"],
   T02: ["EC-16 installation configuration contracts"],

@@ -248,3 +248,64 @@ test("EL-11 starter read transport failure is visible and retryable", async ({ap
   await expect(page.getByTestId("story-quality")).toContainText("已核对的入门材料");
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
+
+test("EL-11 deletion confirmation clears detail that arrived during saving", async ({appFactory, page}) => {
+  const app = await appFactory({fixture: "ec04-story.json"});
+  await library(page, app);
+  let releaseRead, releaseDelete, readFetched, deleteFetched;
+  const readReady = new Promise(resolve => {readFetched = resolve;});
+  const deleteReady = new Promise(resolve => {deleteFetched = resolve;});
+  const readGate = new Promise(resolve => {releaseRead = resolve;});
+  const deleteGate = new Promise(resolve => {releaseDelete = resolve;});
+  await page.route("**/api/stories/1", async route => {
+    const result = await route.fetch();
+    if (route.request().method() === "GET") {readFetched(); await readGate;}
+    else {deleteFetched(); await deleteGate;}
+    await route.fulfill({response: result});
+  });
+  await page.locator(".story-item-main").click();
+  await readReady;
+  page.on("dialog", dialog => dialog.accept());
+  await page.locator(".story-delete").click();
+  await deleteReady;
+  expect((await app.request.get("/api/stories/1")).status()).toBe(404);
+  releaseRead();
+  await expect(page.locator(".story-read-title")).toBeVisible();
+  const arrived = page.waitForResponse(response => response.url().endsWith("/api/stories/1") && response.request().method() === "DELETE");
+  releaseDelete();
+  await (await arrived).finished();
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await expect(page.locator(".story-read-title")).toHaveCount(0);
+  await expect(page.getByRole("button", {name: "生成新故事", exact: true})).toBeVisible();
+});
+
+test("EL-11 deleting a previous selection preserves a different current story", async ({appFactory, page}) => {
+  const app = await appFactory({fixture: "el11-stories.json"});
+  await verified(app);
+  const first = await (await app.request.post("/api/stories/generate")).json();
+  const second = await (await app.request.post("/api/stories/generate")).json();
+  await library(page, app);
+  let releaseRead, releaseDelete, readFetched, deleteFetched;
+  const readReady = new Promise(resolve => {readFetched = resolve;});
+  const deleteReady = new Promise(resolve => {deleteFetched = resolve;});
+  const readGate = new Promise(resolve => {releaseRead = resolve;});
+  const deleteGate = new Promise(resolve => {releaseDelete = resolve;});
+  await page.route(`**/api/stories/${first.id}`, async route => {
+    const result = await route.fetch();
+    if (route.request().method() === "GET") {readFetched(); await readGate;}
+    else {deleteFetched(); await deleteGate;}
+    await route.fulfill({response: result});
+  });
+  await page.locator(".story-item-main").last().click();
+  await readReady;
+  page.on("dialog", dialog => dialog.accept());
+  await page.locator(".story-delete").last().click();
+  await deleteReady;
+  await page.locator(".story-item-main").first().click();
+  await expect(page.locator("[data-story-version]")).toHaveAttribute("data-story-version", second.version_id);
+  const finished = page.waitForResponse(response => response.url().endsWith(`/api/stories/${first.id}`) && response.request().method() === "DELETE");
+  releaseRead(); releaseDelete();
+  await (await finished).finished();
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await expect(page.locator("[data-story-version]")).toHaveAttribute("data-story-version", second.version_id);
+});

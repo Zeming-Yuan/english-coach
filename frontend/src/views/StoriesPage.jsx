@@ -33,6 +33,7 @@ export default function StoriesPage() {
     try {
       await api(`/api/stories/${id}`, { method: "DELETE" });
       setStories((s) => s.filter((x) => x.id !== id));
+      setActiveStory((current) => current?.id === id ? null : current);
       if (openingStory.current === id) {
         selection.current += 1;
         openingStory.current = null;
