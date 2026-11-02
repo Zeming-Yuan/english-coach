@@ -259,6 +259,12 @@ def preview_legacy_restore(db: Session, payload: dict, runtime: Runtime) -> dict
         return {
             "mode": "full_replace",
             "version": validated.version,
+            "retention_history": "recorded"
+            if any(
+                row["purpose"] == "delayed_check"
+                for row in validated.extensions.get("practice_sessions", [])
+            )
+            else "not_recorded",
             "counts": {
                 **{name: len(rows) for name, rows in validated.tables.items()},
                 **{name: len(rows) for name, rows in validated.extensions.items()},
@@ -271,10 +277,7 @@ def preview_legacy_restore(db: Session, payload: dict, runtime: Runtime) -> dict
             },
             "impact": {
                 "replaced": {
-                    **{
-                        name: len(current[name])
-                        for name, _ in BACKUP_COLLECTIONS
-                    },
+                    **{name: len(current[name]) for name, _ in BACKUP_COLLECTIONS},
                     **{
                         name: len(current["extensions"].get(name, []))
                         for name in registered
@@ -289,6 +292,7 @@ def preview_legacy_restore(db: Session, payload: dict, runtime: Runtime) -> dict
     revision = snapshot_revision(export_backup(db, runtime))
     return {
         "mode": "legacy_partial",
+        "retention_history": "not_recorded",
         "version": validated.version,
         "counts": {
             collection: len(rows) for collection, rows in validated.tables.items()
@@ -387,7 +391,9 @@ def _apply_full_restore(session: Session, validated: ValidatedBackup) -> dict:
     mapping = {name: {} for name in order}
     for name in order:
         for source in validated.tables[name]:
-            row = {key: _naive(value) for key, value in source.items() if key != "id"}
+            row: dict = {
+                key: _naive(value) for key, value in source.items() if key != "id"
+            }
             for key, parent in (("card_id", "cards"), ("story_id", "stories")):
                 if key in row:
                     row[key] = mapping[parent][row[key]]

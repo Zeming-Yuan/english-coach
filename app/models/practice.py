@@ -41,6 +41,10 @@ class PracticeSession(Base):
     )
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    window: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    pending_contact_ids: Mapped[list] = mapped_column(
+        JSON, nullable=False, default=list, server_default="[]"
+    )
 
 
 class PracticeItem(Base):
@@ -74,3 +78,5 @@ class PracticeItem(Base):
         String(36), unique=True, index=True, nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    retention_basis: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    retention_result: Mapped[dict | None] = mapped_column(JSON, nullable=True)

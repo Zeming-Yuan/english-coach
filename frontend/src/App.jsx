@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useCallback, Component } from "reac
 import { api } from "./lib/api.js";
 import { storageGet, storageSet } from "./lib/utils.js";
 import { setTtsRate } from "./lib/tts.js";
-import { loadPending, sendPending, clearPending } from "./lib/learning.js";
+import { refreshPendingContacts } from "./lib/contacts.js";
+import { loadPending, sendPending, clearPending, savePending } from "./lib/learning.js";
 import StudyPage from "./views/StudyPage.jsx";
 import DailySessionPage from "./views/DailySessionPage.jsx";
 import QuizPage from "./views/QuizPage.jsx";
@@ -13,6 +14,7 @@ import WordsPage from "./views/WordsPage.jsx";
 import StoriesPage from "./views/StoriesPage.jsx";
 import AddPage from "./views/AddPage.jsx";
 import StatsPage from "./views/StatsPage.jsx";
+import DelayedCheckPage from "./views/DelayedCheckPage.jsx";
 import SettingsPage from "./views/SettingsPage.jsx";
 import BackupPage from "./views/BackupPage.jsx";
 import LessonsPage from "./views/LessonsPage.jsx";
@@ -87,7 +89,9 @@ function PendingRecovery({ onConfirmed }) {
     setBusyScope(entry.scope);
     setError("");
     try {
-      const result = await sendPending(entry.pending);
+      const pending = refreshPendingContacts(loadPending(entry.scope) || entry.pending);
+      savePending(entry.scope, pending);
+      const result = await sendPending(pending);
       if (result.committed !== true) throw new Error("尚未确认保存");
       if (loadPending(entry.scope)?.payload.submission_id === entry.pending.payload.submission_id) {
         clearPending(entry.scope);
@@ -162,6 +166,8 @@ class ErrorBoundary extends Component {
 
 /* ============ 主应用 ============ */
 export default function App() {
+  const [delayedWindow, setDelayedWindow] = useState("week");
+  const startDelayed = (window) => { setDelayedWindow(window); setView("delayed"); };
   const [view, setView] = useState("queue");
   const [studyQueue, setStudyQueue] = useState([]);
   const [isDailyStudy, setIsDailyStudy] = useState(false);
@@ -243,13 +249,14 @@ export default function App() {
           confirmDailyCard(pending.payload, result);
           setQueueVersion((v) => v + 1);
         }} />}
-        {view === "queue" && <QueueView key={queueVersion} setView={setView} setStudyQueue={(cards) => { setIsDailyStudy(false); setStudyQueue(cards); }} dailySession={dailySession} onStartDaily={startDaily} onResumeDaily={() => {
+        {view === "queue" && <QueueView key={queueVersion} setView={setView} onDelayed={startDelayed} setStudyQueue={(cards) => { setIsDailyStudy(false); setStudyQueue(cards); }} dailySession={dailySession} onStartDaily={startDaily} onResumeDaily={() => {
           setIsDailyStudy(true); setStudyQueue(dailySession.queue); setView("study");
         }} onAddStarter={addStarterCards} />}
         {view === "words" && <WordsPage />}
         {view === "stories" && <StoriesPage />}
         {view === "add" && <AddPage onAddStarter={addStarterCards} onGoWords={() => setView("words")} onStartStudy={(cards) => { setIsDailyStudy(false); setStudyQueue(cards); setView("study"); }} />}
-        {view === "stats" && <StatsPage onBack={() => setView("queue")} />}
+        {view === "stats" && <StatsPage onBack={() => setView("queue")} onDelayed={startDelayed} />}
+        {view === "delayed" && <DelayedCheckPage key={delayedWindow} window={delayedWindow} onExit={() => setView("stats")} onNormal={() => setView("spelling")} />}
         {view === "settings" && <SettingsPage darkMode={darkMode} setDarkMode={setDarkMode} onOpenBackup={() => setView("backup")} />}
         {view === "backup" && <BackupPage restoring={restoringBackup} onRestoringChange={setRestoringBackup} onBack={() => setView("settings")} onRestored={() => {
           setIsDailyStudy(false);
@@ -288,7 +295,7 @@ export default function App() {
 }
 
 /* ============ 队列页 ============ */
-function QueueView({ setView, setStudyQueue, dailySession, onStartDaily, onResumeDaily, onAddStarter }) {
+function QueueView({ onDelayed, setView, setStudyQueue, dailySession, onStartDaily, onResumeDaily, onAddStarter }) {
   const [data, setData] = useState(null);
   const [stats, setStats] = useState(null);
   const [lessonData, setLessonData] = useState(null);
@@ -497,6 +504,10 @@ function QueueView({ setView, setStudyQueue, dailySession, onStartDaily, onResum
         </div>
       )}
 
+      {stats?.delayed_recall_enabled !== false && <div className="save-state-actions" aria-label="延迟回测">
+        <button className="btn btn-ghost btn-small" onClick={() => onDelayed("day")}>隔日回测</button>
+        <button className="btn btn-ghost btn-small" onClick={() => onDelayed("week")}>一周回测</button>
+      </div>}
       <details>
         <summary>专项练习</summary>
       {/* 错词复习入口 */}
@@ -523,7 +534,7 @@ function QueueView({ setView, setStudyQueue, dailySession, onStartDaily, onResum
             </div>
             <div className="recommended-words">
               {recommended.map((c, i) => (
-                <span key={i} className="recommended-chip">{c.word}</span>
+                <span key={i} className="recommended-chip">{c.meaning || "待复习词"}</span>
               ))}
             </div>
           </div>

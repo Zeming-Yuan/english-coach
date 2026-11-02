@@ -1,6 +1,6 @@
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -253,7 +253,11 @@ def _event_rows(db: Session) -> list[dict]:
 
 
 @router.get("/stats")
-def get_stats(db: Session = Depends(get_db), runtime: Runtime = Depends(get_runtime)):
+def get_stats(
+    request: Request,
+    db: Session = Depends(get_db),
+    runtime: Runtime = Depends(get_runtime),
+):
     """学习统计：今日完成词、练习次数、跳过数、连续天数与旧历史提示。"""
     today = learning_day(runtime.clock.now(), runtime.learning_timezone)
     events = _event_rows(db)
@@ -269,6 +273,8 @@ def get_stats(db: Session = Depends(get_db), runtime: Runtime = Depends(get_runt
         db.execute(select(ReviewBaseline.id).limit(1)).first() is not None
     )
     overview = word_evidence_overview(db, runtime)
+    from app.services.retention import retention_overview
+
     return {
         **summary,
         "total_cards": total_cards,
@@ -278,6 +284,8 @@ def get_stats(db: Session = Depends(get_db), runtime: Runtime = Depends(get_runt
         "evidence_labels": overview["labels"],
         "evidence_samples": overview["samples"],
         "evidence_latest_at": overview["latest_at"],
+        "retention": retention_overview(db),
+        "delayed_recall_enabled": request.app.state.settings.delayed_recall_enabled,
         "learning_timezone": runtime.learning_timezone,
         "metrics": {
             category: metric(events, category)

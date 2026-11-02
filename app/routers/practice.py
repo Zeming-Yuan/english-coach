@@ -1,5 +1,6 @@
 """持久练习上下文路由（EL-08）。"""
 
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -19,6 +20,7 @@ from app.services.practice import (
     PracticeNotFoundError,
     PracticeStaleError,
     PracticeUnavailableError,
+    active_delayed_sessions,
     create_session,
     get_session,
     set_assistance,
@@ -26,6 +28,16 @@ from app.services.practice import (
 )
 
 router = APIRouter()
+
+
+@router.get("/practice-sessions")
+def active(
+    purpose: Literal["delayed_check"],
+    window: Literal["day", "week"],
+    db: Session = Depends(get_db),
+):
+    """恢复其他浏览器/V3 中的待处理轮次；只返回轮次身份。"""
+    return {"sessions": active_delayed_sessions(db, window)}
 
 
 def _not_found(error: Exception) -> HTTPException:
@@ -55,6 +67,8 @@ def create(
             payload.lesson_id,
             payload.weak_only,
             runtime,
+            payload.window,
+            payload.pending_contact_ids,
         )
     except PracticeLessonNotFoundError as error:
         raise _not_found(error)
@@ -107,7 +121,11 @@ def attempt(
         raise _not_found(error)
     except CardNotFoundError as error:
         raise _not_found(error)
-    except (PracticeConflictError, PracticeStaleError, SubmissionConflictError) as error:
+    except (
+        PracticeConflictError,
+        PracticeStaleError,
+        SubmissionConflictError,
+    ) as error:
         raise _conflict(error)
     except PracticeUnavailableError as error:
         raise _unavailable(error)

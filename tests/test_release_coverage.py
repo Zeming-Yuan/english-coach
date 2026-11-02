@@ -113,9 +113,10 @@ def run_diagnostic(stdout):
     return Path(line.removeprefix("Release diagnostics: "))
 
 
-def test_release_runner_empty_ticket_fails_with_retained_diagnostics():
+@pytest.mark.parametrize("ticket", ["EC-99", "EL-99"])
+def test_release_runner_empty_ticket_fails_with_retained_diagnostics(ticket):
     result = subprocess.run(
-        ["node", "e2e/run.mjs", "--ticket", "EC-99"],
+        ["node", "e2e/run.mjs", "--ticket", ticket],
         check=False,
         text=True,
         capture_output=True,
@@ -139,6 +140,7 @@ def test_release_runner_interrupted_fails_with_retained_diagnostics():
         stderr=subprocess.STDOUT,
     )
     try:
+        assert process.stdout is not None
         first = process.stdout.readline()
         directory = run_diagnostic(first)
         process.send_signal(signal.SIGTERM)

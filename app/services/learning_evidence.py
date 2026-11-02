@@ -169,14 +169,18 @@ def evidence_summary(
         .where(ReviewEvent.card_id == card_id)
         .order_by(ReviewEvent.occurred_at, literal_column("review_events.rowid"))
     ).scalars()
-    return _summarize(
+    result = _summarize(
         revision, _samples_from_events(events, revision), history_complete, runtime
     )
+    from app.services.retention import retention_dimensions
+
+    result["retention"] = retention_dimensions(db, {card_id: revision}, runtime)[
+        card_id
+    ]
+    return result
 
 
-def bulk_evidence_summaries(
-    db: Session, card_ids, runtime: Runtime
-) -> dict[int, dict]:
+def bulk_evidence_summaries(db: Session, card_ids, runtime: Runtime) -> dict[int, dict]:
     """批量证据摘要：词表/首页/统计共用一次事件与历史读取。"""
     ids = list(dict.fromkeys(card_ids))
     if not ids:
@@ -218,6 +222,11 @@ def bulk_evidence_summaries(
             history_complete,
             runtime,
         )
+    from app.services.retention import retention_dimensions
+
+    retention = retention_dimensions(db, revisions, runtime)
+    for card_id, summary in summaries.items():
+        summary["retention"] = retention[card_id]
     return summaries
 
 

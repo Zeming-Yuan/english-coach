@@ -170,6 +170,7 @@ export default function BackupPage({ onBack, onRestored, restoring, onRestoringC
         {candidate && (
           <div style={{ marginTop: 14, padding: 12, background: "var(--card, #f5f7f6)", borderRadius: 10 }}>
             <p style={{ margin: 0, fontWeight: 700 }}>{full ? "全量恢复" : "旧版部分恢复"}</p>
+            {candidate.preview.retention_history === "not_recorded" && <p role="note">此备份没有延迟回测记录；旧接触依据不足时仅能普通练习，不会补造隔日或一周保持证据。</p>}
             {full ? <>
               <p style={{ fontSize: 13, margin: "6px 0" }}>备份格式：V{candidate.preview.version ?? 2}。现有数据库学习内容将被备份替换。</p>
               <p style={{ fontSize: 13 }}>备份包含 {candidate.preview.counts.cards} 张卡、{candidate.preview.counts.learning_events} 条学习事件；将替换现有 {candidate.preview.impact.replaced.cards} 张卡、{candidate.preview.impact.replaced.learning_events} 条学习事件。</p>

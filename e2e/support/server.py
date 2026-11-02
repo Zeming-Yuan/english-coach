@@ -10,6 +10,7 @@ import argparse
 import json
 import os
 import socket
+import sys
 from pathlib import Path
 
 
@@ -44,11 +45,14 @@ def main() -> None:
     os.environ["LLM_BASE_URL"] = str(
         settings_payload.get("llm_base_url", "http://127.0.0.1:9/v1")
     )
+    os.environ["DELAYED_RECALL_ENABLED"] = str(
+        settings_payload.get("delayed_recall_enabled", True)
+    )
     # 空值覆盖用户 .env 中的旧配置，测试服务器不读取真实密钥
     os.environ["DEEPSEEK_API_KEY"] = ""
     os.environ["DEEPSEEK_BASE_URL"] = ""
-    if str(root) not in os.sys.path:
-        os.sys.path.insert(0, str(root))
+    if str(root) not in sys.path:
+        sys.path.insert(0, str(root))
 
     import uvicorn
     from sqlalchemy import event
