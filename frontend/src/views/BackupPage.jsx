@@ -170,6 +170,7 @@ export default function BackupPage({ onBack, onRestored, restoring, onRestoringC
         {candidate && (
           <div style={{ marginTop: 14, padding: 12, background: "var(--card, #f5f7f6)", borderRadius: 10 }}>
             <p style={{ margin: 0, fontWeight: 700 }}>{full ? "全量恢复" : "旧版部分恢复"}</p>
+            {candidate.preview.scene_history === "not_recorded" && <p role="note">此备份没有场景练习记录；不会补造语境应用证据。</p>}
             {candidate.preview.reading_check_history === "not_recorded" && <p role="note">此备份没有读后检查记录；旧故事仍可读，不补造阅读识别或独立提取成绩。</p>}
             {candidate.preview.targeted_history === "not_recorded" && <p role="note">此备份没有专项练习记录；建议仅从可用学习证据重新计算，不补造薄弱项或练习成绩。</p>}
             {candidate.preview.extensions?.missing?.includes("story_versions") && <p role="note">此备份没有故事版本与检查材料；旧故事仍可读，不补造题目或成绩。已有故事版本与操作去重记录将按本次备份替换。</p>}

@@ -1,0 +1,42 @@
+{
+  "scene_id": "drinks",
+  "title": "买饮品",
+  "rule_version": "drinks-v1",
+  "content_revision": 1,
+  "review_basis": "人工核对的限定任务模板；完整句式与槽位匹配，未收录表达保持未判定。",
+  "tasks": [
+    {
+      "task_key": "request",
+      "goal": "向店员礼貌请求一杯水",
+      "role": "你好，欢迎光临。你想要什么饮品？",
+      "hint": "用完整的请求句式，说明想要的饮品。",
+      "standard": "Can I have water, please?",
+      "patterns": ["can i have (?:some )?water(?: please)?", "could i have (?:some )?water(?: please)?", "i would like (?:some )?water(?: please)?", "i'd like (?:some )?water(?: please)?", "may i have (?:some )?water(?: please)?"],
+      "rejected": ["water", "no", "i like water", "can i have coffee please", "can i have tea please"],
+      "correction": "请用请求句式说明你要水；只说饮品名还没有完成请求。",
+      "target_words": ["water"]
+    },
+    {
+      "task_key": "quantity",
+      "goal": "告诉店员只要一杯",
+      "role": "好的。你需要几杯？",
+      "hint": "明确表达一杯的数量。",
+      "standard": "One cup, please.",
+      "patterns": ["one(?: cup)?(?: please)?", "just one(?: cup)?(?: please)?", "i would like one(?: cup)?(?: please)?", "i'd like one(?: cup)?(?: please)?"],
+      "rejected": ["two", "two cups", "two cups please", "no"],
+      "correction": "本轮目标是要一杯，请确认数量。",
+      "target_words": ["one"]
+    },
+    {
+      "task_key": "confirm",
+      "goal": "礼貌确认订单并致谢",
+      "role": "已确认：一杯水。这样可以吗？",
+      "hint": "肯定确认订单，再表达感谢。",
+      "standard": "Yes, thank you.",
+      "patterns": ["yes (?:please )?thank you", "yes thanks", "that's right thank you", "that is right thank you", "yes that is right thank you"],
+      "rejected": ["no", "yes", "thanks", "thank you"],
+      "correction": "请同时确认订单并致谢。",
+      "target_words": ["thank"]
+    }
+  ]
+}

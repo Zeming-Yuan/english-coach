@@ -125,6 +125,7 @@ def _latest_weak_card_ids(db: Session, lesson_id: int) -> set[int]:
     )
     latest: dict[int, PracticeItem] = {}
     for row in rows:
+        assert row.card_id is not None
         latest.setdefault(row.card_id, row)
     events = {
         event.id: event
@@ -279,7 +280,13 @@ def _item(session: Session, practice: PracticeSession, item_id) -> PracticeItem:
     return row
 
 
-def _session_payload(db: Session, practice: PracticeSession) -> dict:
+def _session_payload(
+    db: Session, practice: PracticeSession, runtime: Runtime | None = None
+) -> dict:
+    if practice.purpose == "scene":
+        from app.services.scenes import scene_payload
+
+        return scene_payload(db, practice, runtime)
     items = (
         db.execute(
             select(PracticeItem)
@@ -307,6 +314,7 @@ def _session_payload(db: Session, practice: PracticeSession) -> dict:
     results = []
     out_items = []
     for item in items:
+        assert item.card_id is not None
         current = revisions.get(item.card_id)
         stale = (
             story_stale
@@ -439,7 +447,13 @@ def create_session(
     targets: list[dict] | None = None,
     story_id: int | None = None,
     version_id: str | None = None,
+    scene_id: str | None = None,
+    scenes_enabled: bool = True,
 ) -> dict:
+    if purpose == "scene":
+        from app.services.scenes import create_scene
+
+        return create_scene(db, str(session_id), scene_id, runtime, scenes_enabled)
     if purpose not in PURPOSES:
         raise PracticeUnavailableError("未知练习用途")
     pending_contact_ids = sorted(set(pending_contact_ids or []))
@@ -463,7 +477,7 @@ def create_session(
             raise PracticeConflictError("该轮次标识已用于其他课程或用途")
         _check_replay_story(db, existing, story_id)
         _check_replay_targets(db, existing, targets)
-        return _session_payload(db, existing)
+        return _session_payload(db, existing, runtime)
 
     def operation(session: Session) -> dict:
         replay = (
@@ -484,7 +498,7 @@ def create_session(
                 raise PracticeConflictError("该轮次标识已用于其他课程或用途")
             _check_replay_story(session, replay, story_id)
             _check_replay_targets(session, replay, targets)
-            return _session_payload(session, replay)
+            return _session_payload(session, replay, runtime)
         issued_at = runtime.clock.now().astimezone(UTC)
         now = issued_at.replace(tzinfo=None)
         if purpose == "story_check":
@@ -543,13 +557,13 @@ def create_session(
                 )
             )
         session.flush()
-        return _session_payload(session, practice)
+        return _session_payload(session, practice, runtime)
 
     return run_write(db, operation)
 
 
-def get_session(db: Session, session_id) -> dict:
-    return _session_payload(db, _session_by_public(db, session_id))
+def get_session(db: Session, session_id, runtime: Runtime | None = None) -> dict:
+    return _session_payload(db, _session_by_public(db, session_id), runtime)
 
 
 def active_sessions(db: Session, purpose: str, window: str | None) -> list[dict]:
@@ -575,10 +589,15 @@ def set_assistance(
     def operation(session: Session) -> dict:
         practice = _session_by_public(session, session_id)
         item = _item(session, practice, item_id)
+        if practice.purpose == "scene":
+            from app.services.scenes import scene_help
+
+            return scene_help(session, practice, item, kind, runtime)
         if practice.purpose == "story_check" and not version_is_current(
             session, story_version(session, practice.version_id)
         ):
             raise PracticeStaleError("故事已删除或版本已变化，请返回故事")
+        assert item.card_id is not None
         try:
             current = get_content_revision(session, "card", item.card_id)
         except LookupError:
@@ -591,13 +610,13 @@ def set_assistance(
         if kind == "answer_visible" and practice.purpose != "story_check":
             raise PracticeUnavailableError("仅词汇输入可记录回看原文帮助")
         if item.first_event_id:
-            return _session_payload(session, practice)
+            return _session_payload(session, practice, runtime)
         try:
             item.assistance = merge_assistance(item.assistance or [], [kind])
         except ValueError:
             raise PracticeUnavailableError("未知提示类型")
         session.flush()
-        return _session_payload(session, practice)
+        return _session_payload(session, practice, runtime)
 
     return run_write(db, operation)
 
@@ -641,6 +660,7 @@ def refresh_practice_session(
     passed = 0
     complete = True
     for item in items:
+        assert item.card_id is not None
         event = events.get(item.first_event_id) if item.first_event_id else None
         processed = item.first_event_id is not None and event is not None
         if not processed:
@@ -677,6 +697,10 @@ def submit_practice(
     def operation(session: Session) -> dict:
         practice = _session_by_public(session, session_id)
         item = _item(session, practice, item_id)
+        if practice.purpose == "scene":
+            from app.services.scenes import submit_scene
+
+            return submit_scene(session, practice, item, payload, runtime)
         existing = session.scalar(
             select(ReviewEvent).where(
                 ReviewEvent.submission_id == str(payload.submission_id)
@@ -712,6 +736,7 @@ def submit_practice(
                     },
                     now=runtime.clock.now(),
                 )["token"]
+        assert item.card_id is not None
         command = AttemptCommand(
             card_id=item.card_id,
             submission_id=payload.submission_id,
@@ -739,7 +764,7 @@ def submit_practice(
                 "correct": result.correct,
                 "expected": result.expected,
                 "skipped": payload.skipped,
-                "session": _session_payload(session, practice),
+                "session": _session_payload(session, practice, runtime),
             }
         if practice.purpose == "story_check" and item.first_event_id is not None:
             raise PracticeConflictError("本题首答已保存，请继续下一题或新开一轮")
@@ -752,6 +777,7 @@ def submit_practice(
             session, story_version(session, practice.version_id)
         ):
             raise PracticeStaleError("故事已删除或版本已变化，请返回故事")
+        assert item.card_id is not None
         try:
             current = get_content_revision(session, "card", item.card_id)
         except LookupError:
@@ -787,7 +813,7 @@ def submit_practice(
             "correct": result.correct,
             "expected": result.expected,
             "skipped": payload.skipped,
-            "session": _session_payload(session, practice),
+            "session": _session_payload(session, practice, runtime),
         }
 
     result = run_write(db, operation)

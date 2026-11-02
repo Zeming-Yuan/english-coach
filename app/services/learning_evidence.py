@@ -180,6 +180,11 @@ def evidence_summary(
     result["retention"] = retention_dimensions(db, {card_id: revision}, runtime)[
         card_id
     ]
+    from app.services.scenes import application_dimensions
+
+    result["application"] = application_dimensions(db, {card_id: revision}, runtime)[
+        card_id
+    ]
     return result
 
 
@@ -228,8 +233,12 @@ def bulk_evidence_summaries(db: Session, card_ids, runtime: Runtime) -> dict[int
     from app.services.retention import retention_dimensions
 
     retention = retention_dimensions(db, revisions, runtime)
+    from app.services.scenes import application_dimensions
+
+    application = application_dimensions(db, revisions, runtime)
     for card_id, summary in summaries.items():
         summary["retention"] = retention[card_id]
+        summary["application"] = application[card_id]
     return summaries
 
 

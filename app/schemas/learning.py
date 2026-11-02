@@ -23,6 +23,7 @@ Assistance = Literal[
 ]
 Stage = Literal["main", "reinforcement", "standalone"]
 ContactSource = Literal[
+    "scene",
     "card_detail",
     "words_list",
     "study",
@@ -86,7 +87,7 @@ class TypingCheckIn(AttemptCommand):
     兼容旧调用：未提供 source/submission_id 时按 legacy 记录，不排期。
     """
 
-    kind: Literal["typed"] = "typed"
+    kind: Literal["typed"] = "typed"  # type: ignore[reportIncompatibleVariableOverride] — Pydantic narrows the input protocol
     user_input: str
 
 

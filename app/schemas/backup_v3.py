@@ -20,6 +20,7 @@ from app.models.content_revision import ContentRevision
 from app.models.learning_contact import LearningContact
 from app.models.lesson_progress import LessonProgress
 from app.models.practice import PracticeItem, PracticeSession
+from app.models.scene_attempt import SceneAttempt
 from app.models.story_version import StoryVersion
 from app.schemas.backup import (
     BackupValidationError,
@@ -32,6 +33,7 @@ from app.schemas.backup import (
 )
 from app.schemas.learning import ContactKind, ContactSource
 from app.schemas.practice import PracticeAssistance
+from app.schemas.scene_backup import FullSceneAttempt, validate_scene_graph
 
 # 修订资源类型 ↔ 备份集合：导出、校验、映射共用同一张表。
 RESOURCE_COLLECTIONS = {
@@ -245,8 +247,12 @@ class FullPracticeSession(FullRow):
 
     id: int = Field(gt=0, strict=True)
     session_id: str
-    purpose: Literal["lesson_check", "delayed_check", "targeted", "story_check"]
+    purpose: Literal[
+        "lesson_check", "delayed_check", "targeted", "story_check", "scene"
+    ]
     version_id: str | None = None
+    scene_id: str | None = None
+    scene_snapshot: dict | None = None
     lesson_id: int | None = Field(default=None, gt=0, strict=True)
     window: Literal["day", "week"] | None = None
     pending_contact_ids: list[str] = Field(default_factory=list)
@@ -280,11 +286,12 @@ class FullPracticeItem(FullRow):
     item_id: str
     session_id: str
     position: int = Field(ge=1, strict=True)
-    card_id: int = Field(gt=0, strict=True)
-    card_identity: str
-    card_revision: int = Field(ge=1, strict=True)
+    card_id: int | None = Field(default=None, gt=0, strict=True)
+    card_identity: str | None = None
+    card_revision: int | None = Field(default=None, ge=1, strict=True)
+    first_task_attempt_id: str | None = None
     prompt: str = Field(min_length=1)
-    kind: Literal["typed", "reading_choice"]
+    kind: Literal["typed", "reading_choice", "scene_text"]
     question: dict | None = None
     assistance: list[PracticeAssistance]
     first_event_id: str | None = None
@@ -313,7 +320,12 @@ def _remap_practice_session(row: dict, mapping: dict[str, dict[int, int]]) -> di
 
 
 def _remap_practice_item(row: dict, mapping: dict[str, dict[int, int]]) -> dict:
-    return {**row, "card_id": mapping["cards"][row["card_id"]]}
+    return {
+        **row,
+        "card_id": mapping["cards"][row["card_id"]]
+        if row["card_id"] is not None
+        else None,
+    }
 
 
 register_extension(
@@ -332,6 +344,16 @@ register_extension(
     _remap_practice_item,
     model=PracticeItem,
     unique=("item_id",),
+)
+
+
+register_extension(
+    "scene_attempts",
+    FullSceneAttempt,
+    (),
+    lambda row, mapping: dict(row),
+    model=SceneAttempt,
+    unique=("attempt_id", "submission_id"),
 )
 
 
@@ -664,10 +686,14 @@ def validate_v3(payload: dict) -> ValidatedBackup:
             _reject("practice_items", index, "position", "轮次内题目序号重复")
         positions.add(position_key)
         card_key = (item["session_id"], item["card_id"], item["kind"])
-        if card_key in cards_in_session:
+        if item["kind"] != "scene_text" and card_key in cards_in_session:
             _reject("practice_items", index, "card_id", "轮次内目标词重复")
         cards_in_session.add(card_key)
         items_by_session.setdefault(item["session_id"], []).append(item)
+        if sessions_by_id[item["session_id"]]["purpose"] == "scene":
+            continue
+        if item["first_task_attempt_id"] is not None or item["kind"] == "scene_text":
+            _reject("practice_items", index, "kind", "非场景题目不能携带任务作答")
         revision = card_revisions.get(item["card_id"])
         if (
             revision is None
@@ -774,11 +800,14 @@ def validate_v3(payload: dict) -> ValidatedBackup:
                             "first_event_id",
                             "首答判分上下文与版本不一致",
                         )
-        elif practice["version_id"] is not None or any(
-            r["kind"] != "typed"
-            or r["question"] is not None
-            or "answer_visible" in r["assistance"]
-            for r in rows
+        elif practice["purpose"] != "scene" and (
+            practice["version_id"] is not None
+            or any(
+                r["kind"] != "typed"
+                or r["question"] is not None
+                or "answer_visible" in r["assistance"]
+                for r in rows
+            )
         ):
             _reject(
                 "practice_sessions",
@@ -799,11 +828,32 @@ def validate_v3(payload: dict) -> ValidatedBackup:
             )
         if practice["status"] != "unavailable" and not rows:
             _reject("practice_sessions", index, "status", "可作答轮次缺少题目")
-        processed = [row["first_event_id"] is not None for row in rows]
+        processed = [
+            row[
+                "first_task_attempt_id"
+                if practice["purpose"] == "scene"
+                else "first_event_id"
+            ]
+            is not None
+            for row in rows
+        ]
         if practice["status"] == "completed" and not all(processed):
             _reject("practice_sessions", index, "status", "完成轮次存在未作答题")
         if practice["status"] == "active" and processed and all(processed):
             _reject("practice_sessions", index, "status", "未完成轮次不应全部作答")
+    validate_scene_graph(
+        sessions,
+        items,
+        validated_extensions.get("scene_attempts", []),
+        tables["learning_events"],
+        tables["cards"],
+        validated_extensions.get("content_revisions", []),
+        _reject,
+    )
+    # Integer IDs encode persisted order for equal timestamps. Restore must not
+    # let an arbitrary JSON array order reverse first-response evidence.
+    if "scene_attempts" in validated_extensions:
+        validated_extensions["scene_attempts"].sort(key=lambda row: row["id"])
     from app.services.retention import validate_retention_graph
 
     validate_retention_graph(

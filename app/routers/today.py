@@ -35,6 +35,7 @@ router = APIRouter()
 
 @router.get("/today")
 def get_today(
+    request: Request,
     new_limit: int = 10,
     due_limit: int = 20,
     db: Session = Depends(get_db),
@@ -121,6 +122,7 @@ def get_today(
     with_progress_label(queue["queue"])
     return {
         **queue,
+        "scenes_enabled": request.app.state.settings.scenes_enabled,
         "error_cards": with_progress_label(
             [
                 queue_payload(c, revisions[c.id])
@@ -288,6 +290,7 @@ def get_stats(
         "retention": retention_overview(db),
         "reading_checks": reading_overview(db),
         "delayed_recall_enabled": request.app.state.settings.delayed_recall_enabled,
+        "scenes_enabled": request.app.state.settings.scenes_enabled,
         "learning_timezone": runtime.learning_timezone,
         "metrics": {
             category: metric(events, category)

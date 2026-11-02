@@ -37,6 +37,8 @@ class PracticeSession(Base):
     version_id: Mapped[str | None] = mapped_column(
         ForeignKey("story_versions.version_id"), nullable=True, index=True
     )
+    scene_id: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    scene_snapshot: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     # active | completed | unavailable
     status: Mapped[str] = mapped_column(String(20), nullable=False)
     rule_version: Mapped[str] = mapped_column(
@@ -71,11 +73,11 @@ class PracticeItem(Base):
         nullable=False,
     )
     position: Mapped[int] = mapped_column(Integer, nullable=False)
-    card_id: Mapped[int] = mapped_column(
-        ForeignKey("cards.id", ondelete="CASCADE"), index=True, nullable=False
+    card_id: Mapped[int | None] = mapped_column(
+        ForeignKey("cards.id", ondelete="CASCADE"), index=True, nullable=True
     )
-    card_identity: Mapped[str] = mapped_column(String(36), nullable=False)
-    card_revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    card_identity: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    card_revision: Mapped[int | None] = mapped_column(Integer, nullable=True)
     prompt: Mapped[str] = mapped_column(String(500), nullable=False)
     kind: Mapped[str] = mapped_column(String(20), nullable=False, default="typed")
     question: Mapped[dict | None] = mapped_column(JSON, nullable=True)
@@ -83,6 +85,7 @@ class PracticeItem(Base):
     first_event_id: Mapped[str | None] = mapped_column(
         String(36), unique=True, index=True, nullable=True
     )
+    first_task_attempt_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     retention_basis: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     retention_result: Mapped[dict | None] = mapped_column(JSON, nullable=True)

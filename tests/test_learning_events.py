@@ -15,7 +15,7 @@ from uuid import uuid4
 
 import pytest
 from alembic.config import Config
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, insert, text
 from sqlalchemy.exc import IntegrityError
 
 from alembic import command
@@ -201,7 +201,7 @@ def test_baseline_preserves_multiple_old_rows(tmp_path):
     engine = create_engine(url, connect_args={"check_same_thread": False})
     SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
     app = create_app(
-        settings=Settings(_env_file=None, database_url=url, llm_api_key=""),
+        settings=Settings(_env_file=None, database_url=url, llm_api_key=""),  # type: ignore[reportCallIssue] — BaseSettings accepts _env_file
         runtime=Runtime(SystemClock()),
     )
 
@@ -236,7 +236,7 @@ def test_submission_id_is_unique_in_database(ec):
 
     with pytest.raises(IntegrityError), ec.engine.begin() as conn:
         conn.execute(
-            ReviewEvent.__table__.insert().values(
+            insert(ReviewEvent).values(
                 id=str(uuid4()),
                 submission_id=payload["submission_id"],
                 card_id=card_id,
@@ -379,51 +379,51 @@ def test_classify_attempt_contract(command, expected, result):
     assert classify_attempt(cmd, expected) == result
 
 
-def test_current_state_prefers_last_review_over_id(ec):
-    """旧库多行时，详情与列表都必须按 last_review 选当前状态，而不是 id。"""
+def test_current_state_prefers_last_review_over_id(tmp_path):
+    """Seed a real pre-contract DB; current data-preserving heads cannot downgrade."""
+    from sqlalchemy.orm import Session
+
     from app.models.review import Review
+    from tests.support.ec_env import ECEnv
 
-    card_id = ec.seed_card()
-    config = _migration_config(ec.database_url)
-    command.downgrade(config, "ec12_card_identity")
-    db = ec.SessionLocal()
+    root = tmp_path / "legacy-current"
+    root.mkdir()
+    url = f"sqlite:///{root / 'test.db'}"
+    config = _migration_config(url)
+    command.upgrade(config, "ec12_card_identity")
+    engine = create_engine(url)
+    with engine.begin() as connection:
+        connection.execute(
+            text("INSERT INTO cards (word, kind) VALUES ('apple', 'word')")
+        )
+    with Session(engine) as db:
+        for count, reviewed in [
+            (7, _dt(2026, 10, 29, 12, 0)),
+            (2, _dt(2026, 10, 28, 12, 0)),
+        ]:
+            db.add(
+                Review(
+                    card_id=1,
+                    state=1,
+                    step=0,
+                    due=_dt(2026, 10, 30),
+                    stability=2.5,
+                    difficulty=5.0,
+                    elapsed_days=0,
+                    review_count=count,
+                    last_review=reviewed,
+                )
+            )
+        db.commit()
+    engine.dispose()
+    env = ECEnv(root=root)
     try:
-        db.add(
-            Review(
-                card_id=card_id,
-                state=1,
-                step=0,
-                due=_dt(2026, 10, 30),
-                stability=2.5,
-                difficulty=5.0,
-                elapsed_days=0,
-                review_count=7,
-                last_review=_dt(2026, 10, 29, 12, 0),
-            )
-        )
-        db.commit()
-        db.add(
-            Review(
-                card_id=card_id,
-                state=1,
-                step=0,
-                due=_dt(2026, 10, 30),
-                stability=2.5,
-                difficulty=5.0,
-                elapsed_days=0,
-                review_count=2,
-                last_review=_dt(2026, 10, 28, 12, 0),
-            )
-        )
-        db.commit()
+        detail = env.client.get("/api/cards/1").json()
+        assert detail["memory_state"]["review_count"] == 7
+        listed = env.client.get("/api/cards").json()["cards"][0]
+        assert listed["review_count"] == 7
     finally:
-        db.close()
-
-    command.upgrade(config, "head")
-    detail = ec.client.get(f"/api/cards/{card_id}").json()
-    assert detail["memory_state"]["review_count"] == 7
-    listed = ec.client.get("/api/cards").json()["cards"][0]
-    assert listed["review_count"] == 7
+        env.close()
 
 
 def test_graduated_reports_current_state_on_later_attempts(ec):
@@ -543,25 +543,48 @@ def test_sentence_cards_never_graduate(ec):
     assert ec.client.get("/api/stats").json()["graduated"] == 0
 
 
-def test_downgrade_keeps_events_and_upgrade_is_idempotent(ec):
-    """降级不得删除已追加事件；再次升级跳过 DDL 且数据不变。"""
+def test_downgrade_keeps_events_and_upgrade_is_idempotent(ec, tmp_path):
+    """Exercise EC-03's own downgrade boundary without crossing protected later heads."""
+    from datetime import date
+
+    from sqlalchemy import Date, DateTime, MetaData, Table
+
     card_id = ec.seed_card()
     response = ec.client.post(
         "/api/reviews",
         json={"card_id": card_id, "rating": 3, "submission_id": str(uuid4())},
     )
     assert response.status_code == 200
-
-    config = Config(str(ROOT / "alembic.ini"))
-    config.set_main_option("sqlalchemy.url", ec.database_url)
+    snapshot = ec.snapshot()
+    url = f"sqlite:///{tmp_path / 'ec03-downgrade.db'}"
+    config = _migration_config(url)
+    command.upgrade(config, "b1c2d3e4f502")
+    engine = create_engine(url)
+    with engine.begin() as connection:
+        for table_name, collection in [
+            ("cards", "cards"),
+            ("review_events", "learning_events"),
+        ]:
+            table = Table(table_name, MetaData(), autoload_with=connection)
+            for source in snapshot[collection]:
+                row = {}
+                for column in table.columns:
+                    value = source[column.name]
+                    if value is not None and isinstance(column.type, DateTime):
+                        value = datetime.fromisoformat(value).replace(tzinfo=None)
+                    elif value is not None and isinstance(column.type, Date):
+                        value = date.fromisoformat(value)
+                    row[column.name] = value
+                connection.execute(table.insert(), row)
     command.downgrade(config, "b1c2d3e4f501")
-    with ec.engine.connect() as conn:
-        assert (
-            conn.execute(text("SELECT COUNT(*) FROM review_events")).scalar_one() == 1
-        )
-
+    with engine.connect() as connection:
+        assert connection.scalar(text("SELECT COUNT(*) FROM review_events")) == 1
     command.upgrade(config, "head")
-    with ec.engine.connect() as conn:
+    command.upgrade(config, "head")
+    with engine.connect() as connection:
+        assert connection.scalar(text("SELECT COUNT(*) FROM review_events")) == 1
         assert (
-            conn.execute(text("SELECT COUNT(*) FROM review_events")).scalar_one() == 1
+            connection.scalar(text("SELECT id FROM review_events"))
+            == response.json()["event_id"]
         )
+    engine.dispose()
