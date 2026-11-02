@@ -133,3 +133,26 @@ ESLint/前端类型配置、CI/Makefile、Docker Compose、独立安全扫描、
 
 未过滤全量门禁仍未验证；#64 两条历史 downgrade 夹具问题继续独立跟踪。
 不新增账号/租户、生产数据、依赖或发布行为。入口功能回退与历史读取/V3 兼容保持。
+
+### 整合后的冻结验收与复审
+
+固定产品提交 `91221ab68883468b61fcd40a790b9f1b01a8d573`，源码指纹
+`a99ec2af09c56006346a88d18bdeed4094057e0edaa0eddf5dc90d935a967f2b`。
+三组正式命令均为 `npm --prefix frontend run test:e2e -- --ticket EL-NN`：
+
+| 票 | 双视口执行 | 诊断目录 |
+| --- | --- | --- |
+| EL-11 | 38 passed | `e2e/release-results/ec-e2e-static-9ORJ6J` |
+| EL-12 | 18 passed | `e2e/release-results/ec-e2e-static-0I576Y` |
+| EL-13 | 38 passed | `e2e/release-results/ec-e2e-static-0STfDL` |
+
+逐项核对 `requirements.EL11/EL12/EL13` 与实际 Playwright JSON：47 个具名分支 ×
+mobile/desktop = 94 次，每项一次通过，无缺失、跳过、失败或重试；各 run.json 均 passed，
+同一 HEAD/源码指纹。验收构建与生产 JS `index-BqXx22MY.js` 字节一致，SHA256
+`eaca73a67c9570696532290d73cdeac7038815b3b7d7896b0e613230bc47d3ae`。
+最终读后结果移动/桌面截图均已检查。
+
+双轴审查固定非空范围 `76dbcfdf...91221ab`：Standards **0 findings**，Spec **0 findings**；
+两名独立审查者分别运行整合 HTTP/迁移测试，各 **4 passed**。只审本 PR 增量，
+未审全量仓库、未跑全量门禁。所有历史限制、#64、N/A 与功能回退说明继续有效。
+后续证据提交只追加本节，产品源码与冻结验收提交相同。
