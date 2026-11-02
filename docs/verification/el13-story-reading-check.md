@@ -56,7 +56,7 @@
 
 ## 最终门禁及审查
 
-等待冻结源码最终复核和固定 diff 的双轴审查；此处不声称全部完成。
+本票受影响门禁与双轴复审已完成，最终证据见末节；不扩展为父规格或全量发行门禁通过。
 
 ## 未验证 / N/A
 
@@ -92,10 +92,27 @@ ESLint/前端类型配置、CI/Makefile、Docker Compose、独立安全扫描、
 
 0 项发现。Reviewer 独立运行本票 HTTP 22 passed；未代替根代理浏览器/门禁证据。
 
-汇总：首轮 Standards 1 项（最严重 P2，已修复），Spec 0 项；修复后复审待记录。
+汇总：首轮 Standards 1 项（最严重 P2，已修复），Spec 0 项；修复后在 46a8eb6 复审：Standards 0 项，Spec 0 项，无未处理的重要问题。
 
 ## 冻结实现的受影响验证
 
 - `.venv/bin/python -m pytest tests/test_el13_story_reading_check.py tests/test_el08_lesson_recall_check.py tests/test_el09_delayed_recall_check.py tests/test_el11_bounded_personalized_story.py tests/test_stories.py tests/test_full_restore.py tests/test_backup_v2.py tests/test_installation.py tests/test_release_coverage.py tests/test_recognition_attempts.py tests/test_typed_attempts.py -q`：**305 passed**（326.82 秒）。两条历史 downgrade 问题仍明确归 #64，本轮未降低它们的断言。
-- `c81f50e` 上正式 `npm --prefix frontend run test:e2e -- --ticket EL-13`：**32 passed**（16 分支×双视口，4.1 分钟），`ec-e2e-static-pBhtWV`。修复后新总数为 18 分支；最终完整本票结果随后补记。
+- `c81f50e` 上正式 `npm --prefix frontend run test:e2e -- --ticket EL-13`：**32 passed**（16 分支×双视口，4.1 分钟），`ec-e2e-static-pBhtWV`。修复后新总数为 18 分支；最终完整本票结果见末节。
 - 修复回归使用已构建静态产物的 Playwright 公开配置运行：choice/typed × mobile/desktop **4 passed**；对应 `/tmp/el13-review-abandon-{red,green}.log`，生产构建 `/tmp/el13-review-fix-build.log`。
+
+
+## 最终结果
+
+- 已验产品提交：`c81f50e`、`46a8eb6`。固定双轴复审范围：`6a6e41f...46a8eb6`。
+- **Standards：0 项遗留发现**；首轮唯一 P2 已按浏览器红绿回归修复。
+- **Spec：0 项发现**；独立复审无缺失、错误实现或范围扩张。
+- 受影响 Python：**305 passed**。类型检查 **0 errors / 0 warnings**；Ruff check、format --check、覆盖校验器拒绝缺失/跳过/重试的自测与 diff --check 均通过。
+- 最终正式命令 `npm --prefix frontend run test:e2e -- --ticket EL-13`：**36 passed**（18 个具名分支 × mobile/desktop，4.6 分钟）。
+  报告 `e2e/release-results/ec-e2e-static-jx1yfM/`，`run.json status=passed`，每个分支每个视口恰一次通过，无缺失、跳过、失败或重试。
+- 实际 HEAD：`46a8eb69d99ac2de871f65de4f9dac383e22318a`；源码 SHA256：`f3bc909aa52326c167c9f73c907684ad0469ab5a52f865d0dd2789e02e20c7c6`。
+  独立按 `requirements.EL13` 和双视口清单核对全部 36 次执行，并逐文件比较验收构建资源与已提交 `app/static/assets`：**全部相同**。
+- 生产构建通过，最终桌面与移动截图已检查。迁移、事务回滚、并发、恢复和功能回退均有真实隔离环境自动证据。
+- 文档、上下文、ADR、源码与测试同步；没有新增账号权限、依赖、生产数据或密钥。原始工作区保留在原 `dev` / `6a6e41f`，本票工作树提交前无意外文件。
+- 两条已在原基线复现的历史 downgrade 失败仍归 #64，不被隐藏、弱化或计作通过。本轮没有未完成的 EL-13 内容；未过滤全量门禁及 N/A 项保持上文说明。
+
+本节之后的证据记录提交只修改此文档；产品源码与已验 `46a8eb6` 相同。
