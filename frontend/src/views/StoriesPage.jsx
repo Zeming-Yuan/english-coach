@@ -8,6 +8,7 @@ import { useWordLookup } from "../lib/wordLookup.js";
 import { useLearningAttempt } from "../hooks/useLearningAttempt.js";
 import { showToast } from "../App.jsx";
 import StoryGeneration, {StoryQuality} from "../components/StoryGeneration.jsx";
+import StoryCheck from "../components/StoryCheck.jsx";
 import StoryVersions from "../components/StoryVersions.jsx";
 import RatingButtons from "../components/RatingButtons.jsx";
 
@@ -56,9 +57,15 @@ export default function StoriesPage() {
 
   // 阅读视图
   if (activeStory) {
-    return <StoryVersions key={activeStory.parent_version_id || activeStory.version_id || activeStory.id} story={activeStory} enabled={simplificationEnabled} onSelect={openStory} onSaved={story => setStories(rows => [story, ...rows.filter(row => row.id !== story.id)])}>
-      <StoryRead key={activeStory.version_id || activeStory.id} story={activeStory} onBack={() => {selection.current += 1; openingStory.current = null; setActiveStory(null);}} />
+    const reader = <StoryRead key={activeStory.version_id || activeStory.id} story={activeStory} onBack={() => {selection.current += 1; openingStory.current = null; setActiveStory(null);}} />;
+    const versionReader = <StoryVersions key={activeStory.parent_version_id || activeStory.version_id || activeStory.id} story={activeStory} enabled={simplificationEnabled} onSelect={openStory} onSaved={story => setStories(rows => [story, ...rows.filter(row => row.id !== story.id)])}>
+      {reader}
     </StoryVersions>;
+    return ["normal", "short"].includes(activeStory.mode) && activeStory.version_id
+      ? <StoryCheck key={activeStory.version_id} story={activeStory} onCreated={id => {
+          setActiveStory(current => current?.version_id === activeStory.version_id ? {...current, check_session_id: id} : current);
+          setStories(rows => rows.map(row => row.id === activeStory.id ? {...row, check_session_id: id} : row));
+        }}>{versionReader}</StoryCheck> : versionReader;
   }
 
   return (
@@ -81,7 +88,7 @@ export default function StoriesPage() {
         {stories.map((s) => (
           <div key={s.id} className="story-item">
             <div className="story-item-main" onClick={() => openStory(s.id)}>
-              {["normal", "short"].includes(s.mode) && <div>{s.mode === "short" ? "简化版" : "原版"} · 未检查</div>}
+              {["normal", "short"].includes(s.mode) && <div>{s.mode === "short" ? "简化版" : "原版"} · {s.check_session_id ? "已有检查记录" : "未检查"}</div>}
               <div className="story-item-title">{escapeHtml(s.title)}</div>
               {s.title_cn && <div className="story-item-title-cn">{escapeHtml(s.title_cn)}</div>}
               <div className="story-item-meta">{s.words.length} 个词 · {escapeHtml(s.content.slice(0, 40))}…</div>

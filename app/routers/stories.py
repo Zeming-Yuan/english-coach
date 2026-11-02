@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models.card import Card
+from app.models.practice import PracticeSession
 from app.models.story import Story, StoryWord
 from app.models.story_version import StoryVersion
 from app.runtime import Runtime, get_runtime
@@ -54,7 +55,7 @@ def create_simpler_story(
     story = simplify_story(
         db, runtime, story_id, str(body.version_id), str(body.operation_id)
     )
-    return _story_to_dict(story, db)
+    return _story_to_dict(story, db, request.app.state.settings.story_checks_enabled)
 
 
 @router.get("/stories/starter")
@@ -75,7 +76,11 @@ def create_story(
     story = generate_story(
         db, runtime, str(body.operation_id or uuid4()), body.include_new_target
     )
-    return story if isinstance(story, dict) else _story_to_dict(story, db)
+    return (
+        story
+        if isinstance(story, dict)
+        else _story_to_dict(story, db, request.app.state.settings.story_checks_enabled)
+    )
 
 
 @router.get("/stories")
@@ -107,6 +112,18 @@ def list_stories(request: Request, db: Session = Depends(get_db)):
             select(StoryVersion).where(StoryVersion.story_id.in_(story_ids))
         )
     }
+    check_sessions = {
+        row.version_id: row.session_id
+        for row in db.scalars(
+            select(PracticeSession)
+            .where(
+                PracticeSession.version_id.in_(
+                    [v.version_id for v in versions.values()]
+                )
+            )
+            .order_by(PracticeSession.created_at, PracticeSession.id)
+        )
+    }
     story_words: dict[int, list[dict]] = {}
     for sw, c in rows:
         story_words.setdefault(sw.story_id, []).append(
@@ -132,6 +149,9 @@ def list_stories(request: Request, db: Session = Depends(get_db)):
                     "version": versions[s.id].story_revision,
                 }
                 else "legacy",
+                "check_session_id": check_sessions.get(versions[s.id].version_id)
+                if s.id in versions
+                else None,
                 "title": s.title,
                 "title_cn": s.title_cn,
                 "content": s.content,
@@ -145,7 +165,7 @@ def list_stories(request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/stories/{story_id}")
-def get_story(story_id: int, db: Session = Depends(get_db)):
+def get_story(story_id: int, request: Request, db: Session = Depends(get_db)):
     """读取一篇故事（含关联词）。旧故事无中文翻译时自动补翻。"""
     story = db.get(Story, story_id)
     if story is None:
@@ -159,8 +179,10 @@ def get_story(story_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Story not found")
     current_story = db.get(Story, story_id, populate_existing=True)
     if current_story is None:
-        raise HTTPException(404, "Story not found")
-    return _story_to_dict(current_story, db)
+        raise HTTPException(status_code=404, detail="Story not found")
+    return _story_to_dict(
+        current_story, db, request.app.state.settings.story_checks_enabled
+    )
 
 
 @router.delete("/stories/{story_id}")
@@ -232,7 +254,7 @@ def _translate_story(story: Story, db: Session) -> None:
         logger.warning("story translation write failed", exc_info=True)
 
 
-def _story_to_dict(story: Story, db: Session) -> dict:
+def _story_to_dict(story: Story, db: Session, checks_enabled: bool) -> dict:
     """故事 → 字典（含当前修订、关联词卡和逐行可见目标）。"""
     stmt = (
         select(Card)
@@ -259,15 +281,29 @@ def _story_to_dict(story: Story, db: Session) -> dict:
         "version": version.story_revision,
     }:
         version = None
+    check_session_id = (
+        db.scalar(
+            select(PracticeSession.session_id)
+            .where(PracticeSession.version_id == version.version_id)
+            .order_by(PracticeSession.created_at.desc(), PracticeSession.id.desc())
+            .limit(1)
+        )
+        if version is not None
+        else None
+    )
     return {
         "id": story.id,
         "mode": version.mode if version is not None else "legacy",
         "parent_version_id": version.parent_version_id if version is not None else None,
         "versions": _related_versions(version, db) if version is not None else [],
-        "check_status": "unchecked",
+        "check_session_id": check_session_id,
+        "check_status": "recorded" if check_session_id else "unchecked",
+        "checks_enabled": checks_enabled,
         "version_id": version.version_id if version is not None else None,
         "quality": version.quality if version is not None else None,
-        "check_material": version.material["check"] if version is not None else None,
+        "check_material": version.material.get("check")
+        if version is not None
+        else None,
         "title": story.title,
         "title_cn": story.title_cn,
         "content": story.content,

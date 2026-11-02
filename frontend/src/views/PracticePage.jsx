@@ -26,16 +26,18 @@ function PracticeResult({item, delayed, source}) {
   return <li ref={ref}>
     {item.prompt} · {ITEM_LABELS[item.status] || item.status}
     {delayed && ` · ${item.window === "week" ? "一周回测" : item.window === "day" ? "隔日回测" : "其他间隔"} · ${item.integrity === "confirmed" ? "依据已确认" : "依据不完整"}`}
-    {item.stale ? " · 内容已修订，历史结果" : item.expected ? ` · 正确拼写：${item.expected}` : ""}
+    {item.stale ? " · 内容已修订，历史结果" : item.expected ? ` · ${item.kind === "reading_choice" ? "正确选项" : "正确拼写"}：${item.expected}` : ""}
   </li>;
 }
 
 function PracticeItemForm({ session, item, onSession, onFeedback }) {
   const scope = `practice:${session.id}:${item.id}`;
   const attempt = useLearningAttempt(scope, refreshPendingContacts);
-  const hintContactRef = usePracticeAnswerContact(item, Boolean(item.hint), session.purpose === "lesson_check" ? "lesson" : "spelling");
+  const hintContactRef = usePracticeAnswerContact(item, Boolean(item.hint), session.purpose === "story_check" ? "story" : session.purpose === "lesson_check" ? "lesson" : "spelling");
   const [answer, setAnswer] = useState(() => loadPending(scope)?.payload.answer || "");
   const [helping, setHelping] = useState(false);
+  const reading = session.purpose === "story_check";
+  const choice = item.kind === "reading_choice";
 
   const finish = (result) => {
     if (!result || result.committed !== true) return;
@@ -49,13 +51,13 @@ function PracticeItemForm({ session, item, onSession, onFeedback }) {
     });
   };
 
-  const submit = async (skipped = false) => {
-    if (!skipped && !answer.trim()) return;
+  const submit = async (skipped = false, selected = answer) => {
+    if (!skipped && !selected.trim()) return;
     try {
       finish(
         await attempt.submit(
           `/api/practice-sessions/${session.id}/items/${item.id}/attempts`,
-          { ...(skipped ? { skipped: true } : { answer: answer.trim() }), ...(session.purpose === "delayed_check" ? {pending_contact_ids: pendingContactIds()} : {}) },
+          { ...(skipped ? { skipped: true } : { answer: selected.trim() }), ...(session.purpose === "delayed_check" ? {pending_contact_ids: pendingContactIds()} : {}) },
         ),
       );
     } catch {}
@@ -85,17 +87,20 @@ function PracticeItemForm({ session, item, onSession, onFeedback }) {
 
   return (
     <div className="practice-item">
+      {reading && <h3>{choice ? "阅读理解" : "词汇输入"}</h3>}
       <div className="spelling-meaning">{item.prompt}</div>
+      {reading && item.assistance.length > 0 && <p role="note">本题已使用帮助，按辅助记录，不排期。</p>}
+      {choice && item.options.map(option => <button key={option} className="btn btn-ghost" disabled={attempt.phase === "saving" || attempt.phase === "failed"} onClick={() => {setAnswer(option); submit(false, option);}}>{option}</button>)}
       {session.purpose === "delayed_check" && <p role="status">距应用内上次记录：{item.gap_seconds == null ? "依据不完整" : `${Number((item.gap_seconds / 3600).toFixed(2))} 小时`} · 发题依据已冻结，提交时复核</p>}
       {item.hint?.kind === "first_letter" && (
         <p ref={hintContactRef} role="status" className="spelling-hint">
           首字母：{item.hint.value}（本题按辅助记录）
         </p>
       )}
-      <input
+      {!choice && <input
         className="spelling-input"
         name="practice-answer"
-        aria-label="英文答案"
+        aria-label={reading ? "你的答案" : "英文答案"}
         value={answer}
         onChange={(event) => setAnswer(event.target.value)}
         onKeyDown={(event) => {
@@ -106,8 +111,9 @@ function PracticeItemForm({ session, item, onSession, onFeedback }) {
         autoCapitalize="off"
         spellCheck={false}
         disabled={attempt.phase === "saving" || attempt.phase === "failed"}
-      />
+      />}
       <div className="practice-actions">
+        {!choice && <>
         <button
           className="btn btn-ghost btn-small"
           onClick={requestHelp}
@@ -120,8 +126,9 @@ function PracticeItemForm({ session, item, onSession, onFeedback }) {
           onClick={() => submit()}
           disabled={!answer.trim() || attempt.phase === "saving" || attempt.phase === "failed"}
         >
-          提交
+          {reading ? "提交答案" : "提交"}
         </button>
+        </>}
         <button
           className="btn btn-ghost btn-small"
           onClick={() => submit(true)}
@@ -138,7 +145,11 @@ function PracticeItemForm({ session, item, onSession, onFeedback }) {
             <button className="btn btn-primary btn-small" onClick={retry}>
               继续确认保存
             </button>
-            <button className="btn btn-ghost btn-small" onClick={attempt.clear}>
+            <button className="btn btn-ghost btn-small" onClick={() => {
+              attempt.clear();
+              // Pending storage changed; reselect from the saved server results.
+              onSession({...session});
+            }}>
               放弃这条待确认
             </button>
           </div>
@@ -148,7 +159,7 @@ function PracticeItemForm({ session, item, onSession, onFeedback }) {
   );
 }
 
-export default function PracticePage({ sessionId, onExit, onRestart, onNormal, advice = false, browserStored = true }) {
+export default function PracticePage({ sessionId, onExit, onRestart, onNormal, advice = false, browserStored = true, storyCheck = false }) {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -174,7 +185,7 @@ export default function PracticePage({ sessionId, onExit, onRestart, onNormal, a
   }, [sessionId]);
 
   const activeItem = useMemo(
-    () => session?.lifecycle !== "unavailable" ? session?.items.find((item) => item.status === "pending") || null : null,
+    () => session?.lifecycle !== "unavailable" ? (storyCheck && session?.items.find(item => loadPending(`practice:${session.id}:${item.id}`))) || session?.items.find((item) => item.status === "pending") || null : null,
     [session],
   );
   const staleItem = useMemo(
@@ -189,16 +200,17 @@ export default function PracticePage({ sessionId, onExit, onRestart, onNormal, a
   const showSummary = session && session.lifecycle !== "unavailable" && session.items.length > 0 && !activeItem && !staleItem;
 
   const restart = (weakOnly) => {
+    if (storyCheck) return onRestart();
     if (advice) return onExit();
     if (session?.purpose === "delayed_check") onRestart();
     else if (session?.lesson_id) onRestart(session.lesson_id, weakOnly);
   };
 
   const delayed = session?.purpose === "delayed_check";
-  const title = delayed ? (session.window === "week" ? "一周回测" : "隔日回测") : session?.purpose === "targeted" ? "专项练习" : "本课短测";
-  const back = advice ? "返回建议" : delayed ? "返回统计" : "返回课程";
+  const title = storyCheck ? "读后检查" : delayed ? (session.window === "week" ? "一周回测" : "隔日回测") : session?.purpose === "targeted" ? "专项练习" : "本课短测";
+  const back = storyCheck ? "回看原文" : advice ? "返回建议" : delayed ? "返回统计" : "返回课程";
   const feedbackItem = session?.items.find(item => item.id === feedback?.itemId);
-  const feedbackContactRef = usePracticeAnswerContact(feedbackItem, Boolean(feedback?.expected) && feedback?.correct !== true, session?.purpose === "lesson_check" ? "lesson" : "spelling");
+  const feedbackContactRef = usePracticeAnswerContact(feedbackItem, Boolean(feedback?.expected) && feedback?.correct !== true, session?.purpose === "story_check" ? "story" : session?.purpose === "lesson_check" ? "lesson" : "spelling");
 
   return (
     <section className="view view-practice" data-testid="practice-session">
@@ -226,11 +238,12 @@ export default function PracticePage({ sessionId, onExit, onRestart, onNormal, a
               ? ` · 已处理 ${session.counts.processed}/${session.counts.total}`
               : ""}
           </div>
+          {storyCheck && <p>故事版本：{session.version_id} · 实际 {session.counts.total} 题 · 即时检查不算延迟保持</p>}
           {session.message && <p role="status">{session.message}</p>}
-          {processed.length > 0 && (
+          {processed.length > 0 && (!storyCheck || showSummary) && (
             <ul className="practice-results">
               {processed.map((item) => (
-                <PracticeResult key={item.id} item={item} delayed={delayed} source={session.purpose === "lesson_check" ? "lesson" : "spelling"} />
+                <PracticeResult key={item.id} item={item} delayed={delayed} source={session.purpose === "story_check" ? "story" : session.purpose === "lesson_check" ? "lesson" : "spelling"} />
               ))}
             </ul>
           )}
@@ -266,7 +279,7 @@ export default function PracticePage({ sessionId, onExit, onRestart, onNormal, a
                 {feedback.skipped
                   ? `已跳过${feedback.expected ? ` · 正确拼写：${feedback.expected}` : ""}`
                   : feedback.correct
-                    ? "✅ 正确！"
+                    ? "✅ 正确！已保存"
                     : `❌ 待巩固${feedback.expected ? ` · 正确拼写：${feedback.expected}` : ""}`}
               </p>
               <div className="save-state-actions">
@@ -279,7 +292,7 @@ export default function PracticePage({ sessionId, onExit, onRestart, onNormal, a
                 >
                   {activeItem ? "下一题" : "查看结果"}
                 </button>
-                {feedback.correct !== true && (
+                {!storyCheck && feedback.correct !== true && (
                   <button
                     className="btn btn-ghost btn-small"
                     onClick={() => {
@@ -301,9 +314,10 @@ export default function PracticePage({ sessionId, onExit, onRestart, onNormal, a
                 {session.counts.weak + session.counts.skipped}
                 {session.counts.stale ? ` · 已修订 ${session.counts.stale}` : ""}
               </p>
-              <p>{delayed ? "首测按词、学习日和实际窗口保留；辅助与跳过单列，重试不替换首测。" : "只有全部实际题目首答无提示正确才算通过；本结果只说明所测内容。"}</p>
+              {storyCheck && <p>阅读识别 {session.reading_checks.recognition_count} · 词汇独立 {session.reading_checks.independent_count} · 辅助 {session.reading_checks.assisted_count}</p>}
+              <p>{storyCheck ? "即时正确只说明本次检查，不代表延迟保持；理解选择不排期。" : delayed ? "首测按词、学习日和实际窗口保留；辅助与跳过单列，重试不替换首测。" : "只有全部实际题目首答无提示正确才算通过；本结果只说明所测内容。"}</p>
               <div className="save-state-actions">
-                {!delayed && session.counts.weak + session.counts.skipped > 0 && (
+                {!storyCheck && !delayed && session.counts.weak + session.counts.skipped > 0 && (
                   <button className="btn btn-primary btn-small" onClick={() => restart(true)}>
                     只练薄弱项
                   </button>

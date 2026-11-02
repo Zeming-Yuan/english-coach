@@ -274,6 +274,7 @@ def get_stats(
     )
     overview = word_evidence_overview(db, runtime)
     from app.services.retention import retention_overview
+    from app.services.story_checks import reading_overview
 
     return {
         **summary,
@@ -285,6 +286,7 @@ def get_stats(
         "evidence_samples": overview["samples"],
         "evidence_latest_at": overview["latest_at"],
         "retention": retention_overview(db),
+        "reading_checks": reading_overview(db),
         "delayed_recall_enabled": request.app.state.settings.delayed_recall_enabled,
         "learning_timezone": runtime.learning_timezone,
         "metrics": {

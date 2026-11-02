@@ -3,7 +3,7 @@
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -25,6 +25,11 @@ from app.services.practice import (
     get_session,
     set_assistance,
     submit_practice,
+)
+from app.services.questions import (
+    InvalidQuestionToken,
+    QuestionTokenExpired,
+    QuestionTokenStale,
 )
 
 router = APIRouter()
@@ -57,10 +62,16 @@ def _unavailable(error: Exception) -> HTTPException:
 @router.post("/practice-sessions")
 def create(
     payload: CreatePracticeIn,
+    request: Request,
     db: Session = Depends(get_db),
     runtime: Runtime = Depends(get_runtime),
 ):
     """创建或重放一轮课程短测；冻结题目与内容修订。"""
+    if (
+        payload.purpose == "story_check"
+        and not request.app.state.settings.story_checks_enabled
+    ):
+        raise HTTPException(403, "读后入口已关闭，原文和已有检查仍可读取")
     try:
         return create_session(
             db,
@@ -72,12 +83,16 @@ def create(
             payload.window,
             payload.pending_contact_ids,
             [target.model_dump() for target in payload.targets],
+            payload.story_id,
+            str(payload.version_id) if payload.version_id else None,
         )
     except (PracticeLessonNotFoundError, PracticeNotFoundError) as error:
         raise _not_found(error)
     except (PracticeConflictError, PracticeStaleError) as error:
         raise _conflict(error)
-    except PracticeUnavailableError as error:
+    except (QuestionTokenStale, QuestionTokenExpired) as error:
+        raise _conflict(error)
+    except (PracticeUnavailableError, InvalidQuestionToken) as error:
         raise _unavailable(error)
 
 
@@ -105,7 +120,9 @@ def assistance(
         raise _not_found(error)
     except PracticeStaleError as error:
         raise _conflict(error)
-    except PracticeUnavailableError as error:
+    except (QuestionTokenStale, QuestionTokenExpired) as error:
+        raise _conflict(error)
+    except (PracticeUnavailableError, InvalidQuestionToken) as error:
         raise _unavailable(error)
 
 
@@ -130,5 +147,7 @@ def attempt(
         SubmissionConflictError,
     ) as error:
         raise _conflict(error)
-    except PracticeUnavailableError as error:
+    except (QuestionTokenStale, QuestionTokenExpired) as error:
+        raise _conflict(error)
+    except (PracticeUnavailableError, InvalidQuestionToken) as error:
         raise _unavailable(error)

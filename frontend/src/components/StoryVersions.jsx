@@ -45,7 +45,7 @@ export default function StoryVersions({story, enabled, onSelect, onSaved, childr
   const original = versions.find(v => v.mode === "normal");
   return <>
     {story.version_id && story.mode !== "starter" && <div className="story-version-controls" style={{padding: "12px 0"}}>
-      <p data-testid="story-check-status">{story.mode === "short" ? "简化版" : "原版"} · 未检查</p>
+      <p data-testid="story-check-status">{story.mode === "short" ? "简化版" : "原版"} · {story.check_session_id ? "已有检查记录" : "未检查"}</p>
       {original && <button className="btn btn-ghost btn-small" onClick={() => choose(original.story_id)}>查看原版</button>}
       {versions.filter(v => v.mode === "short").map((v, index) => <button className="btn btn-ghost btn-small" key={v.version_id} onClick={() => choose(v.story_id)}>查看简化版{index ? ` ${index + 1}` : ""}</button>)}
       {enabled && story.mode === "normal" && !pending && !versions.some(v => v.mode === "short") && <button className="btn btn-primary btn-small" onClick={simplify}>更简单</button>}
