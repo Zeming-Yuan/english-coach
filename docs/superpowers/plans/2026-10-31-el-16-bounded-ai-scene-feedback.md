@@ -14,7 +14,7 @@
 
 **Blocked by:** EL-14。
 
-**Status:** 计划已编写，产品未实现；以下代码块是未来实施内容，本次不把计划语法检查当作产品测试通过。
+**Status:** 两个切片已在 `codex/el16-scene-feedback` 实现并提交，待集成；[实际命令、红/绿证据与双轴审查](../../verification/el16-bounded-ai-scene-feedback.md)。下方代码片段保留原设计示例，实际实现及运行结果以源码和验收证据为准。
 
 ## Global Constraints
 
@@ -62,10 +62,10 @@
 
 ## 执行前检查
 
-- [ ] 读取Blocked by的已完成结果，核对接口字段和当前源码漂移；不能把存在文档当作前置已实现。
-- [ ] 在执行时按using-git-worktrees检查是否需要隔离；计划编写阶段不创建产品分支或工作树。
-- [ ] 从仓库根目录使用`.venv/bin/python`，不要依赖当前不存在的系统python别名；不读取真实用户库或付费密钥。
-- [ ] 既有EC过滤参数不接受EL标识。本计划定向Python用具体节点；E2E先使用未过滤命令，不编造可用过滤器。
+- [x] 读取Blocked by的已完成结果，核对接口字段和当前源码漂移；不能把存在文档当作前置已实现。
+- [x] 在执行时按using-git-worktrees检查是否需要隔离；计划编写阶段不创建产品分支或工作树。
+- [x] 从仓库根目录使用`.venv/bin/python`，不要依赖当前不存在的系统python别名；不读取真实用户库或付费密钥。
+- [x] 已核对当前 runner 支持 `--ticket EL-16`，并拒绝未知/空匹配；按用户要求运行本票及受影响 EL-14/EL-15，未运行未过滤门禁。
 
 ### Task 1：交付本票最小可观察闭环
 
@@ -84,7 +84,7 @@
 - Consumes: 前置EL-14及其传递前置；真实ec/appFactory、run_write、submit_attempt/apply_attempt_in_transaction；仅在需要评分时调用，不用于接触/时长/纯读取。
 - Produces: 核心算法 reply_allowed（见Task 1完整签名与实现片段）；POST /api/practice-sessions/{id}/items/{item_id}/feedback {operation_id} -> {text,correction,origin}；origin=model/template；只允许读取已保存首答。build_scene_feedback(db,session_id,item_id,runtime)->dict；回复不包含或覆盖权威verdict。
 
-- [ ] **Step 1：写第一条失败测试。**
+- [x] **Step 1：写第一条失败测试。**
 
 ```python
 from uuid import uuid4
@@ -106,7 +106,7 @@ def test_el16_saved_answer_gets_template_without_ai(ec):
 
 写入`tests/test_el16_bounded_ai_scene_feedback.py`。数据模型只用于准备旧课程/词库，实际被测行为走公开HTTP。
 
-- [ ] **Step 2：运行并确认预期红灯。**
+- [x] **Step 2：运行并确认预期红灯。**
 
 ```bash
 .venv/bin/python -m pytest tests/test_el16_bounded_ai_scene_feedback.py::test_el16_saved_answer_gets_template_without_ai -q
@@ -115,7 +115,7 @@ def test_el16_saved_answer_gets_template_without_ai(ec):
 **预期失败原因：** 现有模板场景没有模型增强反馈端点；必须先保存答案，模型错误不能作为判分。
 若先出现依赖、导入或fixture准备错误，先修到断言能执行；那种准备失败不是目标红灯。
 
-- [ ] **Step 3：实现最小规则核心。**
+- [x] **Step 3：实现最小规则核心。**
 
 位置：`app/services/scene_feedback.py`；reply_allowed的输入输出由下列完整片段定义，调用者必须使用同一字段和状态名。
 
@@ -130,17 +130,17 @@ def reply_allowed(text: str, allowed: set[str], forbidden: list[str]) -> bool:
     return not any(answer.lower().strip() in normalized for answer in forbidden if answer.strip())
 ```
 
-- [ ] **Step 4：接通持久化与公开边界。**
+- [x] **Step 4：接通持久化与公开边界。**
 
-- [ ] 4.1：反馈入口只读取已提交答案，保存响应后再调用已有generate_json，使用既有模型路由，不创建新的SDK客户端或模型名。
-- [ ] 4.2：实现reply_allowed词汇/标准答案泄露过滤，结构只接受text与单个correction；忽略模型给出的分数、verdict和改轮次指令。
-- [ ] 4.3：未配置、超时、无效输出转template，保留原规则结果；请求归属session/item/版本，晚到响应不能覆盖别的场景。
-- [ ] 4.4：ScenePage先显示已存答案和规则结果，反馈可重试，模型不是下一题的保存门槛；实际展示回复若含相关目标记录接触。
-- [ ] 4.5：反馈origin/规则与回复快照纳入现有场景V3扩展；相同operation只持久化一份，不重评答案。
+- [x] 4.1：反馈入口只读取已提交答案，保存响应后再调用已有generate_json，使用既有模型路由，不创建新的SDK客户端或模型名。
+- [x] 4.2：实现reply_allowed词汇/标准答案泄露过滤，结构只接受text与单个correction；忽略模型给出的分数、verdict和改轮次指令。
+- [x] 4.3：未配置、超时、无效输出转template，保留原规则结果；请求归属session/item/版本，晚到响应不能覆盖别的场景。
+- [x] 4.4：ScenePage先显示已存答案和规则结果，反馈可重试，模型不是下一题的保存门槛；实际展示回复若含相关目标记录接触。
+- [x] 4.5：反馈origin/规则与回复快照纳入现有场景V3扩展；相同operation只持久化一份，不重评答案。
 
 上述步骤是完整的接入范围；核心片段不替代路由、事务、关联校验或可见反馈。路由注册复用create_app，不增生产测试端点。
 
-- [ ] **Step 5：实现实际可见UI并加主seam测试。**
+- [x] **Step 5：实现实际可见UI并加主seam测试。**
 
 ```javascript
 import {test, expect} from "./support/test.mjs";
@@ -159,7 +159,7 @@ test("EL-16 visible vertical result", async ({appFactory, page}) => {
 
 精确testid属于本票要交付的可访问结果区：`scene-feedback`。把它加到真实现有视图/新视图对应结果元素，不建立只供测试显示的假页面。操作按钮名称以本计划固定文案为准；新增按钮使用原生button/label，状态用role=status、失败用role=alert，输入保留可访问名称。
 
-- [ ] **Step 6：同步文档/ADR，并验证闭环。**
+- [x] **Step 6：同步文档/ADR，并验证闭环。**
 
 ADR-0008增补模型只负责表达、模板降级与保存后生成；核对内容材料和README说明。
 先运行首条节点，再运行本票测试和完整入口：
@@ -172,7 +172,7 @@ npm --prefix frontend run test:e2e
 
 预期：对应行为真实通过，正常成功不伪造应用API；E2E主入口已包含新构建与双视口。若有失败必须修复或准确记录阻塞，不声称完成。
 
-- [ ] **Step 7：提交独立边界一。**
+- [x] **Step 7：提交独立边界一。**
 
 只暂存本任务实际新增/修改文件与对应文档，避免把工作区已有未跟踪计划或他人改动一并纳入：
 
@@ -194,7 +194,7 @@ git commit -m "feat: deliver el-16 observable learning path"
 - Consumes: Task 1的真实公开响应、reply_allowed及前置的V3/提交确认契约。
 - Produces: 本票五项Review Focus的具名回归、失败/恢复/回退证据；不新增另一套业务接口。
 
-- [ ] **Step 1：先写规则边界测试，运行到预期断言。**
+- [x] **Step 1：先写规则边界测试，运行到预期断言。**
 
 ```python
 import pytest
@@ -221,7 +221,7 @@ def test_el16_help_never_becomes_independent():
 
 在`tests/test_el16_bounded_ai_scene_feedback.py`追加。规则测试只补充输入边界，不能替代Task 1的真实浏览器/HTTP链路。对于同一纯规则不止一个行为的Review Focus，按下列场景代码及验收勾选条件补足公开操作。
 
-- [ ] **Step 2：为可恢复写路径钉住响应丢失。**
+- [x] **Step 2：为可恢复写路径钉住响应丢失。**
 
 适用本票实际会写入的公开操作（纯读取入口则验证重复读取不改变快照）。用以下真实传输注入，保留第一次已提交结果：
 
@@ -277,18 +277,18 @@ def test_el16_commit_failure_and_retry(ec):
     assert ec.snapshot() == after
 ```
 
-- [ ] **Step 3：逐项完成本票特有边界。**
+- [x] **Step 3：逐项完成本票特有边界。**
 
-- [ ] 3.1：AI 只接收已认可的场景、可用词汇和上一轮结果；不能改轮次、标准答案、任务条件或客观判定。 对应测试必须从实际输入触发并断言公开结果；以Task 1/2代码为测试起点，成功/失败都保留其真实记录。
-- [ ] 3.2：回应超词汇、泄露当前标准应答、缺情境一致性或格式无效时不直接展示，改用核对模板；合格回应实际展示后记录适用接触。 对应测试必须从实际输入触发并断言公开结果；以Task 1/2代码为测试起点，成功/失败都保留其真实记录。
-- [ ] 3.3：每轮最多一个关键纠正；模型称对/错不能改变规则结果，不把未判定改成成功或额外写 FSRS。 对应测试必须从实际输入触发并断言公开结果；以Task 1/2代码为测试起点，成功/失败都保留其真实记录。
-- [ ] 3.4：答案与轮次先保存、AI 后生成；未配置、超时、断连和失败保留结果，重复确认与晚到回应不能重复推进或污染新轮次。 对应测试必须从实际输入触发并断言公开结果；以Task 1/2代码为测试起点，成功/失败都保留其真实记录。
-- [ ] 3.5：模板/模型来源和必要回复版本可追溯并随现有场景记录进入 V3；原有场景无需真实 AI 密钥也可验收。 对应测试必须从实际输入触发并断言公开结果；以Task 1/2代码为测试起点，成功/失败都保留其真实记录。
-- [ ] 3.6：本票路径的保存失败、重复确认、内容修订/删除及恢复边界有可观察结果；不依赖尚未实施的票兜底。 对应测试必须从实际输入触发并断言公开结果；以Task 1/2代码为测试起点，成功/失败都保留其真实记录。
-- [ ] 3.7：若引入新的持久记录或用途，本票同步实现 V3 导出、校验、引用映射、恢复及旧格式缺失解释；不能只加表后等待最后集成票。 对应测试必须从实际输入触发并断言公开结果；以Task 1/2代码为测试起点，成功/失败都保留其真实记录。
-- [ ] 3.8：本票新增具名用户级测试分支并登记到完整覆盖门禁，同时维护受影响的现有场景，不降低原有验收要求。 对应测试必须从实际输入触发并断言公开结果；以Task 1/2代码为测试起点，成功/失败都保留其真实记录。
+- [x] 3.1：AI 只接收已认可的场景、可用词汇和上一轮结果；不能改轮次、标准答案、任务条件或客观判定。 对应测试必须从实际输入触发并断言公开结果；以Task 1/2代码为测试起点，成功/失败都保留其真实记录。
+- [x] 3.2：回应超词汇、泄露当前标准应答、缺情境一致性或格式无效时不直接展示，改用核对模板；合格回应实际展示后记录适用接触。 对应测试必须从实际输入触发并断言公开结果；以Task 1/2代码为测试起点，成功/失败都保留其真实记录。
+- [x] 3.3：每轮最多一个关键纠正；模型称对/错不能改变规则结果，不把未判定改成成功或额外写 FSRS。 对应测试必须从实际输入触发并断言公开结果；以Task 1/2代码为测试起点，成功/失败都保留其真实记录。
+- [x] 3.4：答案与轮次先保存、AI 后生成；未配置、超时、断连和失败保留结果，重复确认与晚到回应不能重复推进或污染新轮次。 对应测试必须从实际输入触发并断言公开结果；以Task 1/2代码为测试起点，成功/失败都保留其真实记录。
+- [x] 3.5：模板/模型来源和必要回复版本可追溯并随现有场景记录进入 V3；原有场景无需真实 AI 密钥也可验收。 对应测试必须从实际输入触发并断言公开结果；以Task 1/2代码为测试起点，成功/失败都保留其真实记录。
+- [x] 3.6：本票路径的保存失败、重复确认、内容修订/删除及恢复边界有可观察结果；不依赖尚未实施的票兜底。 对应测试必须从实际输入触发并断言公开结果；以Task 1/2代码为测试起点，成功/失败都保留其真实记录。
+- [x] 3.7：若引入新的持久记录或用途，本票同步实现 V3 导出、校验、引用映射、恢复及旧格式缺失解释；不能只加表后等待最后集成票。 对应测试必须从实际输入触发并断言公开结果；以Task 1/2代码为测试起点，成功/失败都保留其真实记录。
+- [x] 3.8：本票新增具名用户级测试分支并登记到完整覆盖门禁，同时维护受影响的现有场景，不降低原有验收要求。 对应测试必须从实际输入触发并断言公开结果；以Task 1/2代码为测试起点，成功/失败都保留其真实记录。
 
-- [ ] **Step 4：执行本票独立演示与功能回退。**
+- [x] **Step 4：执行本票独立演示与功能回退。**
 
 关闭模型增强并使用既有核对模板，已存答案、轮次和结果保留，不需迁移回旧格式。
 
@@ -296,7 +296,7 @@ def test_el16_commit_failure_and_retry(ec):
 
 除失败事务回滚外，再演练隐藏新入口/恢复兼容适配后旧数据可读、新记录可导出。若已有后继，逆依赖撤回或保留其契约，不执行删除列/清库式回退。
 
-- [ ] **Step 5：运行验证并保存证据。**
+- [x] **Step 5：运行验证并保存证据。**
 
 ```bash
 .venv/bin/python -m pytest tests/test_el16_bounded_ai_scene_feedback.py -q
@@ -307,7 +307,7 @@ git diff --check
 
 每项Review Focus要能指向实际新增测试；仅有说明或手动点过不算自动覆盖。记录当次源码身份、双视口结果、HTTP/迁移补充与回退结果；缺样本/跳过/失败后重试不当通过。
 
-- [ ] **Step 6：提交独立边界二。**
+- [x] **Step 6：提交独立边界二。**
 
 ```bash
 git add -- app/services/scene_feedback.py app/services/scenes.py app/routers/practice.py app/services/model_router.py frontend/src/views/ScenePage.jsx app/schemas/backup_v3.py tests/test_el16_bounded_ai_scene_feedback.py e2e/el-16.spec.mjs e2e/spec-coverage.mjs docs/adr/0008-bounded-scene-evidence.md README.md
@@ -322,4 +322,4 @@ git commit -m "test: qualify el-16 recovery and compatibility"
 - 本票对应：AC31、AC32、AC33、AC34、AC35、AC36、AC37。Task 1负责用户可见闭环，Task 2负责相关异常/兼容/回退；EL-21只检查组合完整性。
 - 自检：规格范围与所有勾选条件已进入接入步骤；方法/字段按Shared Interfaces；Review Focus在Task 2具有规则输入或公开场景归属。
 - 执行时若首条已由前置正确实现，记录实际绿灯并补真正未覆盖的边界，不人为破坏产品造红灯。
-- 当前产物是计划，不把其中未来测试命令或示例片段称为已经实现/通过。
+- 实际完成情况见验收证据；其中明确区分已运行的适用检查、N/A 及未验证项，不把原计划示例当作运行证据。
