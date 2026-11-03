@@ -11,8 +11,18 @@ import {
 } from "../lib/assistance.js";
 import { recordPracticeContact } from "../lib/practiceContacts.js";
 
+function BudgetNotice({session}) {
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  if (!session.startedAt || !session.plan || now - session.startedAt < session.plan.budget_minutes * 60000) return null;
+  return <p role="status" data-testid="budget-expired">已到预计时间，可在确认保存后先到这里；也可继续本轮，目标保持不变。</p>;
+}
+
 /** Daily orchestration only; main progress and attempt commits keep their existing owners. */
-export default function DailySessionPage({ session, onSessionChange, onFinish, ...studyProps }) {
+export default function DailySessionPage({ session, onSessionChange, onFinish, onPauseExit, ...studyProps }) {
   const attempt = useLearningAttempt("reinforcement");
   const mounted = useRef(false);
   const readSequence = useRef(0);
@@ -58,13 +68,15 @@ export default function DailySessionPage({ session, onSessionChange, onFinish, .
     clearAssistance("reinforcement", itemId);
   }, [attempt.phase, itemId]);
   const [summary, setSummary] = useState(null);
+  const [paused, setPaused] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const finish = useCallback(async () => {
+  const finish = useCallback(async (pause = false) => {
     if (!ownsSession()) return;
     const request = ++readSequence.current;
     setLoading(true); setError(""); setQuestions(null);
-    onSessionChange({phase: "summary"});
+    setPaused(pause);
+    if (!pause) onSessionChange({phase: "summary"});
     try {
       const saved = await api(`/api/sessions/${session.id}/summary`);
       if (ownsRead(request)) setSummary(saved);
@@ -101,6 +113,12 @@ export default function DailySessionPage({ session, onSessionChange, onFinish, .
     attempt.clear();
     load();
   }, [studyProps.recoveryVersion]);
+  const continueRound = () => {
+    // A pause result belongs to the pause screen, never to a resumed round.
+    readSequence.current += 1;
+    setPaused(false); setSummary(null); setError(""); setLoading(false);
+    if (session.complete) load();
+  };
   const submit = async (answer) => {
     const question = questions?.[0];
     if (!question || attempt.phase !== "idle") return;
@@ -117,17 +135,31 @@ export default function DailySessionPage({ session, onSessionChange, onFinish, .
     attempt.clear();
     await load();
   };
-  if (!session.complete) return <StudyPage {...studyProps} session={session} />;
   if (summary) return <section className="view view-center"><div className="study-done">
-    <h2>本轮学习结果</h2>
+    <h2>{paused ? "本段已保存结果" : "本轮学习结果"}</h2>
     <p className="done-detail">{summary.counts.completed_cards} 张卡已保存并排期；主队列 {summary.counts.main} 次，巩固 {summary.counts.reinforcement} 次；跳过 {summary.counts.skipped} 次。</p>
     {[["retrieval", "独立提取"], ["assisted", "辅助练习"], ["recognition", "识别练习"], ["self_report", "自评"]].map(([key, label]) => <p key={key}>{label}：{summary.metrics[key].count ? `${summary.metrics[key].successes} / ${summary.metrics[key].count}` : "暂无数据"}</p>)}
     <p>仍需复习：{summary.weak_words.map(w => w.word).join("、") || "本轮暂无薄弱词"}</p>
     <p>{summary.next_due ? `已有排期：${summary.next_due}` : "暂无排期，可稍后返回队列继续学习"}</p>
-    <button className="btn btn-primary" onClick={onFinish}>← 返回队列</button>
-    <button className="btn btn-ghost" onClick={() => { onFinish(); studyProps.onToQuiz(); }}>去做测验</button>
+    {paused ? <>
+      <p>本轮目标 {session.target} 张，仍有 {session.target - session.index} 张未完成</p>
+      <button className="btn btn-primary" onClick={onPauseExit}>返回首页</button>
+      <button className="btn btn-ghost" onClick={continueRound}>继续本轮学习</button>
+    </> : <>
+      <button className="btn btn-primary" onClick={onFinish}>← 返回队列</button>
+      <button className="btn btn-ghost" onClick={() => { onFinish(); studyProps.onToQuiz(); }}>去做测验</button>
+    </>}
   </div></section>;
+  if (paused) return <section className="view view-center">
+    {loading && <p role="status">正在读取本段已保存结果…</p>}
+    {error && <p role="alert">{error}</p>}
+    {error && <button className="btn btn-primary" onClick={() => finish(true)}>重试加载</button>}
+    <button className="btn btn-ghost" onClick={onPauseExit}>返回首页</button>
+    <button className="btn btn-ghost" onClick={continueRound}>继续本轮学习</button>
+  </section>;
+  if (!session.complete) return <><BudgetNotice session={session} /><StudyPage {...studyProps} session={session} onPause={() => finish(true)} /></>;
   return <section className="view view-practice">
+    <BudgetNotice session={session} />
     <h2>本轮巩固</h2>
     {loading && <p role="status">正在读取已保存结果…</p>}
     {error && <div role="alert">{error}<button className="btn btn-primary" onClick={load}>重试加载</button></div>}
@@ -144,7 +176,8 @@ export default function DailySessionPage({ session, onSessionChange, onFinish, .
     </>}
     {attempt.phase === "saving" && <p role="status">正在确认保存…</p>}
     {attempt.phase === "failed" && <div role="alert">{attempt.error}<button className="btn btn-primary" onClick={retry}>继续确认保存</button><button className="btn btn-ghost" onClick={() => { attempt.clear(); studyProps.onAbort(); }}>退出本轮并重新加载</button></div>}
-    <button className="btn btn-ghost" disabled={loading || attempt.phase !== "idle"} onClick={finish}>跳过本轮巩固</button>
+    <button className="btn btn-ghost" disabled={loading || attempt.phase === "saving" || attempt.phase === "failed"} onClick={() => finish(true)}>先到这里</button>
+    <button className="btn btn-ghost" disabled={loading || attempt.phase !== "idle"} onClick={() => finish()}>跳过本轮巩固</button>
     <button className="btn btn-ghost" onClick={studyProps.onExit}>← 退出</button>
   </section>;
 }

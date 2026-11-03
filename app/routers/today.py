@@ -1,6 +1,8 @@
 from datetime import UTC, datetime, timedelta
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Request
+from pydantic import BeforeValidator
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -38,6 +40,7 @@ def get_today(
     request: Request,
     new_limit: int = 10,
     due_limit: int = 20,
+    budget_minutes: Annotated[Literal[3, 8, 15], BeforeValidator(int)] = 8,
     db: Session = Depends(get_db),
     runtime: Runtime = Depends(get_runtime),
 ):
@@ -118,7 +121,7 @@ def get_today(
             card["progress_label"] = summaries[card["id"]]["progress_label"]
         return cards
 
-    queue = build_daily_queue(db, adaptive_limit, runtime, due_limit)
+    queue = build_daily_queue(db, adaptive_limit, runtime, due_limit, budget_minutes)
     with_progress_label(queue["queue"])
     return {
         **queue,

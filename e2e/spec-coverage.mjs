@@ -3,6 +3,14 @@ import fs from "node:fs";
 import {fileURLToPath} from "node:url";
 
 export const requirements = {
+  EL17: [
+    "EL-17 late pause summary cannot finish a resumed incomplete round",
+    "EL-17 budget preview pauses saved work and refresh resumes frozen round",
+    "EL-17 response-loss at budget expiry keeps pending identity and confirms once",
+    "EL-17 commit-failure at budget expiry keeps pending identity and confirms once",
+    "EL-17 frozen revision keeps target and offers explicit reload",
+    "EL-17 frozen deletion keeps target and offers explicit reload",
+  ],
   EL16: [
     "EL-16 leaving after visible feedback still confirms its delayed contact lookup",
     "EL-16 feedback title visibility does not count offscreen response words",

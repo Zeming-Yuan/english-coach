@@ -1,41 +1,44 @@
 """Bounded daily main queue; priority tags never make a card due."""
 
-from sqlalchemy import select
+from sqlalchemy import literal_column, select
 from sqlalchemy.orm import Session
 
 from app.models.card import Card
 from app.models.error_card import ErrorCard
 from app.models.hard_card import HardCard
 from app.models.review import Review
+from app.models.review_baseline import ReviewBaseline
+from app.models.review_event import ReviewEvent
 from app.runtime import Runtime
 from app.services.card_payload import queue_payload
 from app.services.content_revisions import content_revision_map
 from app.services.learning import select_current_review
+from app.services.statistics import learning_day
+from app.services.time_budget import budget_plan
 
 
-def assemble_daily_queue(due_cards, new_cards, review_limit=20):
-    seen = set()
-    reviews = []
-    for card in due_cards:
-        if card["id"] not in seen:
-            seen.add(card["id"])
-            reviews.append(card)
-    selected = reviews[:review_limit]
-    review_count = len(selected)
-    for card in new_cards:
-        if card["id"] not in seen:
-            seen.add(card["id"])
-            selected.append(card)
-    return {
-        "queue": selected,
-        "review_count": review_count,
-        "new_count": len(selected) - review_count,
-        "remaining_due": max(0, len(reviews) - review_count),
-        "target": len(selected),
-    }
-
-
-def build_daily_queue(db: Session, limit: int, runtime: Runtime, due_limit: int = 20):
+def build_daily_queue(
+    db: Session, limit: int, runtime: Runtime, due_limit: int = 20, minutes: int = 8
+):
+    today = learning_day(runtime.clock.now(), runtime.learning_timezone)
+    first = {}
+    for event in db.scalars(
+        select(ReviewEvent)
+        .join(Card, Card.id == ReviewEvent.card_id)
+        .where(ReviewEvent.scheduled.is_(True), Card.kind == "word")
+        .order_by(ReviewEvent.occurred_at, literal_column("review_events.rowid"))
+    ):
+        first.setdefault(event.card_id, event)
+    baseline_ids = set(db.scalars(select(ReviewBaseline.card_id)))
+    used = sum(
+        event.learning_day == today
+        and card_id not in baseline_ids
+        and event.before is not None
+        and event.before.get("last_review") is None
+        and event.before.get("stability") is None
+        for card_id, event in first.items()
+    )
+    new_remaining = max(0, limit - used)
     cards = (
         db.execute(select(Card).where(Card.kind == "word").order_by(Card.id))
         .scalars()
@@ -44,7 +47,11 @@ def build_daily_queue(db: Session, limit: int, runtime: Runtime, due_limit: int 
     states = {}
     for review in db.execute(select(Review)).scalars():
         states.setdefault(review.card_id, []).append(review)
-    current = {card_id: select_current_review(rows) for card_id, rows in states.items()}
+    current = {
+        card_id: review
+        for card_id, rows in states.items()
+        if (review := select_current_review(rows)) is not None
+    }
     now = runtime.clock.now().replace(tzinfo=None)
     due = [card for card in cards if card.id in current and current[card.id].due <= now]
     errors = {}
@@ -59,13 +66,17 @@ def build_daily_queue(db: Session, limit: int, runtime: Runtime, due_limit: int 
     new = sorted(
         [card for card in cards if card.id not in current],
         key=lambda card: (*priority(card), card.id),
-    )[: max(0, limit)]
+    )[:new_remaining]
     revisions = content_revision_map(db, "card", [c.id for c in [*due, *new]])
-    return assemble_daily_queue(
+    result = budget_plan(
         [queue_payload(card, revisions[card.id]) for card in due],
         [queue_payload(card, revisions[card.id]) for card in new],
-        max(0, min(20, due_limit)),
+        minutes,
+        new_remaining,
+        review_limit=due_limit,
     )
+    result["new_remaining"] = new_remaining
+    return result
 
 
 def build_reinforcement(events, max_items=3):

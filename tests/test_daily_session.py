@@ -64,12 +64,11 @@ def test_daily_queue_prioritizes_tags_inside_due_and_new_groups(ec):
         db.commit()
     result = ec.client.get("/api/today").json()
     assert [card["id"] for card in result["queue"]][:2] == [ids[-1], ids[0]]
-    assert result["queue"][20]["id"] == new_ids[-1]
     assert result["review_count"] == 20
     assert result["remaining_due"] == 5
-    assert result["new_count"] == 10
-    assert result["target"] == 30
-    assert len({c["id"] for c in result["queue"]}) == 30
+    assert result["new_count"] == 0
+    assert result["target"] == 20
+    assert len({c["id"] for c in result["queue"]}) == 20
     assert future not in [card["id"] for card in result["queue"]]
 
 
@@ -138,5 +137,6 @@ def test_daily_quota_stays_lowered_and_empty_counts_are_explicit(ec):
     result = ec.client.get("/api/today").json()
     assert result["recommended_goal"] == 5
     assert result["sample_count"] == 1
-    assert result["new_count"] == 5
-    assert result["target"] == 5
+    assert result["new_count"] == 4
+    assert result["target"] == 4
+    assert result["new_remaining"] == 4
