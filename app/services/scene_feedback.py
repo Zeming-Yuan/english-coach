@@ -145,6 +145,9 @@ def _context(db: Session, session_id: str, item_id: str) -> dict:
     rules = practice.scene_snapshot
     task = rules["tasks"][item.position - 1]
     return {
+        # Full restore remaps local rows even when it retains business UUIDs.
+        # This fence stays local and is never sent to the external model.
+        "entity_ids": (practice.id, item.id, answer.id),
         "attempt_id": answer.attempt_id,
         "fingerprint": answer.fingerprint,
         "rule_version": practice.rule_version,
@@ -172,6 +175,8 @@ def _expression(context: dict, enabled: bool) -> dict:
     replies = context["scene"]["replies"]
     correction = context["previous_result"]["correction"]
     fallback = {"text": replies[0], "correction": correction, "origin": "template"}
+    if not expression_allowed(fallback, replies, correction, context["forbidden"]):
+        raise PracticeUnavailableError("反馈模板暂不可用，已存答案和规则结果仍可读取")
     if not enabled:
         return fallback
     allowed = set(_words(" ".join(replies)))

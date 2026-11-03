@@ -46,4 +46,4 @@ def upgrade():
 
 
 def downgrade():
-    raise RuntimeError("保留反馈与场景记录；关闭模型增强执行功能回退")
+    raise RuntimeError("保留场景记录与反馈；关闭模型增强执行功能回退")

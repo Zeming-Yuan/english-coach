@@ -15,7 +15,7 @@
     "introduction": {
       "name": ["Nice to meet you.", "Hello. Nice to meet you."],
       "origin": ["Nice to meet you here.", "It is nice to meet you here."],
-      "preference": ["I like tea too.", "Tea is good."]
+      "preference": ["Tea is good.", "Tea is nice."]
     },
     "directions": {
       "destination": ["The station is near here.", "It is near here."],

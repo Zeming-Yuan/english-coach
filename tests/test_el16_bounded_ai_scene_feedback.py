@@ -110,3 +110,74 @@ def test_el16_v3_roundtrip_preserves_feedback_and_first_answer_replay(ec, ec_fac
         == feedback.json()
     )
     assert len(target.snapshot()["extensions"]["scene_feedback"]) == 1
+
+
+def test_el16_every_scene_template_can_roundtrip_without_leaking_standard(ec):
+    for scene_id in ("drinks", "introduction", "directions"):
+        run = ec.client.post(
+            "/api/practice-sessions",
+            json={"id": str(uuid4()), "purpose": "scene", "scene_id": scene_id},
+        ).json()
+        answers = {
+            "drinks": [
+                "Can I have water, please?",
+                "One cup, please.",
+                "Yes, thank you.",
+            ],
+            "introduction": ["My name is Li.", "I am from Beijing.", "I like tea."],
+            "directions": [
+                "Excuse me, where is the station?",
+                "Should I turn left?",
+                "Yes, thank you.",
+            ],
+        }[scene_id]
+        for item, answer in zip(run["items"], answers):
+            path = f"/api/practice-sessions/{run['id']}/items/{item['id']}"
+            assert (
+                ec.client.post(
+                    path + "/attempts",
+                    json={"submission_id": str(uuid4()), "answer": answer},
+                ).status_code
+                == 200
+            )
+            feedback = request_feedback(ec, run, item["id"])
+            assert feedback.status_code == 200
+            assert feedback.json()["origin"] == "template"
+        backup = ec.client.get("/api/export/backup").json()
+        preview = ec.client.post("/api/import/preview", json=backup)
+        assert preview.status_code == 200, preview.text
+
+
+def test_el16_restore_discards_a_late_response_even_for_the_same_snapshot(ec):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+
+    from tests.support.llm_queue import QueuedLLM
+    from tests.test_el11_bounded_personalized_story import restore
+
+    run, item_id = saved_scene_item(ec)
+    backup = ec.client.get("/api/export/backup").json()
+    started, release = Event(), Event()
+
+    class BlockingLLM(QueuedLLM):
+        def create(self, **kwargs):
+            started.set()
+            assert release.wait(10)
+            return super().create(**kwargs)
+
+    ec.app.state.llm_client = BlockingLLM(
+        [{"text": "Water is ready.", "correction": None}]
+    )
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(request_feedback, ec, run, item_id)
+        try:
+            assert started.wait(10)
+            restore(ec, backup)
+        finally:
+            release.set()
+        response = future.result(timeout=10)
+    assert response.status_code == 409, response.text
+    resumed = ec.client.get(f"/api/practice-sessions/{run['id']}").json()
+    assert resumed["counts"]["processed"] == 1
+    assert "feedback" not in resumed["items"][0]
+    assert ec.snapshot()["extensions"]["scene_feedback"] == []
