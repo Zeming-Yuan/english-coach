@@ -45,6 +45,9 @@ def main() -> None:
     os.environ["LLM_BASE_URL"] = str(
         settings_payload.get("llm_base_url", "http://127.0.0.1:9/v1")
     )
+    os.environ["TIME_BUDGET_ENABLED"] = str(
+        settings_payload.get("time_budget_enabled", True)
+    )
     os.environ["DELAYED_RECALL_ENABLED"] = str(
         settings_payload.get("delayed_recall_enabled", True)
     )

@@ -463,10 +463,10 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
           <p>{isEmpty ? "从第一组单词开始" : activeSession ? "继续从上次的位置开始" : "先回忆，再继续新的内容"}</p>
         </div>
         <div className="home-round-notes">
-          <label>今天可用时间 <select aria-label="今天可用时间" value={activeSession?.plan?.budget_minutes ?? budget} disabled={!!activeSession} onChange={event => {
+          {data.time_budget_enabled !== false && <label>今天可用时间 <select aria-label="今天可用时间" value={activeSession?.plan?.budget_minutes ?? budget} disabled={!!activeSession} onChange={event => {
             const minutes = Number(event.target.value);
             storageSet("timeBudget", minutes); setBudget(minutes);
-          }}>{[3, 8, 15].map(minutes => <option key={minutes} value={minutes}>约 {minutes} 分钟</option>)}</select></label>
+          }}>{[3, 8, 15].map(minutes => <option key={minutes} value={minutes}>约 {minutes} 分钟</option>)}</select></label>}
           <p role="status" data-testid="time-budget-plan">预计约 {Math.ceil((plan?.estimated_seconds ?? 0) / 60)} 分钟 · 巩固至多 {plan?.reinforcement_limit ?? 3} 题。默认估算：复习 20 秒、新词 40 秒、巩固 20 秒，固定开销 15 秒；时间仅作估计，可保存后暂停。</p>
         </div>
         {isEmpty ? <div className="home-welcome">
@@ -481,7 +481,7 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
           <div className="home-round-body">
             <div className="home-round-summary">
               <h2>{activeSession || queueTotal > 0 ? "本轮学习" : "今日复习已完成"}</h2>
-              {activeSession || queueTotal > 0 ? <p data-testid="round-target">本轮目标 {activeSession?.target ?? data.target} 张 · 到期复习 {activeSession?.reviewCount ?? data.review_count} 张 · 新词 {activeSession?.newCount ?? data.new_count} 个</p> : <p>当前没有到期词或待学新词，可继续专项练习。</p>}
+              {activeSession || queueTotal > 0 ? <p data-testid="round-target">本轮目标 {activeSession?.target ?? data.target} 张 · 到期复习 {activeSession?.reviewCount ?? data.review_count} 张 · 新词 {activeSession?.newCount ?? data.new_count} 个</p> : <p>{data.new_remaining === 0 ? "今日新词余量已用完，可稍后复习或继续专项练习。" : "当前没有到期词或待学新词，可继续专项练习。"}</p>}
             </div>
             <div className="home-goal">
               <div className="home-goal-label">今日完成 <b>{done}</b><span className="goal-total">/ {target}</span><span>词</span></div>
@@ -494,10 +494,10 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
               {activeSession ? "继续本轮学习" : queueTotal > 0 ? "开始今天的学习" : "添加新词"}<CaretRightIcon aria-hidden="true" size={20} />
             </button>
           </div>
-          {(activeSession || queueTotal > 0) && <div className="home-round-notes">
+          <div className="home-round-notes">
             <span data-testid="remaining-due">另有 {activeSession?.remainingDue ?? data.remaining_due} 张到期词，完成后可继续下一轮</span>
             <span data-testid="new-word-limit">新词建议 {adaptiveGoal} 个 · 今日剩余 {data.new_remaining ?? adaptiveGoal} 个 · 有效样本 {data.sample_count ?? 0}</span>
-          </div>}
+          </div>
         </>}
       </section>
 

@@ -14,7 +14,7 @@
 
 **Blocked by:** None。
 
-**Status:** 计划已编写，产品未实现；以下代码块是未来实施内容，本次不把计划语法检查当作产品测试通过。
+**Status:** 已按单票两切片执行。以下代码块保留实施前示例；实际代码、红绿结果、范围裁决、两轴审查及未验证门禁见[验证记录](../../verification/el17-time-budget-daily-plan.md)。用户要求的受影响检查优先于下列全量命令示例。
 
 ## Global Constraints
 

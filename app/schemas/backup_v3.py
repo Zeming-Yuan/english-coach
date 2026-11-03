@@ -548,6 +548,18 @@ def validate_v3(payload: dict) -> ValidatedBackup:
                 UUID(identity)
             except (ValueError, TypeError):
                 _reject("learning_events", index, "card_identity", "必须是 UUID")
+        command_revision = row["command_json"].get("revision")
+        if command_revision is not None and (
+            identity is None
+            or str(UUID(command_revision["identity"])) != str(UUID(identity))
+            or command_revision["version"] != version
+        ):
+            _reject(
+                "learning_events",
+                index,
+                "command_json.revision",
+                "提交修订前置条件与保存事件不一致",
+            )
     validated_extensions = {
         name: _validate_extension_rows(name, extensions.get(name) or [])
         for name in features

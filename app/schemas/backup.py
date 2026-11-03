@@ -448,6 +448,8 @@ def _validate_full_graph(tables: dict, payload: dict) -> None:
             command = AttemptCommand.model_validate_json(
                 json.dumps(row["command_json"]), strict=True
             )
+            if payload.get("version") == 2 and command.revision is not None:
+                raise ValueError("修订前置条件需要 V3 备份，V2 无法保留事件修订关联")
             result = AttemptResult.model_validate_json(
                 json.dumps(row["response"]), strict=True
             )

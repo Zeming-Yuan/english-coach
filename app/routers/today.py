@@ -44,6 +44,8 @@ def get_today(
     db: Session = Depends(get_db),
     runtime: Runtime = Depends(get_runtime),
 ):
+    if not request.app.state.settings.time_budget_enabled:
+        budget_minutes = 8
     # 决策（2026-09-02）：句子卡退出复习队列，只留单词卡。
     # 依据：词库 <200 词时 AI 例句含大量未学词（违反 i+1），整句提取负载淹没问题词；
     # 语境复现职责由故事页承担（自定节奏、无评分压力）。
@@ -125,6 +127,7 @@ def get_today(
     with_progress_label(queue["queue"])
     return {
         **queue,
+        "time_budget_enabled": request.app.state.settings.time_budget_enabled,
         "scenes_enabled": request.app.state.settings.scenes_enabled,
         "error_cards": with_progress_label(
             [

@@ -140,3 +140,50 @@ def test_daily_quota_stays_lowered_and_empty_counts_are_explicit(ec):
     assert result["new_count"] == 4
     assert result["target"] == 4
     assert result["new_remaining"] == 4
+
+
+def test_daily_queue_keeps_new_group_priority_when_due_cards_all_fit(ec):
+    from datetime import datetime
+
+    from app.models.error_card import ErrorCard
+    from app.models.hard_card import HardCard
+    from app.models.review import Review
+
+    new_ids = [ec.seed_card(word=f"new{i}") for i in range(12)]
+    due_id = ec.seed_card(word="due")
+    future_id = ec.seed_card(word="future")
+    with ec.SessionLocal() as db:
+        for card_id, due in [
+            (due_id, datetime(2026, 10, 29)),
+            (future_id, datetime(2026, 12, 1)),
+        ]:
+            db.add(
+                Review(
+                    card_id=card_id,
+                    state=2,
+                    due=due,
+                    stability=2,
+                    difficulty=5,
+                    elapsed_days=1,
+                    review_count=2,
+                )
+            )
+        db.add_all(
+            [
+                ErrorCard(card_id=new_ids[-2], error_count=5),
+                ErrorCard(card_id=new_ids[-2], error_count=2),
+                HardCard(card_id=new_ids[-1]),
+                HardCard(card_id=future_id),
+            ]
+        )
+        db.commit()
+    data = ec.client.get("/api/today?budget_minutes=15").json()
+    ids = [card["id"] for card in data["queue"]]
+    assert ids[:3] == [due_id, new_ids[-2], new_ids[-1]]
+    assert (data["review_count"], data["new_count"], data["remaining_due"]) == (
+        1,
+        10,
+        0,
+    )
+    assert len(ids) == len(set(ids)) == data["target"] == 11
+    assert future_id not in ids

@@ -117,13 +117,16 @@ export default function DailySessionPage({ session, onSessionChange, onFinish, o
     // A pause result belongs to the pause screen, never to a resumed round.
     readSequence.current += 1;
     setPaused(false); setSummary(null); setError(""); setLoading(false);
-    if (session.complete) load();
+    if (session.complete) {
+      if (attempt.phase === "saved") attempt.clear();
+      load();
+    }
   };
   const submit = async (answer) => {
     const question = questions?.[0];
     if (!question || attempt.phase !== "idle") return;
     await attempt.submit("/api/typing/check", {
-      card_id: question.card_id, kind: "typed", user_input: answer,
+      card_id: question.card_id, kind: "typed", user_input: answer, revision: question.content_revision,
       source: "reinforcement", session_id: session.id, stage: "reinforcement", assistance: assisted ? ["first_letter", "length", "live_feedback"] : [],
     });
     if (ownsSession()) clearPending("reinforcement");
