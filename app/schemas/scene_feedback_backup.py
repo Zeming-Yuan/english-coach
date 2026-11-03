@@ -1,13 +1,17 @@
 """V3 feedback records reference a frozen first answer, without new grades."""
 
 from collections.abc import Callable
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Literal, NoReturn
 from uuid import UUID
 
 from pydantic import Field, field_validator
 
 from app.schemas.backup import FullRow
+
+
+def _utc_naive(value: datetime) -> datetime:
+    return value.astimezone(UTC).replace(tzinfo=None) if value.tzinfo else value
 
 
 class FullSceneFeedback(FullRow):
@@ -28,6 +32,11 @@ class FullSceneFeedback(FullRow):
     @classmethod
     def _uuid(cls, value: str) -> str:
         return str(UUID(value))
+
+    @field_validator("occurred_at")
+    @classmethod
+    def _utc(cls, value: datetime) -> datetime:
+        return _utc_naive(value)
 
 
 def validate_feedback_graph(
@@ -53,7 +62,7 @@ def validate_feedback_graph(
             or item["first_task_attempt_id"] != row["attempt_id"]
             or row["rule_version"] != practice["rule_version"]
             or row["content_hash"] != practice["scene_snapshot"]["content_hash"]
-            or row["occurred_at"] < answer["occurred_at"]
+            or row["occurred_at"] < _utc_naive(answer["occurred_at"])
         ):
             reject(
                 "scene_feedback",

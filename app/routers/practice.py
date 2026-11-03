@@ -46,6 +46,7 @@ def feedback(
     session_id: UUID,
     item_id: UUID,
     payload: SceneFeedbackIn,
+    request: Request,
     db: Session = Depends(get_db),
     runtime: Runtime = Depends(get_runtime),
 ):
@@ -53,7 +54,12 @@ def feedback(
 
     try:
         return build_scene_feedback(
-            db, str(session_id), str(item_id), runtime, str(payload.operation_id)
+            db,
+            str(session_id),
+            str(item_id),
+            runtime,
+            str(payload.operation_id),
+            enabled=request.app.state.settings.scene_feedback_enabled,
         )
     except PracticeNotFoundError as error:
         raise _not_found(error)

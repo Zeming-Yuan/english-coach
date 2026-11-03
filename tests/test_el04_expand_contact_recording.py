@@ -291,6 +291,7 @@ def test_el04_v3_roundtrip_keeps_contact_time_and_revision(ec, ec_factory):
             "practice_sessions",
             "practice_items",
             "scene_attempts",
+            "scene_feedback",
         ],
         "missing": [],
     }

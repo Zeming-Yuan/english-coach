@@ -13,7 +13,6 @@ from app.models.scene_attempt import SceneAttempt
 from app.models.scene_feedback import SceneFeedback
 from app.runtime import Runtime
 from app.services.llm import generate_json
-from app.services.llm_client import LLMNotConfigured
 from app.services.practice import (
     PracticeConflictError,
     PracticeNotFoundError,
@@ -192,7 +191,7 @@ def _expression(context: dict, enabled: bool) -> dict:
                 ensure_ascii=False,
             ),
         )
-    except LLMNotConfigured:
+    except Exception:  # noqa: BLE001 — optional AI, including malformed provider envelopes
         return fallback
     if not expression_allowed(data, replies, correction, context["forbidden"]):
         return fallback
