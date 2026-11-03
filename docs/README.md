@@ -12,7 +12,7 @@
 
 ## 设计与研究
 
-- [设计研究](research/)保留原来源及参考图；第三方界面截图、商标与字体仍属于各自权利人，不属于本项目原创内容或商业再许可承诺。
+- [设计研究](research/)保留原来源。29 项缺少图片许可依据的第三方参考图／对比图仅保留[来源链接与原文件摘要](research/reference-sources.json)，原图保留在本地备份，不纳入最终发布树。第三方内容不属于本项目原创内容或商业再许可承诺。
 - [全站初查](design/full-app/)、[逐页视觉稿](design/page-by-page-2026-11-02/README.md)、[信息排版提案](design/learning-layout-2026-11-02/README.md)包含不同阶段的提案。Image Gen 视觉稿与 PDF 不能替代真实页面验收；是否采用以各自记录和后续交付为准。
 - [阅读页](design/story-reader/README.md)、[故事系列页面](design/story-family-implementation/)、[拼写页](design/qwerty-spelling-2026-11-02/)、[首页](design/home-contrast-2026-11-02/README.md)保留相应比较、提示词与历史验证。
 - [首页 QA](../design-qa.md)与[原目录同步记录](verification/frontend-sync-2026-11-03/README.md)只证明各自列明的范围。

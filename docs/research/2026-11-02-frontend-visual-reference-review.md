@@ -1,5 +1,7 @@
 # EnglishCoach 前端视觉参考调研
 
+> 发布说明（2026-11-03）：缺少图片许可依据的第三方原图及含原图的对比图仅在本地备份保留，公开版本只保留[来源链接与原文件摘要](reference-sources.json)。历史截图路径和比较记录不表示这些原图仍随仓库分发。
+
 - 核对日期：2026-11-02。
 - 用户目标：寻找开源项目和成熟厂商产品的真实界面，替代此前两轮未满意的展示稿；偏好成熟产品感。
 - 项目基线：`dev@2e6ff05`，已包含每日队列、学习证据、课程进度与持久短测。
@@ -25,7 +27,7 @@
 
 来源：[Enjoy Player 官网](https://player.enjoy.bot/)。官方仓库说明相关截图由应用本身渲染。
 
-![Enjoy Player 官方桌面练习界面](reference-images/enjoy-desktop-practice.webp)
+[Enjoy Player 官方桌面练习界面（来源链接，原图本地保留）](https://player.enjoy.bot/images/desktop-echo.webp)
 
 观察：当前句子置于主要阅读区，上下文弱化；模式位于顶部，播放/录音在底部。建议借任务与辅助信息的层级，不引入录音评分功能。
 
@@ -33,7 +35,7 @@
 
 来源：[官方词汇图](https://player.enjoy.bot/images/phone-vocabulary.webp)。
 
-![Enjoy Player 官方词汇页](reference-images/enjoy-vocabulary.webp)
+[Enjoy Player 官方词汇页（来源链接，原图本地保留）](https://player.enjoy.bot/images/phone-vocabulary.webp)
 
 观察：复习入口、总体词汇状态与具体词条分层；下方是统一列表。页面中的 Mastered 属于该产品定义，EnglishCoach 应保留自己的证据标签。
 
@@ -41,7 +43,7 @@
 
 来源：[Lector 官网](https://lector.dev/)。
 
-![Lector 官方阅读页](reference-images/lector-reading.webp)
+[Lector 官方阅读页（来源链接，原图本地保留）](https://lector.dev/_astro/reader.yk5tcvhY_1j6mdD.webp)
 
 观察：阅读内容有固定列宽，导航与阅读工具不占正文主导位置。大量词汇着色会产生视觉负担；本项目宜只突出目标词或当前选择。
 
@@ -49,7 +51,7 @@
 
 来源：[Lector 官网](https://lector.dev/)。
 
-![Lector 官方挖空练习页](reference-images/lector-cloze.webp)
+[Lector 官方挖空练习页（来源链接，原图本地保留）](https://lector.dev/_astro/cloze.Cg9PXzb6_ZOxQFA.webp)
 
 观察：题干、释义和选项在一个清晰的任务区域。借布局时需保持本项目独立/辅助/识别的区别；图中的 Mastery 不作为可迁移规则。
 
@@ -57,7 +59,7 @@
 
 来源：[Readwise Reader 官网](https://readwise.io/read)。这是官网公开产品预览，非本次登录捕获。
 
-![Readwise Reader 官方内容库预览](reference-images/readwise-reader-home.webp)
+[Readwise Reader 官方内容库预览（来源链接，原图本地保留）](https://d34adp677peecb.cloudfront.net/static/images/reader/Hero-Screen%401x.72ad6bf1deaa.webp)
 
 观察：内容列表承担主体，导航与右侧笔记是辅助。可借其列表/详情分工；明暗主题需单独决定，不因参考图为深色就固定为深色。
 
@@ -65,7 +67,7 @@
 
 来源：[Apple Books Mac 用户指南](https://support.apple.com/en-mz/guide/books/welcome/mac)。
 
-![Apple Books 官方书架界面](reference-images/apple-books-library.png)
+[Apple Books 官方书架界面（来源链接，原图本地保留）](https://help.apple.com/assets/67DB47E269E8D943E20D7C8C/67DB47E569E8D943E20D7C92/en_US/7343d8866dcbd4df865352e28de172ce.png)
 
 观察：主内容是具体书籍，侧栏层级简洁，动作不会变成大面积宣传区。对 EnglishCoach 的启发是以课程、故事和继续入口组织首页，而非让统计表占据主体。
 
@@ -73,7 +75,7 @@
 
 来源：[Linear 官方设计更新](https://linear.app/now/behind-the-latest-design-refresh)。
 
-![Linear 官方侧栏更新对照](reference-images/linear-sidebar-refresh.png)
+[Linear 官方侧栏更新对照（来源链接，原图本地保留）](https://webassets.linear.app/images/ornj730p/production/b6d6be14c96978b10553cfb9205be1065087e793-3904x2720.png)
 
 官方说明并可在图中看到：图标缩小、非当前项目文字弱化、侧栏留出更稳定的垂直节奏。它提供的是细节依据，不是本项目应采用项目管理布局的证据。
 
@@ -81,7 +83,7 @@
 
 来源：[Semi 官网](https://semi.design/en-US/)。这是官方场景示例，不冒充某个内部业务系统的现场截图。
 
-![Semi 官方场景示例](reference-images/semi-application-demo.png)
+[Semi 官方场景示例（来源链接，原图本地保留）](https://lf9-static.bytednsdoc.com/obj/eden-cn/ptlz_zlp/ljhwZthlaukjlkulzlp/root-web-sites/37361.png)
 
 观察：字体、间距、表单、列表和分割线遵循统一规则。可用来检查组件一致性，但示例的人员、项目、指标区域不属于 EnglishCoach。
 

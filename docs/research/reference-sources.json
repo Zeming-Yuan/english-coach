@@ -1,0 +1,238 @@
+{
+  "publication_date": "2026-11-03",
+  "policy": "Do not bundle third-party asset bytes until license/permission and copyright evidence is recorded. Historical source URLs are retained without an availability guarantee.",
+  "assets": [
+    {
+      "original_path": "docs/design/page-by-page-2026-11-02/references/ec-reference-dictionary.png",
+      "source_url": "https://support.apple.com/guide/dictionary/welcome/mac",
+      "original_sha256": "b0d7ed8cc5520c758c322b8af7654440ad27bbe869a1b52ecf66edc95c715ed1",
+      "publication": "source-link-only",
+      "asset_license_evidence": "unverified; source-code license is not treated as an asset permission",
+      "note": "Original asset or comparison retained only in the local publication backup; historical crop source may be a product page."
+    },
+    {
+      "original_path": "docs/design/page-by-page-2026-11-02/references/ec-reference-import.png",
+      "source_url": "https://support.1password.com/import/",
+      "original_sha256": "075ebe8ebf791650c6027069b3ec952659c606c538169b34224819a41197a67d",
+      "publication": "source-link-only",
+      "asset_license_evidence": "unverified; source-code license is not treated as an asset permission",
+      "note": "Original asset or comparison retained only in the local publication backup; historical crop source may be a product page."
+    },
+    {
+      "original_path": "docs/design/page-by-page-2026-11-02/references/ec-reference-screen-time.png",
+      "source_url": "https://support.apple.com/en-gb/guide/mac-help/mchlfafa9773/26/mac/26",
+      "original_sha256": "b38ca6e2193cf575ac1281fa49793e41c674c0d959317ed94295157f79a154ba",
+      "publication": "source-link-only",
+      "asset_license_evidence": "unverified; source-code license is not treated as an asset permission",
+      "note": "Original asset or comparison retained only in the local publication backup; historical crop source may be a product page."
+    },
+    {
+      "original_path": "docs/design/qwerty-spelling-2026-11-02/comparison-focused.png",
+      "source_url": "https://qwerty.kaiyi.cool/",
+      "original_sha256": "2dd553c288dd6d8b016159e3d1b15f80903873b557dc9543fb58199d80609d54",
+      "publication": "source-link-only",
+      "asset_license_evidence": "unverified; source-code license is not treated as an asset permission",
+      "note": "Original asset or comparison retained only in the local publication backup; historical crop source may be a product page."
+    },
+    {
+      "original_path": "docs/design/qwerty-spelling-2026-11-02/comparison-full.png",
+      "source_url": "https://qwerty.kaiyi.cool/",
+      "original_sha256": "a47c2600ef63b08cf65f2c8b8e6a8eda7c44ff234e767bfb49ab207447ce0d1f",
+      "publication": "source-link-only",
+      "asset_license_evidence": "unverified; source-code license is not treated as an asset permission",
+      "note": "Original asset or comparison retained only in the local publication backup; historical crop source may be a product page."
+    },
+    {
+      "original_path": "docs/design/qwerty-spelling-2026-11-02/qwerty-source.png",
+      "source_url": "https://qwerty.kaiyi.cool/",
+      "original_sha256": "223c21353657df93e540c229abeadd783e07c6b992cc1ad19afe0164f15a199c",
+      "publication": "source-link-only",
+      "asset_license_evidence": "unverified; source-code license is not treated as an asset permission",
+      "note": "Original asset or comparison retained only in the local publication backup; historical crop source may be a product page."
+    },
+    {
+      "original_path": "docs/research/reference-images/apple-books-library.png",
+      "source_url": "https://help.apple.com/assets/67DB47E269E8D943E20D7C8C/67DB47E569E8D943E20D7C92/en_US/7343d8866dcbd4df865352e28de172ce.png",
+      "original_sha256": "9bbd2d38ddf1207c4f9d66095cd4010b4d1cfc2a8adf328278eb1b818b6539bb",
+      "publication": "source-link-only",
+      "asset_license_evidence": "unverified; source-code license is not treated as an asset permission",
+      "note": "Original asset or comparison retained only in the local publication backup; historical crop source may be a product page."
+    },
+    {
+      "original_path": "docs/research/reference-images/apple-books-reading.png",
+      "source_url": "https://help.apple.com/assets/67DB47E269E8D943E20D7C8C/67DB47E569E8D943E20D7C92/en_US/1ef8e0ea7267fdfbd26bafbb10a8823e.png",
+      "original_sha256": "16ad2f418cadc1b5936ee5b94a5fdf25c651196481fa06dee19024c70c36ee62",
+      "publication": "source-link-only",
+      "asset_license_evidence": "unverified; source-code license is not treated as an asset permission",
+      "note": "Original asset or comparison retained only in the local publication backup; historical crop source may be a product page."
+    },
+    {
+      "original_path": "docs/research/reference-images/commercial/bbdc-store-1.jpg",
+      "source_url": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/78/ff/25/78ff2524-075f-e7ea-2261-2e5530ec679d/d58738d0-2eea-4113-9144-00e461352fcc_iPhone_8_Plus-5.0_U622a_U56fe-2.jpg/392x696bb.jpg",
+      "original_sha256": "550726e5c67a11c2eb78195bec757e48a62c833641546a5299bc4b685fb2dab6",
+      "publication": "source-link-only",
+      "asset_license_evidence": "unverified; source-code license is not treated as an asset permission",
+      "note": "Original asset or comparison retained only in the local publication backup; historical crop source may be a product page."
+    },
+    {
+      "original_path": "docs/research/reference-images/commercial/bbdc-store-2.jpg",
+      "source_url": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/d9/a9/8f/d9a98fe0-e954-e6b3-90ed-adfe3093b3b0/17745bb1-502f-41e3-a6bc-f1c66be5a970_iPhone_8_Plus-5.0_U622a_U56fe-3.jpg/392x696bb.jpg",
+      "original_sha256": "45a911c4bd9c62dabd8525be4e7e3f49aae5c6cc815f67526a65963ee15cc0f4",
+      "publication": "source-link-only",
+      "asset_license_evidence": "unverified; source-code license is not treated as an asset permission",
+      "note": "Original asset or comparison retained only in the local publication backup; historical crop source may be a product page."
+    },
+    {
+      "original_path": "docs/research/reference-images/commercial/lingq-library.png",
+      "source_url": "https://static.lingq.com/static/img/press-assets/desktop-library.jpg",
+      "original_sha256": "a27b55b457c7d4428e1f14ac66a8f3a135a31c9c5041a2018e8a1d64c6dd7a91",
+      "publication": "source-link-only",
+      "asset_license_evidence": "unverified; source-code license is not treated as an asset permission",
+      "note": "Original asset or comparison retained only in the local publication backup; historical crop source may be a product page."
+    },
+    {
+      "original_path": "docs/research/reference-images/commercial/lingq-reader.png",
+      "source_url": "https://static.lingq.com/static/img/press-assets/desktop-reader.jpg",
+      "original_sha256": "40f2a8057b3fd47a057f0ffa09c6808f2d6eec6d2ca4b572217153f29c3f6c26",
+      "publication": "source-link-only",
+      "asset_license_evidence": "unverified; source-code license is not treated as an asset permission",
+      "note": "Original asset or comparison retained only in the local publication backup; historical crop source may be a product page."
+    },
+    {
+      "original_path": "docs/research/reference-images/commercial/lingvist-card.png",
+      "source_url": "https://lingvist.io/assets/images/home/learn-more/vocabulary-mobile-3.png",
+      "original_sha256": "b534a89cbb5dc15eeb0622b4c6c129f376f9c4165b7e2ba302b69581c877406c",
+      "publication": "source-link-only",
+      "asset_license_evidence": "unverified; source-code license is not treated as an asset permission",
+      "note": "Original asset or comparison retained only in the local publication backup; historical crop source may be a product page."
+    },
+    {
+      "original_path": "docs/research/reference-images/commercial/lingvist-language-list.png",
+      "source_url": "https://lingvist.io/assets/images/home/slider/01-2.png",
+      "original_sha256": "7d6bc8b4470212d0f738b70ac4c30b4e283eb8be5f6755dfacb96078815a4a56",
+      "publication": "source-link-only",
+      "asset_license_evidence": "unverified; source-code license is not treated as an asset permission",
+      "note": "Original asset or comparison retained only in the local publication backup; historical crop source may be a product page."
+    },
+    {
+      "original_path": "docs/research/reference-images/commercial/lingvist-practice-focus.png",
+      "source_url": "https://lingvist.io/",
+      "original_sha256": "de3c64612e8d0fdd66fd4fce581f3c3676816fbb25119c27f51352cd2d4cf542",
+      "publication": "source-link-only",
+      "asset_license_evidence": "unverified; source-code license is not treated as an asset permission",
+      "note": "Original asset or comparison retained only in the local publication backup; historical crop source may be a product page."
+    },
+    {
+      "original_path": "docs/research/reference-images/commercial/lingvist-practice.png",
+      "source_url": "https://lingvist.io/assets/images/home/slider/02-2.png",
+      "original_sha256": "54318096aedf4fcfd6f5ad771e8a25ecbfb05a01f1860546544557fd7eead216",
+      "publication": "source-link-only",
+      "asset_license_evidence": "unverified; source-code license is not treated as an asset permission",
+      "note": "Original asset or comparison retained only in the local publication backup; historical crop source may be a product page."
+    },
+    {
+      "original_path": "docs/research/reference-images/commercial/lingvist-progress.png",
+      "source_url": "https://lingvist.io/",
+      "original_sha256": "54318096aedf4fcfd6f5ad771e8a25ecbfb05a01f1860546544557fd7eead216",
+      "publication": "source-link-only",
+      "asset_license_evidence": "unverified; source-code license is not treated as an asset permission",
+      "note": "Original asset or comparison retained only in the local publication backup; historical crop source may be a product page."
+    },
+    {
+      "original_path": "docs/research/reference-images/commercial/lingvist-vocabulary.png",
+      "source_url": "https://lingvist.io/assets/images/home/slider/03-2.png",
+      "original_sha256": "de3c64612e8d0fdd66fd4fce581f3c3676816fbb25119c27f51352cd2d4cf542",
+      "publication": "source-link-only",
+      "asset_license_evidence": "unverified; source-code license is not treated as an asset permission",
+      "note": "Original asset or comparison retained only in the local publication backup; historical crop source may be a product page."
+    },
+    {
+      "original_path": "docs/research/reference-images/commercial/readlang-discover-live.png",
+      "source_url": "https://readlang.com/es/library",
+      "original_sha256": "a7ef6eaacad8700facc5d10d90173e470ed867cff494908f42206ca0b7116c85",
+      "publication": "source-link-only",
+      "asset_license_evidence": "unverified; source-code license is not treated as an asset permission",
+      "note": "Original asset or comparison retained only in the local publication backup; historical crop source may be a product page."
+    },
+    {
+      "original_path": "docs/research/reference-images/commercial/readlang-library.png",
+      "source_url": "https://readlang.com/content/landingPages/read.png",
+      "original_sha256": "e6db07ea7e4bb59e7f6a53d79698f79de1c5be57b92e356a46feab67efa7f60d",
+      "publication": "source-link-only",
+      "asset_license_evidence": "unverified; source-code license is not treated as an asset permission",
+      "note": "Original asset or comparison retained only in the local publication backup; historical crop source may be a product page."
+    },
+    {
+      "original_path": "docs/research/reference-images/commercial/readlang-reader-official.png",
+      "source_url": "https://readlang.com/content/landingPages/step1-v2.svg",
+      "original_sha256": "e7cf253833f9030c281efd64c974536ae0ef2eb45fe94f37072811a1f8c9d434",
+      "publication": "source-link-only",
+      "asset_license_evidence": "unverified; source-code license is not treated as an asset permission",
+      "note": "Original asset or comparison retained only in the local publication backup; historical crop source may be a product page."
+    },
+    {
+      "original_path": "docs/research/reference-images/enjoy-desktop-practice.webp",
+      "source_url": "https://player.enjoy.bot/images/desktop-echo.webp",
+      "original_sha256": "707c7522122c97e928cb0d0b01229933849311660eeccb79dc9a0ba9c33a74fb",
+      "publication": "source-link-only",
+      "asset_license_evidence": "unverified; source-code license is not treated as an asset permission",
+      "note": "Original asset or comparison retained only in the local publication backup; historical crop source may be a product page."
+    },
+    {
+      "original_path": "docs/research/reference-images/enjoy-vocabulary.webp",
+      "source_url": "https://player.enjoy.bot/images/phone-vocabulary.webp",
+      "original_sha256": "5de40c965af79af953ef8c4a01c002b1221633183703fc7ee9f7c604f58d9345",
+      "publication": "source-link-only",
+      "asset_license_evidence": "unverified; source-code license is not treated as an asset permission",
+      "note": "Original asset or comparison retained only in the local publication backup; historical crop source may be a product page."
+    },
+    {
+      "original_path": "docs/research/reference-images/lector-cloze.webp",
+      "source_url": "https://lector.dev/_astro/cloze.Cg9PXzb6_ZOxQFA.webp",
+      "original_sha256": "cf9b1b1bb6c99e6b5a07af42942fa0840877be06f6fb270e11df68f212c73013",
+      "publication": "source-link-only",
+      "asset_license_evidence": "unverified; source-code license is not treated as an asset permission",
+      "note": "Original asset or comparison retained only in the local publication backup; historical crop source may be a product page."
+    },
+    {
+      "original_path": "docs/research/reference-images/lector-reading.webp",
+      "source_url": "https://lector.dev/_astro/reader.yk5tcvhY_1j6mdD.webp",
+      "original_sha256": "27033a8f610365d1f62b8cbb90834a71f485e2eeb025c541492430b5b573ce04",
+      "publication": "source-link-only",
+      "asset_license_evidence": "unverified; source-code license is not treated as an asset permission",
+      "note": "Original asset or comparison retained only in the local publication backup; historical crop source may be a product page."
+    },
+    {
+      "original_path": "docs/research/reference-images/linear-sidebar-refresh.png",
+      "source_url": "https://webassets.linear.app/images/ornj730p/production/b6d6be14c96978b10553cfb9205be1065087e793-3904x2720.png",
+      "original_sha256": "e8455151bee6433e6add7fd3407d09319612eb900fc02bc35d8bb0960b21e782",
+      "publication": "source-link-only",
+      "asset_license_evidence": "unverified; source-code license is not treated as an asset permission",
+      "note": "Original asset or comparison retained only in the local publication backup; historical crop source may be a product page."
+    },
+    {
+      "original_path": "docs/research/reference-images/readwise-reader-home.webp",
+      "source_url": "https://d34adp677peecb.cloudfront.net/static/images/reader/Hero-Screen%401x.72ad6bf1deaa.webp",
+      "original_sha256": "b79d67e6c9e97c51067cd8a90e8db798da9316ef94c1fc82b58c79e049d830c4",
+      "publication": "source-link-only",
+      "asset_license_evidence": "unverified; source-code license is not treated as an asset permission",
+      "note": "Original asset or comparison retained only in the local publication backup; historical crop source may be a product page."
+    },
+    {
+      "original_path": "docs/research/reference-images/readwise-reader-reading.webp",
+      "source_url": "https://d34adp677peecb.cloudfront.net/static/images/reader/Highlight-Alpha-No-Note%401x.28c2c4cc2706.webp",
+      "original_sha256": "97aeb5179e4bcfd640888ef1c382da5818fa507eef8943e2c70d57898c584f0e",
+      "publication": "source-link-only",
+      "asset_license_evidence": "unverified; source-code license is not treated as an asset permission",
+      "note": "Original asset or comparison retained only in the local publication backup; historical crop source may be a product page."
+    },
+    {
+      "original_path": "docs/research/reference-images/semi-application-demo.png",
+      "source_url": "https://lf9-static.bytednsdoc.com/obj/eden-cn/ptlz_zlp/ljhwZthlaukjlkulzlp/root-web-sites/37361.png",
+      "original_sha256": "b77c84f4b244ea8d4fb70595cac47b91b171baa32ac2fb8fcccdf29133a2c326",
+      "publication": "source-link-only",
+      "asset_license_evidence": "unverified; source-code license is not treated as an asset permission",
+      "note": "Original asset or comparison retained only in the local publication backup; historical crop source may be a product page."
+    }
+  ]
+}

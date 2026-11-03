@@ -1,13 +1,15 @@
 # Qwerty Learner 拼写交互适配
 
+> 发布说明（2026-11-03）：缺少图片许可依据的第三方原图及含原图的对比图仅在本地备份保留，公开版本只保留[来源链接与原文件摘要](../../research/reference-sources.json)。历史截图路径和比较记录不表示这些原图仍随仓库分发。
+
 用户指定 [Qwerty Learner](https://qwerty.kaiyi.cool/) 的拼写界面/动画作为参考，同时保留已认可的暖白质感。已实现可操作的拼写页，不是生成效果图。
 
 - [实际打字录屏](spelling-demo.webm)
 - [独立输入桌面截图](independent-desktop.png)
 - [提示模式与错误反馈](assisted-error-desktop.png)
 - [窄屏截图](independent-mobile.png)
-- [参考与实现全图对照](comparison-full.png)
-- [字母区域对照](comparison-focused.png)
+- [参考与实现全图对照（来源链接，原图本地保留）](https://qwerty.kaiyi.cool/)
+- [字母区域对照（来源链接，原图本地保留）](https://qwerty.kaiyi.cool/)
 - [验证及未通过的全站用例](validation.md)
 - [构建与源码指纹](verification.json)
 
