@@ -8,7 +8,12 @@
       {"id": 5, "word": "left", "kind": "word", "meaning": "释义left"},
       {"id": 6, "word": "then", "kind": "word", "meaning": "释义then"},
       {"id": 7, "word": "book", "kind": "word", "meaning": "释义book"},
-      {"id": 8, "word": "pine", "kind": "word", "meaning": "释义pine"}
+      {"id": 8, "word": "pine", "kind": "word", "meaning": "释义pine"},
+      {"id": 9, "word": "café", "kind": "word", "meaning": "释义café"},
+      {"id": 10, "word": "Lily’s", "kind": "word", "meaning": "释义Lily’s"},
+      {"id": 11, "word": "well—read", "kind": "word", "meaning": "释义well—read"},
+      {"id": 12, "word": "中文", "kind": "word", "meaning": "释义中文"},
+      {"id": 13, "word": "well–known", "kind": "word", "meaning": "知名的"}
     ],
     "stories": [
       {"id": 1, "title": "Reader regression 1", "title_cn": "回归故事1", "content": "An apple—a day.", "content_cn": "测试译文。"},
@@ -18,7 +23,12 @@
       {"id": 5, "title": "Reader regression 5", "title_cn": "回归故事5", "content": "Tea. Coffee.", "content_cn": "测试译文。"},
       {"id": 6, "title": "Reader regression 6", "title_cn": "回归故事6", "content": "Tom has a book. Ann reads the book.", "content_cn": "测试译文。"},
       {"id": 7, "title": "Reader regression 7", "title_cn": "回归故事7", "content": "Pineapple.", "content_cn": "测试译文。"},
-      {"id": 8, "title": "Reader regression 8", "title_cn": "回归故事8", "content": "x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x ice cream.", "content_cn": "测试译文。"}
+      {"id": 8, "title": "Reader regression 8", "title_cn": "回归故事8", "content": "x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x ice cream.", "content_cn": "测试译文。"},
+      {"id": 9, "title": "Reader regression 9", "title_cn": "回归故事9", "content": "A café café.", "content_cn": "测试译文。"},
+      {"id": 10, "title": "Reader regression 10", "title_cn": "回归故事10", "content": "Lily’s book.", "content_cn": "测试译文。"},
+      {"id": 11, "title": "Reader regression 11", "title_cn": "回归故事11", "content": "A well—read child.", "content_cn": "测试译文。"},
+      {"id": 12, "title": "Reader regression 12", "title_cn": "回归故事12", "content": "中文 apple.", "content_cn": "测试译文。"},
+      {"id": 13, "title": "Reader regression 13", "title_cn": "回归故事13", "content": "A well–known child.", "content_cn": "测试译文。"}
     ],
     "story_words": [
       {"id": 1, "story_id": 1, "card_id": 1},
@@ -33,7 +43,13 @@
       {"id": 10, "story_id": 6, "card_id": 7},
       {"id": 11, "story_id": 7, "card_id": 1},
       {"id": 12, "story_id": 7, "card_id": 8},
-      {"id": 13, "story_id": 8, "card_id": 2}
+      {"id": 13, "story_id": 8, "card_id": 2},
+      {"id": 14, "story_id": 9, "card_id": 9},
+      {"id": 15, "story_id": 10, "card_id": 10},
+      {"id": 16, "story_id": 11, "card_id": 11},
+      {"id": 17, "story_id": 12, "card_id": 12},
+      {"id": 18, "story_id": 12, "card_id": 1},
+      {"id": 19, "story_id": 13, "card_id": 13}
     ]
   }
 }

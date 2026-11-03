@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { api } from "../lib/api.js";
 import { speak } from "../lib/tts.js";
-import {storyAudioSegments} from "../lib/storyAudio.js";
+import {normalizeStoryAudio, storyAudioSegments} from "../lib/storyAudio.js";
 import { cleanToken, escapeHtml } from "../lib/utils.js";
 import { recordVisibleCards } from "../lib/contacts.js";
 import { recordPracticeContact } from "../lib/practiceContacts.js";
@@ -248,7 +248,7 @@ function StoryRead({ story, onBack }) {
           for (const id of ids || []) {
             const target = story.words.find(word => word.id === id);
             // Match the server's visible_card_ids ASCII letter boundaries, including phrases.
-            const word = target?.word?.trim();
+            const word = normalizeStoryAudio(target?.word);
             const escaped = word?.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
             const heardTarget = word && Array.from(playedText.matchAll(new RegExp(`(^|[^A-Za-z])${escaped}(?![A-Za-z])`, "gi")))
               .some(match => match.index + match[0].length > segmentStart);

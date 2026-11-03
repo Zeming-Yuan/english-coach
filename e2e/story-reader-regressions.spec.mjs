@@ -31,6 +31,8 @@ async function audioIds(app) {
 for (const [storyId, label, expected] of [
   [1, "em dash", [1]], [2, "possessive", [1]], [3, "multiword target", [2]],
   [4, "slash and semicolon", [3, 4, 5, 6]], [7, "substring exclusion", []],
+  [9, "normalized repeated accented target", [9]], [10, "normalized curly apostrophe target", [10]],
+  [11, "normalized em dash target", [11]], [13, "normalized en dash target", [13]], [12, "normalized unsupported target exclusion", [1]],
 ]) {
   test(`story audio confirms full-word contacts for ${label} only after playback`, async ({page, appFactory}) => {
     const app = await openReader(page, appFactory, storyId);
