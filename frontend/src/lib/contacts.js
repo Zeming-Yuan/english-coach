@@ -17,6 +17,17 @@ const FINAL_STATUS = new Set([404, 409, 422]);
 // 本页会话内被拒绝的存储范围；重试失败时仍要保留“依据不完整”的提示。
 const deniedScopes = new Set();
 
+/** A real display whose card identities are still loading is unconfirmed contact. */
+export function beginVisibleContactLookup(identity) {
+  const scope = `lookup:${identity}`;
+  if (savePending(scope, {awaiting_targets: true}, PREFIX)) deniedScopes.delete(scope);
+  else deniedScopes.add(scope);
+  return () => {
+    clearPending(scope, PREFIX);
+    deniedScopes.delete(scope);
+  };
+}
+
 // 请求不提供可信日期；任何未确认/不可持久化标记只会降低回测完整性。
 export function pendingContactIds() {
   const ids = [...deniedScopes];

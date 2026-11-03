@@ -174,6 +174,7 @@ def test_el01_v3_roundtrip_keeps_identity_and_continues(ec, ec_factory):
             "practice_sessions",
             "practice_items",
             "scene_attempts",
+            "scene_feedback",
         ],
         "missing": [],
     }
@@ -326,6 +327,7 @@ def test_el01_v2_preview_reports_missing_extensions_and_restore_regenerates(
         "practice_sessions",
         "practice_items",
         "scene_attempts",
+        "scene_feedback",
     ]
     assert preview.json()["impact"]["replaced"]["content_revisions"] >= 1
     assert target.snapshot() == untouched
@@ -372,6 +374,7 @@ def test_el01_v1_partial_keeps_matched_identity_and_adds_new(ec):
         "practice_sessions",
         "practice_items",
         "scene_attempts",
+        "scene_feedback",
     ]
     assert (
         ec.client.post(

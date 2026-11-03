@@ -4,6 +4,7 @@ import {loadPending, savePending, clearPending} from '../lib/learning.js';
 import {recordContact, recordVisibleCards} from '../lib/contacts.js';
 import {speak} from '../lib/tts.js';
 import {useLearningAttempt} from '../hooks/useLearningAttempt.js';
+import SceneFeedback from '../components/SceneFeedback.jsx';
 
 const CREATION_SCOPE = 'scene:create';
 const CONTEXT_PREFIX = 'ec.context.';
@@ -127,7 +128,6 @@ function SceneRun({initial, creationEnabled, onRestart, onExit}) {
       {feedback ? <div className="quiz-feedback scene-feedback" data-verdict={feedback.verdict} role="status">
         <p>已保存 · {verdictLabel(feedback)}{feedback.first_response === false ? ' · 再练结果，首答不变' : ''}</p>
         <p>你的答案：{answer || '显式跳过'}</p>
-        {run.items[index].correction && <p>{run.items[index].correction}</p>}
         <div className="save-state-actions">
           <button className="btn btn-primary" onClick={() => {setIndex(index + 1); setAnswer(''); setFeedback(null);}}>{index === 2 ? '查看结果' : '下一轮'}</button>
           {run.can_continue && <button className="btn btn-ghost" onClick={() => setFeedback(null)}>再练本轮</button>}
@@ -152,6 +152,11 @@ function SceneRun({initial, creationEnabled, onRestart, onExit}) {
         }}>放弃这条待确认</button>
       </div>}
     </>}
+    {run.items.filter(saved => saved.processed).map(saved => <details key={saved.id} className="scene-saved-feedback" open={saved.position - 1 === index}>
+      <summary>第 {saved.position} 轮首答与反馈 · {verdictLabel(saved)}</summary>
+      <p>首答：{saved.answer || '显式跳过'}</p>
+      <SceneFeedback session={run} item={saved} />
+    </details>)}
     {!run.can_continue && creationEnabled && <button className="btn btn-primary" disabled={blocked} onClick={onRestart}>新开一轮</button>}
   </section>;
 }

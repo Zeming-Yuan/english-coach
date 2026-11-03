@@ -4,6 +4,7 @@ from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -33,6 +34,39 @@ from app.services.questions import (
 )
 
 router = APIRouter()
+
+
+class SceneFeedbackIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    operation_id: UUID
+
+
+@router.post("/practice-sessions/{session_id}/items/{item_id}/feedback")
+def feedback(
+    session_id: UUID,
+    item_id: UUID,
+    payload: SceneFeedbackIn,
+    request: Request,
+    db: Session = Depends(get_db),
+    runtime: Runtime = Depends(get_runtime),
+):
+    from app.services.scene_feedback import build_scene_feedback
+
+    try:
+        return build_scene_feedback(
+            db,
+            str(session_id),
+            str(item_id),
+            runtime,
+            str(payload.operation_id),
+            enabled=request.app.state.settings.scene_feedback_enabled,
+        )
+    except PracticeNotFoundError as error:
+        raise _not_found(error)
+    except (PracticeConflictError, PracticeStaleError) as error:
+        raise _conflict(error)
+    except PracticeUnavailableError as error:
+        raise _unavailable(error)
 
 
 @router.get("/practice-sessions")

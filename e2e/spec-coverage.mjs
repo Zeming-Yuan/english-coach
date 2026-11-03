@@ -3,6 +3,27 @@ import fs from "node:fs";
 import {fileURLToPath} from "node:url";
 
 export const requirements = {
+  EL16: [
+    "EL-16 leaving after visible feedback still confirms its delayed contact lookup",
+    "EL-16 feedback title visibility does not count offscreen response words",
+    "EL-16 saved rule result shows bounded model feedback and visible contact",
+    "EL-16 empty output falls back without changing the saved rule result",
+    "EL-16 vocabulary output falls back without changing the saved rule result",
+    "EL-16 leak output falls back without changing the saved rule result",
+    "EL-16 context output falls back without changing the saved rule result",
+    "EL-16 correction output falls back without changing the saved rule result",
+    "EL-16 missing AI keeps the three-turn template path usable",
+    "EL-16 timeout AI keeps the three-turn template path usable",
+    "EL-16 unavailable AI keeps the three-turn template path usable",
+    "EL-16 model grading instructions keep unknown answers unknown",
+    "EL-16 feedback commit refresh confirms the original operation once",
+    "EL-16 feedback response-loss refresh confirms the original operation once",
+    "EL-16 late feedback stays with its original item after next-turn",
+    "EL-16 late feedback stays with its original item after another-scene",
+    "EL-16 visible feedback contact response loss retries the same contact",
+    "EL-16 V3 browser restore preserves feedback origin and continues saved tasks",
+    "EL-16 enhancement rollback keeps saved model replies and new template feedback",
+  ],
   EL15: [
     "EL-15 introduction independent three-turn result stays in its context",
     "EL-15 directions independent three-turn result stays in its context",
