@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     # 学习参数
     daily_new_words: int = 10
     learning_timezone: str = "Asia/Shanghai"
+    personal_estimates_enabled: bool = True
     time_budget_enabled: bool = True
     delayed_recall_enabled: bool = True
     learning_advice_enabled: bool = True

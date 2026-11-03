@@ -287,6 +287,7 @@ def test_el04_v3_roundtrip_keeps_contact_time_and_revision(ec, ec_factory):
             "content_revisions",
             "story_versions",
             "learning_contacts",
+            "practice_durations",
             "lesson_progress",
             "practice_sessions",
             "practice_items",

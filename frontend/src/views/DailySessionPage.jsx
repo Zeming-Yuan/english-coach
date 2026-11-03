@@ -1,3 +1,4 @@
+import {useActiveTime} from "../hooks/useActiveTime.js";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../lib/api.js";
 import StudyPage from "./StudyPage.jsx";
@@ -23,7 +24,7 @@ function BudgetNotice({session}) {
 
 /** Daily orchestration only; main progress and attempt commits keep their existing owners. */
 export default function DailySessionPage({ session, onSessionChange, onFinish, onPauseExit, ...studyProps }) {
-  const attempt = useLearningAttempt("reinforcement");
+
   const mounted = useRef(false);
   const readSequence = useRef(0);
   const recoveryVersion = useRef(studyProps.recoveryVersion);
@@ -38,6 +39,11 @@ export default function DailySessionPage({ session, onSessionChange, onFinish, o
   const [questions, setQuestions] = useState(null);
   const [assisted, setAssisted] = useState(false);
   const current = questions?.[0] || null;
+  const captureDuration = useActiveTime(
+    current ? `${session.id}:${current.card_id}` : null, "reinforcement",
+    !loadPending("reinforcement"),
+  );
+  const attempt = useLearningAttempt("reinforcement", captureDuration);
   const itemId = current ? `${current.card_id}:typed` : null;
   useEffect(() => {
     if (!itemId) {

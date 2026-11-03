@@ -3,6 +3,20 @@ import fs from "node:fs";
 import {fileURLToPath} from "node:url";
 
 export const requirements = {
+  EL18: [
+    "EL-18 new tab continuation discards the unanswered card partial timing",
+    "EL-18 resumed unanswered card discards incomplete timing rather than calibrating",
+    "EL-18 five real answers switch future preview to personal and freeze current round",
+    "EL-18 due review is timed as review rather than new word",
+    "EL-18 idle gaps and answer save waiting never inflate active time",
+    "EL-18 duration response-loss retries after refresh without repeating answer",
+    "EL-18 duration commit-failure retries after refresh without repeating answer",
+    "EL-18 hidden document intervals do not count as active work",
+    "EL-18 lost answer response retains frozen timing through confirmation",
+    "EL-18 reinforcement records its own kind without changing objective result",
+    "EL-18 V3 UI restore continues calibration and older backups explain defaults",
+    "EL-18 functional rollback retains observations and uses labelled defaults",
+  ],
   EL17: [
     "EL-17 functional rollback hides selector and keeps default finite quota",
     "EL-17 three budgets keep due backlog ahead of fresh cards",

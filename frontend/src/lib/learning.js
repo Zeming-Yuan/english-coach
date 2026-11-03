@@ -3,6 +3,8 @@
  * 只保存单个待确认请求；不提供离线队列或后台自动重放。
  */
 
+import {saveDuration} from "./durations.js";
+
 export function makePending(path, payload) {
   return {
     path,
@@ -32,7 +34,9 @@ export async function sendPending(pending) {
     error.detail = detail;
     throw error;
   }
-  return response.json();
+  const result = await response.json();
+  if (result.committed === true && pending.duration) void saveDuration(pending.duration);
+  return result;
 }
 
 const DEFAULT_PREFIX = "ec.pending.";

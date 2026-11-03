@@ -15,6 +15,7 @@ from app.models.hard_card import HardCard
 from app.models.learning_contact import LearningContact
 from app.models.memo import Memo
 from app.models.practice import PracticeItem, PracticeSession
+from app.models.practice_duration import PracticeDuration
 from app.models.review import Review
 from app.models.review_baseline import ReviewBaseline
 from app.models.review_event import ReviewEvent
@@ -115,6 +116,13 @@ def delete_card(
     from app.models.story import StoryWord
 
     db.execute(delete(Review).where(Review.card_id == card_id))
+    db.execute(
+        delete(PracticeDuration).where(
+            PracticeDuration.submission_id.in_(
+                select(ReviewEvent.submission_id).where(ReviewEvent.card_id == card_id)
+            )
+        )
+    )
     db.execute(delete(ReviewEvent).where(ReviewEvent.card_id == card_id))
     db.execute(delete(ReviewBaseline).where(ReviewBaseline.card_id == card_id))
     db.execute(delete(LearningContact).where(LearningContact.card_id == card_id))

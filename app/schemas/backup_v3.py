@@ -20,6 +20,7 @@ from app.models.content_revision import ContentRevision
 from app.models.learning_contact import LearningContact
 from app.models.lesson_progress import LessonProgress
 from app.models.practice import PracticeItem, PracticeSession
+from app.models.practice_duration import PracticeDuration
 from app.models.scene_attempt import SceneAttempt
 from app.models.scene_feedback import SceneFeedback
 from app.models.story_version import StoryVersion
@@ -188,6 +189,31 @@ register_extension(
     _remap_learning_contact,
     model=LearningContact,
     unique=("submission_id",),
+)
+
+
+class FullPracticeDuration(FullRow):
+    id: int = Field(gt=0, strict=True)
+    sample_id: str
+    submission_id: str
+    kind: Literal["review", "new", "reinforcement"]
+    active_ms: int = Field(ge=0, le=9007199254740991, strict=True)
+    rule_version: Literal["active-v1"]
+    occurred_at: datetime = Field(strict=False)
+
+    @field_validator("sample_id", "submission_id")
+    @classmethod
+    def _uuid(cls, value: str) -> str:
+        return str(UUID(value))
+
+
+register_extension(
+    "practice_durations",
+    FullPracticeDuration,
+    ("learning_events",),
+    lambda row, mapping: dict(row),  # Submission UUIDs survive core event remapping.
+    model=PracticeDuration,
+    unique=("sample_id", "submission_id"),
 )
 
 
@@ -565,6 +591,21 @@ def validate_v3(payload: dict) -> ValidatedBackup:
         for name in features
     }
     _validate_extension_graph(validated_extensions, tables)
+    from app.schemas.duration import duration_kind
+
+    saved_events = {row["submission_id"]: row for row in tables["learning_events"]}
+    saved_cards = {row["id"]: row for row in tables["cards"]}
+    for index, row in enumerate(validated_extensions.get("practice_durations", [])):
+        event = saved_events.get(row["submission_id"])
+        if event is None:
+            _reject(
+                "practice_durations", index, "submission_id", "引用了不存在的真实作答"
+            )
+        if (
+            saved_cards[event["card_id"]]["kind"] != "word"
+            or duration_kind(event) != row["kind"]
+        ):
+            _reject("practice_durations", index, "kind", "与真实词卡作答类别不一致")
     # 接触的修订归属必须能由快照自身解释：身份与当前修订一致，版本不晚于它。
     card_revisions = {
         row["resource_id"]: row
@@ -888,8 +929,9 @@ def validate_v3(payload: dict) -> ValidatedBackup:
     )
     # Integer IDs encode persisted order for equal timestamps. Restore must not
     # let an arbitrary JSON array order reverse first-response evidence.
-    if "scene_attempts" in validated_extensions:
-        validated_extensions["scene_attempts"].sort(key=lambda row: row["id"])
+    for name in ("scene_attempts", "practice_durations"):
+        if name in validated_extensions:
+            validated_extensions[name].sort(key=lambda row: row["id"])
     from app.services.retention import validate_retention_graph
 
     validate_retention_graph(

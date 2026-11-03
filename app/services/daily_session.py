@@ -14,11 +14,16 @@ from app.services.card_payload import queue_payload
 from app.services.content_revisions import content_revision_map
 from app.services.learning import select_current_review
 from app.services.statistics import learning_day
-from app.services.time_budget import budget_plan
+from app.services.time_budget import budget_plan, workload_estimates
 
 
 def build_daily_queue(
-    db: Session, limit: int, runtime: Runtime, due_limit: int = 20, minutes: int = 8
+    db: Session,
+    limit: int,
+    runtime: Runtime,
+    due_limit: int = 20,
+    minutes: int = 8,
+    personal_estimates: bool = True,
 ):
     today = learning_day(runtime.clock.now(), runtime.learning_timezone)
     first = {}
@@ -69,11 +74,18 @@ def build_daily_queue(
     )[:new_remaining]
     revisions = content_revision_map(db, "card", [c.id for c in [*due, *new]])
     result = budget_plan(
-        [queue_payload(card, revisions[card.id]) for card in due],
-        [queue_payload(card, revisions[card.id]) for card in new],
+        [
+            {**queue_payload(card, revisions[card.id]), "duration_kind": "review"}
+            for card in due
+        ],
+        [
+            {**queue_payload(card, revisions[card.id]), "duration_kind": "new"}
+            for card in new
+        ],
         minutes,
         new_remaining,
         review_limit=due_limit,
+        estimates=workload_estimates(db, personal_estimates),
     )
     result["new_remaining"] = new_remaining
     return result

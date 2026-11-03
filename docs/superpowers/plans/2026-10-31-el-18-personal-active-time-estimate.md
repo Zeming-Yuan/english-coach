@@ -14,7 +14,7 @@
 
 **Blocked by:** EL-01、EL-17。
 
-**Status:** 计划已编写，产品未实现；以下代码块是未来实施内容，本次不把计划语法检查当作产品测试通过。
+**Status:** 本地实现与定向验证已交付，尚未合入 dev。执行结果见 [验证记录](../../verification/el18-personal-active-time-estimate.md)；本轮用户要求仅运行修改及受影响范围，完整门禁未运行。下列原始步骤及代码保留为计划历史，不作为执行结果声明。
 
 ## Global Constraints
 
