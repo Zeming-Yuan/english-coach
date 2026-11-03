@@ -70,3 +70,22 @@ test("repeated story word shows the sentence containing the clicked occurrence",
   await page.getByRole("button", {name: "查词 book", exact: true}).nth(1).click();
   await expect(page.locator(".reader-context blockquote")).toHaveText("Ann reads the book.");
 });
+
+for (const firstStarted of [true, false]) {
+  test(`story audio spanning segments ${firstStarted ? "confirms only when both parts start" : "requires the first part to have started"}`, async ({page, appFactory}) => {
+    const app = await openReader(page, appFactory, 8);
+    await page.getByRole("button", {name: "朗读", exact: true}).click();
+    await expect.poll(() => page.evaluate(() => window.__readerAudio.length)).toBe(1);
+    expect(await audioIds(app)).toEqual([]);
+    if (firstStarted) await page.evaluate(() => window.__readerAudio[0].start());
+    expect(await audioIds(app)).toEqual([]);
+    await page.evaluate(() => { window.__readerAudio[0].ended = true; window.__readerAudio[0].onended(); });
+    await expect.poll(() => page.evaluate(() => window.__readerAudio.length)).toBe(2);
+    expect(await audioIds(app)).toEqual([]);
+    await page.evaluate(() => window.__readerAudio[1].start());
+    if (firstStarted) await expect.poll(() => audioIds(app)).toEqual([2]);
+    await page.evaluate(() => { window.__readerAudio[1].ended = true; window.__readerAudio[1].onended(); });
+    await expect(page.getByRole("button", {name: "朗读", exact: true})).toBeVisible();
+    expect(await audioIds(app)).toEqual(firstStarted ? [2] : []);
+  });
+}

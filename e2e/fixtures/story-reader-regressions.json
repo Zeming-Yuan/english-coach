@@ -17,7 +17,8 @@
       {"id": 4, "title": "Reader regression 4", "title_cn": "回归故事4", "content": "tea/coffee left;then.", "content_cn": "测试译文。"},
       {"id": 5, "title": "Reader regression 5", "title_cn": "回归故事5", "content": "Tea. Coffee.", "content_cn": "测试译文。"},
       {"id": 6, "title": "Reader regression 6", "title_cn": "回归故事6", "content": "Tom has a book. Ann reads the book.", "content_cn": "测试译文。"},
-      {"id": 7, "title": "Reader regression 7", "title_cn": "回归故事7", "content": "Pineapple.", "content_cn": "测试译文。"}
+      {"id": 7, "title": "Reader regression 7", "title_cn": "回归故事7", "content": "Pineapple.", "content_cn": "测试译文。"},
+      {"id": 8, "title": "Reader regression 8", "title_cn": "回归故事8", "content": "x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x ice cream.", "content_cn": "测试译文。"}
     ],
     "story_words": [
       {"id": 1, "story_id": 1, "card_id": 1},
@@ -31,7 +32,8 @@
       {"id": 9, "story_id": 5, "card_id": 4},
       {"id": 10, "story_id": 6, "card_id": 7},
       {"id": 11, "story_id": 7, "card_id": 1},
-      {"id": 12, "story_id": 7, "card_id": 8}
+      {"id": 12, "story_id": 7, "card_id": 8},
+      {"id": 13, "story_id": 8, "card_id": 2}
     ]
   }
 }

@@ -235,22 +235,31 @@ function StoryRead({ story, onBack }) {
 
   const contactAudio = async (text, ids) => {
     const run = ++speechRun.current;
+    let playedPrefix = "";
     setReading(true);
     try {
       for (const segment of storyAudioSegments(text)) {
         if (run !== speechRun.current) break;
+        const playedText = playedPrefix ? `${playedPrefix} ${segment}` : segment;
+        const segmentStart = playedText.length - segment.length;
+        let started = false;
         const result = await speak(segment, null, () => {
+          started = true;
           for (const id of ids || []) {
             const target = story.words.find(word => word.id === id);
             // Match the server's visible_card_ids ASCII letter boundaries, including phrases.
             const word = target?.word?.trim();
             const escaped = word?.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-            if (target?.content_revision && word && new RegExp(`(^|[^A-Za-z])${escaped}(?![A-Za-z])`, "i").test(segment)) {
+            const heardTarget = word && Array.from(playedText.matchAll(new RegExp(`(^|[^A-Za-z])${escaped}(?![A-Za-z])`, "gi")))
+              .some(match => match.index + match[0].length > segmentStart);
+            if (target?.content_revision && heardTarget) {
               recordPracticeContact({cardId: id, revision: target.content_revision, source: "story", kind: "answer_audio"});
             }
           }
         });
         if (result === "none") { showToast("暂时无法朗读，请稍后重试"); break; }
+        // Only completed playback that really started can support the next segment.
+        playedPrefix = started ? playedText : "";
       }
     } finally {
       if (run === speechRun.current) setReading(false);

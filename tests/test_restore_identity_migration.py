@@ -21,7 +21,9 @@ def test_upgrade_preserves_graph_and_retired_card_ids_for_normal_inserts(tmp_pat
     config = Config(str(ROOT / "alembic.ini"))
     config.set_main_option("sqlalchemy.url", f"sqlite:///{database}")
     command.upgrade(config, "b1c2d3e4f502")
-    fixture = json.loads((ROOT / "e2e/fixtures/ec12-full.json").read_text(encoding="utf-8"))
+    fixture = json.loads(
+        (ROOT / "e2e/fixtures/ec12-full.json").read_text(encoding="utf-8")
+    )
     engine = create_engine(f"sqlite:///{database}")
     try:
         load_fixture(engine, fixture)
@@ -47,6 +49,33 @@ def test_upgrade_preserves_graph_and_retired_card_ids_for_normal_inserts(tmp_pat
         assert db.execute("PRAGMA foreign_key_check").fetchall() == []
         assert db.execute("PRAGMA integrity_check").fetchone() == ("ok",)
     assert list(root.glob("test.db.bak-*"))
+
+    # Isolate the compatible EC-12 metadata rollback before later revisions
+    # introduce protections against deleting saved learning data.
+    metadata_database = tmp_path / "metadata-rollback.db"
+    with (
+        sqlite3.connect(database) as source,
+        sqlite3.connect(metadata_database) as db,
+    ):
+        source.backup(db)
+        db.execute("PRAGMA foreign_keys=ON")
+        for name in reversed(fixture["tables"]):
+            db.execute(f'DELETE FROM "{name}"')
+        assert db.execute("SELECT COUNT(*) FROM cards").fetchone() == (0,)
+        assert db.execute(
+            "SELECT seq FROM sqlite_sequence WHERE name='cards'"
+        ).fetchone() == (202,)
+    metadata_config = Config(str(ROOT / "alembic.ini"))
+    metadata_config.set_main_option("sqlalchemy.url", f"sqlite:///{metadata_database}")
+    command.downgrade(metadata_config, "b1c2d3e4f502")
+    command.upgrade(metadata_config, "ec12_card_identity")
+    with sqlite3.connect(metadata_database) as db:
+        # Re-upgrade must retain the allocator of an empty AUTOINCREMENT table.
+        inserted = db.execute(
+            "INSERT INTO cards (word, kind) VALUES ('after-metadata-reupgrade', 'word')"
+        )
+        assert inserted.lastrowid is not None and inserted.lastrowid > 202
+
     env = ECEnv(root=root)
     empty = ECEnv(root=tmp_path / "empty")
     try:
@@ -63,9 +92,7 @@ def test_upgrade_preserves_graph_and_retired_card_ids_for_normal_inserts(tmp_pat
             ).status_code
             == 200
         )
-        # A compatible metadata downgrade keeps retired IDs, and re-upgrade
-        # must not rebuild an already AUTOINCREMENT empty table and reset them.
-        command.downgrade(config, "b1c2d3e4f502")
+        # Head supports repeated upgrades and restart after an empty restore.
         command.upgrade(config, "head")
         env.restart()
         result = env.client.post("/api/cards/starter")
