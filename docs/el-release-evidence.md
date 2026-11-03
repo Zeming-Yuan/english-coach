@@ -5,7 +5,8 @@
 分支：`codex/el21-learning-restore`；隔离工作区：
 `/home/clusteradmin/.codex/worktrees/el21-learning-restore/english-coach`。
 
-状态：实现及定向双视口演练已通过，独立审查与同次未过滤全量门禁尚待执行，当前不授予完整发行资格。
+状态：本地集成资格通过。冻结提交 `36a61b2f5a7a743a022802a65dde982ba7b183c9` 的完整 pytest、
+同次未过滤双视口门禁及独立双轴审查均通过；内容按用户明确授权由 Agent 核对，范围见下文。
 未推送、合并、部署或修改父规格 issue；本记录不证明英语教学效果。
 
 ## 实现与设计取舍
@@ -118,7 +119,8 @@ directions-v1 虚构车站/确认左转/确认致谢。标准表达语法与中�
 0 项实现发现；独立定向 8 passed。内容核对按用户明确豁免人工签字；全量资格证据仍待完成。
 
 修复后定向双视口 `ec-e2e-static-ABakdg`：12 passed，每视口 HTTP 补充 19 项；事件/接触反序比较测试通过。
-仍须再次独立 review；最终全量结果待记录。被停止的旧全量 pytest 记录在 `/tmp/el21-full-pytest.log`，不计为通过。
+固定 `c488224…6c5bffb` 再次独立 review：Standards 0 项、Spec 0 项；审查者分别独立验证 3 项。
+被停止的旧全量 pytest 记录在 `/tmp/el21-full-pytest.log`，不计为通过。
 
 ### 全量发现的迁移断言漂移
 
@@ -129,3 +131,40 @@ directions-v1 虚构车站/确认左转/确认致谢。标准表达语法与中�
 当前库降级仍精确验证 EL-18 的拒绝信息和完整快照不变；新增历史 EL-14 schema 上的真实已保存场景数据测试，精确验证其原中文拒绝、版本与全部场景行不变，避免较新保护遮挡旧保护回归。
 这些四个参数化迁移检查纳入每视口 HTTP 补充，补充总数由 19 增至 23；不修改生产迁移，也不放宽数据保留或接受任意错误。
 首次按进度字符推测失败用例有误，最终按 pytest 的完整失败报告定位；错误推测下运行的独立通过不计为修复或门禁证据。
+
+### 最终验证：冻结提交 36a61b2
+
+迁移修复先复现三个真实失败，再运行受影响集合：60 passed；完整 HTTP 补充 23 passed。
+固定 `6c5bffb…36a61b2` 独立复审：Standards 0 项、Spec 0 项，两个审查者分别运行四项迁移检查通过；
+两轮修复均保留原数据保护断言，不修改生产迁移。
+
+2026-11-03 在干净工作区冻结源码与 HEAD 后，重新从头执行完整入口：
+
+| 检查 | 本次结果 |
+| --- | --- |
+| `.venv/bin/python -m pytest -q` | 1038 passed，1195.06s，退出码 0 |
+| `EC_CHROMIUM_EXECUTABLE=… npm --prefix frontend run test:e2e` | 新 Vite 生产构建；786 passed，50.0m，退出码 0 |
+| 实际 Playwright 报告 | mobile 393 / desktop 393；skipped 0、unexpected 0、flaky 0、errors 空；每项只有一次 passed 结果 |
+| 覆盖校验 | EL-JOURNEY 六条、T01–T21 和所有已交付 EL 分支全部通过；ticket=null，未过滤 |
+| 同次 HTTP/迁移/内容补充 | 每视口 23 tests，0 errors / failures / skipped；各自 JUnit 和输出保留 |
+| 最新基线与静态检查 | `agent_check.py --base dev --lint`：origin/dev 仍为 c488224，基线通过，9 个 Python 文件 Ruff 检查/格式通过 |
+| 类型检查 | Pyright 使用现有配置、`--pythonpath .venv/bin/python` 和本票全部 9 个改动 Python 文件：0 errors / 0 warnings，退出码 0 |
+
+未指定解释器的初次补跑 Pyright 无法解析依赖，不计为类型通过；没有添加忽略来隐藏它，改用仓库既有虚拟环境入口。
+
+同次诊断目录（被 Git 忽略、本机保留，不代表远端 CI 附件）：
+`e2e/release-results/ec-e2e-static-BjqB4Q/`。
+其中 `run.json`、`playwright.json`、`coverage.txt`、`pytest.log`、`e2e.log`、`agent-check.log`、`pyright.log`，
+以及 `artifacts/` 中 12 份成功旅程 trace、52 张截图、14 份 HTTP 补充 JUnit 均保留。
+V3 下载后的业务快照也作为报告附件保留；截图包含在 trace 的画面记录与显式附件中。
+
+- 实测 HEAD：`36a61b2f5a7a743a022802a65dde982ba7b183c9`；working_tree 为空。
+- 时间（UTC）：2026-11-03T10:14:49.227Z 至 11:04:54.813Z。
+- 源码 SHA256：`ff09b5f28af405f2dd02bdbb443cdb0a2cd945921c910c219cd544f6d2880be4`。
+- Playwright 报告 SHA256：`e8e1f873aa5038e62a382840d31aa4c2b1a849ab3d4ed38fde4bd780179810f8`。
+- JS `index-DWBouT0v.js` SHA256：`3dee1739ee98f6f3f331084501040a28ab59053111c45f5142d3356b1d3e4ab7`。
+- CSS `index-CGR0wM54.css` SHA256：`07bf367a73ddd3f8f11f5a716240c3cd72b63197f11885475be97bd5e16d0407`。
+- 静态入口、字体、实际浏览器版本/二进制摘要、工作区与 Git 共享目录的完整身份见 `run.json`。
+
+运行结束后才同步本记录和本地票/计划状态；后续证据提交只修改这三份 Markdown，
+不把该证据提交的 HEAD 冒充为已跑 50 分钟完整门禁的源码。上述未验证/N/A 项仍然有效。
