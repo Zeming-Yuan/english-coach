@@ -27,6 +27,8 @@ from app.services.scoring import make_fill_prompt, normalize
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
 def _choice_options(answer: str, candidates: list[str]) -> list[str]:
     """最多 4 个不重复选项；干扰不足时返回可判断的较小选项集。"""
     seen = {answer}
@@ -55,6 +57,8 @@ def check_typing(
     )
     try:
         result = submit_attempt(db, cmd, runtime)
+    except QuestionTokenStale as error:
+        raise HTTPException(status_code=409, detail=str(error))
     except CardNotFoundError:
         raise HTTPException(status_code=404, detail="Card not found")
     except SubmissionConflictError:
@@ -106,9 +110,7 @@ def get_quiz(
     # choice: 干扰项从全库抽 3 个 word ≠ 正确答案；无法形成选择时不发假题
     if len(selected) >= 4:
         card = selected[3]
-        options = _choice_options(
-            card.word, [c.word for c in cards if c.id != card.id]
-        )
+        options = _choice_options(card.word, [c.word for c in cards if c.id != card.id])
         if len(options) >= 2:
             issued = issue_question(
                 card,
@@ -212,9 +214,7 @@ def get_choice_quiz(
     revisions = content_revision_map(db, "card", [c.id for c in selected])
     questions = []
     for card in selected:
-        options = _choice_options(
-            card.word, [c.word for c in cards if c.id != card.id]
-        )
+        options = _choice_options(card.word, [c.word for c in cards if c.id != card.id])
         if len(options) < 2:
             # 无法形成有效干扰项时不发出虚假的单选题。
             continue

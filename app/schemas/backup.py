@@ -437,13 +437,19 @@ def _validate_full_graph(tables: dict, payload: dict) -> None:
             if not timezone_valid(row["learning_timezone"]):
                 raise ValueError("未知学习时区")
             command_fields = set(AttemptCommand.model_fields) | {"question", "expected"}
-            if set(row["command_json"]) != command_fields:
+            # Older V1/V2/V3 event commands predate the optional revision precondition.
+            if set(row["command_json"]) not in (
+                command_fields,
+                command_fields - {"revision"},
+            ):
                 raise ValueError("提交命令字段缺失或未知")
             if set(row["response"]) != set(AttemptResult.model_fields):
                 raise ValueError("缓存结果字段缺失或未知")
             command = AttemptCommand.model_validate_json(
                 json.dumps(row["command_json"]), strict=True
             )
+            if payload.get("version") == 2 and command.revision is not None:
+                raise ValueError("修订前置条件需要 V3 备份，V2 无法保留事件修订关联")
             result = AttemptResult.model_validate_json(
                 json.dumps(row["response"]), strict=True
             )

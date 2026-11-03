@@ -83,6 +83,7 @@ def _command_payload(
         "stage": cmd.stage,
         "session_id": str(cmd.session_id) if cmd.session_id else None,
         "question": verified_question,
+        **({"revision": cmd.revision.model_dump(mode="json")} if cmd.revision else {}),
     }
 
 
@@ -371,6 +372,11 @@ def _apply_attempt_in_transaction(
     if card is None:
         raise CardNotFoundError(cmd.card_id)
     revision = get_content_revision(db, "card", card.id)
+    if cmd.revision is not None and (
+        str(cmd.revision.identity) != revision["identity"]
+        or cmd.revision.version != revision["version"]
+    ):
+        raise QuestionTokenStale("词卡内容已修改，请退出本轮并重新加载")
     _validate_verified_question(cmd, verified)
 
     expected: str | None = None

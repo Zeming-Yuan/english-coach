@@ -205,7 +205,7 @@ export default function App() {
     });
   };
   const startDaily = (data) => {
-    const session = { id: crypto.randomUUID(), queue: data.queue, target: data.target, index: 0, remainingDue: data.remaining_due, reviewCount: data.review_count, newCount: data.new_count };
+    const session = { id: crypto.randomUUID(), queue: data.queue, target: data.target, index: 0, remainingDue: data.remaining_due, reviewCount: data.review_count, newCount: data.new_count, plan: data.plan, startedAt: Date.now() };
     updateDaily(session);
     setIsDailyStudy(true);
     setStudyQueue(session.queue);
@@ -287,7 +287,7 @@ export default function App() {
           setQueueVersion((v) => v + 1);
         }} />}
         {view === "lessons" && <LessonsPage onExit={() => setView("queue")} />}
-        {view === "study" && (isDailyStudy ? <DailySessionPage session={dailySession} onSessionChange={(details) => updateDailyDetails(dailySession.id, details)} onFinish={() => { updateDaily({...dailySession, finished: true}); setView("queue"); }} recoveryVersion={queueVersion} onAbort={() => { setIsDailyStudy(false); updateDaily(null); setStudyQueue([]); setView("queue"); }} onProgress={confirmDailyCard} queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} /> : <StudyPage recoveryVersion={queueVersion} session={isDailyStudy ? dailySession : null} onAbort={() => { setIsDailyStudy(false); updateDaily(null); setStudyQueue([]); setView("queue"); }} onProgress={confirmDailyCard} queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} />)}
+        {view === "study" && (isDailyStudy ? <DailySessionPage session={dailySession} onSessionChange={(details) => updateDailyDetails(dailySession.id, details)} onFinish={() => { updateDaily({...dailySession, finished: true}); setView("queue"); }} onPauseExit={() => setView("queue")} recoveryVersion={queueVersion} onAbort={() => { setIsDailyStudy(false); updateDaily(null); setStudyQueue([]); setView("queue"); }} onProgress={confirmDailyCard} queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} /> : <StudyPage recoveryVersion={queueVersion} session={isDailyStudy ? dailySession : null} onAbort={() => { setIsDailyStudy(false); updateDaily(null); setStudyQueue([]); setView("queue"); }} onProgress={confirmDailyCard} queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} />)}
         {view === "quiz" && <QuizPage onExit={() => setView("queue")} />}
         {view === "spelling" && <SpellingPage onExit={() => { setView("queue"); setSingleCard(null); }} singleCard={singleCard} />}
         {view === "listening" && <ListeningPage onExit={() => setView("queue")} />}
@@ -334,6 +334,10 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
   const [loadError, setLoadError] = useState("");
+  const [budget, setBudget] = useState(() => {
+    const saved = storageGet("timeBudget", 8);
+    return [3, 8, 15].includes(saved) ? saved : 8;
+  });
   const [dailyGoal, setDailyGoal] = useState(() => storageGet("dailyGoal", 10));
   const {
     loading: starterLoading,
@@ -346,7 +350,7 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
     async function load() {
       try {
         const [todayData, statsData] = await Promise.all([
-          api("/api/today"),
+          api(budget === 8 ? "/api/today" : `/api/today?budget_minutes=${budget}`),
           api("/api/stats"),
         ]);
         if (cancelled) return;
@@ -370,13 +374,16 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
         if (!cancelled) setMaterialsLoading(current => ({...current, [key]: false}));
       }
     }
+    setLoading(true);
+    setData(null);
+    setLoadError("");
     setMaterialErrors({});
     setMaterialsLoading({lessons: true, stories: true});
     load();
     loadMaterial("lessons", "/api/lessons", setLessonData);
     loadMaterial("stories", "/api/stories", setStoryData);
     return () => { cancelled = true; };
-  }, [reloadKey]);
+  }, [reloadKey, budget]);
 
   useEffect(() => {
     let cancelled = false;
@@ -422,6 +429,7 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
   };
 
   const activeSession = dailySession && !dailySession.finished ? dailySession : null;
+  const plan = activeSession?.plan ?? data.plan;
   const errorCount = (data.error_cards || []).length;
   const isEmpty = stats?.total_cards === 0;
 
@@ -454,6 +462,13 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
           <h1 id="home-title">今天的学习</h1>
           <p>{isEmpty ? "从第一组单词开始" : activeSession ? "继续从上次的位置开始" : "先回忆，再继续新的内容"}</p>
         </div>
+        <div className="home-round-notes">
+          {data.time_budget_enabled !== false && <label>今天可用时间 <select aria-label="今天可用时间" value={activeSession?.plan?.budget_minutes ?? budget} disabled={!!activeSession} onChange={event => {
+            const minutes = Number(event.target.value);
+            storageSet("timeBudget", minutes); setBudget(minutes);
+          }}>{[3, 8, 15].map(minutes => <option key={minutes} value={minutes}>约 {minutes} 分钟</option>)}</select></label>}
+          <p role="status" data-testid="time-budget-plan">预计约 {Math.ceil((plan?.estimated_seconds ?? 0) / 60)} 分钟 · 巩固至多 {plan?.reinforcement_limit ?? 3} 题。默认估算：复习 20 秒、新词 40 秒、巩固 20 秒，固定开销 15 秒；时间仅作估计，可保存后暂停。</p>
+        </div>
         {isEmpty ? <div className="home-welcome">
           <div><h2>欢迎来到 EnglishCoach</h2><p>添加想学的词，或先用 10 张已核对的入门词卡开始。</p></div>
           <div className="home-welcome-actions">
@@ -466,7 +481,7 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
           <div className="home-round-body">
             <div className="home-round-summary">
               <h2>{activeSession || queueTotal > 0 ? "本轮学习" : "今日复习已完成"}</h2>
-              {activeSession || queueTotal > 0 ? <p data-testid="round-target">本轮目标 {activeSession?.target ?? data.target} 张 · 到期复习 {activeSession?.reviewCount ?? data.review_count} 张 · 新词 {activeSession?.newCount ?? data.new_count} 个</p> : <p>当前没有到期词或待学新词，可继续专项练习。</p>}
+              {activeSession || queueTotal > 0 ? <p data-testid="round-target">本轮目标 {activeSession?.target ?? data.target} 张 · 到期复习 {activeSession?.reviewCount ?? data.review_count} 张 · 新词 {activeSession?.newCount ?? data.new_count} 个</p> : <p>{data.new_remaining === 0 ? "今日新词余量已用完，可稍后复习或继续专项练习。" : "当前没有到期词或待学新词，可继续专项练习。"}</p>}
             </div>
             <div className="home-goal">
               <div className="home-goal-label">今日完成 <b>{done}</b><span className="goal-total">/ {target}</span><span>词</span></div>
@@ -479,10 +494,10 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
               {activeSession ? "继续本轮学习" : queueTotal > 0 ? "开始今天的学习" : "添加新词"}<CaretRightIcon aria-hidden="true" size={20} />
             </button>
           </div>
-          {(activeSession || queueTotal > 0) && <div className="home-round-notes">
+          <div className="home-round-notes">
             <span data-testid="remaining-due">另有 {activeSession?.remainingDue ?? data.remaining_due} 张到期词，完成后可继续下一轮</span>
-            <span data-testid="new-word-limit">新词建议 {adaptiveGoal} 个 · 有效样本 {data.sample_count ?? 0}</span>
-          </div>}
+            <span data-testid="new-word-limit">新词建议 {adaptiveGoal} 个 · 今日剩余 {data.new_remaining ?? adaptiveGoal} 个 · 有效样本 {data.sample_count ?? 0}</span>
+          </div>
         </>}
       </section>
 

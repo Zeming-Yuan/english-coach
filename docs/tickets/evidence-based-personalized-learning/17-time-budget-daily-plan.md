@@ -1,6 +1,6 @@
 # EL-17：按 3/8/15 分钟开始、暂停和继续每日词卡计划
 
-- **状态：** 已确认粒度与阻塞关系；ready-for-agent；产品未实施。
+- **状态：** 本任务分支已实施；最终审查与受影响门禁见[验证记录](../../verification/el17-time-budget-daily-plan.md)。未合并、未部署。
 - **发布标签：** 直接使用 `ready-for-agent`，不重复 triage；有阻塞的票仍须等待前置完成。
 - **阶段：** 垂直切片：时间预算主线。
 - **来源：** [EnglishCoach：可验证学习效果与个性化训练规格](../../specs/evidence-based-personalized-learning.md)。

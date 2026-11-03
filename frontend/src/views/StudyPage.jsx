@@ -18,7 +18,7 @@ import RatingButtons from "../components/RatingButtons.jsx";
  * onExit: () => void 返回队列
  * onToQuiz: () => void 进测验
  */
-export default function StudyPage({ queue, session, recoveryVersion, onProgress, onAbort, onExit, onToQuiz, onToMixed }) {
+export default function StudyPage({ queue, session, recoveryVersion, onProgress, onAbort, onPause, onExit, onToQuiz, onToMixed }) {
   const [standaloneIdx, setStandaloneIdx] = useState(0);
   const idx = session ? session.index : standaloneIdx;
   const [flipped, setFlipped] = useState(false);
@@ -127,6 +127,7 @@ export default function StudyPage({ queue, session, recoveryVersion, onProgress,
     try {
       const command = {
         card_id: card.id,
+        ...(session && card.content_revision ? {revision: card.content_revision} : {}),
         ...(rating === null ? { skipped: true } : { rating }),
         source: "study",
         kind: "self_rating",
@@ -214,6 +215,7 @@ export default function StudyPage({ queue, session, recoveryVersion, onProgress,
     <section className="view view-practice">
       <div className="study-head">
         <button className="btn btn-ghost btn-small" onClick={onExit}>← 退出</button>
+        {onPause && <button className="btn btn-ghost btn-small" disabled={attempt.phase === "saving" || attempt.phase === "failed"} onClick={onPause}>先到这里</button>}
         <span className="study-count">{idx + 1} / {total}</span>
       </div>
       <div className="progress-track">

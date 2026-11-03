@@ -7,12 +7,12 @@ test("EC-13 daily round is due-first with fixed target and visible backlog", asy
   await expect(page.locator(".today-stats")).toBeVisible({timeout: 5000});
   await page.screenshot({path: `/tmp/english-coach-followup-2026-10-31/ec13-home-${test.info().project.name}.png`});
   await page.getByRole("button", {name: "开始今天的学习", exact: true}).click();
-  await expect(page.locator(".study-count")).toHaveText("1 / 22");
+  await expect(page.locator(".study-count")).toHaveText("1 / 20");
   await expect(page.locator(".front-main")).toHaveText("due25");
   await page.screenshot({path: `/tmp/english-coach-followup-2026-10-31/ec13-study-${test.info().project.name}.png`});
   await page.locator(".flip-hint").first().click();
   await page.locator(".rating-3").click();
-  await expect(page.locator(".study-count")).toHaveText("2 / 22");
+  await expect(page.locator(".study-count")).toHaveText("2 / 20");
   const detail = await (await app.request.get("/api/cards/25")).json();
   expect(detail.learning_events).toHaveLength(1);
   expect(detail.learning_events[0].stage).toBe("main");
@@ -25,12 +25,12 @@ test("EC-13 refresh resumes the frozen round after confirmed saves", async ({app
   await page.getByRole("button", {name: "开始今天的学习", exact: true}).click();
   await page.locator(".flip-hint").first().click();
   await page.locator(".rating-3").click();
-  await expect(page.locator(".study-count")).toHaveText("2 / 22");
+  await expect(page.locator(".study-count")).toHaveText("2 / 20");
   await page.reload();
   await expect(page.getByTestId("remaining-due")).toContainText("5", {timeout: 5000});
-  await expect(page.getByTestId("round-target")).toContainText("22");
+  await expect(page.getByTestId("round-target")).toContainText("20");
   await page.getByRole("button", {name: "继续本轮学习", exact: true}).click({timeout: 5000});
-  await expect(page.locator(".study-count")).toHaveText("2 / 22");
+  await expect(page.locator(".study-count")).toHaveText("2 / 20");
   await expect(page.locator(".front-main")).toHaveText("due1");
 });
 
@@ -93,7 +93,7 @@ test("EC-13 minimum daily goal never raises a lowered new-word quota", async ({a
   await expect(page.locator(".goal-total")).toHaveText("/ 20");
   await expect(page.getByTestId("new-word-limit")).toContainText("新词建议 5 个");
   await page.getByRole("button", {name: "开始今天的学习", exact: true}).click();
-  await expect(page.locator(".study-count")).toHaveText("1 / 5");
+  await expect(page.locator(".study-count")).toHaveText("1 / 4");
 });
 
 test("EC-13 empty library shows loading and provides backup recovery entry", async ({app, page}) => {
@@ -131,7 +131,7 @@ test("EC-13 specialist detour preserves the suspended daily round", async ({appF
   await page.getByRole("button", {name: "开始今天的学习", exact: true}).click();
   await page.locator(".flip-hint").first().click();
   await page.locator(".rating-3").click();
-  await expect(page.locator(".study-count")).toHaveText("2 / 22");
+  await expect(page.locator(".study-count")).toHaveText("2 / 20");
   await page.getByRole("button", {name: "← 退出", exact: true}).click();
   await page.getByRole("button", {name: "复习错词", exact: true}).click();
   await expect(page.locator(".study-count")).toHaveText("1 / 1");
@@ -139,7 +139,7 @@ test("EC-13 specialist detour preserves the suspended daily round", async ({appF
   await page.locator(".rating-3").click();
   await page.getByRole("button", {name: "← 返回队列", exact: true}).click();
   await page.getByRole("button", {name: "继续本轮学习", exact: true}).click({timeout: 5000});
-  await expect(page.locator(".study-count")).toHaveText("2 / 22");
+  await expect(page.locator(".study-count")).toHaveText("2 / 20");
   const events = (await (await app.request.get("/api/cards/25")).json()).learning_events;
   expect(events.map(event => event.stage).sort()).toEqual(["main", "standalone"]);
 });
@@ -149,19 +149,19 @@ test("EC-13 a completed full round leaves the backlog for a fresh next round", a
   await page.goto(app.baseURL);
   await page.getByRole("button", {name: "开始今天的学习", exact: true}).click();
   const seen = [];
-  for (let i = 0; i < 22; i += 1) {
-    await expect(page.locator(".study-count")).toHaveText(`${i + 1} / 22`);
+  for (let i = 0; i < 20; i += 1) {
+    await expect(page.locator(".study-count")).toHaveText(`${i + 1} / 20`);
     seen.push(await page.locator(".front-main").textContent());
     await page.locator(".flip-hint").first().click();
     await page.locator(".rating-3").click();
   }
   await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toBeVisible();
-  expect(seen).toEqual(["due25", ...Array.from({length: 19}, (_, i) => `due${i + 1}`), "new26", "new27"]);
-  expect((await (await app.request.get("/api/stats")).json()).reviewed_today).toBe(22);
+  expect(seen).toEqual(["due25", ...Array.from({length: 19}, (_, i) => `due${i + 1}`)]);
+  expect((await (await app.request.get("/api/stats")).json()).reviewed_today).toBe(20);
   await page.getByRole("button", {name: "← 返回队列", exact: true}).click();
-  await expect(page.getByTestId("round-target")).toContainText("本轮目标 5 张");
+  await expect(page.getByTestId("round-target")).toContainText("本轮目标 7 张");
   await page.getByRole("button", {name: "开始今天的学习", exact: true}).click();
-  await expect(page.locator(".study-count")).toHaveText("1 / 5");
+  await expect(page.locator(".study-count")).toHaveText("1 / 7");
   await expect(page.locator(".front-main")).toHaveText("due20");
 });
 

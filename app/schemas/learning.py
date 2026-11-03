@@ -66,6 +66,7 @@ class AttemptCommand(BaseModel):
     rating: Literal[1, 2, 3, 4] | None = None
     assistance: list[Assistance] = Field(default_factory=list)
     skipped: bool = False
+    revision: ContactRevision | None = None
     question_token: str | None = None
     session_id: UUID | None = None
     stage: Stage = "standalone"
