@@ -9,7 +9,7 @@ async function openOriginal(app, page) {
     }})).ok()).toBeTruthy();
   }
   await page.goto(app.baseURL);
-  await page.getByRole("button", {name: /故事/}).click();
+  await page.getByRole("button", {name: "故事", exact: true}).click();
   await page.getByRole("button", {name: "生成新故事", exact: true}).click();
   await page.locator(".story-item-main").click();
   await expect(page.locator(".story-read-title")).toContainText("My apple");
@@ -45,7 +45,7 @@ for (const failure of ["commit", "response-loss"]) {
     await expect(page.getByRole("button", {name: "继续确认保存", exact: true})).toBeVisible();
     const pending = await page.evaluate(root => JSON.parse(localStorage.getItem(`ec.story-simplification.${root}`)), original);
     await page.reload();
-    await page.getByRole("button", {name: /故事/}).click();
+    await page.getByRole("button", {name: "故事", exact: true}).click();
     await page.locator(".story-item-main").filter({hasText: "原版 · 未检查"}).click();
     await page.getByRole("button", {name: "继续确认保存", exact: true}).click();
     await expect(page.getByTestId("story-check-status")).toHaveText("简化版 · 未检查");
@@ -115,7 +115,7 @@ test("EL-12 V3 restore keeps versions materials and replay identity", async ({ap
   await page.getByRole("button", {name: "确认替换学习数据", exact: true}).click();
   await expect(page.getByRole("status")).toContainText("恢复成功");
   await page.goto(target.baseURL);
-  await page.getByRole("button", {name: /故事/}).click();
+  await page.getByRole("button", {name: "故事", exact: true}).click();
   await page.locator(".story-item-main").filter({hasText: "原版 · 未检查"}).click();
   await expect(page.locator("[data-story-version]")).toHaveAttribute("data-story-version", original);
   await page.getByRole("button", {name: "查看简化版", exact: true}).click();
@@ -134,7 +134,7 @@ test("EL-12 functional rollback hides simplify and retains saved versions", asyn
   const preview = await (await target.request.post("/api/import/preview", {data: backup})).json();
   expect((await target.request.post("/api/import/cards", {data: {backup, expected_revision: preview.expected_revision}})).ok()).toBeTruthy();
   await page.goto(target.baseURL);
-  await page.getByRole("button", {name: /故事/}).click();
+  await page.getByRole("button", {name: "故事", exact: true}).click();
   await page.locator(".story-item-main").filter({hasText: "原版 · 未检查"}).click();
   await expect(page.getByRole("button", {name: "更简单", exact: true})).toHaveCount(0);
   await page.getByRole("button", {name: "查看简化版", exact: true}).click();
@@ -152,7 +152,7 @@ test("EL-12 pending confirmation after restore uses mapped original identity", a
   const preview = await (await app.request.post("/api/import/preview", {data: backup})).json();
   expect((await app.request.post("/api/import/cards", {data: {backup, expected_revision: preview.expected_revision}})).ok()).toBeTruthy();
   await page.reload();
-  await page.getByRole("button", {name: /故事/}).click();
+  await page.getByRole("button", {name: "故事", exact: true}).click();
   await page.locator(".story-item-main").filter({hasText: "原版 · 未检查"}).click();
   await page.getByRole("button", {name: "继续确认保存", exact: true}).click();
   await expect(page.getByTestId("story-check-status")).toHaveText("简化版 · 未检查", {timeout: 4000});

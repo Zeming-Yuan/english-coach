@@ -9,13 +9,13 @@ from __future__ import annotations
 import json
 import shutil
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from alembic.config import Config
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, event
+from sqlalchemy import MetaData, Table, create_engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from alembic import command
@@ -34,10 +34,10 @@ def _aware_utc(value: str | datetime) -> datetime:
     if isinstance(value, datetime):
         parsed = value
     else:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(value)
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc)
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
 
 
 class MutableClock:
@@ -121,6 +121,33 @@ class ECEnv:
         if self._fail_next_commit:
             self._fail_next_commit = False
             raise OSError("injected commit failure")
+
+    def rebuild_legacy_database(
+        self, revision: str, *, preserve_tables: tuple[str, ...] = ("cards",)
+    ) -> None:
+        """在本环境的空临时库建立旧版 schema，按旧列保留指定的真实前置记录。
+
+        当前应用可先生成有效活动，再作为旧版数据写入；绝不通过降级绕过
+        生产迁移的数据保护。调用前必须关闭所有测试持有的 Session。
+        """
+        records = {}
+        with self.engine.connect() as conn:
+            for name in preserve_tables:
+                table = Table(name, MetaData(), autoload_with=conn)
+                records[name] = conn.execute(select(table)).mappings().all()
+        self.engine.dispose()
+        self.database_path.unlink()
+        config = Config(str(ROOT / "alembic.ini"))
+        config.set_main_option("sqlalchemy.url", self.database_url)
+        command.upgrade(config, revision)
+        with self.engine.begin() as conn:
+            for name, rows in records.items():
+                table = Table(name, MetaData(), autoload_with=conn)
+                for row in rows:
+                    conn.execute(
+                        table.insert(),
+                        {column.name: row[column.name] for column in table.columns},
+                    )
 
     def _session(self) -> Session:
         return self.SessionLocal()

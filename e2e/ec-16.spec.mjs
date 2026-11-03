@@ -165,7 +165,7 @@ test("EC-16 Shanghai midnight preserves both learning days", async ({app, page})
   expect(events.map(e => e.learning_day)).toEqual(["2026-10-30", "2026-10-31"]);
   expect(events.map(e => e.learning_timezone)).toEqual(["Asia/Shanghai", "Asia/Shanghai"]);
   expect(events.map(e => e.card_id)).toEqual([id, id]);
-  await page.getByRole("navigation").getByRole("button", {name: /队列/}).click();
+  await page.getByRole("navigation").getByRole("button", {name: /^(今天|队列)$/}).click();
   await page.locator(".today-stats").click();
   await expect(page.getByTestId("streak")).toHaveText("2");
   await expect(page.locator('[data-date="2026-10-30"]')).toHaveAttribute("data-count", "1");

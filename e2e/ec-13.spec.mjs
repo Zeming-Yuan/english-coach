@@ -76,9 +76,12 @@ test("EC-13 small library completes with keyboard and keeps specialist practice"
   await page.getByRole("button", {name: "← 返回队列", exact: true}).click();
   await expect(page.getByText("今日复习已完成", {exact: true})).toBeVisible();
   await expect(page.getByText("欢迎来到 EnglishCoach", {exact: true})).toHaveCount(0);
-  await page.locator("summary").focus();
-  await page.keyboard.press("Enter");
-  await expect(page.getByRole("button", {name: "🎲 混合练习", exact: true})).toBeVisible();
+  const specialist = page.locator(".home-specialists");
+  if (await specialist.getAttribute("open") === null) {
+    await specialist.locator("summary").focus();
+    await page.keyboard.press("Enter");
+  }
+  await expect(page.getByRole("button", {name: "混合练习", exact: true})).toBeVisible();
 });
 
 test("EC-13 minimum daily goal never raises a lowered new-word quota", async ({app, page}) => {
@@ -130,8 +133,7 @@ test("EC-13 specialist detour preserves the suspended daily round", async ({appF
   await page.locator(".rating-3").click();
   await expect(page.locator(".study-count")).toHaveText("2 / 22");
   await page.getByRole("button", {name: "← 退出", exact: true}).click();
-  await page.locator("summary").click();
-  await page.locator(".error-entry").getByRole("button", {name: "复习 →", exact: true}).click();
+  await page.getByRole("button", {name: "复习错词", exact: true}).click();
   await expect(page.locator(".study-count")).toHaveText("1 / 1");
   await page.locator(".flip-hint").first().click();
   await page.locator(".rating-3").click();
@@ -207,8 +209,7 @@ async function enterDailyWithForeignPending(app, page) {
   const events = (await (await app.request.get(`/api/cards/${ids[0]}`)).json()).learning_events;
   const mainSessionId = events.find(event => event.stage === "main").session_id;
   await page.getByRole("button", {name: "← 退出", exact: true}).click();
-  await page.locator("summary").click();
-  await page.locator(".error-entry").getByRole("button", {name: "复习 →", exact: true}).click();
+  await page.getByRole("button", {name: "复习错词", exact: true}).click();
   await expect(page.locator(".front-main")).toHaveText("second");
   await app.failCommitOnce();
   await page.locator(".flip-hint").first().click();

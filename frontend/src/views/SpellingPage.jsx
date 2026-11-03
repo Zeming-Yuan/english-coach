@@ -1,3 +1,4 @@
+import UiIcon from "../components/UiIcon.jsx";
 import React, { useEffect, useRef, useState } from "react";
 import { storageGet, storageSet } from "../lib/utils.js";
 import {
@@ -106,7 +107,7 @@ export default function SpellingPage({ onExit, singleCard }) {
     return (
       <section className="view view-center">
         <div className="study-done">
-          <div className="done-emoji">⌨️</div>
+          <div className="done-emoji"><UiIcon name="done" size={40} /></div>
           <h2>拼写完成！</h2>
           <p className="done-detail">拼对 {stats.correct}/{total} 词（{Math.round(stats.correct / total * 100)} 分）</p>
           <button className="btn btn-primary" onClick={replay}>再来一轮</button>
@@ -118,6 +119,10 @@ export default function SpellingPage({ onExit, singleCard }) {
   if (!q) return null;
 
   const independent = assistance.length === 0;
+  const savedCount = idx + (feedback ? 1 : 0);
+  const feedbackState = feedback
+    ? (feedback.skipped ? "skipped" : feedback.correct ? "correct" : "incorrect")
+    : saving ? "saving" : saveError ? "uncertain" : "idle";
   const diffLabels = {
     1: "提示首字母：本题按带提示记录，不更新排期",
     2: "提示长度 / 逐字反馈：本题按带提示记录，不更新排期",
@@ -125,24 +130,24 @@ export default function SpellingPage({ onExit, singleCard }) {
   };
 
   return (
-    <section className="view view-practice">
-      <div className="page-head">
+    <section className="view view-practice qwerty-spelling">
+      <div className="page-head qwerty-spelling-head">
         <button className="btn btn-ghost btn-small" onClick={onExit}>← 返回</button>
+        <h1>拼写练习</h1>
+        <span className="study-count">已保存 {savedCount} / {total}</span>
       </div>
-      <div className="spelling-head">
-        <span className="study-count">{idx + 1} / {total}</span>
-      </div>
-      <div className="progress-track">
-        <div className="progress-fill" style={{ width: `${(idx / total) * 100}%` }} />
+      <div className="progress-track" role="progressbar" aria-label="本轮已保存" aria-valuemin={0} aria-valuemax={total} aria-valuenow={savedCount}>
+        <div className="progress-fill" style={{ width: `${(savedCount / total) * 100}%` }} />
       </div>
 
       {/* 难度选择：仅主动选择提示/格子才计为辅助 */}
       <div className="spelling-difficulty">
-        {[1, 2, 3].map((d) => (
+        {[3, 2, 1].map((d) => (
           <button
             key={d}
             className={`diff-btn ${difficulty === d ? "diff-active" : ""}`}
             onClick={() => chooseDifficulty(d)}
+            aria-pressed={difficulty === d}
           >
             {d === 1 ? "提示首字母" : d === 2 ? "提示长度" : "独立回忆"}
           </button>
@@ -150,8 +155,9 @@ export default function SpellingPage({ onExit, singleCard }) {
       </div>
 
       <div className="spelling-body">
+        <span className="qwerty-prompt-label">根据释义，写出英文</span>
         <div className="spelling-meaning">{q.meaning}</div>
-        {q.phonetic && <div className="spelling-phonetic">{q.phonetic}</div>}
+        {!independent && q.phonetic && <div className="spelling-phonetic">{q.phonetic}</div>}
         <SpellingBoard
           key={q.card_id}
           mode={independent ? "independent" : "assisted"}
@@ -160,9 +166,12 @@ export default function SpellingPage({ onExit, singleCard }) {
           showFirstHint={assistance.includes("first_letter")}
           disabled={!!feedback || saving}
           inputRef={inputRef}
+          variant="qwerty"
+          formId="spelling-answer-form"
+          feedbackState={feedbackState}
+          placeholder="点击这里，直接输入"
         />
         <div className="spelling-hint">
-          输入上面的英文单词 ·{" "}
           {assistance.length > 0
             ? "本题已使用提示，仍按辅助记录"
             : diffLabels[difficulty]}
@@ -187,8 +196,8 @@ export default function SpellingPage({ onExit, singleCard }) {
             <span role="status">已保存</span>
             {" "}
             {feedback.correct
-              ? "✅ 正确！"
-              : `${feedback.skipped ? "已跳过" : "❌ 正确拼写"}：${feedback.expected}`}
+              ? " · 拼写正确"
+              : ` · ${feedback.skipped ? "已跳过" : "正确拼写"}：${feedback.expected}`}
           </div>
         )}
         {saveError && (
@@ -203,6 +212,10 @@ export default function SpellingPage({ onExit, singleCard }) {
 
       {/* 主操作：钉在首屏底部，不随内容滚动 */}
       <div className="practice-actions">
+        {!feedback && <button type="submit" form="spelling-answer-form" className="btn btn-primary qwerty-submit" disabled={saving}>
+          {saving ? "正在确认…" : "提交答案"}
+          {!saving && <kbd aria-hidden="true">Enter</kbd>}
+        </button>}
         <button className="btn btn-ghost btn-small spelling-skip" onClick={feedback ? next : skip} disabled={saving}>
           {feedback ? "下一题 →" : "跳过这题 →"}
         </button>

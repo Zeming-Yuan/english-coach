@@ -85,7 +85,7 @@ def test_daily_queue_uses_current_state_not_stale_due_rows(ec):
     card_id = ec.seed_card(word="already-reviewed")
     cfg = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
     cfg.set_main_option("sqlalchemy.url", ec.database_url)
-    command.downgrade(cfg, "ec12_card_identity")
+    ec.rebuild_legacy_database("ec12_card_identity")
     with ec.SessionLocal() as db:
         for due, last in [
             (datetime(2026, 10, 1), datetime(2026, 9, 30)),

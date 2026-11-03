@@ -9,7 +9,7 @@ async function prepare(app, page, start = true) {
     }})).ok()).toBeTruthy();
   }
   await page.goto(app.baseURL);
-  await page.getByRole('button', {name: /故事/}).click();
+  await page.getByRole('button', {name: '故事', exact: true}).click();
   await page.getByRole('button', {name: '生成新故事', exact: true}).click();
   await page.locator('.story-item-main').click();
   if (start) {
@@ -49,7 +49,7 @@ for (const failure of ['commit', 'response-loss']) {
     await page.getByRole('button', {name: '提交答案', exact: true}).click();
     await expect(page.getByTestId('practice-session').getByRole('button', {name: '继续确认保存', exact: true})).toBeVisible();
     await page.reload();
-    await page.getByRole('button', {name: /故事/}).click();
+    await page.getByRole('button', {name: '故事', exact: true}).click();
     await page.locator('.story-item-main').click();
     const check = page.getByTestId('practice-session');
     await expect(check.getByRole('textbox', {name: '你的答案', exact: true})).toHaveValue('apple');
@@ -89,7 +89,7 @@ async function restore(app, backup) {
 }
 async function openSavedStory(page, app) {
   await page.goto(app.baseURL);
-  await page.getByRole('button', {name: /故事/}).click();
+  await page.getByRole('button', {name: '故事', exact: true}).click();
   await page.locator('.story-item-main').click();
 }
 
@@ -141,7 +141,7 @@ for (const mode of ['choice-only', 'typed-only', 'empty']) {
         const saved = await (await app.request.get('/api/export/backup')).json();
         return saved.extensions.learning_contacts.some(c => c.source === 'story');
       }).toBe(true);
-      await page.getByRole('button', {name: '← 返回', exact: true}).click();
+      await page.locator('.reader-toolbar').getByRole('button', {name: '返回故事列表', exact: true}).click();
     }
     const backup = await (await app.request.get('/api/export/backup')).json();
     const id = backup.cards[0].id;
@@ -235,7 +235,7 @@ test('EL-13 stale creation after restore can be abandoned for the imported round
   await page.getByRole('button', {name: '读后检查', exact: true}).click();
   await expect(page.getByRole('alert')).toContainText('检查尚未确认保存');
   const backup = await (await app.request.get('/api/export/backup')).json();
-  await page.getByRole('button', {name: '← 返回', exact: true}).click();
+  await page.locator('.reader-toolbar').getByRole('button', {name: '返回故事列表', exact: true}).click();
   await restore(app, backup);
   await openSavedStory(page, app);
   await page.getByRole('button', {name: '继续确认保存', exact: true}).click();
@@ -300,7 +300,7 @@ test('EL-13 simpler version checks stay separate when switching versions', async
   await page.getByRole('button', {name: '查看简化版', exact: true}).click();
   await expect(page.getByTestId('practice-session')).toContainText('阅读识别 1 · 词汇独立 1 · 辅助 0');
   await page.reload();
-  await page.getByRole('button', {name: /故事/}).click();
+  await page.getByRole('button', {name: '故事', exact: true}).click();
   await expect(page.locator('.story-item-main').filter({hasText: '简化版 · 已有检查记录'})).toHaveCount(1);
   await expect(page.locator('.story-item-main').filter({hasText: '原版 · 未检查'})).toHaveCount(1);
 });

@@ -12,7 +12,7 @@ async function verified(app) {
 }
 async function library(page, app) {
   await page.goto(app.baseURL);
-  await page.getByRole("button", {name: /故事/}).click();
+  await page.getByRole("button", {name: "故事", exact: true}).click();
   await expect(page.getByRole("button", {name: "生成新故事", exact: true})).toBeVisible();
 }
 
@@ -73,7 +73,7 @@ for (const failure of ["commit", "response-loss"]) {
     expect(before.stories).toHaveLength(failure === "commit" ? 0 : 1);
     await page.reload();
     // Navigation selection is browser state; re-enter the story library after refresh.
-    await page.getByRole("button", {name: /故事/}).click();
+    await page.getByRole("button", {name: "故事", exact: true}).click();
     await page.getByRole("button", {name: "继续确认保存", exact: true}).click();
     await expect(page.getByTestId("story-quality")).toContainText("已有回忆依据");
     const after = await (await app.request.get("/api/export/backup")).json();
@@ -158,7 +158,7 @@ test("EL-11 late detail cannot replace current selection", async ({appFactory, p
 test("EL-11 functional rollback hides generation and preserves compatibility", async ({appFactory, page}) => {
   const app = await appFactory({fixture: "el11-rollback.json"});
   await page.goto(app.baseURL);
-  await page.getByRole("button", {name: /故事/}).click();
+  await page.getByRole("button", {name: "故事", exact: true}).click();
   await expect(page.getByRole("heading", {name: /故事/})).toBeVisible();
   await expect(page.getByRole("button", {name: "生成新故事", exact: true})).toHaveCount(0);
   expect((await app.request.post("/api/stories/generate")).status()).toBe(403);

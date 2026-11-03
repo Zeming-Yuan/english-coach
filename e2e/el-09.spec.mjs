@@ -65,7 +65,7 @@ for (const mode of ["form", "global", "accepted-replay"]) {
     const other = await page.context().newPage();
     await other.route("**/api/learning/contacts", route => route.abort("failed"));
     await other.goto(app.baseURL);
-    await other.getByText("单词本", {exact: true}).click();
+    await other.getByRole("button", {name: "单词本", exact: true}).click();
     await expect(other.locator(".word-item").first()).toBeVisible();
     await expect.poll(() => page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith("ec.contact.") && key !== "ec.contact.probe").length)).toBeGreaterThan(0);
     if (mode === "global") {
@@ -107,7 +107,7 @@ test("EL-09 another tab seeing the answer reclassifies the result", async ({appF
   await open(page, app);
   const other = await page.context().newPage();
   await other.goto(app.baseURL);
-  await other.getByText("单词本", {exact: true}).click();
+  await other.getByRole("button", {name: "单词本", exact: true}).click();
   await expect(other.locator(".word-item").first()).toBeVisible();
   await expect.poll(async () => (await (await app.request.get("/api/export/backup")).json()).extensions.learning_contacts.length).toBeGreaterThan(1);
   await answer(page);

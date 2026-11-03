@@ -43,7 +43,9 @@ def test_contract_archives_duplicate_states_and_preserves_allocator(ec, ec_facto
     )
     cfg = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
     cfg.set_main_option("sqlalchemy.url", ec.database_url)
-    command.downgrade(cfg, "ec12_card_identity")
+    ec.rebuild_legacy_database(
+        "ec12_card_identity", preserve_tables=("cards", "reviews", "review_events")
+    )
     with ec.engine.begin() as conn:
         conn.execute(
             text("INSERT INTO cards (id, word, kind) VALUES (999, 'retired', 'word')")
@@ -82,7 +84,7 @@ def test_contract_archives_duplicate_states_and_preserves_allocator(ec, ec_facto
             ).scalar_one()
             == 999
         )
-    command.downgrade(cfg, "ec12_card_identity")
+    # Re-running the supported upgrade must not duplicate archived evidence.
     command.upgrade(cfg, "head")
     backup = ec.client.get("/api/export/backup").json()
     assert len(backup["review_baselines"]) == 2
@@ -148,7 +150,7 @@ def test_contract_rejects_unsafe_duplicate_before_archiving(ec):
     cid = ec.seed_card()
     cfg = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
     cfg.set_main_option("sqlalchemy.url", ec.database_url)
-    command.downgrade(cfg, "ec12_card_identity")
+    ec.rebuild_legacy_database("ec12_card_identity")
     with ec.engine.begin() as conn:
         for count in (1, -1):
             conn.execute(
@@ -219,8 +221,6 @@ def _prepare_contract_preflight(ec):
     from alembic.config import Config
     from sqlalchemy import text
 
-    from alembic import command
-
     cid = ec.seed_card()
     assert (
         ec.client.post("/api/reviews", json={"card_id": cid, "rating": 3}).status_code
@@ -228,7 +228,9 @@ def _prepare_contract_preflight(ec):
     )
     config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
     config.set_main_option("sqlalchemy.url", ec.database_url)
-    command.downgrade(config, "ec12_card_identity")
+    ec.rebuild_legacy_database(
+        "ec12_card_identity", preserve_tables=("cards", "reviews", "review_events")
+    )
     with ec.engine.begin() as conn:
         conn.execute(
             text(

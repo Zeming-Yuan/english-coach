@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect, useId } from "react";
 
 /**
  * 拼写共享组件：格子 + 输入框 + 输满自动提交。
@@ -29,14 +29,21 @@ export default function SpellingBoard({
   autoFocus = true,
   name = "spelling-answer",
   inputRef,
+  variant = "default",
+  formId,
+  feedbackState = "idle",
 }) {
   const independent = mode === "independent";
+  const qwerty = variant === "qwerty";
+  const hintId = useId();
+  const accessibleFirstHint = qwerty && !independent && showFirstHint && target;
   const maxLength = independent
     ? 0
     : target
       ? target.length
       : Math.max(maxLenProp || 0, 0);
   const [value, setValue] = useState("");
+  const [composing, setComposing] = useState(false);
   const submittedRef = useRef(false);
 
   const submit = useCallback(() => {
@@ -53,11 +60,11 @@ export default function SpellingBoard({
 
   // assisted 模式输满自动提交（300ms 缓冲，等最后一个字母稳下来）
   useEffect(() => {
-    if (!independent && maxLength > 0 && value.length === maxLength && !disabled) {
+    if (!independent && !composing && maxLength > 0 && value.length === maxLength && !disabled) {
       const t = setTimeout(submit, 300);
       return () => clearTimeout(t);
     }
-  }, [independent, value, maxLength, disabled, submit]);
+  }, [independent, composing, value, maxLength, disabled, submit]);
 
   const handleChange = (e) => {
     if (disabled) return;
@@ -65,6 +72,10 @@ export default function SpellingBoard({
   };
 
   const handleKeyDown = (e) => {
+    if (e.nativeEvent.isComposing || e.keyCode === 229 || composing) {
+      if (e.key === "Enter") e.preventDefault();
+      return;
+    }
     if (e.key === "Enter") {
       e.preventDefault();
       if (value.length > 0) submit();
@@ -86,18 +97,24 @@ export default function SpellingBoard({
       } else {
         cls = ch ? "spelling-box" : "spelling-box box-pending";
       }
+      if (qwerty) {
+        cls += " qwerty-letter";
+        if (cls.includes("box-correct")) cls += " is-correct";
+        if (cls.includes("box-wrong")) cls += " is-incorrect";
+        if (i === value.length) cls += " is-current";
+      }
       const hintCh = showFirstHint && !ch && i === 0 && target ? target[0] : "";
       boxes.push(
         <span key={i} className={cls} style={hintCh ? { color: "var(--muted)" } : {}}>
-          {ch || hintCh || ""}
+          {ch || hintCh || (qwerty ? "_" : "")}
         </span>
       );
     }
   }
 
-  return (
+  const fields = (
     <>
-      {!independent && <div className="spelling-word-display">{boxes}</div>}
+      {!independent && <div className="spelling-word-display" aria-hidden={qwerty ? true : undefined}>{boxes}</div>}
       <input
         ref={inputRef}
         className="spelling-input"
@@ -105,6 +122,10 @@ export default function SpellingBoard({
         value={value}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
+        onCompositionStart={() => setComposing(true)}
+        onCompositionEnd={() => setComposing(false)}
+        aria-label={qwerty ? "英文拼写" : undefined}
+        aria-describedby={accessibleFirstHint ? hintId : undefined}
         placeholder={placeholder}
         autoFocus={autoFocus}
         autoComplete="off"
@@ -112,6 +133,20 @@ export default function SpellingBoard({
         spellCheck={false}
         disabled={disabled}
       />
+      {accessibleFirstHint && <span id={hintId} className="qwerty-sr-only">首字母提示：{target[0]}</span>}
     </>
+  );
+
+  if (!qwerty) return fields;
+  return (
+    <form
+      id={formId}
+      className={`qwerty-typing ${independent ? "qwerty-typing--independent" : "qwerty-typing--assisted"}`}
+      onSubmit={(e) => { e.preventDefault(); if (!composing) submit(); }}
+    >
+      <div className="qwerty-typing-line" data-feedback={feedbackState}>
+        {fields}
+      </div>
+    </form>
   );
 }

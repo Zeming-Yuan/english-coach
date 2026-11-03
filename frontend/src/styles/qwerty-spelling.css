@@ -1,0 +1,122 @@
+/* Qwerty Learner interaction reference, adapted to EnglishCoach recall rules.
+   Scope the typewriter surface to spelling; other SpellingBoard consumers keep their UI. */
+.product-app .qwerty-spelling {
+  display: flex;
+  flex-direction: column;
+  min-height: 560px;
+  height: calc(100dvh - 151px);
+}
+.product-app .qwerty-spelling-head { align-items: center; gap: 18px; }
+.product-app .qwerty-spelling-head h1 { margin: 0; font-size: 18px; font-weight: 500; }
+.product-app .qwerty-spelling-head .study-count { margin-left: auto; font-variant-numeric: tabular-nums; }
+.product-app .qwerty-spelling .spelling-difficulty { display: flex; justify-content: center; flex-wrap: wrap; }
+.product-app .qwerty-spelling .spelling-body {
+  flex: 1;
+  justify-content: flex-start;
+  gap: 14px;
+  padding: clamp(56px, 12vh, 120px) 0 38px;
+}
+.product-app .qwerty-prompt-label { font-size: 13px; color: var(--muted); }
+.product-app .qwerty-spelling .spelling-meaning {
+  margin: 0 0 8px;
+  font-size: clamp(23px, 3.4vw, 30px);
+  font-weight: 400;
+  line-height: 1.6;
+}
+.product-app .qwerty-typing { width: 100%; margin: 8px auto; }
+.product-app .qwerty-sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+.product-app .qwerty-typing-line {
+  position: relative;
+  min-height: 98px;
+  width: min(100%, 760px);
+  margin: 0 auto;
+  border-bottom: 1px solid var(--line);
+}
+.product-app .qwerty-typing-line:focus-within { border-color: var(--mint); }
+.product-app .qwerty-spelling .spelling-input {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  min-height: 98px;
+  margin: 0;
+  padding: 18px 12px;
+  border: 0;
+  border-radius: 0;
+  outline: 0;
+  box-shadow: none;
+  background: transparent;
+  font: 400 clamp(30px, 5vw, 52px)/1.2 ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  letter-spacing: .04em;
+  caret-color: var(--mint);
+  color: var(--ink);
+}
+.product-app .qwerty-spelling .spelling-input::placeholder { font: 400 16px/1.5 var(--font); letter-spacing: 0; color: var(--muted); }
+.product-app .qwerty-spelling .spelling-input:disabled { opacity: 1; -webkit-text-fill-color: currentColor; }
+.product-app .qwerty-typing--assisted .spelling-word-display {
+  min-height: 98px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0;
+  margin: 0;
+  padding: 18px 12px;
+  pointer-events: none;
+}
+.product-app .qwerty-typing--assisted .spelling-input {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  color: transparent;
+  caret-color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+.product-app .qwerty-typing--assisted .spelling-input::placeholder { color: transparent; }
+.product-app .qwerty-spelling .qwerty-typing--assisted .spelling-input:disabled { color: transparent; -webkit-text-fill-color: transparent; }
+.product-app .qwerty-letter.spelling-box {
+  width: 1.1ch;
+  height: auto;
+  min-height: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font: 400 clamp(30px, 5vw, 52px)/1.2 ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  color: var(--muted);
+  box-shadow: none;
+}
+.product-app .qwerty-letter.is-correct { color: var(--success); }
+.product-app .qwerty-letter.is-incorrect { color: var(--coral); text-decoration: underline; text-underline-offset: .2em; }
+.product-app .qwerty-typing--assisted .qwerty-typing-line:focus-within .qwerty-letter.is-current { text-decoration: underline; text-underline-offset: .2em; text-decoration-color: var(--mint); }
+.product-app .qwerty-typing-line[data-feedback="correct"] { animation: qwerty-confirm 220ms cubic-bezier(.2,.7,.2,1); }
+.product-app .qwerty-typing-line[data-feedback="correct"] .spelling-input { color: var(--success); }
+.product-app .qwerty-typing-line[data-feedback="incorrect"],
+.product-app .qwerty-typing-line:has(.is-incorrect) { animation: qwerty-error 260ms cubic-bezier(.2,.7,.2,1); }
+.product-app .qwerty-spelling .spelling-feedback { font-size: 15px; margin-top: 8px; }
+.product-app .qwerty-spelling .practice-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 14px; padding-top: 20px; }
+.product-app .qwerty-spelling .practice-actions .spelling-skip { width: auto; flex: none; margin: 0; }
+.product-app .qwerty-submit { min-width: 176px; }
+.product-app .qwerty-submit kbd { padding-left: 12px; margin-left: 6px; border-left: 1px solid currentColor; font: 400 12px var(--font); opacity: .65; }
+@keyframes qwerty-error {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  50% { transform: translateX(3px); }
+  75% { transform: translateX(-1px); }
+}
+@keyframes qwerty-confirm {
+  0% { opacity: .72; transform: translateY(2px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@media (max-width: 600px) {
+  .product-app .qwerty-spelling { min-height: 490px; height: calc(100dvh - 119px); }
+  .product-app .qwerty-spelling-head { gap: 10px; }
+  .product-app .qwerty-spelling-head h1 { font-size: 16px; }
+  .product-app .qwerty-spelling .spelling-body { padding-top: clamp(44px, 10vh, 88px); padding-bottom: 24px; }
+  .product-app .qwerty-spelling .spelling-hint { max-width: 290px; margin-inline: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .product-app .qwerty-typing-line[data-feedback],
+  .product-app .qwerty-typing-line:has(.is-incorrect) { animation: none; }
+  .product-app .qwerty-spelling .spelling-input { caret-color: auto; }
+}

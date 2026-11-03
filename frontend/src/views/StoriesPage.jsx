@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { api } from "../lib/api.js";
 import { speak } from "../lib/tts.js";
+import {normalizeStoryAudio, storyAudioSegments} from "../lib/storyAudio.js";
 import { cleanToken, escapeHtml } from "../lib/utils.js";
 import { recordVisibleCards } from "../lib/contacts.js";
 import { recordPracticeContact } from "../lib/practiceContacts.js";
@@ -11,11 +12,24 @@ import StoryGeneration, {StoryQuality} from "../components/StoryGeneration.jsx";
 import StoryCheck from "../components/StoryCheck.jsx";
 import StoryVersions from "../components/StoryVersions.jsx";
 import RatingButtons from "../components/RatingButtons.jsx";
+import {ArrowLeftIcon} from "@phosphor-icons/react/dist/csr/ArrowLeft";
+import {SpeakerHighIcon} from "@phosphor-icons/react/dist/csr/SpeakerHigh";
+import {TextAaIcon} from "@phosphor-icons/react/dist/csr/TextAa";
+import {XIcon} from "@phosphor-icons/react/dist/csr/X";
+import {PlusCircleIcon} from "@phosphor-icons/react/dist/csr/PlusCircle";
+import {TrashIcon} from "@phosphor-icons/react/dist/csr/Trash";
+import "@fontsource/tinos/latin-400.css";
+import "@fontsource/tinos/latin-700.css";
+import "./story-reader.css";
+
+function StoryLayout({onNavigate, children}) {
+  return <div className="story-layout"><div className="story-surface">{children}</div></div>;
+}
 
 /**
  * 故事视图：列表/删除/阅读/整句朗读/点词弹卡。
  */
-export default function StoriesPage() {
+export default function StoriesPage({onNavigate}) {
   const [stories, setStories] = useState([]);
   const [activeStory, setActiveStory] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -53,7 +67,7 @@ export default function StoriesPage() {
     } catch (e) { if (request === selection.current) showToast("读取失败：" + e.message); }
   };
 
-  if (loading) return <div className="story-empty">加载中…</div>;
+  if (loading) return <StoryLayout onNavigate={onNavigate}><div className="story-empty">加载中…</div></StoryLayout>;
 
   // 阅读视图
   if (activeStory) {
@@ -61,15 +75,17 @@ export default function StoriesPage() {
     const versionReader = <StoryVersions key={activeStory.parent_version_id || activeStory.version_id || activeStory.id} story={activeStory} enabled={simplificationEnabled} onSelect={openStory} onSaved={story => setStories(rows => [story, ...rows.filter(row => row.id !== story.id)])}>
       {reader}
     </StoryVersions>;
-    return ["normal", "short"].includes(activeStory.mode) && activeStory.version_id
+    const checkedReader = ["normal", "short"].includes(activeStory.mode) && activeStory.version_id
       ? <StoryCheck key={activeStory.version_id} story={activeStory} onCreated={id => {
           setActiveStory(current => current?.version_id === activeStory.version_id ? {...current, check_session_id: id} : current);
           setStories(rows => rows.map(row => row.id === activeStory.id ? {...row, check_session_id: id} : row));
         }}>{versionReader}</StoryCheck> : versionReader;
+    return <StoryLayout onNavigate={onNavigate}>{checkedReader}</StoryLayout>;
   }
 
   return (
-    <section className="view">
+    <StoryLayout onNavigate={onNavigate}>
+    <section className="view story-library">
       <div className="page-head">
         <h2 className="page-title">故事</h2>
         {generationEnabled && <StoryGeneration onStarter={(story) => {setGenerated(null); setStarter(story);}} onSaved={(story) => {
@@ -93,20 +109,74 @@ export default function StoriesPage() {
               {s.title_cn && <div className="story-item-title-cn">{escapeHtml(s.title_cn)}</div>}
               <div className="story-item-meta">{s.words.length} 个词 · {escapeHtml(s.content.slice(0, 40))}…</div>
             </div>
-            <button className="story-delete" title="删除" onClick={() => deleteStory(s.id, s.title)}>🗑</button>
+            <button className="story-delete" title="删除" aria-label={`删除故事 ${s.title}`} onClick={() => deleteStory(s.id, s.title)}><TrashIcon aria-hidden="true" size={20} /></button>
           </div>
         ))}
       </div>
     </section>
+    </StoryLayout>
   );
 }
 
 function StoryRead({ story, onBack }) {
   const [mode, setMode] = useState("bilingual"); // en | bilingual | cn
   const [addingWord, setAddingWord] = useState(false);
+  const [fontSize, setFontSize] = useState(30);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [selectedContext, setSelectedContext] = useState("");
+  const [reading, setReading] = useState(false);
+  const speechRun = useRef(0);
+  const selectedToken = useRef(null);
+  const panelRef = useRef(null);
+  const settingsRef = useRef(null);
+  const [narrow, setNarrow] = useState(() => window.matchMedia("(max-width: 1023px)").matches);
   // 点词查义共享流程（清洗/已学判断/查词接口）
   const { word: activeWord, result: lookupResult, open: handleWordClick, close: closePanel, markLearned } =
     useWordLookup({ learnedWords: story.words });
+
+  const dismissWord = useCallback(() => {
+    closePanel();
+    selectedToken.current?.focus({preventScroll: true});
+  }, [closePanel]);
+
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 1023px)");
+    const update = () => setNarrow(query.matches);
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    if (!activeWord) return;
+    const previousOverflow = document.body.style.overflow;
+    if (narrow) {
+      document.body.style.overflow = "hidden";
+      panelRef.current?.querySelector("button")?.focus({preventScroll: true});
+    }
+    const onKey = (event) => {
+      if (event.key === "Escape") { event.preventDefault(); dismissWord(); }
+      if (narrow && event.key === "Tab") {
+        const controls = Array.from(panelRef.current?.querySelectorAll("button:not(:disabled), [tabindex='0']") || []);
+        const first = controls[0], last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => { document.body.style.overflow = previousOverflow; window.removeEventListener("keydown", onKey); };
+  }, [activeWord?.word, narrow]);
+
+  useEffect(() => {
+    if (!settingsOpen) return;
+    const close = (event) => {
+      if (event.type === "keydown" && event.key !== "Escape") return;
+      if (event.type === "pointerdown" && settingsRef.current?.contains(event.target)) return;
+      setSettingsOpen(false);
+    };
+    window.addEventListener("pointerdown", close);
+    window.addEventListener("keydown", close);
+    return () => { window.removeEventListener("pointerdown", close); window.removeEventListener("keydown", close); };
+  }, [settingsOpen]);
 
   // 逐句拆分（\n 分隔），中英行一一对应
   const enLines = (story.content || "").split("\n").filter(Boolean);
@@ -161,20 +231,40 @@ function StoryRead({ story, onBack }) {
     return () => observer.disconnect();
   }, [mode, story.id]);
 
-  const contactAudio = (text, ids) =>
-    speak(text, null, () => {
-      for (const id of ids || []) {
-        const target = story.words.find((word) => word.id === id);
-        if (target?.content_revision) {
-          recordPracticeContact({
-            cardId: id,
-            revision: target.content_revision,
-            source: "story",
-            kind: "answer_audio",
-          });
-        }
+  useEffect(() => () => { speechRun.current += 1; }, []);
+
+  const contactAudio = async (text, ids) => {
+    const run = ++speechRun.current;
+    let playedPrefix = "";
+    setReading(true);
+    try {
+      for (const segment of storyAudioSegments(text)) {
+        if (run !== speechRun.current) break;
+        const playedText = playedPrefix ? `${playedPrefix} ${segment}` : segment;
+        const segmentStart = playedText.length - segment.length;
+        let started = false;
+        const result = await speak(segment, null, () => {
+          started = true;
+          for (const id of ids || []) {
+            const target = story.words.find(word => word.id === id);
+            // Match the server's visible_card_ids ASCII letter boundaries, including phrases.
+            const word = normalizeStoryAudio(target?.word);
+            const escaped = word?.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            const heardTarget = word && Array.from(playedText.matchAll(new RegExp(`(^|[^A-Za-z])${escaped}(?![A-Za-z])`, "gi")))
+              .some(match => match.index + match[0].length > segmentStart);
+            if (target?.content_revision && heardTarget) {
+              recordPracticeContact({cardId: id, revision: target.content_revision, source: "story", kind: "answer_audio"});
+            }
+          }
+        });
+        if (result === "none") { showToast("暂时无法朗读，请稍后重试"); break; }
+        // Only completed playback that really started can support the next segment.
+        playedPrefix = started ? playedText : "";
       }
-    });
+    } finally {
+      if (run === speechRun.current) setReading(false);
+    }
+  };
 
   // 点词弹层真正显示释义后才算接触；暂无释义不记录。
   useEffect(() => {
@@ -217,15 +307,28 @@ function StoryRead({ story, onBack }) {
   };
 
   const renderTokens = (text) => {
+    let offset = 0;
     return text.split(/(\s+)/).map((tok, i) => {
+      const tokenOffset = offset;
+      offset += tok.length;
       if (/^\s+$/.test(tok)) return tok;
       const clean = cleanToken(tok);
       const isLearned = story.words.some((w) => w.word.toLowerCase() === clean);
       if (clean.length > 1) {
         return (
-          <span key={i} className={isLearned ? "sw" : "story-clickable-word"} onClick={() => handleWordClick(tok)}>
+          <button type="button" key={i} aria-label={`查词 ${clean}`} aria-pressed={activeWord?.word.toLowerCase() === clean}
+            className={`${isLearned ? "sw" : "story-clickable-word"} ${activeWord?.word.toLowerCase() === clean ? "reader-word-selected" : ""}`}
+            onClick={(event) => {
+              selectedToken.current = event.currentTarget;
+              const sentences = typeof Intl.Segmenter === "function"
+                ? Array.from(new Intl.Segmenter("en", {granularity: "sentence"}).segment(text))
+                : [{index: 0, segment: text}];
+              const sentence = sentences.find(({index, segment}) => tokenOffset >= index && tokenOffset < index + segment.length);
+              setSelectedContext((sentence?.segment || text).trim());
+              handleWordClick(tok);
+            }}>
             {tok}
-          </span>
+          </button>
         );
       }
       return <span key={i}>{tok}</span>;
@@ -235,21 +338,32 @@ function StoryRead({ story, onBack }) {
   const isLearnedWord = activeWord && (lookupResult.isLearned || story.words.some((w) => w.word === activeWord.word));
 
   return (
-    <section data-story-version={story.version_id || ""} className="view">
-      <div className="page-head">
-        <button className="btn btn-ghost btn-small" onClick={onBack}>← 返回</button>
-        <div className="story-mode-switch">
-          <button className={`mode-btn ${mode === "en" ? "mode-active" : ""}`} onClick={() => setMode("en")}>EN</button>
-          <button className={`mode-btn ${mode === "bilingual" ? "mode-active" : ""}`} onClick={() => setMode("bilingual")}>中英</button>
-          <button className={`mode-btn ${mode === "cn" ? "mode-active" : ""}`} onClick={() => setMode("cn")}>中文</button>
+    <section data-story-version={story.version_id || ""} className="view story-reader" style={{"--reader-font-size": `${fontSize}px`}}>
+      <div className="reader-toolbar">
+        <button className="reader-back" onClick={onBack}><ArrowLeftIcon aria-hidden="true" />返回故事列表</button>
+        <div className="reader-breadcrumb"><span>故事 /</span> {story.title_cn || story.title}</div>
+        <div className="reader-tools">
+          <div className="reader-type-control" ref={settingsRef}>
+            <button className="reader-tool" aria-label="阅读设置" aria-expanded={settingsOpen} aria-controls="reader-settings" onClick={() => setSettingsOpen(!settingsOpen)}><TextAaIcon aria-hidden="true" /><span>字号</span></button>
+            {settingsOpen && <div id="reader-settings" className="reader-preferences">
+              <div className="reader-size-row"><span>字号</span><button aria-label="减小字号" disabled={fontSize <= 20} onClick={() => setFontSize(s => s - 2)}>A−</button><output aria-live="polite">{fontSize}</output><button aria-label="增大字号" disabled={fontSize >= 36} onClick={() => setFontSize(s => s + 2)}>A+</button></div>
+              <fieldset><legend>阅读语言</legend><div className="story-mode-switch">
+                {[["en", "EN"], ["bilingual", "中英"], ["cn", "中文"]].map(([value, label]) => <button key={value} className={`mode-btn ${mode === value ? "mode-active" : ""}`} aria-pressed={mode === value} onClick={() => setMode(value)}>{label}</button>)}
+              </div></fieldset>
+            </div>}
+          </div>
+          <button className="reader-translation" role="switch" aria-label="显示译文" aria-checked={mode !== "en"} onClick={() => setMode(mode === "en" ? "bilingual" : "en")}><span className="reader-switch-track" aria-hidden="true"><span /></span><span>译文</span></button>
         </div>
       </div>
 
+      <div className="reader-layout">
+      <article className="reader-article" aria-label={story.title}>
       {/* 标题 */}
-      <h2 className="story-read-title">
-        {story.title}
-        {story.title_cn && mode !== "en" && <span className="story-title-cn">{story.title_cn}</span>}
-      </h2>
+      <header className="reader-heading">
+        {story.title_cn && <p className="reader-kicker">{story.title_cn}</p>}
+        <h1 className="story-read-title" lang="en">{story.title}</h1>
+        <div className="reader-meta"><span>短篇故事 <span aria-hidden="true">·</span> {mode === "bilingual" ? "中英对照" : mode === "cn" ? "中文阅读" : "英文阅读"}</span><button className="reader-tool" disabled={reading} onClick={() => contactAudio(story.content, story.visible_card_ids)}><SpeakerHighIcon aria-hidden="true" />{reading ? "朗读中…" : "朗读"}</button></div>
+      </header>
 
       <StoryQuality story={story} />
       {/* 故事内容：逐句中英对照 */}
@@ -262,8 +376,8 @@ function StoryRead({ story, onBack }) {
                 data-contact-ids={(story.line_card_ids?.[i] || []).join(",")}
                 className="story-sentence-row"
               >
-                <button className="speak-mini sentence-speak" title="朗读整句" onClick={() => contactAudio(enSent.trim(), story.line_card_ids?.[i])}>🔊</button>
-                <span className="story-sentence-en">{renderTokens(enSent)}</span>
+                <button className="speak-mini sentence-speak" title="朗读整句" aria-label={`朗读第 ${i + 1} 段`} onClick={() => contactAudio(enSent.trim(), story.line_card_ids?.[i])}><SpeakerHighIcon aria-hidden="true" /></button>
+                <p className="story-sentence-en" lang="en">{renderTokens(enSent)}</p>
               </div>
             )}
             {/* 对应中文翻译 */}
@@ -273,37 +387,37 @@ function StoryRead({ story, onBack }) {
           </div>
         ))}
 
-        <div className="story-tap-tip">👆 点击任意英文单词查释义 · 点击 🔊 朗读整句</div>
-        <div data-testid="content-contact-status" className="story-tap-tip">
-          应用内接触：本故事正文包含{" "}
-          {story.visible_card_ids?.length || 0} 个目标词
-        </div>
       </div>
 
       {/* 词表 */}
-      <div className="story-read-words">
-        <h3 className="lesson-section">本故事目标词</h3>
+      <footer className="reader-footer">
+        <button className="reader-back" onClick={onBack}><ArrowLeftIcon aria-hidden="true" />返回故事列表</button>
+        <details className="reader-targets"><summary>本故事目标词 · {story.words.length}</summary>
+        <div data-testid="content-contact-status" className="story-tap-tip">应用内接触：本故事正文包含 {story.visible_card_ids?.length || 0} 个目标词</div>
         {story.words.map((w) => (
           <div key={w.id} className="story-word-row">
             <b>{escapeHtml(w.word)}</b> <span>{escapeHtml(w.phonetic || "")}</span> <span>{escapeHtml(w.meaning || "")}</span>
           </div>
         ))}
-      </div>
+        </details>
+      </footer>
+      </article>
 
       {/* 查词底部抽屉：点词即现，不随内容滚动（旧内联面板要滚到全文底部才能看到） */}
       {activeWord && (
         <>
-          <div className="story-word-backdrop" onClick={closePanel} />
-          <div className="story-word-panel">
+          <div className="story-word-backdrop" onClick={dismissWord} />
+          <aside className="story-word-panel" ref={panelRef} role={narrow ? "dialog" : "complementary"} aria-modal={narrow ? true : undefined} aria-label="词语释义">
             <div className="story-word-panel-head">
-              <span className="story-word-panel-word">{activeWord.word}</span>
-              <button className="speak-mini" onClick={() => speak(activeWord.word)}>🔊</button>
-              <button className="story-word-panel-close" onClick={closePanel}>✕</button>
+              <span>词语</span>
+              <button className="story-word-panel-close" aria-label="关闭词语释义" onClick={dismissWord}><XIcon aria-hidden="true" /></button>
             </div>
-            {activeWord.phonetic && <div className="story-word-panel-phonetic">{activeWord.phonetic}</div>}
-            <div className="story-word-panel-meaning">
+            <h2 className="story-word-panel-word" lang="en">{activeWord.word}</h2>
+            <div className="reader-pronunciation">{activeWord.phonetic && <span className="story-word-panel-phonetic">{activeWord.phonetic}</span>}<button className="reader-tool" aria-label={`朗读 ${activeWord.word}`} onClick={() => speak(activeWord.word)}><SpeakerHighIcon aria-hidden="true" /></button></div>
+            <div className="story-word-panel-meaning" aria-live="polite">
               {activeWord.meaning || (lookupResult.status === "missing" ? "暂无释义" : "查询中…")}
             </div>
+            {selectedContext && <div className="reader-context"><h3>文中用法</h3><blockquote lang="en">{selectedContext}</blockquote></div>}
             {/* 已学过的词：显示评分 */}
             {isLearnedWord && activeWord.id && (
               <div className="story-word-panel-rating">
@@ -311,7 +425,7 @@ function StoryRead({ story, onBack }) {
                   key={activeWord.id}
                   cardId={activeWord.id}
                   onRated={(rating) => {
-                    closePanel();
+                    dismissWord();
                     showToast(
                       rating == null
                         ? "已确认保存本次评分"
@@ -325,13 +439,15 @@ function StoryRead({ story, onBack }) {
             )}
             {/* 未学过的词：显示添加按钮 */}
             {!isLearnedWord && lookupResult.status !== "missing" && (
-              <button className="btn btn-primary btn-small" style={{ marginTop: 8 }} disabled={addingWord} onClick={() => addToLibrary(activeWord.word)}>
-                {addingWord ? "添加中…" : "📥 添加到词库"}
+              <button className="reader-add-word" disabled={addingWord || lookupResult.status === "loading"} onClick={() => addToLibrary(activeWord.word)}>
+                <PlusCircleIcon weight="fill" aria-hidden="true" />{addingWord ? "添加中…" : "加入单词本"}
               </button>
             )}
-          </div>
+            {!isLearnedWord && lookupResult.status === "found" && <p className="reader-word-note">在单词本中继续复习。</p>}
+          </aside>
         </>
       )}
+      </div>
     </section>
   );
 }

@@ -224,10 +224,9 @@ export default function StatsPage({ onBack, onDelayed, onAdvice }) {
 
   return (
     <section className="view">
-      <LearningAdvice onStart={onAdvice} />
       <div className="page-head">
         <button className="btn btn-ghost btn-small" onClick={onBack}>← 返回</button>
-        <h2 className="page-title">学习统计</h2>
+        <h2 className="page-title">学习记录</h2>
       </div>
 
       <div className="stats-grid">
@@ -309,10 +308,12 @@ export default function StatsPage({ onBack, onDelayed, onAdvice }) {
         <p className="add-hint">独立、辅助与识别按客观作答统计；自评只表示主观通过率，不是客观正确率。</p>
       </div>
 
+      <LearningAdvice onStart={onAdvice} />
+
       {/* 本周复习通过率 */}
       {weekly && (
         <div className="weekly-accuracy">
-          <h3 className="lesson-section">本周复习通过率 <span className="week-acc" style={{ color: weekly.this_week >= 80 ? "#137A62" : weekly.this_week >= 60 ? "#B8860B" : "var(--coral)" }}>{weekly.this_week !== null ? weekly.this_week + "%" : "（暂无）"}</span></h3>
+          <h3 className="lesson-section">本周复习通过率 <span className="week-acc" style={{ color: weekly.this_week >= 80 ? "var(--success)" : weekly.this_week >= 60 ? "var(--sun)" : "var(--coral)" }}>{weekly.this_week !== null ? weekly.this_week + "%" : "（暂无）"}</span></h3>
           <div className="week-bars">
             {weekly.weeks.map((w, i) => (
               <div key={i} className="week-bar-wrap" title={`${w.start}：${w.total} 题 · 复习通过率 ${w.accuracy === null ? "-" : w.accuracy + "%"}`}>
@@ -325,10 +326,10 @@ export default function StatsPage({ onBack, onDelayed, onAdvice }) {
 
       {/* 导出 */}
       <div className="export-row">
-        <button className="btn btn-ghost btn-small" onClick={() => downloadExport("/api/export/cards", "englishcoach_backup.json")}>💾 备份词库</button>
-        <button className="btn btn-ghost btn-small" onClick={() => downloadExport("/api/export/anki", "englishcoach_anki.csv")}>🎴 导出 Anki</button>
-        <button className="btn btn-ghost btn-small" onClick={openReport}>🏅 成绩单</button>
-        <button className="btn btn-ghost btn-small" onClick={() => importRef.current?.click()}>📥 恢复词库</button>
+        <button className="btn btn-ghost btn-small" onClick={() => downloadExport("/api/export/cards", "englishcoach_backup.json")}>备份词库</button>
+        <button className="btn btn-ghost btn-small" onClick={() => downloadExport("/api/export/anki", "englishcoach_anki.csv")}>导出 Anki</button>
+        <button className="btn btn-ghost btn-small" onClick={openReport}>成绩单</button>
+        <button className="btn btn-ghost btn-small" onClick={() => importRef.current?.click()}>恢复词库</button>
         <input ref={importRef} type="file" accept=".json" hidden onChange={handleImport} />
       </div>
       {exportSummary && (

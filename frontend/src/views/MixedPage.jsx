@@ -1,3 +1,4 @@
+import UiIcon from "../components/UiIcon.jsx";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../lib/api.js";
 import { speak } from "../lib/tts.js";
@@ -473,9 +474,7 @@ export default function MixedPage({ onExit }) {
                 <button
                   className="btn-speak-large"
                   onClick={() => play(q.word, true)}
-                >
-                  🔊
-                </button>
+                 aria-label="播放发音"><UiIcon name="speaker" /></button>
               )}
               {q.meaning || q.prompt}
             </div>
@@ -503,9 +502,7 @@ export default function MixedPage({ onExit }) {
                       title="听发音"
                       disabled={locked}
                       onClick={() => play(opt)}
-                    >
-                      🔊
-                    </button>
+                    ><UiIcon name="speaker" /></button>
                   )}
                 </div>
               ))}
