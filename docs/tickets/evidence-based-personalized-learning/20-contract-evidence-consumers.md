@@ -1,6 +1,6 @@
 # EL-20：Contract：收口证据、接触与新备份的全部内部消费者
 
-- **状态：** 已实现并完成受影响验证；固定 diff 双轴审查见执行记录；尚未合并。
+- **状态：** 已实现并完成受影响验证；固定 diff 的 Standards/Spec 独立审查均为 0 项；尚未合并。
 - **发布标签：** 直接使用 `ready-for-agent`，不重复 triage；有阻塞的票仍须等待前置完成。
 - **阶段：** contract：兼容能力保留，移除旧内部判定。
 - **来源：** [EnglishCoach：可验证学习效果与个性化训练规格](../../specs/evidence-based-personalized-learning.md)。
