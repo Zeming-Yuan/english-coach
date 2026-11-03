@@ -1,0 +1,16 @@
+{
+  "llm_responses": [
+    {"phonetic": "/ˈbʊkʃɒp/", "meaning": "n. 书店"}
+  ],
+  "tables": {
+    "stories": [
+      {
+        "id": 1,
+        "title": "The Little Bookshop",
+        "title_cn": "雨天的小书店",
+        "content": "It was a rainy afternoon. Lily walked into a small bookshop near the park. The room was warm, and the shelves were full of books.\nAn old man smiled at her. “Are you looking for a story?” he asked. Lily nodded. He gave her a book with a blue cover.\nShe sat by the window and began to read. Outside, the rain grew quiet. Inside, Lily found a new world.",
+        "content_cn": "那是一个下雨的午后。莉莉走进了公园附近的一家小书店。屋子里很温暖，书架上摆满了书。\n一位老人向她微笑。“你在找故事吗？”他问道。莉莉点了点头。他递给她一本蓝色封面的书。\n她坐在窗边，开始阅读。窗外的雨渐渐变小了。屋子里，莉莉发现了一个新的世界。"
+      }
+    ]
+  }
+}
