@@ -200,7 +200,7 @@ def test_el15_registered_rule_version_can_be_loaded_without_changing_identity():
     original = scene_rules("introduction", rule_version="introduction-v1")
     assert original["rule_version"] == "introduction-v1"
     assert original["content_revision"] == 1
-    assert scene_rules("introduction")["rule_version"] == "introduction-v2"
+    assert scene_rules("introduction")["rule_version"] == "introduction-v3"
 
 
 def test_el15_rule_upgrade_keeps_old_results_replayable_and_restorable(
@@ -213,6 +213,7 @@ def test_el15_rule_upgrade_keeps_old_results_replayable_and_restorable(
 
     card_id = ec.seed_card(word="tea", meaning="茶")
     run = create_scene(ec).json()
+    old_version = run["rule_version"]
     submission_id = str(uuid4())
     saved = answer(ec, run, 0, "My name is 李", submission_id).json()
     for index, text in [(1, "I am from 北京"), (2, "I like tea.")]:
@@ -220,20 +221,20 @@ def test_el15_rule_upgrade_keeps_old_results_replayable_and_restorable(
     backup = ec.client.get("/api/export/backup").json()
     revised = scene_rules("introduction")
     revised.pop("content_hash")
-    revised.update(rule_version="introduction-v3", content_revision=3)
+    revised.update(rule_version="introduction-next-test", content_revision=4)
     revised["tasks"][0]["goal"] = "用完整句式向新同学介绍自己的姓名"
-    material = tmp_path / "introduction-v3.json"
+    material = tmp_path / "introduction-next-test.json"
     material.write_text(json.dumps(revised))
     monkeypatch.setitem(
         SCENE_RULE_FILES,
         "introduction",
         {
             **SCENE_RULE_FILES["introduction"],
-            "introduction-v3": str(material),
+            "introduction-next-test": str(material),
         },
     )
     reopened = ec.client.get(f"/api/practice-sessions/{run['id']}").json()
-    assert reopened["rule_version"] == "introduction-v2"
+    assert reopened["rule_version"] == old_version
     assert reopened["can_continue"] is False
     assert reopened["counts"]["processed"] == 3
     assert answer(ec, run, 0, "My name is 李", submission_id).json() == saved
@@ -242,15 +243,15 @@ def test_el15_rule_upgrade_keeps_old_results_replayable_and_restorable(
         "application"
     ]
     assert evidence["status"] == "stale"
-    assert evidence["contexts"][0]["rule_version"] == "introduction-v2"
+    assert evidence["contexts"][0]["rule_version"] == old_version
     target = ec_factory()
     restore(target, backup)
     assert (
         target.client.get(f"/api/practice-sessions/{run['id']}").json()["rule_version"]
-        == "introduction-v2"
+        == old_version
     )
     assert answer(target, run, 0, "My name is 李", submission_id).json() == saved
-    assert create_scene(target).json()["rule_version"] == "introduction-v3"
+    assert create_scene(target).json()["rule_version"] == "introduction-next-test"
 
 
 @pytest.mark.parametrize(
@@ -260,6 +261,7 @@ def test_el15_rule_upgrade_keeps_old_results_replayable_and_restorable(
         "missing_turn",
         "missing_mapping",
         "answer_in_role",
+        "answer_embedded_in_role",
         "wrong_version",
         "wrong_scene",
     ],
@@ -273,6 +275,7 @@ def test_el15_registry_rejects_invalid_distributed_material(
 
     material = scene_rules("introduction")
     material.pop("content_hash")
+    version = material["rule_version"]
     if damage == "duplicate_task":
         material["tasks"][1]["task_key"] = "name"
     elif damage == "missing_turn":
@@ -281,15 +284,15 @@ def test_el15_registry_rejects_invalid_distributed_material(
         material["tasks"][0].pop("target_words")
     elif damage == "answer_in_role":
         material["tasks"][0]["role"] = material["tasks"][0]["standard"]
+    elif damage == "answer_embedded_in_role":
+        material["tasks"][0]["role"] = "参考：" + material["tasks"][0]["standard"]
     elif damage == "wrong_version":
         material["rule_version"] = "unregistered-v9"
     else:
         material["scene_id"] = "directions"
     path = tmp_path / "invalid.json"
     path.write_text(json.dumps(material))
-    monkeypatch.setitem(
-        SCENE_RULE_FILES, "introduction", {"introduction-v2": str(path)}
-    )
+    monkeypatch.setitem(SCENE_RULE_FILES, "introduction", {version: str(path)})
     with pytest.raises(ValueError, match="场景材料"):
         scene_rules("introduction")
 
@@ -480,8 +483,15 @@ def test_el15_v3_rejects_forged_scene_scope_before_writing(ec, damage):
     assert ec.snapshot() == before
 
 
-def test_el15_v1_verdict_restores_without_rejudging_under_v2(
-    ec, ec_factory, monkeypatch
+@pytest.mark.parametrize(
+    "version,index,text",
+    [
+        ("introduction-v1", 0, "My name is I am"),
+        ("introduction-v2", 1, "I am from I am"),
+    ],
+)
+def test_el15_old_verdict_restores_without_rejudging_under_current_rules(
+    ec, ec_factory, monkeypatch, version, index, text
 ):
     from app.services.scenes import SCENE_RULE_FILES
     from tests.test_el11_bounded_personalized_story import restore
@@ -489,24 +499,26 @@ def test_el15_v1_verdict_restores_without_rejudging_under_v2(
     versions = SCENE_RULE_FILES["introduction"]
     with monkeypatch.context() as old_release:
         old_release.setitem(
-            SCENE_RULE_FILES,
-            "introduction",
-            {"introduction-v1": versions["introduction-v1"]},
+            SCENE_RULE_FILES, "introduction", {version: versions[version]}
         )
         run = create_scene(ec).json()
+        if index:
+            assert answer(ec, run, 0, "My name is 李").status_code == 200
         submission_id = str(uuid4())
-        saved = answer(ec, run, 0, "My name is I am", submission_id).json()
+        saved = answer(ec, run, index, text, submission_id).json()
         assert saved["verdict"] == "accepted"
         backup = ec.client.get("/api/export/backup").json()
     target = ec_factory()
     restore(target, backup)
     reopened = target.client.get(f"/api/practice-sessions/{run['id']}").json()
-    assert reopened["rule_version"] == "introduction-v1"
-    assert reopened["items"][0]["verdict"] == "accepted"
+    assert reopened["rule_version"] == version
+    assert reopened["items"][index]["verdict"] == "accepted"
     assert reopened["can_continue"] is False
-    assert answer(target, run, 0, "My name is I am", submission_id).json() == saved
+    assert answer(target, run, index, text, submission_id).json() == saved
     current = create_scene(target).json()
-    assert answer(target, current, 0, "My name is I am").json()["verdict"] == "unknown"
+    if index:
+        assert answer(target, current, 0, "My name is 李").status_code == 200
+    assert answer(target, current, index, text).json()["verdict"] == "unknown"
 
 
 def test_el15_expansion_rollback_only_marks_new_scene_evidence_historical(ec):
@@ -537,4 +549,36 @@ def test_el15_expansion_rollback_only_marks_new_scene_evidence_historical(ec):
     assert (
         ec.client.get(f"/api/practice-sessions/{run['id']}").json()["creation_enabled"]
         is False
+    )
+
+
+@pytest.mark.parametrize(
+    "index,text",
+    [
+        (1, "I am from I am"),
+        (1, "I am from my name"),
+        (1, "I am from here"),
+        (0, "I am a teacher"),
+    ],
+)
+def test_el15_grammar_fragments_are_not_name_or_place_slots(ec, index, text):
+    card_id = ec.seed_card(word="tea", meaning="茶")
+    run = create_scene(ec).json()
+    texts = ["My name is 李", "I am from 北京", "I like tea."]
+    texts[index] = text
+    result = None
+    for position, value in enumerate(texts):
+        response = answer(ec, run, position, value)
+        assert response.status_code == 200, response.text
+        result = response.json()
+        if position == index:
+            assert result["verdict"] == "unknown"
+    assert result is not None
+    assert result["session"]["status"] == "completed"
+    assert result["session"]["application_verified"] is False
+    assert (
+        ec.client.get(f"/api/cards/{card_id}").json()["learning_evidence"][
+            "application"
+        ]["status"]
+        == "insufficient"
     )

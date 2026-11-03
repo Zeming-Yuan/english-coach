@@ -28,7 +28,8 @@ SCENE_RULE_FILES = {
     "drinks": {"drinks-v1": "drinks.json"},
     "introduction": {
         "introduction-v1": "introduction-v1.json",
-        "introduction-v2": "introduction.json",
+        "introduction-v2": "introduction-v2.json",
+        "introduction-v3": "introduction.json",
     },
     "directions": {"directions-v1": "directions.json"},
 }
@@ -93,6 +94,7 @@ def _validate_material(data: dict, scene_id: str | None, version: str) -> None:
             if (
                 judge(task, task["standard"]) != "accepted"
                 or judge(task, task["role"]) == "accepted"
+                or normalize_answer(task["standard"]) in normalize_answer(task["role"])
             ):
                 valid = False
         if not valid:
