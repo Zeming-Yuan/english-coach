@@ -1,9 +1,9 @@
 {
   "scene_id": "introduction",
   "title": "自我介绍",
-  "rule_version": "introduction-v3",
-  "content_revision": 3,
-  "review_basis": "沿用 2026-11-03 用户核对的表达；v3 将姓名/地点中的无有效槽位语法片段保持为未判定，见 app/data/README.md。",
+  "rule_version": "introduction-v4",
+  "content_revision": 4,
+  "review_basis": "沿用 2026-11-03 用户核对的表达；v4 将无有效槽位的语法词及缩写保留为未判定，见 app/data/README.md。",
   "context": "introduction:meeting-over-tea",
   "speaker": "新朋友",
   "situation": "虚构的新朋友见面：介绍自己的姓名、来自哪里，以及喜欢喝茶。姓名和地点只作为任务槽位，不评价专名拼写。",
@@ -62,7 +62,8 @@
           "there",
           "this",
           "that"
-        ]
+        ],
+        "check_grammar_tokens": true
       },
       "rejected": [
         "my name is",
@@ -112,7 +113,8 @@
           "there",
           "this",
           "that"
-        ]
+        ],
+        "check_grammar_tokens": true
       },
       "rejected": [
         "i am from",

@@ -29,7 +29,8 @@ SCENE_RULE_FILES = {
     "introduction": {
         "introduction-v1": "introduction-v1.json",
         "introduction-v2": "introduction-v2.json",
-        "introduction-v3": "introduction.json",
+        "introduction-v3": "introduction-v3.json",
+        "introduction-v4": "introduction.json",
     },
     "directions": {"directions-v1": "directions.json"},
 }
@@ -322,10 +323,16 @@ def judge(task: dict, answer: str | None, skipped: bool = False) -> str:
     for pattern in task["patterns"]:
         match = re.fullmatch(pattern, text)
         if match:
-            if "slot" in task and set(match.group("slot").split()) & set(
-                task["slot"]["excluded_words"]
-            ):
-                continue
+            if "slot" in task:
+                slot = match.group("slot")
+                words = set(slot.split())
+                if task["slot"].get("check_grammar_tokens"):
+                    # Versioned: historical rules retain their original verdict.
+                    if re.search(r"['’ʼ＇](?:m|re|ve|ll|d|s|t)\b", slot):
+                        continue
+                    words.update(re.findall(r"[^\W\d_]+", slot))
+                if words & set(task["slot"]["excluded_words"]):
+                    continue
             return "accepted"
     return "rejected" if text in task["rejected"] else "unknown"
 

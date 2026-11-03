@@ -137,7 +137,7 @@ for (const item of cases) {
     await scene.getByRole('button', {name: '任务提示', exact: true}).click();
     await openScene(app, page, item.title);
     await expect(scene).toContainText('持续按辅助记录');
-    await submit(page, item.id === 'directions' ? 'Should I turn left or right?' : 'I am from I am');
+    await submit(page, item.id === 'directions' ? 'Should I turn left or right?' : "I am from I'm");
     await expect(scene).toContainText('未判定');
     await scene.getByRole('button', {name: '下一轮', exact: true}).click();
     await scene.getByRole('button', {name: '跳过本轮', exact: true}).click();

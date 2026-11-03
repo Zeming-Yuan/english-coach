@@ -30,3 +30,5 @@
 `introduction-v2` 沿用已核对的三任务与表达，仅将 “My name is I am” 等没有实际姓名的语法片段保持为未判定；不增加新的认可表达。原 v1 已按第一切片的原始字节保存在 `scenes/introduction-v1.json`，旧判定按原规则恢复，不用 v2 重判或改写日期。登记表按插入顺序选择最新版；发布新版本须追加登记并保留旧材料，禁止覆盖已分发版本。买饮品 drinks-v1 原材料仍不变。
 
 `introduction-v3` 同样沿用已核对表达，补齐地点槽位中的纯语法片段、无明确地点的 here/there，以及姓名中的身份句式（如 I am a teacher）边界；这些输入仅保留未判定，不作为拼写错误。原 v2 字节另存 `scenes/introduction-v2.json`，v1/v2 旧 verdict、首答与回放原样恢复。材料加载还拒绝把标准表达嵌入角色话语的情况。
+
+`introduction-v4` 为槽位启用带版本的语法词检查，排除 I'm / you're / they've / can't 等英语缩写片段（含常见 Unicode 撇号）；O’Connor、Jean-Luc 等已核对姓名变体仍可认可。v3 原字节另存 `scenes/introduction-v3.json`。旧 v1–v3 不启用新检查，旧判定恢复与原提交回放不受影响；这仍是歧义/缺槽位的未判定，不是专名拼写评分。

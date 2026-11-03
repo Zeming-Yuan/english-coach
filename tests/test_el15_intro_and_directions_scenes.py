@@ -200,7 +200,7 @@ def test_el15_registered_rule_version_can_be_loaded_without_changing_identity():
     original = scene_rules("introduction", rule_version="introduction-v1")
     assert original["rule_version"] == "introduction-v1"
     assert original["content_revision"] == 1
-    assert scene_rules("introduction")["rule_version"] == "introduction-v3"
+    assert scene_rules("introduction")["rule_version"] == "introduction-v4"
 
 
 def test_el15_rule_upgrade_keeps_old_results_replayable_and_restorable(
@@ -221,7 +221,10 @@ def test_el15_rule_upgrade_keeps_old_results_replayable_and_restorable(
     backup = ec.client.get("/api/export/backup").json()
     revised = scene_rules("introduction")
     revised.pop("content_hash")
-    revised.update(rule_version="introduction-next-test", content_revision=4)
+    revised.update(
+        rule_version="introduction-next-test",
+        content_revision=revised["content_revision"] + 1,
+    )
     revised["tasks"][0]["goal"] = "用完整句式向新同学介绍自己的姓名"
     material = tmp_path / "introduction-next-test.json"
     material.write_text(json.dumps(revised))
@@ -488,6 +491,7 @@ def test_el15_v3_rejects_forged_scene_scope_before_writing(ec, damage):
     [
         ("introduction-v1", 0, "My name is I am"),
         ("introduction-v2", 1, "I am from I am"),
+        ("introduction-v3", 1, "I am from I'm"),
     ],
 )
 def test_el15_old_verdict_restores_without_rejudging_under_current_rules(
@@ -558,6 +562,12 @@ def test_el15_expansion_rollback_only_marks_new_scene_evidence_historical(ec):
         (1, "I am from I am"),
         (1, "I am from my name"),
         (1, "I am from here"),
+        (0, "My name is I'm"),
+        (1, "I am from I'm"),
+        (1, "I am from You’re"),
+        (0, "My name is They've"),
+        (1, "I am from can't"),
+        (1, "I am from Iʼm"),
         (0, "I am a teacher"),
     ],
 )
