@@ -1,3 +1,4 @@
+import UiIcon from "../components/UiIcon.jsx";
 import React, { useEffect, useRef, useState } from "react";
 import { api } from "../lib/api.js";
 import { makePending, sendPending } from "../lib/learning.js";
@@ -198,7 +199,7 @@ export default function QuizPage({ onExit }) {
     const score = total > 0 ? Math.round((correctCount / total) * 100) : 0;
     return (
       <section className="view view-center">
-        <div className="result-badge">{score === 100 ? "🏆" : score >= 80 ? "🌟" : score >= 60 ? "👍" : "🙂"}</div>
+        <div className="result-badge">{score === 100 ? <UiIcon name="trophy" size={40} /> : score >= 80 ? <UiIcon name="star" size={40} /> : score >= 60 ? <UiIcon name="thumb" size={40} /> : <UiIcon name="smile" size={40} />}</div>
         <div className="result-score">
           <span className="big-number">{score}</span>
           <span className="big-label">分</span>
@@ -299,7 +300,7 @@ export default function QuizPage({ onExit }) {
                   className="quiz-option-speak"
                   title="听发音"
                   onClick={(e) => { e.stopPropagation(); speak(opt); }}
-                >🔊</button>
+                 aria-label="朗读"><UiIcon name="speaker" /></button>
               </div>
             ))}
           </div>

@@ -1,0 +1,7 @@
+{
+  "tables": {
+    "lessons": [{"id": 1, "level": 12, "title": "Can you help", "content": {"words": [{"word": "water", "meaning": "n. 水"}, {"word": "can", "meaning": "can 的用法"}], "dialogue": [{"en": "Can you help?", "cn": "请说 can。"}], "tips": []}}],
+    "stories": [{"id": 1, "title": "Water story", "title_cn": "Water 的故事", "content": "I want water.", "content_cn": "请说 water。"}],
+    "cards": [{"id": 1, "word": "water", "meaning": "n. 水"}]
+  }
+}

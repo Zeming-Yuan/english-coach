@@ -1,3 +1,4 @@
+import UiIcon from "../components/UiIcon.jsx";
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { api } from "../lib/api.js";
 import { recordContact, recordVisibleCards } from "../lib/contacts.js";
@@ -157,8 +158,8 @@ export default function WordsPage({ onBack }) {
       <div className="page-head">
         <h2 className="page-title">单词本</h2>
         <div className="word-tabs">
-          <button className={`word-tab ${tab === "words" ? "word-tab-active" : ""}`} onClick={() => setTab("words")}>📖 词汇</button>
-          <button className={`word-tab ${tab === "sentences" ? "word-tab-active" : ""}`} onClick={() => setTab("sentences")}>📝 句子</button>
+          <button className={`word-tab ${tab === "words" ? "word-tab-active" : ""}`} onClick={() => setTab("words")}>词汇</button>
+          <button className={`word-tab ${tab === "sentences" ? "word-tab-active" : ""}`} onClick={() => setTab("sentences")}>句子</button>
         </div>
       </div>
       <div className="word-search-bar">
@@ -205,7 +206,7 @@ export default function WordsPage({ onBack }) {
                     </>
                   )}
                 </div>
-                <button className="speak-mini" title="朗读" onClick={(e) => { e.stopPropagation(); speakCard(c, c.kind === "sentence" ? (c.example || c.word) : c.word, "words_list"); }}>🔊</button>
+                <button className="speak-mini" title="朗读" onClick={(e) => { e.stopPropagation(); speakCard(c, c.kind === "sentence" ? (c.example || c.word) : c.word, "words_list"); }} aria-label="朗读"><UiIcon name="speaker" /></button>
               </div>
             );
           })}
@@ -225,7 +226,7 @@ export default function WordsPage({ onBack }) {
         <div className="quick-peek" style={{ left: peekPos.x, top: peekPos.y }}>
           <div className="quick-peek-head">
             <span className="qp-word">{quickPeek.kind === "sentence" ? (quickPeek.example || quickPeek.word) : quickPeek.word}</span>
-            <button className="speak-mini" onClick={() => speakCard(quickPeek, quickPeek.kind === "sentence" ? (quickPeek.example || quickPeek.word) : quickPeek.word, "words_list")}>🔊</button>
+            <button className="speak-mini" onClick={() => speakCard(quickPeek, quickPeek.kind === "sentence" ? (quickPeek.example || quickPeek.word) : quickPeek.word, "words_list")} aria-label="朗读"><UiIcon name="speaker" /></button>
           </div>
           {quickPeek.kind !== "sentence" && quickPeek.phonetic && <div className="qp-phonetic">{quickPeek.phonetic}</div>}
           <div className="qp-meaning">{quickPeek.kind === "sentence" ? (quickPeek.example_cn || "") : (quickPeek.meaning || "")}</div>
@@ -484,24 +485,43 @@ function WordDetail({ cardId, onBack, allCards, setDetail, onCardChanged }) {
     : "暂无记录（旧数据未记录，保持未知）";
 
   return (
-    <section className="view">
-      <div className="page-head">
-        <button className="btn btn-ghost btn-small" onClick={onBack}>← 返回</button>
-        {/* 上/下一个词导航 */}
-        <div className="detail-nav">
-          {prevCard && <button className="btn btn-ghost btn-small" onClick={() => setDetail(prevCard.id)}>← 上一个</button>}
-          {nextCard && <button className="btn btn-ghost btn-small" onClick={() => setDetail(nextCard.id)}>下一个 →</button>}
+    <section className="view word-detail-view">
+      <div className="page-head word-detail-toolbar">
+        <button className="btn btn-ghost btn-small" onClick={onBack}><UiIcon name="back" /> 单词本</button>
+        <span className="word-detail-location">/ <span>{c.kind === "sentence" ? "句子" : c.word}</span></span>
+        <div className="word-detail-tools">
+      {/* 自测按钮（句子卡不适合拼写测试，隐藏） */}
+      {c.kind !== "sentence" && (
+        <button className="btn btn-primary" onClick={() => {
+          // 跳转到拼写练习，只测这一个词
+          window.dispatchEvent(new CustomEvent("quiz-single-word", { detail: { card: c } }));
+          onBack();
+        }}><UiIcon name="words" />测这个词</button>
+      )}
+
+
+          <button className="btn btn-ghost" onClick={editMeaning}><UiIcon name="edit" />编辑内容</button>
+          <details className="detail-menu">
+            <summary aria-label="更多操作"><UiIcon name="more" /></summary>
+            <div className="detail-menu-content">
+              <button type="button" onClick={toggleHard}>{c.is_hard ? "取消困难词" : "标为困难词"}</button>
+              <button type="button" onClick={editMemo}>编辑记忆法</button>
+              <button type="button" className="danger" onClick={deleteCard}>删除</button>
+            </div>
+          </details>
         </div>
+
       </div>
 
-      <div className="word-detail-card">
+      <div className="word-detail-layout">
+      <section className="word-detail-card" aria-label="词条内容">
         {c.kind === "sentence" ? (
           <>
             <div className="word-detail-header">
               <div className="word-detail-word word-detail-sentence">{c.example || c.word}</div>
-              <button className="speak-btn" title="朗读" onClick={() => speakAnswer(c.example || c.word)}>🔊</button>
+              <button className="speak-btn" title="朗读" onClick={() => speakAnswer(c.example || c.word)} aria-label="朗读"><UiIcon name="speaker" /></button>
             </div>
-            {c.difficulty === "reading" && <span className="diff-chip">📖 阅读句</span>}
+            {c.difficulty === "reading" && <span className="diff-chip">阅读句</span>}
             {/* 意群切分（初学辅助）— 点击单块朗读，可跟读 */}
             <ChunkChips chunks={c.chunks} onSpeak={speakPlain} style={{ marginTop: 10 }} />
           </>
@@ -509,7 +529,7 @@ function WordDetail({ cardId, onBack, allCards, setDetail, onCardChanged }) {
           <>
             <div className="word-detail-header">
               <div className="word-detail-word">{c.word}</div>
-              <button className="speak-btn" title="朗读" onClick={() => speakAnswer(c.word)}>🔊</button>
+              <button className="speak-btn" title="朗读" onClick={() => speakAnswer(c.word)} aria-label="朗读"><UiIcon name="speaker" /></button>
             </div>
             {c.phonetic && <div className="word-detail-phonetic">{c.phonetic}</div>}
           </>
@@ -521,6 +541,142 @@ function WordDetail({ cardId, onBack, allCards, setDetail, onCardChanged }) {
           {c.is_hard && <span className="badge badge-error">⭕ 困难词</span>}
         </div>
 
+        <h2 className="word-section-title">{c.kind === "sentence" ? "译文" : "词义"}</h2>
+        <div className="word-detail-meaning">{c.kind === "sentence" ? (c.example_cn || "") : (c.meaning || "")}</div>
+
+        {/* 例句（或换例句对比） */}
+        {pendingExample ? (
+          <div className="example-compare">
+            <div className="example-compare-label">旧例句：</div>
+            <div className="example-compare-old">{pendingExample.old.example}</div>
+            <div className="example-cn">{pendingExample.old.example_cn}</div>
+            <div className="example-compare-label" style={{ marginTop: 10 }}>新例句：</div>
+            <div className="example-compare-new">{pendingExample.new.example}</div>
+            <div className="example-cn">{pendingExample.new.example_cn}</div>
+            {pendingExample.new.explanation && (
+              <div className="explanation-box" style={{ marginTop: 8 }}>
+                {pendingExample.new.explanation.split("|").map((s, i) => (
+                  <div key={i} className="exp-line"><span className="exp-tag">{["用法", "搭配", "易错"][i] || ""}</span>{s.trim()}</div>
+                ))}
+              </div>
+            )}
+            <div className="example-compare-actions">
+              <button className="btn btn-ghost btn-small" onClick={() => {
+                // 保留旧的：把新例句写回去（但用户选旧的，所以不更新）
+                setPendingExample(null);
+              }}>保留旧的</button>
+              <button className="btn btn-primary btn-small" onClick={async () => {
+                // 用新的：例句已在后端保存，重新读取证据/修订
+                setPendingExample(null);
+                await refreshDetail();
+                onCardChanged?.();
+                showToast("✅ 已换新例句");
+              }}>用新的</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* 词卡：显示例句 */}
+            {c.example && c.kind !== "sentence" && (
+              <>
+              <h2 className="word-section-title">例句</h2>
+              <div className="word-detail-example">
+                <span>{c.example}</span>
+                <button className="speak-mini" title="朗读例句" onClick={() => speakPlain(c.example)} aria-label="朗读"><UiIcon name="speaker" /></button>
+                <button className="memo-edit-btn" title="换一个例句" onClick={regenerate} aria-label="换一个例句"><UiIcon name="refresh" /></button>
+              </div>
+              </>
+            )}
+            {c.example_cn && c.kind !== "sentence" && (
+              <div className="example-cn">{c.example_cn}</div>
+            )}
+            {/* 句子卡：例句已在头部显示，这里显示中文翻译 */}
+            {c.kind === "sentence" && c.example_cn && (
+              <div className="example-cn" style={{ fontSize: 15, marginTop: 4 }}>{c.example_cn}</div>
+            )}
+          </>
+        )}
+
+        {/* 讲解三要素 */}
+        {explanationParts.length > 0 && (
+          <div className="explanation-box">
+            {explanationParts.length >= 1 && <div className="exp-line"><span className="exp-tag">用法</span>{explanationParts[0]}</div>}
+            {explanationParts.length >= 2 && <div className="exp-line"><span className="exp-tag">搭配</span>{explanationParts[1]}</div>}
+            {explanationParts.length >= 3 && <div className="exp-line"><span className="exp-tag">易错</span>{explanationParts[2]}</div>}
+          </div>
+        )}
+
+        <h2 className="word-section-title">记忆法</h2>
+        {/* 记忆法（前置到醒目位置） */}
+        {c.memo ? (
+          <div className="word-detail-memo">
+            <span className="word-detail-memo-label">我的记忆法</span>
+            <span>{c.memo}</span>
+            <button className="memo-edit-btn" onClick={editMemo} aria-label="编辑记忆法"><UiIcon name="edit" /></button>
+          </div>
+        ) : (
+          <button className="btn btn-ghost btn-small" style={{ marginTop: 10 }} onClick={editMemo}>写个记忆法</button>
+        )}
+
+        {/* 对话体语境 */}
+        {contexts.length > 0 && (
+          <div className="bubble-list" style={{ marginTop: 14 }}>
+            {contexts.map((ctx, i) => (
+              <div key={i} className={`bubble ${i % 2 === 0 ? "bubble-a" : "bubble-b"}`}>
+                <div className="bubble-en">{ctx.en}</div>
+                <div className="bubble-cn">{ctx.cn}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 词族/近义词 */}
+        {Array.isArray(c.related_words) && c.related_words.length > 0 && (
+          <div className="related-words-box">
+            <div className="related-words-label">相关词</div>
+            <div className="related-words-list">
+              {c.related_words.map((rw, i) => (
+                <span key={i} className="related-word-chip" title={rw.meaning}>
+                  {rw.word}
+                  <span className="related-word-meaning">{rw.meaning}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="detail-nav">
+          {prevCard && <button className="btn btn-ghost btn-small" onClick={() => setDetail(prevCard.id)}>← 上一个</button>}
+          {nextCard && <button className="btn btn-ghost btn-small" onClick={() => setDetail(nextCard.id)}>下一个 →</button>}
+        </div>
+        <div className="word-self-rating">
+          <h2 className="word-section-title">自评</h2>
+          <p className="add-hint">自评记录与客观作答分开统计。</p>
+      {/* 评分 */}
+      <div className="rating-area" style={{ marginTop: 20 }}>
+        <RatingButtons
+          onRate={rateCard}
+          disabled={attempt.phase === "saving" || attempt.phase === "failed"}
+        />
+        {attempt.phase === "saving" && (
+          <p role="status" className="save-state">正在确认保存…</p>
+        )}
+        {attempt.phase === "failed" && (
+          <div role="alert" className="save-state save-state-error">
+            <p>{attempt.error}</p>
+            <div className="save-state-actions">
+              <button className="btn btn-primary btn-small" onClick={retryRating}>继续确认保存</button>
+              <button className="btn btn-ghost btn-small" onClick={attempt.clear}>放弃这条待确认</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+
+        </div>
+      </section>
+      <aside className="word-detail-evidence" aria-label="学习状态与记录">
+        <h2 className="word-section-title">学习状态</h2>
         {/* 回忆证据：真实样本/日期/适用性，不用复习次数推断掌握 */}
         <LearningEvidence evidence={c.learning_evidence} />
 
@@ -559,106 +715,6 @@ function WordDetail({ cardId, onBack, allCards, setDetail, onCardChanged }) {
           </div>
         )}
 
-        <div className="word-detail-meaning">{c.kind === "sentence" ? (c.example_cn || "") : (c.meaning || "")}</div>
-
-        {/* 例句（或换例句对比） */}
-        {pendingExample ? (
-          <div className="example-compare">
-            <div className="example-compare-label">旧例句：</div>
-            <div className="example-compare-old">{pendingExample.old.example}</div>
-            <div className="example-cn">{pendingExample.old.example_cn}</div>
-            <div className="example-compare-label" style={{ marginTop: 10 }}>新例句：</div>
-            <div className="example-compare-new">{pendingExample.new.example}</div>
-            <div className="example-cn">{pendingExample.new.example_cn}</div>
-            {pendingExample.new.explanation && (
-              <div className="explanation-box" style={{ marginTop: 8 }}>
-                {pendingExample.new.explanation.split("|").map((s, i) => (
-                  <div key={i} className="exp-line"><span className="exp-tag">{["📖 用法", "🔗 搭配", "⚠️ 易错"][i] || ""}</span>{s.trim()}</div>
-                ))}
-              </div>
-            )}
-            <div className="example-compare-actions">
-              <button className="btn btn-ghost btn-small" onClick={() => {
-                // 保留旧的：把新例句写回去（但用户选旧的，所以不更新）
-                setPendingExample(null);
-              }}>保留旧的</button>
-              <button className="btn btn-primary btn-small" onClick={async () => {
-                // 用新的：例句已在后端保存，重新读取证据/修订
-                setPendingExample(null);
-                await refreshDetail();
-                onCardChanged?.();
-                showToast("✅ 已换新例句");
-              }}>用新的</button>
-            </div>
-          </div>
-        ) : (
-          <>
-            {/* 词卡：显示例句 */}
-            {c.example && c.kind !== "sentence" && (
-              <div className="word-detail-example">
-                <span>{c.example}</span>
-                <button className="speak-mini" title="朗读例句" onClick={() => speakPlain(c.example)}>🔊</button>
-                <button className="memo-edit-btn" title="换一个例句" onClick={regenerate}>🔄</button>
-              </div>
-            )}
-            {c.example_cn && c.kind !== "sentence" && (
-              <div className="example-cn">{c.example_cn}</div>
-            )}
-            {/* 句子卡：例句已在头部显示，这里显示中文翻译 */}
-            {c.kind === "sentence" && c.example_cn && (
-              <div className="example-cn" style={{ fontSize: 15, marginTop: 4 }}>{c.example_cn}</div>
-            )}
-          </>
-        )}
-
-        {/* 讲解三要素 */}
-        {explanationParts.length > 0 && (
-          <div className="explanation-box">
-            {explanationParts.length >= 1 && <div className="exp-line"><span className="exp-tag">📖 用法</span>{explanationParts[0]}</div>}
-            {explanationParts.length >= 2 && <div className="exp-line"><span className="exp-tag">🔗 搭配</span>{explanationParts[1]}</div>}
-            {explanationParts.length >= 3 && <div className="exp-line"><span className="exp-tag">⚠️ 易错</span>{explanationParts[2]}</div>}
-          </div>
-        )}
-
-        {/* 记忆法（前置到醒目位置） */}
-        {c.memo ? (
-          <div className="word-detail-memo">
-            <span className="word-detail-memo-label">🧠 我的记忆法</span>
-            <span>{c.memo}</span>
-            <button className="memo-edit-btn" onClick={editMemo}>✏️</button>
-          </div>
-        ) : (
-          <button className="btn btn-ghost btn-small" style={{ marginTop: 10 }} onClick={editMemo}>🧠 写个记忆法</button>
-        )}
-
-        {/* 对话体语境 */}
-        {contexts.length > 0 && (
-          <div className="bubble-list" style={{ marginTop: 14 }}>
-            {contexts.map((ctx, i) => (
-              <div key={i} className={`bubble ${i % 2 === 0 ? "bubble-a" : "bubble-b"}`}>
-                <div className="bubble-en">{ctx.en}</div>
-                <div className="bubble-cn">{ctx.cn}</div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* 词族/近义词 */}
-        {Array.isArray(c.related_words) && c.related_words.length > 0 && (
-          <div className="related-words-box">
-            <div className="related-words-label">🔗 相关词</div>
-            <div className="related-words-list">
-              {c.related_words.map((rw, i) => (
-                <span key={i} className="related-word-chip" title={rw.meaning}>
-                  {rw.word}
-                  <span className="related-word-meaning">{rw.meaning}</span>
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* 状态卡 */}
       <div className="word-detail-status">
         <div className="status-item"><span className="status-label">复习次数</span><span className="status-value">{c.review_count}</span></div>
@@ -677,15 +733,6 @@ function WordDetail({ cardId, onBack, allCards, setDetail, onCardChanged }) {
           <span className="status-value">{c.content_revision?.identity?.slice(0, 8) || "-"}</span>
         </div>
       </div>
-
-      {/* 自测按钮（句子卡不适合拼写测试，隐藏） */}
-      {c.kind !== "sentence" && (
-        <button className="btn btn-primary btn-wide" style={{ marginTop: 12 }} onClick={() => {
-          // 跳转到拼写练习，只测这一个词
-          window.dispatchEvent(new CustomEvent("quiz-single-word", { detail: { card: c } }));
-          onBack();
-        }}>📝 测这个词</button>
-      )}
 
       {/* 学习记录：只展示真实追加事件；旧基线不伪装成作答 */}
       {(c.history_incomplete || c.learning_events?.length > 0 || c.memory_state) && (
@@ -720,32 +767,8 @@ function WordDetail({ cardId, onBack, allCards, setDetail, onCardChanged }) {
       </div>
       )}
 
-      {/* 评分 */}
-      <div className="rating-area" style={{ marginTop: 20 }}>
-        <RatingButtons
-          onRate={rateCard}
-          disabled={attempt.phase === "saving" || attempt.phase === "failed"}
-        />
-        {attempt.phase === "saving" && (
-          <p role="status" className="save-state">正在确认保存…</p>
-        )}
-        {attempt.phase === "failed" && (
-          <div role="alert" className="save-state save-state-error">
-            <p>{attempt.error}</p>
-            <div className="save-state-actions">
-              <button className="btn btn-primary btn-small" onClick={retryRating}>继续确认保存</button>
-              <button className="btn btn-ghost btn-small" onClick={attempt.clear}>放弃这条待确认</button>
-            </div>
-          </div>
-        )}
-      </div>
 
-      {/* 管理操作 */}
-      <div className="detail-actions">
-        <button className={`btn btn-ghost btn-small ${c.is_hard ? "hard-active" : ""}`} onClick={toggleHard}>⭕ 困难词</button>
-        <button className="btn btn-ghost btn-small" onClick={editMemo}>🧠 记忆法</button>
-        <button className="btn btn-ghost btn-small" onClick={editMeaning}>✏️ 编辑</button>
-        <button className="btn btn-ghost btn-small danger" onClick={deleteCard}>🗑 删除</button>
+      </aside>
       </div>
     </section>
   );

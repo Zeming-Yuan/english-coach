@@ -1,0 +1,129 @@
+{
+  "llm_responses": [
+    {
+      "phonetic": "/ˈbʊkʃɒp/",
+      "meaning": "n. 书店"
+    }
+  ],
+  "tables": {
+    "stories": [
+      {
+        "id": 1,
+        "title": "The Little Bookshop",
+        "title_cn": "雨天的小书店",
+        "content": "It was a rainy afternoon. Lily walked into a small bookshop near the park. The room was warm, and the shelves were full of books.\nAn old man smiled at her. “Are you looking for a story?” he asked. Lily nodded. He gave her a book with a blue cover.\nShe sat by the window and began to read. Outside, the rain grew quiet. Inside, Lily found a new world.",
+        "content_cn": "那是一个下雨的午后。莉莉走进了公园附近的一家小书店。屋子里很温暖，书架上摆满了书。\n一位老人向她微笑。“你在找故事吗？”他问道。莉莉点了点头。他递给她一本蓝色封面的书。\n她坐在窗边，开始阅读。窗外的雨渐渐变小了。屋子里，莉莉发现了一个新的世界。"
+      }
+    ],
+    "lessons": [
+      {
+        "id": 1,
+        "level": 1,
+        "title": "第 1 课",
+        "content": {
+          "words": [
+            {
+              "word": "apple",
+              "phonetic": "/ˈæpəl/",
+              "meaning": "苹果"
+            }
+          ],
+          "dialogue": [],
+          "tips": []
+        }
+      }
+    ],
+    "cards": [
+      {
+        "id": 1,
+        "word": "apple",
+        "kind": "word",
+        "meaning": "苹果",
+        "phonetic": "/ˈæpəl/",
+        "example": "I have an apple.",
+        "example_cn": "我有一个苹果。"
+      },
+      {
+        "id": 2,
+        "word": "book",
+        "kind": "word",
+        "meaning": "书",
+        "phonetic": null,
+        "example": null,
+        "example_cn": null
+      },
+      {
+        "id": 3,
+        "word": "rain",
+        "kind": "word",
+        "meaning": "雨",
+        "phonetic": null,
+        "example": null,
+        "example_cn": null
+      },
+      {
+        "id": 4,
+        "word": "teacher",
+        "kind": "word",
+        "meaning": "老师",
+        "phonetic": null,
+        "example": null,
+        "example_cn": null
+      },
+      {
+        "id": 5,
+        "word": "garden",
+        "kind": "word",
+        "meaning": "花园",
+        "phonetic": null,
+        "example": null,
+        "example_cn": null
+      },
+      {
+        "id": 6,
+        "word": "window",
+        "kind": "word",
+        "meaning": "窗户",
+        "phonetic": null,
+        "example": null,
+        "example_cn": null
+      },
+      {
+        "id": 7,
+        "word": "coffee",
+        "kind": "word",
+        "meaning": "咖啡",
+        "phonetic": null,
+        "example": null,
+        "example_cn": null
+      },
+      {
+        "id": 8,
+        "word": "travel",
+        "kind": "word",
+        "meaning": "旅行",
+        "phonetic": null,
+        "example": null,
+        "example_cn": null
+      },
+      {
+        "id": 9,
+        "word": "family",
+        "kind": "word",
+        "meaning": "家人",
+        "phonetic": null,
+        "example": null,
+        "example_cn": null
+      },
+      {
+        "id": 10,
+        "word": "morning",
+        "kind": "word",
+        "meaning": "早晨",
+        "phonetic": null,
+        "example": null,
+        "example_cn": null
+      }
+    ]
+  }
+}

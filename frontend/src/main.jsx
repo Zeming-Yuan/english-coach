@@ -1,6 +1,10 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.jsx";
+import "@fontsource-variable/noto-sans-sc";
+import "./styles/product-theme.css";
+import "./styles/qwerty-spelling.css";
+import "./styles/home-workspace.css";
 
 // 防止浏览器翻译功能劫持页面 DOM（Chrome/Edge 翻译、沉浸式翻译都遵守 notranslate）
 // 此前遇到过翻译插件克隆 DOM 导致 React 状态与页面显示脱节

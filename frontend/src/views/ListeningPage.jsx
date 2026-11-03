@@ -1,3 +1,4 @@
+import UiIcon from "../components/UiIcon.jsx";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../lib/api.js";
 import { makePending, sendPending } from "../lib/learning.js";
@@ -215,7 +216,7 @@ export default function ListeningPage({ onExit }) {
     return (
       <section className="view view-center">
         <div className="study-done">
-          <div className="done-emoji">🎧</div>
+          <div className="done-emoji"><UiIcon name="headphones" size={40} /></div>
           <h2>听写完成！</h2>
           <p className="done-detail">
             答对 {stats.correct} / {total} 题，跳过 {stats.skipped} 题
@@ -251,9 +252,7 @@ export default function ListeningPage({ onExit }) {
             className="btn-speak-large"
             title="播放发音"
             onClick={() => play(true)}
-          >
-            🔊
-          </button>
+           aria-label="播放发音"><UiIcon name="speaker" /></button>
           <div className="listening-meaning">{escapeHtml(q.meaning)}</div>
           <div className="listening-hint">{audioHint || "点喇叭听发音"}</div>
         </div>

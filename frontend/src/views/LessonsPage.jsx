@@ -1,3 +1,4 @@
+import UiIcon from "../components/UiIcon.jsx";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { api } from "../lib/api.js";
 import { speak } from "../lib/tts.js";
@@ -536,7 +537,7 @@ function LessonDetail({ lesson, onBack, onNext, onViewed, onStartPractice, gener
                   </>
                 )}
               </div>
-              <button type="button" className="speak-mini" title="朗读" onClick={(e) => { e.stopPropagation(); contactAudio(w.word, [w.id]); }}>🔊</button>
+              <button type="button" className="speak-mini" title="朗读" onClick={(e) => { e.stopPropagation(); contactAudio(w.word, [w.id]); }} aria-label="朗读"><UiIcon name="speaker" /></button>
               {isRevealed && (
                 <LessonMastery
                   cardId={L.card_ids?.[w.word]}
