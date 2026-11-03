@@ -8,6 +8,7 @@ from uuid import UUID
 from pydantic import Field, field_validator
 
 from app.schemas.backup import FullRow
+from app.services.practice import PracticeNotFoundError
 from app.services.scenes import (
     command_fingerprint,
     judge,
@@ -83,14 +84,16 @@ def validate_scene_graph(
                     "非场景用途不能包含场景上下文",
                 )
             continue
-        rules = scene_rules("drinks")
+        try:
+            rules = scene_rules(p["scene_id"])
+        except PracticeNotFoundError:
+            reject("practice_sessions", index, "scene_id", "场景规则未登记")
         rows = sorted(
             [i for i in items if i["session_id"] == p["session_id"]],
             key=lambda i: i["position"],
         )
         if (
-            p["scene_id"] != "drinks"
-            or p["scene_snapshot"] != rules
+            p["scene_snapshot"] != rules
             or p["rule_version"] != rules["rule_version"]
             or any(
                 (p["lesson_id"], p["version_id"], p["window"], p["pending_contact_ids"])
@@ -123,7 +126,7 @@ def validate_scene_graph(
             if set(item["assistance"]) - {"hint", "answer_visible", "answer_audio"}:
                 reject("practice_items", index, "assistance", "场景帮助类型无效")
             targets = item["question"].get("target_mapping")
-            _targets(targets, task, reject, index)
+            _targets(targets, task, rules, reject, index)
             for target in targets:
                 current = revision_by_identity.get(target["identity"])
                 if current is not None and (
@@ -187,7 +190,14 @@ def validate_scene_graph(
                 "command_json",
                 "提交身份、规则判定或指纹不一致",
             )
-        _targets(a["target_mapping"], task, reject, index, attempt=True)
+        _targets(
+            a["target_mapping"],
+            task,
+            practice["scene_snapshot"],
+            reject,
+            index,
+            attempt=True,
+        )
         frozen = item["question"]["target_mapping"]
         if [(t["identity"], t["version"], t["word"]) for t in a["target_mapping"]] != [
             (t["identity"], t["version"], t["word"]) for t in frozen
@@ -225,7 +235,7 @@ def validate_scene_graph(
             reject("scene_attempts", index, "assistance", "再次练习不能冒充首答")
 
 
-def _targets(targets, task, reject, index, attempt=False):
+def _targets(targets, task, rules, reject, index, attempt=False):
     if not isinstance(targets, list):
         reject("scene_attempts", index, "target_mapping", "目标映射必须为数组")
     seen = set()
@@ -244,7 +254,7 @@ def _targets(targets, task, reject, index, attempt=False):
                 valid = (
                     valid
                     and type(t["novel"]) is bool
-                    and t["context"] == "drinks:water-order"
+                    and t["context"] == rules.get("context", "drinks:water-order")
                 )
         except (KeyError, TypeError, ValueError):
             valid = False

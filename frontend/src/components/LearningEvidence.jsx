@@ -39,6 +39,9 @@ export default function LearningEvidence({ evidence }) {
           {retention.label || "独立证据不足"} / {application.label || "独立证据不足"}
         </span>
       </div>
+      {(application.contexts || []).map(context => <div className="status-item" key={`${context.context}:${context.content_hash}`}>
+        <span className="status-value">{context.title} · {context.rule_version}：{context.label}</span>
+      </div>)}
       <div style={{ gridColumn: "1 / -1", fontSize: 12, color: "var(--muted)" }}>
         {REASON_TEXT[recall.status] || ""}
         {revision ? ` 当前修订：第 ${revision.version} 版。` : ""}

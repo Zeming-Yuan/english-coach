@@ -3,6 +3,11 @@ import fs from "node:fs";
 import {fileURLToPath} from "node:url";
 
 export const requirements = {
+  EL15: [
+    "EL-15 application outcomes remain separate across scene contexts",
+    "EL-15 introduction independent three-turn result stays in its context",
+    "EL-15 directions independent three-turn result stays in its context",
+  ],
   EL14: [
     "EL-14 preparation keeps English answers hidden before starting",
     "EL-14 successful standard audio records its actual contact time",

@@ -172,22 +172,28 @@ def scenes(
     from app.models.practice import PracticeSession
     from app.services.scenes import scene_preparation, scene_rules
 
-    rules = scene_rules("drinks")
-    latest = db.scalar(
-        select(PracticeSession)
-        .where(PracticeSession.purpose == "scene")
-        .order_by(PracticeSession.created_at.desc(), PracticeSession.id.desc())
-        .limit(1)
-    )
-    return {
-        "enabled": request.app.state.settings.scenes_enabled,
-        "scenes": [
+    catalog = []
+    for scene_id in ("drinks", "introduction", "directions"):
+        rules = scene_rules(scene_id)
+        latest = db.scalar(
+            select(PracticeSession)
+            .where(
+                PracticeSession.purpose == "scene", PracticeSession.scene_id == scene_id
+            )
+            .order_by(PracticeSession.created_at.desc(), PracticeSession.id.desc())
+            .limit(1)
+        )
+        catalog.append(
             {
-                "id": "drinks",
+                "id": scene_id,
                 "title": rules["title"],
+                "situation": rules.get("situation", "向店员购买一杯水。"),
                 "task_goal": [t["goal"] for t in rules["tasks"]],
-                "preparation": scene_preparation(db, runtime),
+                "preparation": scene_preparation(db, runtime, rules),
                 "session_id": latest.session_id if latest else None,
             }
-        ],
+        )
+    return {
+        "enabled": request.app.state.settings.scenes_enabled,
+        "scenes": catalog,
     }

@@ -1,0 +1,46 @@
+{
+  "scene_id": "directions",
+  "title": "问路",
+  "rule_version": "directions-v1",
+  "content_revision": 1,
+  "review_basis": "2026-11-03 用户已人工核对并接受本份表达与边界；见 app/data/README.md。",
+  "context": "directions:fictional-station-left",
+  "speaker": "虚构街区的路人",
+  "situation": "仅为虚构街区的文字练习：你在广场，目标是车站；已知路线是在路口向左转即可到达车站。这里不提供真实地图或导航。",
+  "support_words": ["excuse", "me", "where", "is", "the", "station", "please", "could", "can", "you", "tell", "how", "to", "get", "do", "i", "should", "turn", "left", "yes", "thank", "thanks", "right", "that's", "that"],
+  "tasks": [
+    {
+      "task_key": "destination",
+      "goal": "礼貌询问车站在哪里",
+      "role": "你在虚构广场遇到一位路人。请礼貌地询问车站的位置。",
+      "hint": "加入礼貌表达，用完整问句询问车站的位置。",
+      "standard": "Excuse me, where is the station?",
+      "patterns": ["excuse me where is the station(?: please)?", "where is the station please", "(?:could|can) you tell me where the station is(?: please)?", "(?:could|can) you tell me how to get to the station(?: please)?"],
+      "rejected": ["station", "where is the station", "where is the school please", "excuse me where is the school"],
+      "correction": "请礼貌地询问指定的车站，而不只说地点名。",
+      "target_words": ["station"]
+    },
+    {
+      "task_key": "direction",
+      "goal": "用完整问句确认是否在路口向左转",
+      "role": "路人说明：沿广场走到路口，向左转就到车站。请确认这个方向。",
+      "hint": "用问句确认向左转，避免同时列出互相冲突的方向。",
+      "standard": "Should I turn left?",
+      "patterns": ["(?:should|do) i turn left(?: at the (?:junction|crossroads))?", "(?:so )?i turn left(?: at the (?:junction|crossroads))? (?:is that|is this) (?:right|correct)"],
+      "rejected": ["left", "right", "should i turn right", "do i turn right"],
+      "correction": "这里给定的路线是向左转，请用完整问句确认这个方向。",
+      "target_words": ["left"]
+    },
+    {
+      "task_key": "confirmation",
+      "goal": "确认已理解路线并向路人致谢",
+      "role": "路人确认：是的，在路口向左转。请确认已理解并致谢。",
+      "hint": "同时表达肯定确认与感谢。",
+      "standard": "Yes, thank you.",
+      "patterns": ["yes (?:please )?thank you", "yes thanks", "(?:i understand|got it) (?:thank you|thanks)", "(?:that's|that is) (?:clear|right) thank you"],
+      "rejected": ["yes", "thanks", "thank you", "no"],
+      "correction": "请同时确认已理解路线并表达感谢。",
+      "target_words": ["thank"]
+    }
+  ]
+}

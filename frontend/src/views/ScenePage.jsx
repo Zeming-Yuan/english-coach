@@ -5,7 +5,7 @@ import {recordContact, recordVisibleCards} from '../lib/contacts.js';
 import {speak} from '../lib/tts.js';
 import {useLearningAttempt} from '../hooks/useLearningAttempt.js';
 
-const CREATION_SCOPE = 'scene:drinks';
+const CREATION_SCOPE = 'scene:create';
 const CONTEXT_PREFIX = 'ec.context.';
 const verdictLabel = item => item.skipped ? '显式跳过' : ({accepted: '规则认可', rejected: '规则明确不满足', unknown: '未判定（未收录或有歧义）'}[item.verdict] || '待作答');
 
@@ -105,6 +105,7 @@ function SceneRun({initial, onRestart, onExit}) {
   return <section className="view" data-testid="scene-session">
     <button className="btn btn-ghost btn-small" onClick={onExit}>返回场景列表</button>
     <h2 className="page-title">{run.title} · 三轮文字任务</h2>
+    <p>{run.situation}</p>
     <p>已处理 {run.counts.processed}/3 · 规则 {run.rule_version} · 内容修订 {run.content_revision}</p>
     {run.message && <p role="alert">{run.message}</p>}
     {error && <p role="alert">{error}</p>}
@@ -119,7 +120,7 @@ function SceneRun({initial, onRestart, onExit}) {
       <button className="btn btn-primary" onClick={onRestart}>新开一轮</button>
     </> : <>
       <p>第 {index + 1}/3 轮 · 目标：{item.prompt}</p>
-      <p className="lesson-progress">店员：{item.role}</p>
+      <p className="lesson-progress">{run.speaker || '店员'}：{item.role}</p>
       {!!item.assistance.length && <p role="status">本轮已使用帮助，持续按辅助记录。</p>}
       {item.hint && <p role="status">提示：{item.hint}</p>}
       {item.standard && <Standard text={item.standard} />}
@@ -156,7 +157,7 @@ function SceneRun({initial, onRestart, onExit}) {
 }
 
 export default function ScenePage({onExit}) {
-  const pending = useRef(loadPending(CREATION_SCOPE, CONTEXT_PREFIX)?.payload || null);
+  const pending = useRef((loadPending(CREATION_SCOPE, CONTEXT_PREFIX) || loadPending('scene:drinks', CONTEXT_PREFIX))?.payload || null);
   const [catalog, setCatalog] = useState(null);
   const [run, setRun] = useState(null);
   const [error, setError] = useState('');
@@ -168,25 +169,25 @@ export default function ScenePage({onExit}) {
     api('/api/scenes').then(data => {if (live.current) setCatalog(data);}).catch(e => {if (live.current) setError(e.message);});
     return () => {live.current = false;};
   }, []);
-  const start = async (fresh = false) => {
+  const start = async (sceneId, fresh = false) => {
     if (busy) return;
     setBusy(true); setError('');
     try {
-      const existing = catalog?.scenes[0].session_id;
+      const existing = catalog?.scenes.find(s => s.id === sceneId)?.session_id;
       let saved;
       if (existing && !fresh && !pending.current) saved = await api(`/api/practice-sessions/${existing}`);
       else {
-        const body = pending.current || {id: crypto.randomUUID(), purpose: 'scene', scene_id: 'drinks'};
+        const body = pending.current || {id: crypto.randomUUID(), purpose: 'scene', scene_id: sceneId};
         pending.current = body;
         if (!savePending(CREATION_SCOPE, {path: '/api/practice-sessions', payload: body}, CONTEXT_PREFIX)) setNote('浏览器未保存轮次标识；刷新后请核对已存场景。');
         saved = await api('/api/practice-sessions', {method: 'POST', body: JSON.stringify(body)});
-        clearPending(CREATION_SCOPE, CONTEXT_PREFIX); pending.current = null;
+        clearPending(CREATION_SCOPE, CONTEXT_PREFIX); clearPending('scene:drinks', CONTEXT_PREFIX); pending.current = null;
       }
-      if (live.current) {setRun(saved); setCatalog(data => ({...data, scenes: data.scenes.map(s => ({...s, session_id: saved.id}))}));}
+      if (live.current) {setRun(saved); setCatalog(data => ({...data, scenes: data.scenes.map(s => s.id === saved.scene_id ? {...s, session_id: saved.id} : s)}));}
     } catch (e) {if (live.current) setError('场景尚未确认保存：' + e.message);}
     finally {if (live.current) setBusy(false);}
   };
-  if (run) return <SceneRun key={run.id} initial={run} onRestart={() => start(true)} onExit={() => setRun(null)} />;
+  if (run) return <SceneRun key={run.id} initial={run} onRestart={() => start(run.scene_id, true)} onExit={() => setRun(null)} />;
   return <section className="view">
     <button className="btn btn-ghost btn-small" onClick={onExit}>返回队列</button>
     <h2 className="page-title">场景练习</h2>
@@ -195,13 +196,14 @@ export default function ScenePage({onExit}) {
     {busy && <p role="status">正在确认保存…</p>}
     {catalog?.scenes.map(scene => <article key={scene.id} className="lesson-progress">
       <h3>{scene.title} · 约三轮 · 文字输入</h3>
+      <p>{scene.situation}</p>
       {scene.task_goal.map(goal => <p key={goal}>{goal}</p>)}
       <Preparation preparation={scene.preparation} />
-      {(catalog.enabled || scene.session_id) && <button className="btn btn-primary" disabled={busy || !!pending.current} onClick={() => start()}>买饮品</button>}
+      {(catalog.enabled || scene.session_id) && <button className="btn btn-primary" disabled={busy || !!pending.current} onClick={() => start(scene.id)}>{scene.title}</button>}
     </article>)}
     {pending.current && <div className="save-state-actions">
-      <button className="btn btn-primary" disabled={busy} onClick={() => start()}>继续确认保存</button>
-      <button className="btn btn-ghost" disabled={busy} onClick={async () => {clearPending(CREATION_SCOPE, CONTEXT_PREFIX); pending.current = null; setError(''); setCatalog(await api('/api/scenes'));}}>放弃待确认创建</button>
+      <button className="btn btn-primary" disabled={busy} onClick={() => start(pending.current.scene_id)}>继续确认保存</button>
+      <button className="btn btn-ghost" disabled={busy} onClick={async () => {clearPending(CREATION_SCOPE, CONTEXT_PREFIX); clearPending('scene:drinks', CONTEXT_PREFIX); pending.current = null; setError(''); setCatalog(await api('/api/scenes'));}}>放弃待确认创建</button>
     </div>}
   </section>;
 }
