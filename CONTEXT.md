@@ -95,3 +95,10 @@
 
 - EL-19 回退开关为 `RECOVERY_MODE_ENABLED`：只关闭新推荐/预览，冻结轮次可继续；
   三分钟恢复预算不受常规预算选择回退影响。证据见 `docs/verification/el19-return-to-learning-mode.md`。
+
+## EL-20：证据、接触与 V3 内部消费者
+
+- V3 registry owner 为 `app/services/backup_v3_registry.py`；schema 声明、导出和恢复共用登记，
+  原 schema 注册 API 继续重导出。未知/重复功能、声明与集合不一致均拒绝。
+- 同时间接触按原整数 ID 保存顺序恢复；学习事件仍按导出数组保留保存顺序，旧回放不刷新证据。
+- 内部消费者与兼容接口保留原因见 [EL-20 契约核对](docs/verification/el20-contract-evidence-consumers.md)。

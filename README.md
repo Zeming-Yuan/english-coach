@@ -407,3 +407,12 @@ V3 导出、校验与恢复包含 `mode`、`parent_version_id`、固定题目和
 `npm --prefix frontend run test:e2e -- --ticket EL-19`。
 
 验收映射、运行身份和未验证门禁见 [EL-19 验证记录](docs/verification/el19-return-to-learning-mode.md)。
+
+
+### 内部证据与 V3 契约（EL-20）
+
+证据、实际接触与句子练习解锁使用既有统一规则；复习次数不代表掌握。
+V3 集合在统一 registry 登记，导出、校验和恢复共用；未知功能、重复声明或漏集合明确拒绝，
+早期 V3、V2/V1 的缺失仍在预览中解释。恢复同时间接触保留原保存次序，旧已保存请求回放不刷新证据。
+公开 URL、旧事件/基线和毕业兼容字段保留。具名双视口验收：
+`npm --prefix frontend run test:e2e -- --ticket EL-20`；[消费者与验证边界](docs/verification/el20-contract-evidence-consumers.md)。

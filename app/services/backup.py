@@ -59,13 +59,15 @@ def export_rows(db: Session, model) -> list[dict]:
 
 def extension_collections() -> tuple[tuple[str, type], ...]:
     """已登记的 V3 扩展集合（顺序即导出顺序）；未绑定持久模型时拒绝导出。"""
-    from app.schemas.backup_v3 import registered_extensions
+    from app.services.backup_v3_registry import registered_extensions
 
     specs = registered_extensions()
     missing = [name for name, spec in specs.items() if spec.model is None]
     if missing:
         raise RuntimeError(f"V3 扩展集合缺少持久模型：{','.join(missing)}")
-    return tuple((name, spec.model) for name, spec in specs.items())
+    return tuple(
+        (name, spec.model) for name, spec in specs.items() if spec.model is not None
+    )
 
 
 def export_backup(db: Session, runtime: Runtime) -> dict:
@@ -84,9 +86,7 @@ def export_backup(db: Session, runtime: Runtime) -> dict:
             "exported_at": runtime.clock.now().astimezone(UTC).isoformat(),
             "learning_timezone": runtime.learning_timezone,
             "features": [name for name, _ in extensions],
-            "extensions": {
-                name: export_rows(db, model) for name, model in extensions
-            },
+            "extensions": {name: export_rows(db, model) for name, model in extensions},
             **{name: export_rows(db, model) for name, model in BACKUP_COLLECTIONS},
         }
     finally:

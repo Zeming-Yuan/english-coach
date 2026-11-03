@@ -450,7 +450,7 @@ def _apply_full_restore(session: Session, validated: ValidatedBackup) -> dict:
     # did not cover (V2/V1 or an earlier V3).
     for name in extension_names:
         session.execute(delete(models[name]))
-    from app.schemas.backup_v3 import registered_extensions
+    from app.services.backup_v3_registry import registered_extensions
 
     specs = registered_extensions()
     for name, rows in validated.extensions.items():

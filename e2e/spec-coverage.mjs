@@ -3,6 +3,11 @@ import fs from "node:fs";
 import {fileURLToPath} from "node:url";
 
 export const requirements = {
+  EL20: [
+    "EL-20 visible evidence overview remains independent of unlock counts",
+    "EL-20 unknown collection upload rejects before confirmation without data loss",
+    "EL-20 V3 restore preserves equal-time contacts and current evidence",
+  ],
   EL19: [
     "EL-19 long interruption caps fast personal estimates at five due words",
     "EL-19 finite recovery saves five due words and returns to regular learning",

@@ -1,20 +1,18 @@
 """V3 完整备份：显式登记扩展集合、校验并映射恢复。
 
-V3 在 V2 核心集合之外增加 features 与 extensions。每个扩展集合必须先在本
-模块登记 schema、父引用与 ID 重映射，导出、校验和恢复共享同一份登记；
+V3 在 V2 核心集合之外增加 features 与 extensions。每个扩展集合必须先向统一 registry
+登记 schema、父引用与 ID 重映射，导出、校验和恢复共享同一份登记；
 未知功能拒绝恢复，避免静默丢数据。
 """
 
 from __future__ import annotations
 
 import json
-from collections.abc import Callable
-from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal, NoReturn, cast
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, ValidationError, field_validator
+from pydantic import Field, ValidationError, field_validator
 
 from app.models.content_revision import ContentRevision
 from app.models.learning_contact import LearningContact
@@ -37,6 +35,12 @@ from app.schemas.learning import ContactKind, ContactSource
 from app.schemas.practice import PracticeAssistance
 from app.schemas.scene_backup import FullSceneAttempt, validate_scene_graph
 from app.schemas.scene_feedback_backup import FullSceneFeedback, validate_feedback_graph
+from app.services.backup_v3_registry import (
+    ExtensionSpec,
+    extension_names_match,
+    register_extension,
+    registered_extensions,
+)
 
 # 修订资源类型 ↔ 备份集合：导出、校验、映射共用同一张表。
 RESOURCE_COLLECTIONS = {
@@ -45,49 +49,6 @@ RESOURCE_COLLECTIONS = {
     "story": "stories",
 }
 _COLLECTION_RESOURCES = {value: key for key, value in RESOURCE_COLLECTIONS.items()}
-
-
-@dataclass(frozen=True)
-class ExtensionSpec:
-    """一个已登记的 V3 扩展集合。"""
-
-    name: str
-    schema: type[BaseModel]
-    parents: tuple[str, ...]
-    remap: Callable[[dict, dict[str, dict[int, int]]], dict]
-    model: type | None = None
-    complete: bool = False
-    unique: tuple[str, ...] = ()
-
-
-_EXTENSIONS: dict[str, ExtensionSpec] = {}
-
-
-def register_extension(
-    name: str,
-    schema: type[BaseModel],
-    parents: tuple[str, ...],
-    remap: Callable[[dict, dict[str, dict[int, int]]], dict],
-    *,
-    model: type | None = None,
-    complete: bool = False,
-    unique: tuple[str, ...] = (),
-) -> None:
-    """登记扩展集合；重复登记是编程错误，拒绝静默覆盖。
-
-    model 是导出与恢复删除拓扑使用的持久模型；登记顺序即导出顺序。
-    complete 表示快照必须为每个父实体包含一行（如当前修订身份）。
-    unique 表示集合内不得重复的字段（如提交标识）。
-    """
-    if name in _EXTENSIONS:
-        raise ValueError(f"扩展集合已登记：{name}")
-    _EXTENSIONS[name] = ExtensionSpec(
-        name, schema, parents, remap, model, complete, unique
-    )
-
-
-def registered_extensions() -> dict[str, ExtensionSpec]:
-    return dict(_EXTENSIONS)
 
 
 class FullContentRevision(FullRow):
@@ -432,7 +393,7 @@ def _reject(collection: str, index, field: str, reason: str) -> NoReturn:
 
 
 def _validate_extension_rows(name: str, rows: list) -> list[dict]:
-    spec = _EXTENSIONS[name]
+    spec = registered_extensions()[name]
     if not isinstance(rows, list):
         _reject(name, "0", "?", "必须是数组")
     try:
@@ -446,7 +407,7 @@ def _validate_extension_graph(
 ) -> None:
     ids = {name: {row["id"] for row in rows} for name, rows in tables.items()}
     for name, rows in extensions.items():
-        spec = _EXTENSIONS[name]
+        spec = registered_extensions()[name]
         resource_keys = set()
         identities = set()
         extension_ids = set()
@@ -525,9 +486,11 @@ def validate_v3(payload: dict) -> ValidatedBackup:
         _reject("extensions", "0", "?", "必须是对象")
     features = cast(list[str], features)
     extensions = cast(dict[str, list], extensions)
-    if set(features) != set(extensions):
+    if not extension_names_match(features, list(extensions)):
         _reject("features", "?", "?", "features 与 extensions 键必须一致")
-    unknown = [feature for feature in features if feature not in _EXTENSIONS]
+    unknown = [
+        feature for feature in features if feature not in registered_extensions()
+    ]
     if unknown:
         _reject("features", "?", "?", f"未知功能：{','.join(unknown)}")
 
@@ -929,7 +892,7 @@ def validate_v3(payload: dict) -> ValidatedBackup:
     )
     # Integer IDs encode persisted order for equal timestamps. Restore must not
     # let an arbitrary JSON array order reverse first-response evidence.
-    for name in ("scene_attempts", "practice_durations"):
+    for name in ("scene_attempts", "practice_durations", "learning_contacts"):
         if name in validated_extensions:
             validated_extensions[name].sort(key=lambda row: row["id"])
     from app.services.retention import validate_retention_graph
