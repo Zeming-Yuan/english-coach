@@ -73,3 +73,5 @@ git diff --check
 回退：设置 SCENE_EXPANSIONS_ENABLED=false 并重启，保留数据与兼容读取；恢复 true 重新开放。不用旧快照覆盖新增学习，不删除字段/记录，不破坏买饮品。原 SCENES_ENABLED 整体回退仍保留。本票代码/测试/README/材料核对记录/ADR 同步，临时输出与依赖软链接均未提交。
 
 Standards：0 项待处理；Spec：0 项待处理。
+
+2026-11-03 用户确认的场景页视觉调整及其独立验证，见 [视觉调整报告](el15-scene-visual-refresh.md)。该增量保留本报告记录的业务行为。
