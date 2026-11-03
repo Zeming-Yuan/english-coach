@@ -141,7 +141,7 @@ for (const mode of ['choice-only', 'typed-only', 'empty']) {
         const saved = await (await app.request.get('/api/export/backup')).json();
         return saved.extensions.learning_contacts.some(c => c.source === 'story');
       }).toBe(true);
-      await page.getByRole('button', {name: '← 返回', exact: true}).click();
+      await page.locator('.reader-toolbar').getByRole('button', {name: '返回故事列表', exact: true}).click();
     }
     const backup = await (await app.request.get('/api/export/backup')).json();
     const id = backup.cards[0].id;
@@ -235,7 +235,7 @@ test('EL-13 stale creation after restore can be abandoned for the imported round
   await page.getByRole('button', {name: '读后检查', exact: true}).click();
   await expect(page.getByRole('alert')).toContainText('检查尚未确认保存');
   const backup = await (await app.request.get('/api/export/backup')).json();
-  await page.getByRole('button', {name: '← 返回', exact: true}).click();
+  await page.locator('.reader-toolbar').getByRole('button', {name: '返回故事列表', exact: true}).click();
   await restore(app, backup);
   await openSavedStory(page, app);
   await page.getByRole('button', {name: '继续确认保存', exact: true}).click();

@@ -5,7 +5,7 @@ async function cards(app) {
 }
 
 function addNav(page) {
-  return page.getByRole("navigation").getByRole("button", {name: /加词/});
+  return page.getByRole("button", {name: /^(加词|添加单词)$/});
 }
 
 test("EC-02 first-learning without ai", async ({app, page}) => {
