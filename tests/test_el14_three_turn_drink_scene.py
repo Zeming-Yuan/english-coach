@@ -457,7 +457,12 @@ def test_el14_schema_rollback_refuses_to_remove_scene_history(ec):
     before = ec.snapshot()
     config = Config("alembic.ini")
     config.set_main_option("sqlalchemy.url", ec.database_url)
-    with pytest.raises(RuntimeError, match="保留场景记录"):
+    # The newest delivered migration must stop first; the historical EL-14
+    # barrier is exercised separately on its actual schema in EL-21.
+    with pytest.raises(
+        RuntimeError,
+        match="Retain duration records and V3 adapters; disable personal estimates instead",
+    ):
         command.downgrade(config, "el13_merge_story_heads")
     assert ec.snapshot() == before
 

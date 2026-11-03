@@ -228,3 +228,57 @@ console.log(JSON.stringify([
         text=True,
     )
     assert json.loads(result.stdout) == [True, True]
+
+
+def test_el21_delivered_scene_revision_blocks_destructive_rollback(ec):
+    """Exercise the historical barrier, not just the newer EL-18 refusal."""
+    from uuid import uuid4
+
+    from alembic.config import Config
+    from sqlalchemy import text
+
+    from alembic import command
+
+    run = ec.client.post(
+        "/api/practice-sessions",
+        json={
+            "id": str(uuid4()),
+            "purpose": "scene",
+            "scene_id": "drinks",
+        },
+    ).json()
+    saved = ec.client.post(
+        f"/api/practice-sessions/{run['id']}/items/{run['items'][0]['id']}/attempts",
+        json={"submission_id": str(uuid4()), "answer": "Can I have water, please?"},
+    )
+    assert saved.status_code == 200, saved.text
+    tables = ("practice_sessions", "practice_items", "scene_attempts")
+    # Project genuine saved history into the delivered old schema, in an
+    # isolated fixture. This is preparation, never a production downgrade.
+    ec.rebuild_legacy_database("el14_scene_attempts", preserve_tables=tables)
+
+    def migration_rows():
+        with ec.engine.connect() as connection:
+            return {
+                table: [
+                    dict(row._mapping)
+                    for row in connection.execute(
+                        text(f"SELECT * FROM {table} ORDER BY id")
+                    )
+                ]
+                for table in tables
+            }
+
+    before = migration_rows()
+    config = Config("alembic.ini")
+    config.set_main_option("sqlalchemy.url", ec.database_url)
+    with pytest.raises(RuntimeError, match="保留场景记录"):
+        command.downgrade(config, "el13_merge_story_heads")
+    after = migration_rows()
+    with ec.engine.connect() as connection:
+        assert (
+            connection.scalar(text("SELECT version_num FROM alembic_version"))
+            == "el14_scene_attempts"
+        )
+    assert after == before
+    assert len(after["scene_attempts"]) == 1

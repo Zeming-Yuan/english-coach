@@ -20,6 +20,19 @@ def cases(module, name, parameters=None):
 GROUPS = {
     "learning_restore": (
         cases(
+            "test_el13_integration",
+            "test_each_story_branch_upgrades_to_the_same_head_without_losing_rows",
+            ["el12_simpler_story", "el13_story_checks"],
+        )
+        + cases(
+            "test_el14_three_turn_drink_scene",
+            "test_el14_schema_rollback_refuses_to_remove_scene_history",
+        )
+        + cases(
+            "test_el21_integrated_learning_restore_qualification",
+            "test_el21_delivered_scene_revision_blocks_destructive_rollback",
+        )
+        + cases(
             "test_backup_v2",
             "test_backup_excludes_configuration_caches_and_browser_preferences",
         )

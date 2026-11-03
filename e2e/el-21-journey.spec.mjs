@@ -276,7 +276,7 @@ test("EL-21 HTTP restore and content contracts", async ({}, testInfo) => {
   expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
   const report = JSON.parse(result.stdout.trim().split(/\r?\n/).at(-1));
   expect(report.group).toBe("learning_restore");
-  expect(report.passed_cases).toHaveLength(19);
+  expect(report.passed_cases).toHaveLength(23);
 });
 
 
