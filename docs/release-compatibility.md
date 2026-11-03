@@ -28,3 +28,5 @@ V3 registry 移到服务层，原 `app.schemas.backup_v3.register_extension/regi
 没有新增 schema/迁移；旧 URL、解锁字段、事件、基线及缓存响应保持其原义。
 回退保留当前证据规则、原导入适配和全部新记录，不恢复旧快照；
 [实际消费者与验证范围](verification/el20-contract-evidence-consumers.md)。
+
+EL-20 恢复预览逐项显示缺失的新集合；完整替换展示恢复 0 项与当前被替换量，旧部分恢复说明保留现有记录。只缺某集合时不误报已包含的修订会重建。

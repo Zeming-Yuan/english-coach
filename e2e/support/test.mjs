@@ -193,7 +193,9 @@ async function startApp({fixture = null, snapshotOf = null, legacy = false} = {}
         }
       },
       setTime: async (iso) => writeControl(controlFile, {now: iso}),
-      failCommitOnce: async () => writeControl(controlFile, {fail_commit_once: true}),
+      failCommitOnce: async ({contacts = false} = {}) => writeControl(controlFile, {
+        [contacts ? "fail_contact_commit_once" : "fail_commit_once"]: true,
+      }),
       externalCalls: async () => {
         const control = JSON.parse(fs.readFileSync(controlFile, "utf8"));
         return control.external_calls || [];

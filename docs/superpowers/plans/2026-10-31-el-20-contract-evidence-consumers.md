@@ -14,7 +14,7 @@
 
 **Blocked by:** EL-03、EL-10、EL-12、EL-13、EL-15、EL-16、EL-18、EL-19。
 
-**Status:** 计划已编写，产品未实现；以下代码块是未来实施内容，本次不把计划语法检查当作产品测试通过。
+**Status:** 已按单票执行两切片；实际验证与固定 diff 双轴审查见 [EL-20 执行记录](../../verification/el20-contract-evidence-consumers.md)。以下原计划保留为设计依据；本轮按用户明确范围仅运行修改/受影响门禁，未运行完整未过滤门禁。
 
 ## Global Constraints
 

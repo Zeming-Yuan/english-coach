@@ -416,3 +416,5 @@ V3 集合在统一 registry 登记，导出、校验和恢复共用；未知功�
 早期 V3、V2/V1 的缺失仍在预览中解释。恢复同时间接触保留原保存次序，旧已保存请求回放不刷新证据。
 公开 URL、旧事件/基线和毕业兼容字段保留。具名双视口验收：
 `npm --prefix frontend run test:e2e -- --ticket EL-20`；[消费者与验证边界](docs/verification/el20-contract-evidence-consumers.md)。
+
+EL-20 恢复预览逐项显示缺失的新集合；完整替换展示恢复 0 项与当前被替换量，旧部分恢复说明保留现有记录。只缺某集合时不误报已包含的修订会重建。

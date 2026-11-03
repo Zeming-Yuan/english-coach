@@ -1,8 +1,17 @@
 import React, { useRef, useState } from "react";
 
 /**
- * 备份与恢复：下载完整 V2 备份；备份先预览，确认后原子恢复。
+ * 备份与恢复：下载完整 V3 备份；备份先预览，确认后原子恢复。
  */
+
+const COLLECTION_LABELS = {
+  cards: "词卡", reviews: "当前记忆状态", learning_events: "学习事件",
+  review_baselines: "迁移基线", memos: "记忆法", errors: "错词", hard_cards: "困难词",
+  lessons: "课程", stories: "故事", story_words: "故事关联", content_revisions: "内容修订",
+  story_versions: "故事版本", learning_contacts: "应用内接触", practice_durations: "主动用时",
+  lesson_progress: "课程进度", practice_sessions: "练习轮次", practice_items: "练习题目",
+  scene_attempts: "场景首答", scene_feedback: "场景表达反馈",
+};
 
 function formatDetail(detail, fallback) {
   if (Array.isArray(detail)) {
@@ -170,11 +179,23 @@ export default function BackupPage({ onBack, onRestored, restoring, onRestoringC
         {candidate && (
           <div style={{ marginTop: 14, padding: 12, background: "var(--card, #f5f7f6)", borderRadius: 10 }}>
             <p style={{ margin: 0, fontWeight: 700 }}>{full ? "全量恢复" : "旧版部分恢复"}</p>
+            {candidate.preview.extensions?.missing?.length > 0 && (
+              <div role="note" data-testid="missing-backup-collections">
+                <p>此备份未包含以下学习记录：{full ? "将按本次备份替换，缺失历史不会补造。" : "部分恢复保留未包含的现有记录，不补造缺失历史。"}</p>
+                <ul>
+                  {candidate.preview.extensions.missing.map(name => (
+                    <li key={name}>
+                      {COLLECTION_LABELS[name] || "其他学习记录"}：{full ? `恢复 0 项，替换现有 ${candidate.preview.impact.replaced[name]} 项` : "保留现有记录"}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             {candidate.preview.scene_history === "not_recorded" && <p role="note">此备份没有场景练习记录；不会补造语境应用证据。</p>}
             {candidate.preview.reading_check_history === "not_recorded" && <p role="note">此备份没有读后检查记录；旧故事仍可读，不补造阅读识别或独立提取成绩。</p>}
             {candidate.preview.targeted_history === "not_recorded" && <p role="note">此备份没有专项练习记录；建议仅从可用学习证据重新计算，不补造薄弱项或练习成绩。</p>}
             {candidate.preview.extensions?.missing?.includes("practice_durations") && <p role="note">此备份没有主动时长记录；{full ? "全量恢复会替换现有时长记录，恢复后使用默认估算，积累至少五条可靠同类记录后再校准。" : "部分恢复保留现有时长记录；没有可靠同类记录时使用默认估算。"}</p>}
-            {candidate.preview.extensions?.missing?.includes("story_versions") && <p role="note">此备份没有故事版本与检查材料；旧故事仍可读，不补造题目或成绩。已有故事版本与操作去重记录将按本次备份替换。</p>}
+            {candidate.preview.extensions?.missing?.includes("story_versions") && <p role="note">此备份没有故事版本与检查材料；旧故事仍可读，不补造题目或成绩。{full ? "已有故事版本与操作去重记录将按本次备份替换。" : "部分恢复保留已有故事版本与操作去重记录。"}</p>}
             {candidate.preview.retention_history === "not_recorded" && <p role="note">此备份没有延迟回测记录；旧接触依据不足时仅能普通练习，不会补造隔日或一周保持证据。</p>}
             {full ? <>
               <p style={{ fontSize: 13, margin: "6px 0" }}>备份格式：V{candidate.preview.version ?? 2}。现有数据库学习内容将被备份替换。</p>
@@ -185,7 +206,7 @@ export default function BackupPage({ onBack, onRestored, restoring, onRestoringC
                 </p>
               )}
               <dl style={{ fontSize: 12 }}>
-                {Object.entries(candidate.preview.counts).map(([name, count]) => <div key={name}><dt style={{ display: "inline" }}>{({cards: "词卡", reviews: "当前记忆状态", learning_events: "学习事件", review_baselines: "迁移基线", memos: "记忆法", errors: "错词", hard_cards: "困难词", lessons: "课程", stories: "故事", story_words: "故事关联", content_revisions: "内容修订"})[name] || name}</dt><dd style={{ display: "inline", marginLeft: 8 }}>恢复 {count} 项，替换现有 {candidate.preview.impact.replaced[name]} 项</dd></div>)}
+                {Object.entries(candidate.preview.counts).map(([name, count]) => <div key={name}><dt style={{ display: "inline" }}>{COLLECTION_LABELS[name] || "其他学习记录"}</dt><dd style={{ display: "inline", marginLeft: 8 }}>恢复 {count} 项，替换现有 {candidate.preview.impact.replaced[name]} 项</dd></div>)}
               </dl>
               {candidate.preview.counts.cards === 0 && <p role="alert">这是空备份：确认后全部学习内容将替换为 0 项。</p>}
             </> : <p style={{ fontSize: 13, margin: "6px 0" }}>

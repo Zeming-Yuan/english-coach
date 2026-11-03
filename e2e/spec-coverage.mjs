@@ -4,6 +4,13 @@ import {fileURLToPath} from "node:url";
 
 export const requirements = {
   EL20: [
+    "EL-20 V1 preview explains every missing collection before confirmation",
+    "EL-20 V2 preview explains every missing collection before confirmation",
+    "EL-20 contact response-loss confirms the original record without learning credit",
+    "EL-20 contact commit-failure confirms the original record without learning credit",
+    "EL-20 failed V3 replacement retains data and can restore the same preview",
+    "EL-20 partial V3 missing contacts keeps existing revision identities",
+    "EL-20 V3 preview explains every missing collection before confirmation",
     "EL-20 visible evidence overview remains independent of unlock counts",
     "EL-20 unknown collection upload rejects before confirmation without data loss",
     "EL-20 V3 restore preserves equal-time contacts and current evidence",

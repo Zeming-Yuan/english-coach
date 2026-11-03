@@ -81,8 +81,6 @@ V2 的 `reviews.card_id` 必须唯一；预览和执行都在安全副本/数据
 
 ## EL-20：内部消费者最终边界
 
-全部新消费者继续遵守本 ADR 的已采纳规则；证据、接触、课程/故事/场景首答与当前记忆状态保持各自含义。
-V3 登记所有权收口到 `app/services/backup_v3_registry.py`，原 schema 注册接口重导出，
-导出/校验/映射共享登记；V1/V2/早期 V3 缺失显式解释。同时间接触按原保存 ID 顺序恢复，
-旧提交回放不刷新当前证据。公开 URL、毕业解锁字段、旧事件/基线与缓存继续保留。
-最终 owner/现存调用者、功能回退面与验证范围见 [EL-20 契约核对](../verification/el20-contract-evidence-consumers.md)。
+V3 登记所有权收口到 app/services/backup_v3_registry.py，原 schema 注册 API 重导出。导出、校验、映射共用九个扩展登记；V1/V2 分支、安全副本与原子替换保留。预览逐项显示缺失集合，全量替换展示导入 0/当前替换量，V1 部分恢复明确保留未包含记录。
+
+最终 owner/现存调用者、回退与实际验证范围见 [EL-20 契约核对](../verification/el20-contract-evidence-consumers.md)。

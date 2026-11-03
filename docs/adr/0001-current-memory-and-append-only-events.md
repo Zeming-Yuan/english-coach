@@ -111,8 +111,6 @@
 
 ## EL-20：内部消费者最终边界
 
-全部新消费者继续遵守本 ADR 的已采纳规则；证据、接触、课程/故事/场景首答与当前记忆状态保持各自含义。
-V3 登记所有权收口到 `app/services/backup_v3_registry.py`，原 schema 注册接口重导出，
-导出/校验/映射共享登记；V1/V2/早期 V3 缺失显式解释。同时间接触按原保存 ID 顺序恢复，
-旧提交回放不刷新当前证据。公开 URL、毕业解锁字段、旧事件/基线与缓存继续保留。
-最终 owner/现存调用者、功能回退面与验证范围见 [EL-20 契约核对](../verification/el20-contract-evidence-consumers.md)。
+当前记忆状态与真实事件的写入 owner 保持不变；旧提交回放仍优先返回原缓存，不能刷新当前证据。graduation、review_submission 与当前状态选择器仍有真实调用者，保留兼容接口；次数只解释句子练习解锁。
+
+最终 owner/现存调用者、回退与实际验证范围见 [EL-20 契约核对](../verification/el20-contract-evidence-consumers.md)。
