@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BeforeValidator
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -45,7 +45,13 @@ def get_today(
     db: Session = Depends(get_db),
     runtime: Runtime = Depends(get_runtime),
 ):
-    if not request.app.state.settings.time_budget_enabled:
+    if mode == "recovery" and budget_minutes != 3:
+        raise HTTPException(status_code=422, detail="恢复学习仅支持三分钟预算")
+    if mode == "recovery" and not request.app.state.settings.recovery_mode_enabled:
+        raise HTTPException(
+            status_code=403, detail="恢复学习入口已关闭，可继续常规计划"
+        )
+    if mode == "regular" and not request.app.state.settings.time_budget_enabled:
         budget_minutes = 8
     # 决策（2026-09-02）：句子卡退出复习队列，只留单词卡。
     # 依据：词库 <200 词时 AI 例句含大量未学词（违反 i+1），整句提取负载淹没问题词；
@@ -133,6 +139,7 @@ def get_today(
         personal_estimates=request.app.state.settings.personal_estimates_enabled,
         mode=mode,
     )
+    queue["recovery_available"] &= request.app.state.settings.recovery_mode_enabled
     with_progress_label(queue["queue"])
     return {
         **queue,

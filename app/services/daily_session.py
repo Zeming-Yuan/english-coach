@@ -92,9 +92,7 @@ def build_daily_queue(
         mode=mode,
     )
     last_active = db.scalar(
-        select(func.max(ReviewEvent.learning_day)).where(
-            ReviewEvent.skipped.is_(False), ReviewEvent.source != "legacy"
-        )
+        select(func.max(ReviewEvent.learning_day)).where(ReviewEvent.skipped.is_(False))
     )
     inactive_days = (
         (date.fromisoformat(today) - date.fromisoformat(last_active)).days

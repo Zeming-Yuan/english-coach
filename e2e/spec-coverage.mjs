@@ -4,7 +4,20 @@ import {fileURLToPath} from "node:url";
 
 export const requirements = {
   EL19: [
+    "EL-19 long interruption caps fast personal estimates at five due words",
     "EL-19 finite recovery saves five due words and returns to regular learning",
+    "EL-19 2 day interruption with due words offers recovery honestly",
+    "EL-19 2 day interruption with no due words offers recovery honestly",
+    "EL-19 3 day interruption with due words offers recovery honestly",
+    "EL-19 3 day interruption with no due words offers recovery honestly",
+    "EL-19 explicit recovery selection preserves regular budget and zero fresh words",
+    "EL-19 pause and refresh preserve frozen recovery without inventing skipped work",
+    "EL-19 response-loss retains original pending identity through refresh",
+    "EL-19 commit-failure retains original pending identity through refresh",
+    "EL-19 frozen revision requires explicit recovery reload",
+    "EL-19 frozen deletion requires explicit recovery reload",
+    "EL-19 V3 restore clears stale browser round and retains saved recovery evidence",
+    "EL-19 functional rollback hides offer and completes an already frozen recovery",
   ],
   EL18: [
     "EL-18 new tab continuation discards the unanswered card partial timing",

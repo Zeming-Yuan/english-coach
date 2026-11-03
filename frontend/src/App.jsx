@@ -480,8 +480,8 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
         {!activeSession && data.recovery_available && <div className="home-round-notes" data-testid="recovery-offer">
           <p role="status">恢复学习：中断至少三个学习日，可先用约三分钟复习至多五张到期词，零新词；无需一次清空积压。</p>
           {data.plan?.mode === "recovery"
-            ? <button className="btn btn-ghost" onClick={() => setMode("regular")}>选择常规计划</button>
-            : <button className="btn btn-ghost" onClick={() => setMode("recovery")}>选择恢复学习</button>}
+            ? <button className="btn btn-ghost home-on-dark" onClick={() => setMode("regular")}>选择常规计划</button>
+            : <button className="btn btn-ghost home-on-dark" onClick={() => setMode("recovery")}>选择恢复学习</button>}
         </div>}
         {isEmpty ? <div className="home-welcome">
           <div><h2>欢迎来到 EnglishCoach</h2><p>添加想学的词，或先用 10 张已核对的入门词卡开始。</p></div>

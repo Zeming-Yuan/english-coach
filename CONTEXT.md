@@ -92,3 +92,6 @@
   不写活动、不改常规预算偏好、不重置 FSRS、不引入持久集合。口径见 ADR-0002。
 - 本票 HTTP/浏览器分支分别在 `tests/test_el19_return_to_learning_mode.py`、
   `e2e/el-19.spec.mjs`，纳入现有具名完整覆盖登记。
+
+- EL-19 回退开关为 `RECOVERY_MODE_ENABLED`：只关闭新推荐/预览，冻结轮次可继续；
+  三分钟恢复预算不受常规预算选择回退影响。证据见 `docs/verification/el19-return-to-learning-mode.md`。

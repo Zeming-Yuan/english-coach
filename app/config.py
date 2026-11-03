@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     learning_timezone: str = "Asia/Shanghai"
     personal_estimates_enabled: bool = True
     time_budget_enabled: bool = True
+    recovery_mode_enabled: bool = True
     delayed_recall_enabled: bool = True
     learning_advice_enabled: bool = True
     bounded_stories_enabled: bool = True
