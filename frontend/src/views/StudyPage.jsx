@@ -1,3 +1,4 @@
+import {useActiveTime} from "../hooks/useActiveTime.js";
 import UiIcon from "../components/UiIcon.jsx";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "../lib/api.js";
@@ -36,7 +37,16 @@ export default function StudyPage({ queue, session, recoveryVersion, onProgress,
   const [cnMode, setCnMode] = useState(() => storageGet("sentenceCnMode", "auto"));
   // 每日主队列复用固定会话 ID；专项自评使用独立 ID。
   const [sessionId] = useState(() => session?.id || crypto.randomUUID());
-  const attempt = useLearningAttempt("study");
+  const timedCard = queue[idx];
+  const captureDuration = useActiveTime(
+    timedCard ? `${sessionId}:${timedCard.id}:${idx}` : null,
+    timedCard?.duration_kind ?? ((timedCard?.review_count ?? 0) > 0 ? "review" : "new"),
+    !done && timedCard?.kind === "word" &&
+      (timedCard?.duration_kind != null || typeof timedCard?.review_count === "number") &&
+      !loadPending("study"),
+  );
+  const prepare = useCallback(target => target.payload.skipped ? target : captureDuration(target), [captureDuration]);
+  const attempt = useLearningAttempt("study", prepare);
 
   // A home recovery already in flight can finish after this screen mounts.
   // The daily session owns progress; discard the hook's stale pending copy only

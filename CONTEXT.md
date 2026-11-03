@@ -73,3 +73,13 @@
 - **任务首答**：该题第一次已确认处理的答案、未知或跳过；后续再练不替换它，帮助只增不减。
 - **流程完成 / 独立通过**：三轮已处理为流程完成；三轮首答全部规则认可、无帮助才独立通过。
 - **应用证据**：当前目标修订、明确覆盖且与教学例句及同任务模板不同的三轮独立通过依据；只解释指定任务。任务历史与词卡学习事件分离，不参与 FSRS 或连续学习日。
+
+## EL-18：个人主动用时估算
+
+- `practice_durations` 以真实作答 submission UUID 独立保存操作负担；计时、分类、
+  中位数、失败确认和功能回退口径见 ADR-0002，V3 校验/恢复边界见 ADR-0004。
+- 队列的 `duration_kind` 提供新词/复习依据；旧浏览器轮次缺失依据时不补造时长。
+  已开始轮次继续使用原冻结计划。`PERSONAL_ESTIMATES_ENABLED` 只控制未来估算。
+- 本票具名浏览器分支在 `e2e/el-18.spec.mjs`，HTTP/规则边界在
+  `tests/test_el18_personal_active_time_estimate.py`，执行证据见
+  `docs/verification/el18-personal-active-time-estimate.md`。

@@ -123,7 +123,14 @@ def get_today(
             card["progress_label"] = summaries[card["id"]]["progress_label"]
         return cards
 
-    queue = build_daily_queue(db, adaptive_limit, runtime, due_limit, budget_minutes)
+    queue = build_daily_queue(
+        db,
+        adaptive_limit,
+        runtime,
+        due_limit,
+        budget_minutes,
+        personal_estimates=request.app.state.settings.personal_estimates_enabled,
+    )
     with_progress_label(queue["queue"])
     return {
         **queue,

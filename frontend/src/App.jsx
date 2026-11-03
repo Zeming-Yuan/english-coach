@@ -4,6 +4,7 @@ import { storageGet, storageSet } from "./lib/utils.js";
 import { setTtsRate } from "./lib/tts.js";
 import { refreshPendingContacts } from "./lib/contacts.js";
 import { loadPending, sendPending, clearPending, savePending } from "./lib/learning.js";
+import DurationRecovery from "./components/DurationRecovery.jsx";
 import ScenePage from "./views/ScenePage.jsx";
 import StudyPage from "./views/StudyPage.jsx";
 import DailySessionPage from "./views/DailySessionPage.jsx";
@@ -262,6 +263,7 @@ export default function App() {
       {/* 内容区 */}
       <ErrorBoundary>
       <main className="stage">
+        <DurationRecovery />
         {view !== "study" && view !== "scene" && <PendingRecovery onConfirmed={(result, pending) => {
           confirmDailyCard(pending.payload, result);
           setQueueVersion((v) => v + 1);
@@ -467,7 +469,12 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
             const minutes = Number(event.target.value);
             storageSet("timeBudget", minutes); setBudget(minutes);
           }}>{[3, 8, 15].map(minutes => <option key={minutes} value={minutes}>约 {minutes} 分钟</option>)}</select></label>}
-          <p role="status" data-testid="time-budget-plan">预计约 {Math.ceil((plan?.estimated_seconds ?? 0) / 60)} 分钟 · 巩固至多 {plan?.reinforcement_limit ?? 3} 题。默认估算：复习 20 秒、新词 40 秒、巩固 20 秒，固定开销 15 秒；时间仅作估计，可保存后暂停。</p>
+          <p role="status" data-testid="time-budget-plan">预计约 {Math.ceil((plan?.estimated_seconds ?? 0) / 60)} 分钟 · 巩固至多 {plan?.reinforcement_limit ?? 3} 题。固定开销 15 秒；时间仅作估计，可保存后暂停。</p>
+          {plan?.may_exceed_budget && <p role="status">至少保留一张有效词卡，本轮可能超过所选时间，可保存后暂停。</p>}
+          <p role="status" data-testid="estimate-basis">{plan?.estimate_basis === "personal" ? "个人估算（部分类型可能仍用默认值）" : "默认估算"}：{[["review", "复习", 20], ["new", "新词", 40], ["reinforcement", "巩固", 20]].map(([kind, label, fallback]) => {
+            const value = plan?.estimates?.[kind];
+            return `${label} ${value?.seconds ?? fallback} 秒（${value?.basis === "personal" ? `个人，最近 ${value.sample_count} 条中位数` : `默认，有效样本 ${value?.sample_count ?? 0}/5，不足或记录不可靠`}）`;
+          }).join("；")}。后台、超过 30 秒无操作和保存等待不计主动时长；只校准未来计划。</p>
         </div>
         {isEmpty ? <div className="home-welcome">
           <div><h2>欢迎来到 EnglishCoach</h2><p>添加想学的词，或先用 10 张已核对的入门词卡开始。</p></div>

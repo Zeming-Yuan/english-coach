@@ -10,7 +10,13 @@ def test_el17_three_minute_plan_is_bounded(ec):
     assert data["plan"] == {
         "budget_minutes": 3,
         "estimated_seconds": 135,
+        "may_exceed_budget": False,
         "estimate_basis": "default",
+        "estimates": {
+            "review": {"seconds": 20, "basis": "default", "sample_count": 0},
+            "new": {"seconds": 40, "basis": "default", "sample_count": 0},
+            "reinforcement": {"seconds": 20, "basis": "default", "sample_count": 0},
+        },
         "mode": "regular",
         "reinforcement_limit": 2,
     }
