@@ -2,6 +2,7 @@
   "name": "englishcoach",
   "version": "2.0.0",
   "private": true,
+  "license": "SEE LICENSE IN ../LICENSE",
   "scripts": {
     "dev": "vite",
     "clean": "node -e \"const fs=require('fs'),p='../app/static/assets/';fs.readdirSync(p).filter(f=>f.startsWith('index-')&&f.endsWith('.js')).forEach(f=>fs.unlinkSync(p+f))\"",
