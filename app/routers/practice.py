@@ -86,7 +86,11 @@ def create(
             payload.story_id,
             str(payload.version_id) if payload.version_id else None,
             payload.scene_id,
-            request.app.state.settings.scenes_enabled,
+            request.app.state.settings.scenes_enabled
+            and (
+                payload.scene_id == "drinks"
+                or request.app.state.settings.scene_expansions_enabled
+            ),
         )
     except PermissionError as error:
         raise HTTPException(403, str(error))
@@ -170,24 +174,35 @@ def scenes(
     from sqlalchemy import select
 
     from app.models.practice import PracticeSession
-    from app.services.scenes import scene_preparation, scene_rules
+    from app.services.scenes import SCENE_RULE_FILES, scene_preparation, scene_rules
 
-    rules = scene_rules("drinks")
-    latest = db.scalar(
-        select(PracticeSession)
-        .where(PracticeSession.purpose == "scene")
-        .order_by(PracticeSession.created_at.desc(), PracticeSession.id.desc())
-        .limit(1)
-    )
-    return {
-        "enabled": request.app.state.settings.scenes_enabled,
-        "scenes": [
+    catalog = []
+    for scene_id in SCENE_RULE_FILES:
+        rules = scene_rules(scene_id)
+        latest = db.scalar(
+            select(PracticeSession)
+            .where(
+                PracticeSession.purpose == "scene", PracticeSession.scene_id == scene_id
+            )
+            .order_by(PracticeSession.created_at.desc(), PracticeSession.id.desc())
+            .limit(1)
+        )
+        catalog.append(
             {
-                "id": "drinks",
+                "id": scene_id,
                 "title": rules["title"],
+                "enabled": request.app.state.settings.scenes_enabled
+                and (
+                    scene_id == "drinks"
+                    or request.app.state.settings.scene_expansions_enabled
+                ),
+                "situation": rules.get("situation", "向店员购买一杯水。"),
                 "task_goal": [t["goal"] for t in rules["tasks"]],
-                "preparation": scene_preparation(db, runtime),
+                "preparation": scene_preparation(db, runtime, rules),
                 "session_id": latest.session_id if latest else None,
             }
-        ],
+        )
+    return {
+        "enabled": request.app.state.settings.scenes_enabled,
+        "scenes": catalog,
     }

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from datetime import UTC
 from pathlib import Path
 from uuid import uuid4
@@ -23,17 +24,89 @@ from app.services.practice import (
 )
 from app.services.write_transaction import run_write
 
+SCENE_RULE_FILES = {
+    "drinks": {"drinks-v1": "drinks.json"},
+    "introduction": {
+        "introduction-v1": "introduction-v1.json",
+        "introduction-v2": "introduction-v2.json",
+        "introduction-v3": "introduction-v3.json",
+        "introduction-v4": "introduction.json",
+    },
+    "directions": {"directions-v1": "directions.json"},
+}
 
-def scene_rules(scene_id: str | None) -> dict:
-    if scene_id != "drinks":
+
+def scene_rules(scene_id: str | None, rule_version: str | None = None) -> dict:
+    """Latest registered version by default; old material stays registered for V3."""
+    versions = SCENE_RULE_FILES.get(scene_id or "")
+    if not versions:
         raise PracticeNotFoundError("场景不存在")
+    version = rule_version or next(reversed(versions))
+    if version not in versions:
+        raise PracticeNotFoundError("场景规则版本未登记")
     data = json.loads(
-        (Path(__file__).parents[1] / "data/scenes/drinks.json").read_text()
+        (Path(__file__).parents[1] / "data/scenes" / versions[version]).read_text()
     )
+    _validate_material(data, scene_id, version)
     data["content_hash"] = hashlib.sha256(
         json.dumps(data, sort_keys=True).encode()
     ).hexdigest()
     return data
+
+
+def _validate_material(data: dict, scene_id: str | None, version: str) -> None:
+    """Reject broken distributed rules before they can create persistent tasks."""
+    try:
+        tasks = data["tasks"]
+        valid = (
+            data["scene_id"] == scene_id
+            and data["rule_version"] == version
+            and type(data["content_revision"]) is int
+            and data["content_revision"] > 0
+            and len(tasks) == 3
+            and len({t["task_key"] for t in tasks}) == 3
+        )
+        for task in tasks:
+            valid = valid and all(
+                isinstance(task[field], str) and task[field].strip()
+                for field in (
+                    "task_key",
+                    "goal",
+                    "role",
+                    "hint",
+                    "standard",
+                    "correction",
+                )
+            )
+            valid = (
+                valid
+                and isinstance(task["target_words"], list)
+                and all(
+                    isinstance(word, str) and re.fullmatch(r"[a-z]+", word)
+                    for word in task["target_words"]
+                )
+            )
+            if not task["patterns"] or not isinstance(task["rejected"], list):
+                valid = False
+            for pattern in task["patterns"]:
+                compiled = re.compile(pattern)
+                if "slot" in task and "slot" not in compiled.groupindex:
+                    valid = False
+            if (
+                judge(task, task["standard"]) != "accepted"
+                or judge(task, task["role"]) == "accepted"
+                or normalize_answer(task["standard"]) in normalize_answer(task["role"])
+            ):
+                valid = False
+        if not valid:
+            raise ValueError("场景材料身份、三个任务、目标映射或模板无效")
+    except (KeyError, TypeError, re.error) as error:
+        raise ValueError("场景材料结构或表达规则无效") from error
+
+
+def scene_tasks(scene_id: str) -> list[str]:
+    """Return the registered task keys; unknown scenes use the shared 404 error."""
+    return [task["task_key"] for task in scene_rules(scene_id)["tasks"]]
 
 
 def scene_status(rows: list[dict]) -> str:
@@ -205,16 +278,22 @@ def scene_payload(
     except (PracticeNotFoundError, PracticeStaleError) as error:
         message = str(error)
     return {
-        "application_verified": (runtime is None or runtime.scene_evidence_enabled)
+        "application_verified": (
+            runtime is None or _scene_evidence_enabled(runtime, practice.scene_id)
+        )
         and message is None
         and scene_status(out) == "independent"
         and any(t["novel"] for i in out for t in i.get("target_mapping", [])),
         "message": message,
         "can_continue": message is None,
+        "creation_enabled": runtime is None
+        or _scene_evidence_enabled(runtime, practice.scene_id),
         "id": practice.session_id,
         "purpose": "scene",
         "scene_id": practice.scene_id,
         "title": rules["title"],
+        "situation": rules.get("situation", "向店员购买一杯水。"),
+        "speaker": rules.get("speaker", "店员"),
         "task_goal": [t["goal"] for t in rules["tasks"]],
         "rule_version": practice.rule_version,
         "content_revision": rules["content_revision"],
@@ -223,7 +302,7 @@ def scene_payload(
         "lifecycle": practice.status,
         "items": out,
         "counts": {"total": len(items), "processed": sum(i["processed"] for i in out)},
-        "preparation": scene_preparation(db, runtime or Runtime(SystemClock())),
+        "preparation": scene_preparation(db, runtime or Runtime(SystemClock()), rules),
     }
 
 
@@ -241,8 +320,20 @@ def judge(task: dict, answer: str | None, skipped: bool = False) -> str:
     if skipped:
         return "unknown"
     text = normalize_answer(answer)
-    if any(re.fullmatch(pattern, text) for pattern in task["patterns"]):
-        return "accepted"
+    for pattern in task["patterns"]:
+        match = re.fullmatch(pattern, text)
+        if match:
+            if "slot" in task:
+                slot = match.group("slot")
+                words = set(slot.split())
+                if task["slot"].get("check_grammar_tokens"):
+                    # Versioned: historical rules retain their original verdict.
+                    if re.search(r"['’ʼ＇](?:m|re|ve|ll|d|s|t)\b", slot):
+                        continue
+                    words.update(re.findall(r"[^\W\d_]+", slot))
+                if words & set(task["slot"]["excluded_words"]):
+                    continue
+            return "accepted"
     return "rejected" if text in task["rejected"] else "unknown"
 
 
@@ -380,7 +471,7 @@ def submit_scene(
             "novel": novel_task_context(
                 task, payload.answer, target["teaching_examples"] + examples
             ),
-            "context": "drinks:water-order",
+            "context": rules.get("context", "drinks:water-order"),
         }
         for target in (item.question or {})["target_mapping"]
     ]
@@ -448,7 +539,7 @@ def application_dimensions(db: Session, revisions: dict, runtime: Runtime) -> di
             first_by_session.setdefault(attempt.session_id, []).append(attempt)
     result = {}
     for card_id, revision in revisions.items():
-        relevant = []
+        by_context = {}
         for row in attempts:
             if row.attempt_id not in first_ids:
                 continue
@@ -479,50 +570,95 @@ def application_dimensions(db: Session, revisions: dict, runtime: Runtime) -> di
                 row.verdict == "rejected" and not row.assistance and not row.skipped
             )
             if success or failure:
-                relevant.append((row, success))
-        successes = [row for row, success in relevant if success]
-        last_at = successes[-1].occurred_at.replace(tzinfo=UTC) if successes else None
-        latest_practice = practices[relevant[-1][0].session_id] if relevant else None
-        historical = (
-            not runtime.scene_evidence_enabled
-            or latest_practice is not None
-            and (latest_practice.scene_snapshot or {}).get("content_hash")
-            != scene_rules("drinks")["content_hash"]
+                practice = practices[row.session_id]
+                rules = practice.scene_snapshot or {}
+                key = (
+                    practice.scene_id,
+                    practice.rule_version,
+                    rules["content_hash"],
+                    targets[0]["context"],
+                )
+                by_context.setdefault(key, []).append((row, success))
+        contexts = []
+        for (scene_id, version, content_hash, context), relevant in by_context.items():
+            successes = [row for row, success in relevant if success]
+            last_at = (
+                successes[-1].occurred_at.replace(tzinfo=UTC) if successes else None
+            )
+            historical = (
+                not _scene_evidence_enabled(runtime, scene_id)
+                or content_hash != scene_rules(scene_id)["content_hash"]
+            )
+            if historical:
+                status = "stale"
+            elif not relevant[-1][1]:
+                status = "weak"
+            elif (
+                last_at
+                and (runtime.clock.now().astimezone(UTC) - last_at).total_seconds()
+                > 30 * 86400
+            ):
+                status = "stale"
+            else:
+                status = "verified"
+            contexts.append(
+                {
+                    "scene_id": scene_id,
+                    "title": (
+                        practices[relevant[-1][0].session_id].scene_snapshot or {}
+                    )["title"],
+                    "context": context,
+                    "rule_version": version,
+                    "content_hash": content_hash,
+                    **_application_summary(status, len(relevant), last_at),
+                }
+            )
+        # An observed failure belongs to its own context; it cannot erase a
+        # different context's success or promote that failure into success.
+        status = next(
+            (
+                status
+                for status in ("verified", "weak", "stale")
+                if any(c["status"] == status for c in contexts)
+            ),
+            "insufficient",
         )
-        if not relevant:
-            status = "insufficient"
-        elif historical:
-            status = "stale"
-        elif not relevant[-1][1]:
-            status = "weak"
-        elif (
-            last_at
-            and (runtime.clock.now().astimezone(UTC) - last_at).total_seconds()
-            > 30 * 86400
-        ):
-            status = "stale"
-        else:
-            status = "verified"
+        dates = [c["last_verified_at"] for c in contexts if c["last_verified_at"]]
         result[card_id] = {
-            "status": status,
-            "count": len(relevant),
-            "last_verified_at": last_at.isoformat() if last_at else None,
-            "label": {
-                "verified": "指定语境应用已有证据",
-                "weak": "指定语境仍需巩固",
-                "stale": "历史应用证据，待复测",
-                "insufficient": "迁移能力尚未验证",
-            }[status],
+            **_application_summary(status, sum(c["count"] for c in contexts), None),
+            "last_verified_at": max(dates) if dates else None,
+            "contexts": contexts,
         }
     return result
 
 
-def scene_preparation(db: Session, runtime: Runtime) -> dict:
+def _scene_evidence_enabled(runtime: Runtime, scene_id: str | None) -> bool:
+    return runtime.scene_evidence_enabled and (
+        scene_id == "drinks" or runtime.scene_expansions_enabled
+    )
+
+
+def _application_summary(status: str, count: int, last_at) -> dict:
+    return {
+        "status": status,
+        "count": count,
+        "last_verified_at": last_at.isoformat() if last_at else None,
+        "label": {
+            "verified": "指定语境应用已有证据",
+            "weak": "指定语境仍需巩固",
+            "stale": "历史应用证据，待复测",
+            "insufficient": "迁移能力尚未验证",
+        }[status],
+    }
+
+
+def scene_preparation(db: Session, runtime: Runtime, rules: dict | None = None) -> dict:
     from app.services.learning_evidence import bulk_evidence_summaries
 
-    words = [
-        word for task in scene_rules("drinks")["tasks"] for word in task["target_words"]
-    ]
+    rules = rules or scene_rules("drinks")
+    words = list(
+        dict.fromkeys(word for task in rules["tasks"] for word in task["target_words"])
+    )
     cards = list(
         db.scalars(
             select(Card)

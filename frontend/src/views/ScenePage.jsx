@@ -5,13 +5,13 @@ import {recordContact, recordVisibleCards} from '../lib/contacts.js';
 import {speak} from '../lib/tts.js';
 import {useLearningAttempt} from '../hooks/useLearningAttempt.js';
 
-const CREATION_SCOPE = 'scene:drinks';
+const CREATION_SCOPE = 'scene:create';
 const CONTEXT_PREFIX = 'ec.context.';
 const verdictLabel = item => item.skipped ? '显式跳过' : ({accepted: '规则认可', rejected: '规则明确不满足', unknown: '未判定（未收录或有歧义）'}[item.verdict] || '待作答');
 
 function Preparation({preparation}) {
   if (!preparation) return null;
-  return <div className="lesson-progress" aria-label="词汇准备状态">
+  return <div className="lesson-progress scene-preparation" aria-label="词汇准备状态">
     <p>{preparation.message}</p>
     {preparation.targets.map(target => <p key={target.revision.identity}>
       {target.meaning}：{target.ready ? '独立回忆已有证据' : '暂无独立回忆依据'}
@@ -44,7 +44,7 @@ function Standard({text}) {
     }).catch(e => {if (live) setError('接触依据尚未确认：' + e.message);});
     return () => {live = false;};
   }, [text, retry]);
-  return <div className="quiz-feedback">
+  return <div className="quiz-feedback scene-standard">
     <p>标准表达（本轮按辅助记录）：{text}</p>
     <button className="btn btn-ghost btn-small" onClick={async () => {
       try {
@@ -62,7 +62,7 @@ function Standard({text}) {
   </div>;
 }
 
-function SceneRun({initial, onRestart, onExit}) {
+function SceneRun({initial, creationEnabled, onRestart, onExit}) {
   const scope = `scene:${initial.id}`;
   const restored = useRef(loadPending(scope));
   const [run, setRun] = useState(initial);
@@ -102,28 +102,29 @@ function SceneRun({initial, onRestart, onExit}) {
     } catch (e) {setError('帮助尚未确认保存：' + e.message);}
     finally {setHelpBusy(false);}
   };
-  return <section className="view" data-testid="scene-session">
-    <button className="btn btn-ghost btn-small" onClick={onExit}>返回场景列表</button>
-    <h2 className="page-title">{run.title} · 三轮文字任务</h2>
-    <p>已处理 {run.counts.processed}/3 · 规则 {run.rule_version} · 内容修订 {run.content_revision}</p>
+  return <section className="view scene-page scene-run" data-testid="scene-session">
+    <button className="btn btn-ghost btn-small scene-back" onClick={onExit}>返回场景列表</button>
+    <h2 className="page-title scene-title">{run.title} · 三轮文字任务</h2>
+    <p className="scene-context">{run.situation}</p>
+    <p className="scene-meta">已处理 {run.counts.processed}/3 · 规则 {run.rule_version} · 内容修订 {run.content_revision}</p>
     {run.message && <p role="alert">{run.message}</p>}
     {error && <p role="alert">{error}</p>}
     {index === 3 ? <>
-      <div className="lesson-progress" role="status">
+      <div className="lesson-progress scene-result" data-status={run.status} role="status">
         <h3>本次流程完成</h3>
-        <p>{run.status === 'independent' ? '本场景独立通过' : '本场景尚未独立通过'}</p>
-        <p>三轮首答全部规则认可且无帮助，才算独立通过；即时再练不替换首答。</p>
-        <p>{run.application_verified ? '指定语境应用已有证据（仅对应列明的目标修订）' : '迁移能力尚未验证；缺少目标映射或照抄教学例句不证明新情境。'}</p>
-        {run.items.map(i => <p key={i.id}>{i.position}. {i.prompt}：{verdictLabel(i)}{i.assistance.length ? ' · 辅助' : ''} · {i.answer || '未作答'}</p>)}
+        <p className="scene-outcome">{run.status === 'independent' ? '本场景独立通过' : '本场景尚未独立通过'}</p>
+        <p className="scene-result-note">三轮首答全部规则认可且无帮助，才算独立通过；即时再练不替换首答。</p>
+        <p className="scene-evidence">{run.application_verified ? '指定语境应用已有证据（仅对应列明的目标修订）' : '迁移能力尚未验证；缺少目标映射或照抄教学例句不证明新情境。'}</p>
+        {run.items.map(i => <p className="scene-answer-row" data-verdict={i.verdict} key={i.id}>{i.position}. {i.prompt}：{verdictLabel(i)}{i.assistance.length ? ' · 辅助' : ''} · {i.answer || '未作答'}</p>)}
       </div>
-      <button className="btn btn-primary" onClick={onRestart}>新开一轮</button>
+      {creationEnabled && <button className="btn btn-primary scene-restart" onClick={onRestart}>新开一轮</button>}
     </> : <>
-      <p>第 {index + 1}/3 轮 · 目标：{item.prompt}</p>
-      <p className="lesson-progress">店员：{item.role}</p>
-      {!!item.assistance.length && <p role="status">本轮已使用帮助，持续按辅助记录。</p>}
-      {item.hint && <p role="status">提示：{item.hint}</p>}
+      <p className="scene-turn">第 {index + 1}/3 轮 · 目标：{item.prompt}</p>
+      <p className="lesson-progress scene-role">{run.speaker || '店员'}：{item.role}</p>
+      {!!item.assistance.length && <p className="scene-assistance" role="status">本轮已使用帮助，持续按辅助记录。</p>}
+      {item.hint && <p className="scene-hint" role="status">提示：{item.hint}</p>}
       {item.standard && <Standard text={item.standard} />}
-      {feedback ? <div className="quiz-feedback" role="status">
+      {feedback ? <div className="quiz-feedback scene-feedback" data-verdict={feedback.verdict} role="status">
         <p>已保存 · {verdictLabel(feedback)}{feedback.first_response === false ? ' · 再练结果，首答不变' : ''}</p>
         <p>你的答案：{answer || '显式跳过'}</p>
         {run.items[index].correction && <p>{run.items[index].correction}</p>}
@@ -132,7 +133,7 @@ function SceneRun({initial, onRestart, onExit}) {
           {run.can_continue && <button className="btn btn-ghost" onClick={() => setFeedback(null)}>再练本轮</button>}
         </div>
       </div> : <>
-        <label>你的答案<input className="spelling-input" aria-label="你的答案" value={answer} maxLength={2000} disabled={blocked || !run.can_continue} onChange={e => setAnswer(e.target.value)} /></label>
+        <label className="scene-answer-field">你的答案<input className="spelling-input" aria-label="你的答案" value={answer} maxLength={2000} disabled={blocked || !run.can_continue} onChange={e => setAnswer(e.target.value)} /></label>
         <div className="save-state-actions">
           <button className="btn btn-primary" disabled={blocked || !run.can_continue} onClick={() => submit(false)}>提交答案</button>
           <button className="btn btn-ghost" disabled={blocked || !run.can_continue} onClick={() => submit(true)}>跳过本轮</button>
@@ -151,12 +152,12 @@ function SceneRun({initial, onRestart, onExit}) {
         }}>放弃这条待确认</button>
       </div>}
     </>}
-    {!run.can_continue && <button className="btn btn-primary" disabled={blocked} onClick={onRestart}>新开一轮</button>}
+    {!run.can_continue && creationEnabled && <button className="btn btn-primary" disabled={blocked} onClick={onRestart}>新开一轮</button>}
   </section>;
 }
 
 export default function ScenePage({onExit}) {
-  const pending = useRef(loadPending(CREATION_SCOPE, CONTEXT_PREFIX)?.payload || null);
+  const pending = useRef((loadPending(CREATION_SCOPE, CONTEXT_PREFIX) || loadPending('scene:drinks', CONTEXT_PREFIX))?.payload || null);
   const [catalog, setCatalog] = useState(null);
   const [run, setRun] = useState(null);
   const [error, setError] = useState('');
@@ -168,40 +169,41 @@ export default function ScenePage({onExit}) {
     api('/api/scenes').then(data => {if (live.current) setCatalog(data);}).catch(e => {if (live.current) setError(e.message);});
     return () => {live.current = false;};
   }, []);
-  const start = async (fresh = false) => {
+  const start = async (sceneId, fresh = false) => {
     if (busy) return;
     setBusy(true); setError('');
     try {
-      const existing = catalog?.scenes[0].session_id;
+      const existing = catalog?.scenes.find(s => s.id === sceneId)?.session_id;
       let saved;
       if (existing && !fresh && !pending.current) saved = await api(`/api/practice-sessions/${existing}`);
       else {
-        const body = pending.current || {id: crypto.randomUUID(), purpose: 'scene', scene_id: 'drinks'};
+        const body = pending.current || {id: crypto.randomUUID(), purpose: 'scene', scene_id: sceneId};
         pending.current = body;
         if (!savePending(CREATION_SCOPE, {path: '/api/practice-sessions', payload: body}, CONTEXT_PREFIX)) setNote('浏览器未保存轮次标识；刷新后请核对已存场景。');
         saved = await api('/api/practice-sessions', {method: 'POST', body: JSON.stringify(body)});
-        clearPending(CREATION_SCOPE, CONTEXT_PREFIX); pending.current = null;
+        clearPending(CREATION_SCOPE, CONTEXT_PREFIX); clearPending('scene:drinks', CONTEXT_PREFIX); pending.current = null;
       }
-      if (live.current) {setRun(saved); setCatalog(data => ({...data, scenes: data.scenes.map(s => ({...s, session_id: saved.id}))}));}
+      if (live.current) {setRun(saved); setCatalog(data => ({...data, scenes: data.scenes.map(s => s.id === saved.scene_id ? {...s, session_id: saved.id} : s)}));}
     } catch (e) {if (live.current) setError('场景尚未确认保存：' + e.message);}
     finally {if (live.current) setBusy(false);}
   };
-  if (run) return <SceneRun key={run.id} initial={run} onRestart={() => start(true)} onExit={() => setRun(null)} />;
-  return <section className="view">
-    <button className="btn btn-ghost btn-small" onClick={onExit}>返回队列</button>
-    <h2 className="page-title">场景练习</h2>
+  if (run) return <SceneRun key={run.id} initial={run} creationEnabled={catalog?.scenes.find(s => s.id === run.scene_id)?.enabled === true} onRestart={() => start(run.scene_id, true)} onExit={() => setRun(null)} />;
+  return <section className="view scene-page scene-catalog">
+    <button className="btn btn-ghost btn-small scene-back" onClick={onExit}>返回队列</button>
+    <h2 className="page-title scene-title">场景练习</h2>
     {error && <p role="alert">{error}</p>}
     {note && <p role="note">{note}</p>}
     {busy && <p role="status">正在确认保存…</p>}
-    {catalog?.scenes.map(scene => <article key={scene.id} className="lesson-progress">
+    {catalog?.scenes.map(scene => <article key={scene.id} className="lesson-progress scene-card">
       <h3>{scene.title} · 约三轮 · 文字输入</h3>
-      {scene.task_goal.map(goal => <p key={goal}>{goal}</p>)}
+      <p className="scene-card-context">{scene.situation}</p>
+      {scene.task_goal.map(goal => <p className="scene-card-goal" key={goal}>{goal}</p>)}
       <Preparation preparation={scene.preparation} />
-      {(catalog.enabled || scene.session_id) && <button className="btn btn-primary" disabled={busy || !!pending.current} onClick={() => start()}>买饮品</button>}
+      {(scene.enabled || scene.session_id) && <button className="btn btn-primary" disabled={busy || !!pending.current} onClick={() => start(scene.id)}>{scene.title}</button>}
     </article>)}
     {pending.current && <div className="save-state-actions">
-      <button className="btn btn-primary" disabled={busy} onClick={() => start()}>继续确认保存</button>
-      <button className="btn btn-ghost" disabled={busy} onClick={async () => {clearPending(CREATION_SCOPE, CONTEXT_PREFIX); pending.current = null; setError(''); setCatalog(await api('/api/scenes'));}}>放弃待确认创建</button>
+      <button className="btn btn-primary" disabled={busy} onClick={() => start(pending.current.scene_id)}>继续确认保存</button>
+      <button className="btn btn-ghost" disabled={busy} onClick={async () => {clearPending(CREATION_SCOPE, CONTEXT_PREFIX); clearPending('scene:drinks', CONTEXT_PREFIX); pending.current = null; setError(''); setCatalog(await api('/api/scenes'));}}>放弃待确认创建</button>
     </div>}
   </section>;
 }

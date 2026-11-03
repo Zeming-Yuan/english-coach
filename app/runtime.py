@@ -39,6 +39,7 @@ class Runtime:
     ):
         ZoneInfo(learning_timezone)  # 无效 IANA 名称直接失败，不以错误时区静默运行
         self.scene_evidence_enabled = True
+        self.scene_expansions_enabled = True
         self.clock = clock
         self.learning_timezone = learning_timezone
         # 题目上下文签名密钥：默认启动随机生成，测试可注入固定值。

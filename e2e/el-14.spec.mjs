@@ -204,7 +204,7 @@ test('EL-14 preparation keeps English answers hidden before starting', async ({a
   await app.seedCards([{word: 'water', meaning: '水'}]);
   await page.goto(app.baseURL);
   await page.getByRole('button', {name: '场景练习', exact: true}).click();
-  const preparation = page.getByLabel('词汇准备状态');
+  const preparation = page.locator('article').filter({has: page.getByRole('heading', {name: '买饮品 · 约三轮 · 文字输入', exact: true})}).getByLabel('词汇准备状态');
   await expect(preparation).toContainText('水');
   await expect(preparation).not.toContainText('water');
   await expect(preparation).not.toContainText('one');
