@@ -2,6 +2,8 @@
 
 from uuid import uuid4
 
+import pytest
+
 
 def saved_scene_item(ec, answer="Can I have water, please?", scene_id="drinks"):
     response = ec.client.post(
@@ -148,7 +150,10 @@ def test_el16_every_scene_template_can_roundtrip_without_leaking_standard(ec):
         assert preview.status_code == 200, preview.text
 
 
-def test_el16_restore_discards_a_late_response_even_for_the_same_snapshot(ec):
+@pytest.mark.parametrize("via_empty", [False, True])
+def test_el16_restore_discards_a_late_response_even_for_the_same_snapshot(
+    ec, ec_factory, via_empty
+):
     from concurrent.futures import ThreadPoolExecutor
     from threading import Event
 
@@ -172,6 +177,9 @@ def test_el16_restore_discards_a_late_response_even_for_the_same_snapshot(ec):
         future = pool.submit(request_feedback, ec, run, item_id)
         try:
             assert started.wait(10)
+            if via_empty:
+                empty = ec_factory().client.get("/api/export/backup").json()
+                restore(ec, empty)
             restore(ec, backup)
         finally:
             release.set()
@@ -181,3 +189,38 @@ def test_el16_restore_discards_a_late_response_even_for_the_same_snapshot(ec):
     assert resumed["counts"]["processed"] == 1
     assert "feedback" not in resumed["items"][0]
     assert ec.snapshot()["extensions"]["scene_feedback"] == []
+
+
+def test_el16_epoch_upgrade_keeps_preceding_slice_data_and_old_backup_reads(ec):
+    from alembic.config import Config
+
+    from alembic import command
+    from tests.support.ec_env import ROOT
+
+    run, item_id = saved_scene_item(ec)
+    ec.rebuild_legacy_database(
+        "el16_scene_feedback",
+        preserve_tables=(
+            "practice_sessions",
+            "practice_items",
+            "scene_attempts",
+            "scene_feedback",
+        ),
+    )
+    config = Config(str(ROOT / "alembic.ini"))
+    config.set_main_option("sqlalchemy.url", ec.database_url)
+    command.upgrade(config, "head")
+    response = request_feedback(ec, run, item_id)
+    assert response.status_code == 200, response.text
+    backup = ec.client.get("/api/export/backup").json()
+    assert backup["extensions"]["practice_sessions"][0]["feedback_epoch"]
+    assert (
+        backup["extensions"]["scene_attempts"][0]["answer"]
+        == "Can I have water, please?"
+    )
+    # Earlier V3 has no local ownership token; restore must create a new one.
+    del backup["extensions"]["practice_sessions"][0]["feedback_epoch"]
+    from tests.test_el11_bounded_personalized_story import restore
+
+    restore(ec, backup)
+    assert request_feedback(ec, run, item_id).json() == response.json()

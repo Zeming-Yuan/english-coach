@@ -12,7 +12,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal, NoReturn, cast
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from pydantic import BaseModel, Field, ValidationError, field_validator
 
@@ -255,6 +255,7 @@ class FullPracticeSession(FullRow):
     version_id: str | None = None
     scene_id: str | None = None
     scene_snapshot: dict | None = None
+    feedback_epoch: str | None = None
     lesson_id: int | None = Field(default=None, gt=0, strict=True)
     window: Literal["day", "week"] | None = None
     pending_contact_ids: list[str] = Field(default_factory=list)
@@ -263,9 +264,11 @@ class FullPracticeSession(FullRow):
     created_at: datetime = Field(strict=False)
     completed_at: datetime | None = Field(default=None, strict=False)
 
-    @field_validator("session_id")
+    @field_validator("session_id", "feedback_epoch")
     @classmethod
-    def _uuid(cls, value: str) -> str:
+    def _uuid(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
         try:
             return str(UUID(value))
         except (ValueError, TypeError) as error:
@@ -315,6 +318,8 @@ class FullPracticeItem(FullRow):
 def _remap_practice_session(row: dict, mapping: dict[str, dict[int, int]]) -> dict:
     return {
         **row,
+        # Operational ownership, not a learning identity. Never revive old work.
+        "feedback_epoch": str(uuid4()) if row["purpose"] == "scene" else None,
         "lesson_id": mapping["lessons"][row["lesson_id"]]
         if row["lesson_id"] is not None
         else None,

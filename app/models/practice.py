@@ -39,6 +39,8 @@ class PracticeSession(Base):
     )
     scene_id: Mapped[str | None] = mapped_column(String(30), nullable=True)
     scene_snapshot: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    # Local ownership token; full restore always issues a fresh one.
+    feedback_epoch: Mapped[str | None] = mapped_column(String(36), nullable=True)
     # active | completed | unavailable
     status: Mapped[str] = mapped_column(String(20), nullable=False)
     rule_version: Mapped[str] = mapped_column(

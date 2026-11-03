@@ -174,6 +174,7 @@ def create_scene(
             purpose="scene",
             scene_id=scene_id,
             scene_snapshot=rules,
+            feedback_epoch=str(uuid4()),
             status="active",
             rule_version=rules["rule_version"],
             pending_contact_ids=[],

@@ -145,9 +145,9 @@ def _context(db: Session, session_id: str, item_id: str) -> dict:
     rules = practice.scene_snapshot
     task = rules["tasks"][item.position - 1]
     return {
-        # Full restore remaps local rows even when it retains business UUIDs.
-        # This fence stays local and is never sent to the external model.
-        "entity_ids": (practice.id, item.id, answer.id),
+        # Regenerated on every restore, including empty-then-original restore.
+        # This local ownership token never goes to the external model.
+        "feedback_epoch": practice.feedback_epoch,
         "attempt_id": answer.attempt_id,
         "fingerprint": answer.fingerprint,
         "rule_version": practice.rule_version,
