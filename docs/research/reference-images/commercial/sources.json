@@ -1,0 +1,53 @@
+[
+  {
+    "path": "docs/research/reference-images/commercial/readlang-library.png",
+    "url": "https://readlang.com/content/landingPages/read.png"
+  },
+  {
+    "path": "docs/research/reference-images/commercial/bbdc-store-1.jpg",
+    "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/78/ff/25/78ff2524-075f-e7ea-2261-2e5530ec679d/d58738d0-2eea-4113-9144-00e461352fcc_iPhone_8_Plus-5.0_U622a_U56fe-2.jpg/392x696bb.jpg"
+  },
+  {
+    "path": "docs/research/reference-images/commercial/bbdc-store-2.jpg",
+    "url": "https://is1-ssl.mzstatic.com/image/thumb/Purple211/v4/d9/a9/8f/d9a98fe0-e954-e6b3-90ed-adfe3093b3b0/17745bb1-502f-41e3-a6bc-f1c66be5a970_iPhone_8_Plus-5.0_U622a_U56fe-3.jpg/392x696bb.jpg"
+  },
+  {
+    "path": "docs/research/reference-images/commercial/lingvist-card.png",
+    "url": "https://lingvist.io/assets/images/home/learn-more/vocabulary-mobile-3.png"
+  },
+  {
+    "path": "docs/research/reference-images/commercial/lingq-library.png",
+    "url": "https://static.lingq.com/static/img/press-assets/desktop-library.jpg",
+    "kind": "official press screenshot, captured without altering source"
+  },
+  {
+    "path": "docs/research/reference-images/commercial/lingq-reader.png",
+    "url": "https://static.lingq.com/static/img/press-assets/desktop-reader.jpg",
+    "kind": "official press screenshot, captured without altering source"
+  },
+  {
+    "path": "docs/research/reference-images/commercial/lingvist-language-list.png",
+    "url": "https://lingvist.io/assets/images/home/slider/01-2.png",
+    "kind": "official mobile image"
+  },
+  {
+    "path": "docs/research/reference-images/commercial/lingvist-vocabulary.png",
+    "url": "https://lingvist.io/assets/images/home/slider/03-2.png",
+    "kind": "official mobile image"
+  },
+  {
+    "path": "docs/research/reference-images/commercial/lingvist-practice.png",
+    "url": "https://lingvist.io/assets/images/home/slider/02-2.png",
+    "kind": "official mobile image"
+  },
+  {
+    "path": "docs/research/reference-images/commercial/readlang-discover-live.png",
+    "url": "https://readlang.com/es/library",
+    "kind": "live public trial screenshot,1440x960,2026-11-02"
+  },
+  {
+    "path": "docs/research/reference-images/commercial/readlang-reader-official.png",
+    "url": "https://readlang.com/content/landingPages/step1-v2.svg",
+    "kind": "official feature illustration, not full app screenshot"
+  }
+]

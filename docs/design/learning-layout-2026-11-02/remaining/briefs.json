@@ -1,0 +1,116 @@
+{
+  "date": "2026-11-02",
+  "scope": "其他页面按已确认三页配套设计；不是新风格选项",
+  "approvedReference": "../home-proposal.png",
+  "common": "Create a realistic production quality UI SCREEN for existing EnglishCoach Chinese learning app, not a marketing poster. Target1488x1056 desktop screenshot, complete page, no browser/device frame, currentdate2026-11-02 Monday. Reference1 is the NEW USER APPROVED HOME design: faithfully carry its color, material, fine dividers, sober weights, density and clearcontenthierarchy to this different product page. Reference2 is existing actual page for functionalcontext, NOT its weak layout. Do not invent features merelytofillspace. Useful sample data are illustrative, no fabricatedrealuserclaims.\nWarm palette exact content#FCFAF6, sidebar#F1EEE8, inkandprimary#302E2B, muted#736C63, separators#E5DFD5, minor terracotta#A26243, activetint#E6E0D7. No blue/teal/purple/neon, gradients, glass, heavyshadow, haze ortexture. NotoSansSCforChineseUI (readable15-16secondary14), TinosforEnglishlearningcontent. Headings28-30, labelsvscontentclear. Fine grouping byalignmentandrules, not everyblockcard/cardinsidecard.\nNormalworkspace: fixedleftsidebar244px, topbar64, contentpadding36. BrandEnglishCoach smallbookicon. Nav今天/课程/单词本/故事/学习记录, bottom添加单词/设置与备份. Choosecorrectactiveitemforthescreen. Focuspracticepages: no sidebar, slimtopbarwithback, tasknameandconfirmedprogress, carefullyplacedmaincontent, no marketinghero. Focus isnot emptiness: compose workarea at y170–600 instead oftinyinput inhugeblankpage. Never add answerrevealingstatsorwords.\nPreserve realcontracts: generated/opened/viewed/checkedaredifferent; no masterypercent. Independentanswershiddenuntilsubmission, no fullanswer/IPA/lengthclues; nofake success before confirmed. No unavailable timers, scores, streakawards, recommendations, subscriptions, tutorchat, newcontrols. Datesderivefromcurrentanchor. No implementationnotesinsideUI. One coherent screen, no collage.",
+  "pages": [
+    {
+      "id": "words",
+      "title": "单词本",
+      "brief": "RECOMPOSE: Treat vocabulary as a useful compact catalog not tall dictionary rows. Header title, actual sample count10, search, word/sentence switch and add action. Table-like open list columns 单词 / 中文释义 / 回忆依据 / 发音. 9 visible words apple,book,coffee,family,garden,morning,rain,teacher,travel; rowheight64–72, word24,IPA12 only where available. Alphabet tiny leftgroupmarkers no separate huge header row for every letter. Fine separators and subtle hover. Actual meanings and statuses, no rightsidebar or arbitrary filters. Use width fully, no huge gaps. Same material and density as approved home.",
+      "actual": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/words-desktop.png"
+    },
+    {
+      "id": "word-detail",
+      "title": "词条详情",
+      "brief": "RECOMPOSE into precise useful wordentry. Main2/3 dictionary + secondary1/3 learning record. apple heading56 max not80, IPA and pronunciation, meaning苹果, real simple example I have an apple. /我有一个苹果。, editable blank记忆法 as inputplaceholder without inventedmnemonic. Below content actual compact recent activity rows and nextreview. Metadata doesnot become huge wall: 回忆 独立证据不足, 独立样本1次, 延迟保持暂无证据, 应用暂无证据. Keep actions测这个词 and编辑 top; quietdelete separated. Full meaningful sample layout, no inventedmultidefinitionprovider.",
+      "actual": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/word-detail-desktop.png"
+    },
+    {
+      "id": "stories",
+      "title": "故事库",
+      "brief": "RECOMPOSE into left readingcatalog~690 and right~350 selectedstory preview with Chinese-only summary. No photographic covers, fake readingprogress or duration. 3 sample stories 雨天的小书店/The Little Bookshop,花园里的早晨/A Morning in the Garden,一杯咖啡/A Cup of Coffee. Each row150–180high has bilingual title, Chinese synopsis, version原版/简化版 where real, 未检查 or已有检查记录, 打开阅读. Right current selected Chinese story synopsis and section 版本与检查 links原版/简化版/开始读后检查, no English answers outside reading. Primary生成新故事, unselected同意加入最多一个新目标词 (不自动加词), secondary阅读入门材料. Generation can fail retainrequest; no fake mastery or recommendations.",
+      "actual": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/stories-desktop.png"
+    },
+    {
+      "id": "add",
+      "title": "添加单词",
+      "brief": "RECOMPOSE as completed useful inputworkspace rather than isolated tiny form. Sharedsidebar bottomactiveadd. Main width700 and right280 unobtrusive guidance justified by actual rules. H1添加单词, text 用逗号或空格分隔。 Inputtextarea with apple, garden, coffee 3 lines, count3/20 only ifactualmax20. PrimaryAI生成词卡 underinput, helper生成后加入单词本. Below a secondary section 入门词卡, 10张已核对释义与例句, quiet添加入门词卡. Right explain 输入方式 / 单词之间用空格或逗号分隔 / 生成时请保留当前输入。 No fabricated previews or confirmationstep. Normalreadyform noterror; errorappearsinline onlywhenfailed.",
+      "actual": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/add-desktop.png"
+    },
+    {
+      "id": "stats",
+      "title": "学习记录",
+      "brief": "RECOMPOSE full useful personal report desktop twocolumn660/350, open simple separators. Four compact topline counts42词 /4今日完成 /6今日练习 /3连续天. Left clear realdailycounts8,0,6,10,5,7,4 bar chart dates10/27Tue–11/2Mon, at most210high; below actual evidencecounts14,9,6,11,2 sum42 in table. Right delayedchecks: 隔日独立成功2/3,辅助1,跳过0; 一周暂无数据; distinct button隔日回测/一周回测, clear依据只说明所测内容. Bottom typecounts independent vsassisted vsrecognition vs selfevaluation separated. No overallmastery, rings, giantcards, inventedlearningtime or bestscores. Date anchor2026Nov2.",
+      "actual": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/stats-desktop.png"
+    },
+    {
+      "id": "settings",
+      "title": "设置",
+      "brief": "RECOMPOSE bounded nativepreferences panel sharednav, mainleft~790, rightmini localcontents~200 could insteadopen grouping width1000. Compact groupedrows 学习偏好,外观与翻译,内容维护,数据. Rowleftlabel+help rightsegmentedcontrols. Speech慢速标准快速 selected标准, dailygoal5/10/15/20selected10 helper不改变新词配额; darkmodeoff; 翻译智能常显隐藏selected智能. Maintenance刷新例句每次10个 and生成句子卡每次5个 distinct quietactions andbriefexplanation. Backuprow. Fitallgroups withinfirstscreenwithrowheight65–80, not hugeverticalgaps or microfont. No account/sync/subscription/newfeatures.",
+      "actual": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/settings-desktop.png"
+    },
+    {
+      "id": "backup",
+      "title": "备份与恢复",
+      "brief": "RECOMPOSE as clear orderedworkflow width~1000. Top export row 下载完整备份, note不含API密钥与浏览器偏好. Below two usefulcolumns: left chosenfile and restoreimpacttable~630, right~320 explanation ofreplacementandsafety. Selectedenglish-coach-backup.json formatV3, impacttable当前→备份 词卡42→38 学习事件120→100 课程3→2 故事3→2. Clearthisis preview notexecuted. 全量替换，不是合并。未包含的内容会删除。操作前自动保存当前数据库完整备份. Primarycontrolledmutedterracotta确认替换学习数据,取消. No pretendcloudsync, giantdropzone, loudredalerts. Safetyhasconcretepurpose, no newfeatures.",
+      "actual": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/backup-desktop.png"
+    },
+    {
+      "id": "flashcards",
+      "title": "词卡学习",
+      "brief": "RECOMPOSE focuspage no sidebar. Slimbrandbarwith返回今天/词卡学习 and 已保存3/10; thinprogress30%. Mainmax800 horizontal centeredstarts y170 notblanky450. Small 单词 · 第4张; appleTinos64, IPA, smallspeaker. Frontonly noChineseanswerexample. Primary显示释义y500, keyboardhintSpace. Below separator small说明自评学习与独立回忆分开记录 and skip. No fourratingbuttons beforeflip. Make mature focused learning sheet with controlledwhitespace not hugeemptywalls or charts. No false claimsprogresspending.",
+      "actual": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/flashcards-desktop.png"
+    },
+    {
+      "id": "spelling",
+      "title": "拼写练习",
+      "brief": "RECOMPOSE focuspage no sidebar, mainworkarea800 wide starts y180. Header拼写练习 / 已保存0/10, thinprogress. Body compactlabel根据释义写出英文, Chinese苹果36, one continuous input draftap width640 height48 at y360. No apple, IPA, answerlength or correctfeedback. Contextquiet 独立回忆. 首字母提示 below, note使用后按辅助记录. At y520 actions跳过 and提交答案Enter. Furtherdown small keyboardhintEnter提交, no extraneouscontenttosaturatepage. Samecraftasapprovedcourse, warmclean sheet no giantbox. No timers.",
+      "actual": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/spelling-desktop.png"
+    },
+    {
+      "id": "listening",
+      "title": "听写练习",
+      "brief": "RECOMPOSE EXISTING LISTENING RECOGNITION, not typed dictation. Real ListeningPage is audio then four English choices, actual Chinese meaning also visible as fallback; do not invent typedmode. Focuspage no sidebar header听写练习 / 已保存2/10. Main800wide y180 heading听发音，选择对应的单词28. Functional48pxplaybutton 播放发音, Chinese释义 苹果 /识别练习 small. Four clean 2x2 options coffee/apple/morning/window, no selected/correctcolors in initialstate. Choosingone immediatelysaves (no separate submitbutton). Lowersecondary跳过本题. Smallnote按识别练习记录，不计入独立回忆。 No timers/waveforms/newplaybackrates. Actualwarmmaterial, carefulspacing, no hugeblankpage.",
+      "actual": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/listening-desktop.png"
+    },
+    {
+      "id": "quiz",
+      "title": "测验",
+      "brief": "RECOMPOSE actualQUIZ recognitiontype Chinese-to-English. Focusmode no sidebar, slimheader 测验 / 已保存1/10. Main800wide starts y170. Small识别练习 then Chinesequestion「苹果」是哪个单词？28px. Four options apple/garden/teacher/coffee in two cleancolumns height64, EnglishTinos24. applechosenneutralwarmtint butnotconfirmed; no correctmark. Eachoptionquietpronounceiconasitexists. Submissionprimary提交选择 andsecondary跳过y600. No lettershortcutpromisesunlessactualcontrols; no inventedtimeroroverallmastery. Recognitionnot independentrecall, allsavedconfirmed. Uniformcontrolweightandwarmdesign. Do not showChineseanswersfourchoices orchangeexistingquizdirection.",
+      "actual": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/quiz-desktop.png"
+    },
+    {
+      "id": "mixed",
+      "title": "混合练习",
+      "brief": "RECOMPOSE focuspage no sidebar, header混合练习 / 已保存4/10. Smallnoninteractivecontext当前题型：拼写; quiet mixedtypescontext听写·选择 belowheadingnotclicktabs. Mainat y190Chinese花园36, continuousinputdraftgar width640 at y370. 首字母提示 /使用提示后按辅助记录. Actionsy530提交答案Enterand跳过. No gardenIPAorfullanswer/previouscorrectanswersnexttoprompt. Warmcompactfocuspage withsamepracticegrid.",
+      "actual": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/mixed-desktop.png"
+    },
+    {
+      "id": "advice",
+      "title": "建议练习",
+      "brief": "RECOMPOSE failureascontainedworkflow, no giantblanklayout. Focusheader建议练习/返回学习记录, main800wide y180 title继续确认本轮练习. A compactnotloud statusstrip 创建请求的结果尚未确认。连接中断，原目标已保留。, no forbidden targetEnglishor newtargets. Primary继续确认创建, secondary返回学习记录. Below fine rule actionable说明 重试会继续确认同一个请求，不会另开一轮。 No fake success orresultcounts. Helpfulshorttext not overwhelminglogs.",
+      "actual": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/advice-desktop.png"
+    },
+    {
+      "id": "delayed",
+      "title": "隔日／一周回测",
+      "brief": "RECOMPOSE emptyeligibilitystate as functional neatpage notcenteredemptycard. Focusheader一周回测/返回学习记录. Main~800at y170 title暂时没有符合条件的词. Explanation当前记录不足以开始一周回测。可以先进行普通练习，或稍后重新查找候选。 Actualbuttons 重新查找候选 primary, 普通练习 secondary, 返回学习记录 text. Below divider three plainlines 回测依据 / 距应用内上次已确认接触的间隔 / 使用当前内容修订的记录 / 暂无数据不代表能力不足. No targetwordanswers, countdown, weakmasterypretend. No massiveillustration.",
+      "actual": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/delayed-desktop.png"
+    },
+    {
+      "id": "reinforcement",
+      "title": "本轮巩固",
+      "brief": "RECOMPOSE focuspage no sidebar, header本轮巩固 / 最多3题. Topcompact savedroundmessage本轮学习已保存，可选做少量巩固. Body y240 prompt花园32 and input640. 首字母提示 help, helper辅助巩固不更新排期. Primary提交答案 / secondary跳过本轮巩固 y580. Don't invent accepteditems orprogress; independentlyhidden targetEnglish noIPA, length, feedback. Calm quality warmlearningworkspace.",
+      "actual": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/reinforcement-desktop.png"
+    },
+    {
+      "id": "result",
+      "title": "本轮学习结果",
+      "brief": "RECOMPOSE as completed compactlearningreport no sidebar. Header本轮学习结果 anddate2026年11月2日. Mainmax960 startsy150, heading本轮已保存30, subtitle10张卡已保存并排期。12次练习含主队列10次与巩固2次，跳过0. Belowtwocolumn left evidence rows 独立提取6/8 辅助2/2 识别1/1 自评1次, right需巩固苹果、花园 and下次排期11月3日, not Englishanswers. No summaryaccuracy. Bottom nextstep返回今天 primary/去做测验 secondary. Specific usefuldata, not giantmetricsorconfetti. Tabletypography showsclear labels andcounts. Counts total12attemptsanddifferenttypes legible.",
+      "actual": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/result-desktop.png"
+    },
+    {
+      "id": "lesson-check",
+      "title": "本课短测",
+      "brief": "RECOMPOSE focuspage no sidebar, header第3课·咖啡馆点单 / 本课短测 / 已保存0/3. Main~800at y180 shortcontext本课词汇检查, prompt咖啡36, singleinput width640 placeholder输入英文单词, no coffee orIPA/length/spellinganswersanywhere. 首字母提示 quietly below with note提示后按辅助记录. Main提交答案and跳过y520, 返回课程 top. Progressisserverconfirmedsavedonly. No extraneous courseoutlinewithanswers, currentquestionnotfulltestoverview. Samepracticegridasothers.",
+      "actual": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/lesson-check-desktop.png"
+    },
+    {
+      "id": "story-check",
+      "title": "读后检查",
+      "brief": "Design STORY POST-READING CHECK focuspage no sidebar; a necessary extension to currentproductnotnewfeature. Header读后检查 / 雨天的小书店·原版 / 已保存0/2, 返回故事 ashelpactionnotautomaticallyread. Currentquestion comprehension识别理解, Chinese 莉莉在哪里找到那本书？ Three actualsamplechoices A在小书店 B在咖啡馆 C在花园, none selected/graded; 3not4options. Correctanswer storedonlynotvisuallymarked. Mainonecolumn choices640x58 at y300, submitprimaryand跳过 y600. Footerquiet理解题与词汇回忆分开记录。回看原文另有quietactionwithhelper回看后词汇题按辅助记录. No sourcepassage orEnglishanswerpreview besidequestion. Maintain samewarmfocusdesign. One storychecksample notinventedmastery.",
+      "actual": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/story-check-result-desktop.png"
+    }
+  ]
+}

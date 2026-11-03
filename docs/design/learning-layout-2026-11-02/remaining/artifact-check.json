@@ -1,0 +1,209 @@
+{
+  "kind": "artifact-integrity-only",
+  "pdf": "EnglishCoach-整套页面重排稿.pdf",
+  "pages": 22,
+  "newDesigns": 18,
+  "approvedReferences": 4,
+  "images": [
+    {
+      "id": "home",
+      "image": "screens/home.png",
+      "size": [
+        1490,
+        1056
+      ],
+      "sha256": "b3c5e9b99320a0a69e91b038a623c9c60c804b87ddf3741be616c687864ef775"
+    },
+    {
+      "id": "courses",
+      "image": "screens/courses.png",
+      "size": [
+        1490,
+        1056
+      ],
+      "sha256": "cade0e4164766d070089d573d89cb2ff04926d5774444c796fff6ef7b3669a88"
+    },
+    {
+      "id": "course-detail",
+      "image": "screens/course-detail.png",
+      "size": [
+        1490,
+        1056
+      ],
+      "sha256": "3e15b26d6f2152cae9bbaa801eb9038817531db920d88c6705ee537a868cd2ad"
+    },
+    {
+      "id": "lesson-check",
+      "image": "screens/lesson-check.png",
+      "size": [
+        1512,
+        1040
+      ],
+      "sha256": "acf29d55b7bf8fa1f1587c849a14d118363bd0fa23a394277d9efb781351b5e8"
+    },
+    {
+      "id": "words",
+      "image": "screens/words.png",
+      "size": [
+        1491,
+        1055
+      ],
+      "sha256": "9095383f959edbdce5b40634ba13af776d9d1415e639560625480781d3767cf1"
+    },
+    {
+      "id": "word-detail",
+      "image": "screens/word-detail.png",
+      "size": [
+        1512,
+        1040
+      ],
+      "sha256": "4e64ecae6a8e888885b926ad130e6ade3e36dcc8085412316ac64bb612994f8c"
+    },
+    {
+      "id": "stories",
+      "image": "screens/stories.png",
+      "size": [
+        1512,
+        1040
+      ],
+      "sha256": "82991b2643ab0493948314a40c7c1a9a621c8d2ab34c71d57c56815bd13c4b6a"
+    },
+    {
+      "id": "reader",
+      "image": "screens/reader.png",
+      "size": [
+        1487,
+        1058
+      ],
+      "sha256": "f3e4752dc714b1340d08403a56c635c52495fce4803627f46722597c3937c650"
+    },
+    {
+      "id": "story-check",
+      "image": "screens/story-check.png",
+      "size": [
+        1512,
+        1040
+      ],
+      "sha256": "5bdd5bb507610fe7020e6a98668b5db279490a7f14ee15d227660788a6dc5a58"
+    },
+    {
+      "id": "add",
+      "image": "screens/add.png",
+      "size": [
+        1512,
+        1040
+      ],
+      "sha256": "12d362293f492f6cafce00b4af57029e0384d14dc6d4e2400c689f3b24bf9c41"
+    },
+    {
+      "id": "flashcards",
+      "image": "screens/flashcards.png",
+      "size": [
+        1489,
+        1056
+      ],
+      "sha256": "68fb08b0a779fbbcbcf1bc730ea237f6208850707e8e51b4556f82108dd4ca5d"
+    },
+    {
+      "id": "spelling",
+      "image": "screens/spelling.png",
+      "size": [
+        1491,
+        1055
+      ],
+      "sha256": "79486e0706c632cafb927c63bfc4f366e0429d6da3a184ca9a19a6d66d25ea27"
+    },
+    {
+      "id": "listening",
+      "image": "screens/listening.png",
+      "size": [
+        1512,
+        1040
+      ],
+      "sha256": "ad260e404cb83f2baae2f7afd31cbf055e0ac9ad7714b7cdb6d32476672fa52b"
+    },
+    {
+      "id": "quiz",
+      "image": "screens/quiz.png",
+      "size": [
+        1491,
+        1055
+      ],
+      "sha256": "11392934ec3644871151cde7e0a8366e8263cbe3317e7e1f730845761479009c"
+    },
+    {
+      "id": "mixed",
+      "image": "screens/mixed.png",
+      "size": [
+        1489,
+        1056
+      ],
+      "sha256": "f3c940f404fdcd6399d3b9943cb937e40ec1375885b23cedc9efe846442561f8"
+    },
+    {
+      "id": "advice",
+      "image": "screens/advice.png",
+      "size": [
+        1489,
+        1056
+      ],
+      "sha256": "e025e3ba13c9b9facfade993757dca6d70d686ab9c95aa9dbb3fd95f33a1419c"
+    },
+    {
+      "id": "delayed",
+      "image": "screens/delayed.png",
+      "size": [
+        1489,
+        1056
+      ],
+      "sha256": "fbae40abd06cd351433abb09e25bd6538a616b576f5d60e2c803bfce2de3bf8b"
+    },
+    {
+      "id": "reinforcement",
+      "image": "screens/reinforcement.png",
+      "size": [
+        1490,
+        1055
+      ],
+      "sha256": "673d1e59d500c705b66820f5a0305070ae79b0b919630c783b372ef3ac0af6e8"
+    },
+    {
+      "id": "result",
+      "image": "screens/result.png",
+      "size": [
+        1512,
+        1040
+      ],
+      "sha256": "436e9ccf8cc2ec1d946c18396a2b2916511e92c4c5f82c2b003523954ce8e0d7"
+    },
+    {
+      "id": "stats",
+      "image": "screens/stats.png",
+      "size": [
+        1491,
+        1055
+      ],
+      "sha256": "64473d1fe39708fdc322d151c52757029f171b29d933fd2234005517c0b001ff"
+    },
+    {
+      "id": "settings",
+      "image": "screens/settings.png",
+      "size": [
+        1489,
+        1056
+      ],
+      "sha256": "e86d93fc13e2adcfa61af5400ff93829488f29cb27e7b9a4e6a45414dcd84456"
+    },
+    {
+      "id": "backup",
+      "image": "screens/backup.png",
+      "size": [
+        1512,
+        1040
+      ],
+      "sha256": "b4055021035b54cf39d3d6813460c7d28b6eb59407ac37de6e8bb884256f07f5"
+    }
+  ],
+  "productCodeChangedThisTurn": false,
+  "functionalTestsRunThisTurn": false
+}

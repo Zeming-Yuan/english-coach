@@ -1,0 +1,34 @@
+{
+  "counts": {
+    "passed": 168,
+    "timedOut": 6,
+    "failed": 16,
+    "interrupted": 4
+  },
+  "failed": [
+    "EC-16 TTS provider timeout preserves saved learning",
+    "EC-16 TTS provider error preserves saved learning",
+    "EC-12 confirmed restore discards frozen daily and single-card practice",
+    "EC-13 small library completes with keyboard and keeps specialist practice",
+    "EC-13 specialist detour preserves the suspended daily round",
+    "EC-13 standalone pending for the same card cannot count toward the daily session",
+    "EC-14 unrelated late confirmation preserves saved reinforcement feedback",
+    "EC-15 legacy-restore-then-input-and-choice-share-current-state",
+    "EL-01 visible revision panel tracks semantic edits",
+    "EL-01 v3 roundtrip preserves revision and keeps working",
+    "EL-01 lost edit response replays without double revision",
+    "EL-02 visible evidence panel states insufficient evidence",
+    "EL-02 independent cross-day answers show verified recall",
+    "EL-02 new failure changes verified recall to weak",
+    "EL-02 assisted answers never become independent evidence",
+    "EL-02 meaning edit moves old evidence to history",
+    "EL-02 weak evidence never reads as mastery",
+    "EL-07 twenty generated lessons never read as completed",
+    "EL-09 pending contact refresh on form confirmation",
+    "EL-09 pending contact refresh on global confirmation",
+    "EL-09 pending contact refresh on accepted-replay confirmation",
+    "EL-09 another tab seeing the answer reclassifies the result"
+  ],
+  "interrupted": true,
+  "sourceStayedFrozen": true
+}

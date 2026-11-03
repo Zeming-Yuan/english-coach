@@ -1,0 +1,684 @@
+{
+  "repo": "Zeming-Yuan/english-coach",
+  "date": "2026-10-31",
+  "status": "published-and-verified",
+  "issues": {
+    "EL-01": {
+      "number": 37,
+      "id": 6133412764,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/37",
+      "title": "EL-01：Expand：编辑词卡后仍能完整备份与恢复内容修订",
+      "plan": "docs/superpowers/plans/2026-10-31-el-01-expand-revisions-and-v3.md",
+      "ticket": "docs/tickets/evidence-based-personalized-learning/01-expand-revisions-and-v3.md",
+      "plan_sha256": "8fbcd185eeda1e4633a661c6eb2eacb514a35b1b91ace9234ac15fb7d68dbc56",
+      "body_sha256": "540d6fe278f0c83820c4cfc633c4ba9c602ddc02f88dd2971f9a3a931037d5bb",
+      "ticket_sha256": "f0ea167c3a5a516fb55a1d2358cd72ce462583a02813d055b63ae77a750cc089"
+    },
+    "EL-02": {
+      "number": 38,
+      "id": 6133413541,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/38",
+      "title": "EL-02：独立作答后，在词卡详情看到有依据的回忆状态",
+      "plan": "docs/superpowers/plans/2026-10-31-el-02-recall-evidence-detail.md",
+      "ticket": "docs/tickets/evidence-based-personalized-learning/02-recall-evidence-detail.md",
+      "plan_sha256": "222c970c4abb97e1603303c180be3aadd0a631dc08b1db28315a9a502474d94f",
+      "body_sha256": "8ae9800a7588d40eebc405673d93e8eac4fb063de6e2d52bab7352ed52d3735f",
+      "ticket_sha256": "677449ec956bc224bb8043777ebdbfaafdde3bdf404adc11b29981b7f6610cb2"
+    },
+    "EL-03": {
+      "number": 39,
+      "id": 6133414346,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/39",
+      "title": "EL-03：Migrate：首页、词表、统计和分享图统一解释学习进展",
+      "plan": "docs/superpowers/plans/2026-10-31-el-03-migrate-evidence-readers.md",
+      "ticket": "docs/tickets/evidence-based-personalized-learning/03-migrate-evidence-readers.md",
+      "plan_sha256": "be30ca50b2940b4d1ce33532efc883b58954fad1cc65ddf0ff0e5578ef0d3f5d",
+      "body_sha256": "6a220afd5f0386bbd4580604028ce25586a74a5189766124b368e6a7015cbd7d",
+      "ticket_sha256": "d6928411ae00739120c5640387b20dcf3c6e6366c9d35af77dc12ead33ed0f92"
+    },
+    "EL-04": {
+      "number": 40,
+      "id": 6133415057,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/40",
+      "title": "EL-04：Expand：看词卡或听答案后，能核对最近一次应用内接触",
+      "plan": "docs/superpowers/plans/2026-10-31-el-04-expand-contact-recording.md",
+      "ticket": "docs/tickets/evidence-based-personalized-learning/04-expand-contact-recording.md",
+      "plan_sha256": "036be643dc43a3bc61517769436ec2c21fe14358f6a24fd0a38a8e6489f3a6a7",
+      "body_sha256": "b3dd99766228ee622f1165efa6399a5f90d85fb6b132e2342b7a32d3f9acc582",
+      "ticket_sha256": "e001d615591104a3e0bb71a4c83a715c4a95e2dcfb1bcfeb76fcdf4ff485308e"
+    },
+    "EL-05": {
+      "number": 41,
+      "id": 6133415725,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/41",
+      "title": "EL-05：Migrate：闪卡与专项练习准确记录答案接触和提示",
+      "plan": "docs/superpowers/plans/2026-10-31-el-05-migrate-practice-contact.md",
+      "ticket": "docs/tickets/evidence-based-personalized-learning/05-migrate-practice-contact.md",
+      "plan_sha256": "8cefa9c648081a471110efda94a69417f85e852892bee0c1c92317ef5e2cc76a",
+      "body_sha256": "52c05f1e7091aa0095e7b937ddc3c2cebf351e1cb8c1f8f62072929705d25feb",
+      "ticket_sha256": "2b581352f45e450017233cafdbde716d02c37df947c4ab1cd5ccc51f86c3cbbe"
+    },
+    "EL-06": {
+      "number": 42,
+      "id": 6133417513,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/42",
+      "title": "EL-06：Migrate：课程、故事和内容编辑保持可追溯的接触与修订",
+      "plan": "docs/superpowers/plans/2026-10-31-el-06-migrate-content-contact.md",
+      "ticket": "docs/tickets/evidence-based-personalized-learning/06-migrate-content-contact.md",
+      "plan_sha256": "9b3e1f4db8303bdff92ddd7d98a9f66a658df8f634ce20489ff297254c2fb373",
+      "body_sha256": "fdf0810b44b71a5d39544a7676306b3fc75af50199bf8782164eb47599ffbd29",
+      "ticket_sha256": "f212b8fd3e3135d2b4bb7b37ff9d969c1bb28695e41a8a3f2f1570f4cf35b08a"
+    },
+    "EL-07": {
+      "number": 43,
+      "id": 6133418185,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/43",
+      "title": "EL-07：课程有明确目标，生成、浏览和待检查分别记录",
+      "plan": "docs/superpowers/plans/2026-10-31-el-07-lesson-goals-and-progress.md",
+      "ticket": "docs/tickets/evidence-based-personalized-learning/07-lesson-goals-and-progress.md",
+      "plan_sha256": "4fc6bb82e47f0a5b3a8620880744f8866b20d7103904097fec1ee3ad555f5a6a",
+      "body_sha256": "01016e9febaf3d547a7208b096b928b4bfff253353e6bbe53398f90cc8a96ecb",
+      "ticket_sha256": "a2e4abb5196e070ddc284f0d055156722ecad37f0b513232f29c67c8e71d739f"
+    },
+    "EL-08": {
+      "number": 44,
+      "id": 6133418851,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/44",
+      "title": "EL-08：课程三题短测可保存、继续，并留下可解释的结果",
+      "plan": "docs/superpowers/plans/2026-10-31-el-08-lesson-recall-check.md",
+      "ticket": "docs/tickets/evidence-based-personalized-learning/08-lesson-recall-check.md",
+      "plan_sha256": "9381cd21688fa940e03d9900a814e84cf0ec3f33c2175982531236f6c30cde42",
+      "body_sha256": "0ca40ed22bf3ac14dea52bfa3d0d804cdc388c0b1180df9364478eeca02ae60d",
+      "ticket_sha256": "2c41d5829a6af9af083d3998f80bf5abe39f927236938977deff92aae0da0bee"
+    },
+    "EL-09": {
+      "number": 45,
+      "id": 6133419517,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/45",
+      "title": "EL-09：隔日和一周回测按真实记录间隔计分",
+      "plan": "docs/superpowers/plans/2026-10-31-el-09-delayed-recall-check.md",
+      "ticket": "docs/tickets/evidence-based-personalized-learning/09-delayed-recall-check.md",
+      "plan_sha256": "4d3fdcabb77cd7151d12734e016294a98ebae8382565ae3735d0c56dd8311832",
+      "body_sha256": "97fe8d8aae779a55d91470cc4bc019ba485d3fbe6d02d7b8d414760d73507cd5",
+      "ticket_sha256": "91f8ff31a9b99d4258e882a1ea2d125e999812391118ec5cd7f6e2848c2c2dad"
+    },
+    "EL-10": {
+      "number": 46,
+      "id": 6133420268,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/46",
+      "title": "EL-10：统计能解释薄弱项，并一键进入对应练习",
+      "plan": "docs/superpowers/plans/2026-10-31-el-10-actionable-learning-advice.md",
+      "ticket": "docs/tickets/evidence-based-personalized-learning/10-actionable-learning-advice.md",
+      "plan_sha256": "f8bddce15249e398fd1196d3e94ed365fac7caecba02b596a1366c2a855a3466",
+      "body_sha256": "31d3091664b144d8405430d4287c0aa464852ae7bd4f6efe4133578397de2cc2",
+      "ticket_sha256": "9c86988efecba93966005b3f78087c1b834b0aaa2bc76ab52683dc24bb8074fc"
+    },
+    "EL-11": {
+      "number": 47,
+      "id": 6133421127,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/47",
+      "title": "EL-11：根据已有学习依据生成难度受控的短故事",
+      "plan": "docs/superpowers/plans/2026-10-31-el-11-bounded-personalized-story.md",
+      "ticket": "docs/tickets/evidence-based-personalized-learning/11-bounded-personalized-story.md",
+      "plan_sha256": "640904e43c744af7765a7bbef811cd1acf8ac500c45df2264e68f91b1c80f3c3",
+      "body_sha256": "a7cd246e1c4527fde5055584e11f062f52b594f7d773061a140aa11f1c455c19",
+      "ticket_sha256": "758933b9696d44ad90c1fde3ea01c2890d88f1a141a8a6d263a2cdcb0ed953b8"
+    },
+    "EL-12": {
+      "number": 48,
+      "id": 6133423138,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/48",
+      "title": "EL-12：把故事变简单，同时保留原版与各自结果",
+      "plan": "docs/superpowers/plans/2026-10-31-el-12-simpler-story-version.md",
+      "ticket": "docs/tickets/evidence-based-personalized-learning/12-simpler-story-version.md",
+      "plan_sha256": "a0e47dee815e245d82e4a2196e9ce05185f884479e8bcfa1dd40daf12d14e978",
+      "body_sha256": "a30b9f4faf648b6e487ec821d9d5ab9bb9ebc979da78118f4c2d0a7d13105199",
+      "ticket_sha256": "43626b31e29792202d8cf5c91389999ab48d027200f31627d802304ddc30d2b6"
+    },
+    "EL-13": {
+      "number": 49,
+      "id": 6133423868,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/49",
+      "title": "EL-13：读后两题检查区分理解、独立回忆和回看帮助",
+      "plan": "docs/superpowers/plans/2026-10-31-el-13-story-reading-check.md",
+      "ticket": "docs/tickets/evidence-based-personalized-learning/13-story-reading-check.md",
+      "plan_sha256": "1af087a24db3f29fe894eaa447ff46aa06aa41455927c232bc62632b67b0100c",
+      "body_sha256": "8e87f2e8cc2f43b2477ee0ec9bc900461b80f6bf22729a1c9d9d96e6c9fc9f1c",
+      "ticket_sha256": "3ebadc390709f449fcb099376eb9529dd04f854a73ce572f0c24a494d59cf761"
+    },
+    "EL-14": {
+      "number": 50,
+      "id": 6133424532,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/50",
+      "title": "EL-14：用三轮买饮品任务建立首个可恢复的场景练习",
+      "plan": "docs/superpowers/plans/2026-10-31-el-14-three-turn-drink-scene.md",
+      "ticket": "docs/tickets/evidence-based-personalized-learning/14-three-turn-drink-scene.md",
+      "plan_sha256": "4d08966c172a9b9049ed21b45ca5476425bbbdc9cd6e987760d685f473e46826",
+      "body_sha256": "10f83eef71853acb46823f6cd8cbd3c03f9d7bce4db3c1e8e4dea91d24052dfb",
+      "ticket_sha256": "457d648cf138efda1e376b1a15f790733b399a6dac19e305da957b5de479a828"
+    },
+    "EL-15": {
+      "number": 51,
+      "id": 6133425183,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/51",
+      "title": "EL-15：扩展自我介绍和问路，保留各场景的任务边界",
+      "plan": "docs/superpowers/plans/2026-10-31-el-15-intro-and-directions-scenes.md",
+      "ticket": "docs/tickets/evidence-based-personalized-learning/15-intro-and-directions-scenes.md",
+      "plan_sha256": "3ec9efb1ff0b72068dc834b7d55d872923f8a720ec84c97f6fe3c23d25909df9",
+      "body_sha256": "26d158aa2226920eff9e9d20f653d0f128b1bbc8be35d124eeb55815e26aaaae",
+      "ticket_sha256": "61510e221718e201e43732612b34a8192186f24a726f02e339a85d3df2cdf9c1"
+    },
+    "EL-16": {
+      "number": 52,
+      "id": 6133425832,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/52",
+      "title": "EL-16：AI 提供受约束的场景回应，失败仍能继续",
+      "plan": "docs/superpowers/plans/2026-10-31-el-16-bounded-ai-scene-feedback.md",
+      "ticket": "docs/tickets/evidence-based-personalized-learning/16-bounded-ai-scene-feedback.md",
+      "plan_sha256": "f36ca9d09b592a0ae934174de693857322aa4f6c2d516d3beef54221718dad07",
+      "body_sha256": "c180f98852f729e67ca3d9f40d8f5f3dba98c1c1bcfaae25fa36d8e3c5db73c6",
+      "ticket_sha256": "abd9c36e97cab1c641a5c979e4a723376209a90045b155a243d40c9135abbe15"
+    },
+    "EL-17": {
+      "number": 53,
+      "id": 6133430131,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/53",
+      "title": "EL-17：按 3/8/15 分钟开始、暂停和继续每日词卡计划",
+      "plan": "docs/superpowers/plans/2026-10-31-el-17-time-budget-daily-plan.md",
+      "ticket": "docs/tickets/evidence-based-personalized-learning/17-time-budget-daily-plan.md",
+      "plan_sha256": "32fa457d26f2f98a1be009ed05fb0f3d44c917c00894a99af6819dcfe7461ec1",
+      "body_sha256": "619178a7b3c81c95c807898a0fc61a9171a690c778e40ace2e2c286b5b4a4946",
+      "ticket_sha256": "5719a3b89546d5421b4b6d3afe07006e12091d937b1c1e776944ed6320962603"
+    },
+    "EL-18": {
+      "number": 54,
+      "id": 6133430913,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/54",
+      "title": "EL-18：实际主动用时逐步改善计划估算",
+      "plan": "docs/superpowers/plans/2026-10-31-el-18-personal-active-time-estimate.md",
+      "ticket": "docs/tickets/evidence-based-personalized-learning/18-personal-active-time-estimate.md",
+      "plan_sha256": "a400187a3382faee0b7916385b63307fb316c49dfff93ff24505f9d3ca5af8d7",
+      "body_sha256": "f0fac3a28a374fe1612e8a66026902b73d623d8efb194254bbe1230f212cacbb",
+      "ticket_sha256": "e1e3bf085c3ee91525dae530ee869f5520bc392eb74bcc8fdb61f471e5584398"
+    },
+    "EL-19": {
+      "number": 55,
+      "id": 6133431571,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/55",
+      "title": "EL-19：中断后用有限复习恢复学习",
+      "plan": "docs/superpowers/plans/2026-10-31-el-19-return-to-learning-mode.md",
+      "ticket": "docs/tickets/evidence-based-personalized-learning/19-return-to-learning-mode.md",
+      "plan_sha256": "6c3001e2f46ee67f3217240e95cc5f4ab70d2a52eed0899843ba715d46868b7a",
+      "body_sha256": "27acff0f7092805be2b21a22607639727ae4f17dffb79e42390757db6385cc64",
+      "ticket_sha256": "a193782767ef610a49b0fcc2d93920828e91c8fe719984057da29c0016e58b4a"
+    },
+    "EL-20": {
+      "number": 56,
+      "id": 6133432259,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/56",
+      "title": "EL-20：Contract：收口证据、接触与新备份的全部内部消费者",
+      "plan": "docs/superpowers/plans/2026-10-31-el-20-contract-evidence-consumers.md",
+      "ticket": "docs/tickets/evidence-based-personalized-learning/20-contract-evidence-consumers.md",
+      "plan_sha256": "d6ce102ddd29f8db87d9abfbfdd97819de06527534e812f2790cd6bb7c2b24e0",
+      "body_sha256": "0b3842242c97b89233df55a8a5c287bc3ff6f989d17a238e246740142bd7a8e6",
+      "ticket_sha256": "2cb9885bcaf108dd85ca51586123878932bea9c5b55dedff166da7a48468b500"
+    },
+    "EL-21": {
+      "number": 57,
+      "id": 6133432894,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/57",
+      "title": "EL-21：完整演练六项学习、换设备恢复与继续学习",
+      "plan": "docs/superpowers/plans/2026-10-31-el-21-integrated-learning-restore-qualification.md",
+      "ticket": "docs/tickets/evidence-based-personalized-learning/21-integrated-learning-restore-qualification.md",
+      "plan_sha256": "c7bb036d8a51f802110c102780bfde48ec7676f26ac88622366b08e6715e2427",
+      "body_sha256": "38835121b5aab8efc226a2c5a8782439d37022767b3b448102a9f98e83886029",
+      "ticket_sha256": "94036ae2e30d1b7368519e726ef99ea49f717b08af4cced5b0857dc6b53c00fa"
+    }
+  },
+  "dependencies": [
+    {
+      "ticket": "EL-02",
+      "blocked_by": "EL-01",
+      "number": 38,
+      "blocked_by_number": 37
+    },
+    {
+      "ticket": "EL-03",
+      "blocked_by": "EL-02",
+      "number": 39,
+      "blocked_by_number": 38
+    },
+    {
+      "ticket": "EL-04",
+      "blocked_by": "EL-01",
+      "number": 40,
+      "blocked_by_number": 37
+    },
+    {
+      "ticket": "EL-05",
+      "blocked_by": "EL-04",
+      "number": 41,
+      "blocked_by_number": 40
+    },
+    {
+      "ticket": "EL-06",
+      "blocked_by": "EL-04",
+      "number": 42,
+      "blocked_by_number": 40
+    },
+    {
+      "ticket": "EL-07",
+      "blocked_by": "EL-06",
+      "number": 43,
+      "blocked_by_number": 42
+    },
+    {
+      "ticket": "EL-08",
+      "blocked_by": "EL-02",
+      "number": 44,
+      "blocked_by_number": 38
+    },
+    {
+      "ticket": "EL-08",
+      "blocked_by": "EL-05",
+      "number": 44,
+      "blocked_by_number": 41
+    },
+    {
+      "ticket": "EL-08",
+      "blocked_by": "EL-07",
+      "number": 44,
+      "blocked_by_number": 43
+    },
+    {
+      "ticket": "EL-09",
+      "blocked_by": "EL-08",
+      "number": 45,
+      "blocked_by_number": 44
+    },
+    {
+      "ticket": "EL-10",
+      "blocked_by": "EL-09",
+      "number": 46,
+      "blocked_by_number": 45
+    },
+    {
+      "ticket": "EL-11",
+      "blocked_by": "EL-02",
+      "number": 47,
+      "blocked_by_number": 38
+    },
+    {
+      "ticket": "EL-11",
+      "blocked_by": "EL-06",
+      "number": 47,
+      "blocked_by_number": 42
+    },
+    {
+      "ticket": "EL-12",
+      "blocked_by": "EL-11",
+      "number": 48,
+      "blocked_by_number": 47
+    },
+    {
+      "ticket": "EL-13",
+      "blocked_by": "EL-08",
+      "number": 49,
+      "blocked_by_number": 44
+    },
+    {
+      "ticket": "EL-13",
+      "blocked_by": "EL-11",
+      "number": 49,
+      "blocked_by_number": 47
+    },
+    {
+      "ticket": "EL-14",
+      "blocked_by": "EL-08",
+      "number": 50,
+      "blocked_by_number": 44
+    },
+    {
+      "ticket": "EL-15",
+      "blocked_by": "EL-14",
+      "number": 51,
+      "blocked_by_number": 50
+    },
+    {
+      "ticket": "EL-16",
+      "blocked_by": "EL-14",
+      "number": 52,
+      "blocked_by_number": 50
+    },
+    {
+      "ticket": "EL-18",
+      "blocked_by": "EL-01",
+      "number": 54,
+      "blocked_by_number": 37
+    },
+    {
+      "ticket": "EL-18",
+      "blocked_by": "EL-17",
+      "number": 54,
+      "blocked_by_number": 53
+    },
+    {
+      "ticket": "EL-19",
+      "blocked_by": "EL-17",
+      "number": 55,
+      "blocked_by_number": 53
+    },
+    {
+      "ticket": "EL-20",
+      "blocked_by": "EL-03",
+      "number": 56,
+      "blocked_by_number": 39
+    },
+    {
+      "ticket": "EL-20",
+      "blocked_by": "EL-10",
+      "number": 56,
+      "blocked_by_number": 46
+    },
+    {
+      "ticket": "EL-20",
+      "blocked_by": "EL-12",
+      "number": 56,
+      "blocked_by_number": 48
+    },
+    {
+      "ticket": "EL-20",
+      "blocked_by": "EL-13",
+      "number": 56,
+      "blocked_by_number": 49
+    },
+    {
+      "ticket": "EL-20",
+      "blocked_by": "EL-15",
+      "number": 56,
+      "blocked_by_number": 51
+    },
+    {
+      "ticket": "EL-20",
+      "blocked_by": "EL-16",
+      "number": 56,
+      "blocked_by_number": 52
+    },
+    {
+      "ticket": "EL-20",
+      "blocked_by": "EL-18",
+      "number": 56,
+      "blocked_by_number": 54
+    },
+    {
+      "ticket": "EL-20",
+      "blocked_by": "EL-19",
+      "number": 56,
+      "blocked_by_number": 55
+    },
+    {
+      "ticket": "EL-21",
+      "blocked_by": "EL-20",
+      "number": 57,
+      "blocked_by_number": 56
+    }
+  ],
+  "existing_issues": [
+    {
+      "number": 17,
+      "title": "EC-16：在新机器到换设备的完整旅程中独立验收",
+      "state": "CLOSED",
+      "updatedAt": "2026-10-31T08:10:18Z",
+      "body_sha256": "4129ff1b9a8f713f456a4bbe827f2229e6775957730005ed5d19261581ada7a0",
+      "labels": [
+        "ready-for-agent"
+      ]
+    },
+    {
+      "number": 16,
+      "title": "EC-15：Contract：收口到唯一学习记录规则，移除旧业务分支",
+      "state": "CLOSED",
+      "updatedAt": "2026-10-31T07:54:21Z",
+      "body_sha256": "6172ccfb30ca8d26d1763c51e1dc3a123234850c733ac774ab3bcbfd28f902a9",
+      "labels": [
+        "ready-for-agent"
+      ]
+    },
+    {
+      "number": 15,
+      "title": "EC-14：结束主队列后做有限巩固并获得可信反馈",
+      "state": "CLOSED",
+      "updatedAt": "2026-10-31T07:59:29Z",
+      "body_sha256": "d9861b134c6ec7cdaf1e5058517dd68b3950a2aacf3886d0ca7d509d53650226",
+      "labels": [
+        "ready-for-agent"
+      ]
+    },
+    {
+      "number": 14,
+      "title": "EC-13：首页一键开始到期优先、目标固定的每日学习",
+      "state": "CLOSED",
+      "updatedAt": "2026-10-31T07:50:36Z",
+      "body_sha256": "beed9ca11d191fcff3c80017e8e9f354a778c2f1610536ddf6088fb197150bbe",
+      "labels": [
+        "ready-for-agent"
+      ]
+    },
+    {
+      "number": 13,
+      "title": "EC-12：完整备份恢复到另一实例后继续学习",
+      "state": "CLOSED",
+      "updatedAt": "2026-10-31T07:37:12Z",
+      "body_sha256": "9651e03be330abddd1b147b463fdfc1645d8002cb2a8ca0c9bdb4f3371999598",
+      "labels": [
+        "ready-for-agent"
+      ]
+    },
+    {
+      "number": 12,
+      "title": "EC-11：旧备份导入不串卡，失败不清空原进度",
+      "state": "CLOSED",
+      "updatedAt": "2026-10-31T08:03:34Z",
+      "body_sha256": "946bef6b88c30a8a4833a47797533e665553c201a87752bf9c43369f1057a114",
+      "labels": [
+        "ready-for-agent"
+      ]
+    },
+    {
+      "number": 11,
+      "title": "EC-10：从界面导出完整、带版本的数据库备份",
+      "state": "CLOSED",
+      "updatedAt": "2026-10-31T08:03:31Z",
+      "body_sha256": "9c20765d8059e2afe068e3e4d0ef3561e3252c3d563cba404ab2a241af165630",
+      "labels": [
+        "ready-for-agent"
+      ]
+    },
+    {
+      "number": 10,
+      "title": "EC-09：区分正确率与自评通过率，可靠调节新词量",
+      "state": "CLOSED",
+      "updatedAt": "2026-10-31T08:03:28Z",
+      "body_sha256": "bc724a5769c823291bdeabc6d4592bd170c8a931d08fe3ca66845ea312e4577e",
+      "labels": [
+        "ready-for-agent"
+      ]
+    },
+    {
+      "number": 9,
+      "title": "EC-08：跨天历史、热力图和连续学习天数可信",
+      "state": "CLOSED",
+      "updatedAt": "2026-10-31T08:03:26Z",
+      "body_sha256": "0e48b4f25e546c7a534afaadffe77cfdf01c7d5ab4aa5c108c8a264a6fcc8734",
+      "labels": [
+        "ready-for-agent"
+      ]
+    },
+    {
+      "number": 8,
+      "title": "EC-07：迁移混合练习：同题同规则，一次操作只记录一次",
+      "state": "CLOSED",
+      "updatedAt": "2026-10-31T07:41:17Z",
+      "body_sha256": "4ebabc273b6bcc1c1343f5275d6cd06e5195334d6a6587142c5b8d9f1f9a6da0",
+      "labels": [
+        "ready-for-agent"
+      ]
+    },
+    {
+      "number": 7,
+      "title": "EC-06：迁移测验选择与听力：服务端判分，识别练习不改排期",
+      "state": "CLOSED",
+      "updatedAt": "2026-10-31T08:03:23Z",
+      "body_sha256": "647f2b142e532f0a7f4c9f8820a80cce16770437f0cf84fde8827a66935d4ca6",
+      "labels": [
+        "ready-for-agent"
+      ]
+    },
+    {
+      "number": 6,
+      "title": "EC-05：迁移拼写与填空：一次提交，区分独立回忆和提示",
+      "state": "CLOSED",
+      "updatedAt": "2026-10-31T08:03:20Z",
+      "body_sha256": "9efd11d57523ce058220a28cb8065332bd11ec02eeef5fdce5e37beaf61a455c",
+      "labels": [
+        "ready-for-agent"
+      ]
+    },
+    {
+      "number": 5,
+      "title": "EC-04：迁移自评分：保存确认、幂等重试与刷新恢复",
+      "state": "CLOSED",
+      "updatedAt": "2026-10-31T08:03:18Z",
+      "body_sha256": "df38465f70f5d4d6b932f0023a1f1b1da5e3688f50615609f56bb6f0bfb4d26c",
+      "labels": [
+        "ready-for-agent"
+      ]
+    },
+    {
+      "number": 4,
+      "title": "EC-03：Expand：新增学习事件，首次看见真实评分轨迹",
+      "state": "CLOSED",
+      "updatedAt": "2026-10-31T08:03:15Z",
+      "body_sha256": "3899dedd68bcb6951be269e009893af17adaea6e10012329b1594d98c909102d",
+      "labels": [
+        "ready-for-agent"
+      ]
+    },
+    {
+      "number": 3,
+      "title": "EC-02：没有 AI 密钥也能体验首轮学习",
+      "state": "CLOSED",
+      "updatedAt": "2026-10-31T08:03:12Z",
+      "body_sha256": "0fa851b3f12d4acd106998e00e5a2a1496ff21e8e39fbbbbc8da6a5df7755410",
+      "labels": [
+        "ready-for-agent"
+      ]
+    },
+    {
+      "number": 2,
+      "title": "EC-01：全新安装和旧库升级后能打开真实首页",
+      "state": "CLOSED",
+      "updatedAt": "2026-10-31T08:03:10Z",
+      "body_sha256": "3933110a05e55d333e84d0e3b05445f8312fa33877389726dc42ec0dc8aafc47",
+      "labels": [
+        "ready-for-agent"
+      ]
+    },
+    {
+      "number": 1,
+      "title": "EnglishCoach：可靠性与每日学习闭环规格及执行总览",
+      "state": "CLOSED",
+      "updatedAt": "2026-10-31T08:10:19Z",
+      "body_sha256": "3764b895a0b9bada069c3082c71753f57d4fce486ae0e28ccedca1ee7f614b38",
+      "labels": [
+        "ready-for-agent"
+      ]
+    }
+  ],
+  "native_dependency_readback": {
+    "EL-01": [],
+    "EL-02": [
+      37
+    ],
+    "EL-03": [
+      38
+    ],
+    "EL-04": [
+      37
+    ],
+    "EL-05": [
+      40
+    ],
+    "EL-06": [
+      40
+    ],
+    "EL-07": [
+      42
+    ],
+    "EL-08": [
+      38,
+      41,
+      43
+    ],
+    "EL-09": [
+      44
+    ],
+    "EL-10": [
+      45
+    ],
+    "EL-11": [
+      38,
+      42
+    ],
+    "EL-12": [
+      47
+    ],
+    "EL-13": [
+      44,
+      47
+    ],
+    "EL-14": [
+      44
+    ],
+    "EL-15": [
+      50
+    ],
+    "EL-16": [
+      50
+    ],
+    "EL-17": [],
+    "EL-18": [
+      37,
+      53
+    ],
+    "EL-19": [
+      53
+    ],
+    "EL-20": [
+      39,
+      46,
+      48,
+      49,
+      51,
+      52,
+      54,
+      55
+    ],
+    "EL-21": [
+      56
+    ]
+  },
+  "verification": {
+    "issue_count": 21,
+    "native_dependency_count": 31,
+    "existing_issues_unchanged": 17,
+    "plan_checks": {
+      "plans": 21,
+      "python_blocks": 89,
+      "javascript_blocks": 46,
+      "json_blocks": 3,
+      "pure_rule_examples": 96
+    },
+    "product_tests_run": false
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "source": "/home/clusteradmin/.codex/worktrees/qwerty-spelling/english-coach",
+  "destination": "/home/clusteradmin/Desktop/english-coach",
+  "old_head": "6b9a6dcf0a241acd0b54c6abd5c9ffcfea4b8e36",
+  "tested": {
+    "head": "7cfbafec2730294a6e74ed0d445bb9b5e79ffad9",
+    "source_sha256": "882d25a9362ad81c0439076fef580d3f32a7d8a8894905100746711fbd51aa9c"
+  },
+  "synced_sha256": {
+    "frontend/src/App.jsx": "38fc6945553bdb358446ef7a557efe360da359d5859294573ac826f7e6826fb2",
+    "frontend/src/main.jsx": "217cd5c64064e142fe593e2c3404dbc4c34679bb9b9223f433be0247248082a8",
+    "frontend/src/components/SpellingBoard.jsx": "5414fde5fae0faa5b66c2e3ea973703644055a325c01ec2e1ad135afaa56f8a2",
+    "frontend/src/views/SpellingPage.jsx": "68d464b4657eb5df546dc2cc4be1fc6abe204e1878f7729a5da90324b47abdd1",
+    "frontend/src/styles/home-workspace.css": "512ebbeff2ede12759a7dafece9e5805583262210792cee09381a794108f40f8",
+    "frontend/src/styles/qwerty-spelling.css": "77495c1dcfae139a68f8c0bff2af0a0dd745d480070bb3324ee28c94fc7a8e27",
+    "app/static/images/home-reading.png": "4395ae7ef45b300bf7b14acd29b616f16cc27df95c07ddc92dc64447fa65a7ec",
+    "e2e/ec-13.spec.mjs": "245c5f7810fd826779a12277238d2cdcd7c6047fb74fa141856c8532bcf0c378",
+    "e2e/home-workspace.spec.mjs": "7e5bc9f4f401d3666993568584b925ef59e79087f84c0ee94e5eca9b7a9087c5",
+    "e2e/qwerty-spelling.spec.mjs": "874632046c68ce03c68485172578f3ad24f44519e424fedf9752395c4339e2e5",
+    "e2e/fixtures/home-preview-safety.json": "cd115450f9c950bca11fc3066c6333844325d3a3a6fdd9f2ee6409d7da3e33a6",
+    "design-qa.md": "5597cb78d864b3fc121f336cc59010c6ba57eea13a5b633f2b917a85d574c5e6"
+  },
+  "backup": "/home/clusteradmin/.codex/backups/english-coach-sync-20261103T010324Z",
+  "browser": {
+    "startTime": "2026-11-03T01:05:42.768Z",
+    "duration": 138828.633,
+    "expected": 126,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "backend_passed": 47,
+  "library_passed": 7,
+  "preview": "http://127.0.0.1:37695/",
+  "real_user_database_touched": false,
+  "pushed": false
+}

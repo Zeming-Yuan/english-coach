@@ -1,0 +1,3890 @@
+{
+  "config": {
+    "argv": [
+      "/usr/local/bin/node",
+      "/home/clusteradmin/.codex/worktrees/qwerty-spelling/english-coach/frontend/node_modules/@playwright/test/cli.js",
+      "test",
+      "--config",
+      "e2e/playwright.config.mjs",
+      "e2e/home-workspace.spec.mjs",
+      "e2e/ec-01.spec.mjs",
+      "e2e/ec-13.spec.mjs",
+      "e2e/el-10.spec.mjs",
+      "e2e/qwerty-spelling.spec.mjs",
+      "--workers",
+      "4",
+      "--timeout",
+      "30000"
+    ],
+    "configFile": "/home/clusteradmin/.codex/worktrees/qwerty-spelling/english-coach/e2e/playwright.config.mjs",
+    "rootDir": "/home/clusteradmin/.codex/worktrees/qwerty-spelling/english-coach/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 4
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/tmp/ec-home-verified-artifacts",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 4
+        },
+        "id": "mobile",
+        "name": "mobile",
+        "testDir": "/home/clusteradmin/.codex/worktrees/qwerty-spelling/english-coach/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "/.*\\.spec\\.mjs/"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/tmp/ec-home-verified-artifacts",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 4
+        },
+        "id": "desktop",
+        "name": "desktop",
+        "testDir": "/home/clusteradmin/.codex/worktrees/qwerty-spelling/english-coach/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "/.*\\.spec\\.mjs/"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "/tmp/ec-home-verified.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.62.1",
+    "workers": 4,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "ec-01.spec.mjs",
+      "file": "ec-01.spec.mjs",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "EC-01 no-key-home",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "T01"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2899,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:19.407Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "T01"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "18a72b3434dcaa17e3c2-8d5f259423bf53101c09",
+          "file": "ec-01.spec.mjs",
+          "line": 3,
+          "column": 1
+        },
+        {
+          "title": "EC-01 external-missing",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "T01"
+                },
+                {
+                  "type": "spec",
+                  "description": "T20"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2862,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:22.435Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "T01"
+                    },
+                    {
+                      "type": "spec",
+                      "description": "T20"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "18a72b3434dcaa17e3c2-0026ed34d08356a6b8fa",
+          "file": "ec-01.spec.mjs",
+          "line": 15,
+          "column": 3
+        },
+        {
+          "title": "EC-01 external-timeout",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "T20"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2542,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:25.310Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "T20"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "18a72b3434dcaa17e3c2-171c65b45fe4b7589d94",
+          "file": "ec-01.spec.mjs",
+          "line": 15,
+          "column": 3
+        },
+        {
+          "title": "EC-01 external-unavailable",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "T20"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2410,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:27.864Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "T20"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "18a72b3434dcaa17e3c2-83fc147f768f63538ef2",
+          "file": "ec-01.spec.mjs",
+          "line": 15,
+          "column": 3
+        },
+        {
+          "title": "EC-01 no-key-home",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "T01"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 2948,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:40.879Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "T01"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "18a72b3434dcaa17e3c2-cb3b1292e716d6ba1ac2",
+          "file": "ec-01.spec.mjs",
+          "line": 3,
+          "column": 1
+        },
+        {
+          "title": "EC-01 external-missing",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "T01"
+                },
+                {
+                  "type": "spec",
+                  "description": "T20"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 2907,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:43.933Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "T01"
+                    },
+                    {
+                      "type": "spec",
+                      "description": "T20"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "18a72b3434dcaa17e3c2-ece52362ce8a87f546df",
+          "file": "ec-01.spec.mjs",
+          "line": 15,
+          "column": 3
+        },
+        {
+          "title": "EC-01 external-timeout",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "T20"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 2924,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:46.851Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "T20"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "18a72b3434dcaa17e3c2-6c574983d1836e81f142",
+          "file": "ec-01.spec.mjs",
+          "line": 15,
+          "column": 3
+        },
+        {
+          "title": "EC-01 external-unavailable",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "T20"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 2691,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:49.784Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "T20"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "18a72b3434dcaa17e3c2-bd9888e71667625fbffe",
+          "file": "ec-01.spec.mjs",
+          "line": 15,
+          "column": 3
+        }
+      ]
+    },
+    {
+      "title": "ec-13.spec.mjs",
+      "file": "ec-13.spec.mjs",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "EC-13 daily round is due-first with fixed target and visible backlog",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "T18"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 3845,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:19.418Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "T18"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-b3ec7268efe030e9ffab",
+          "file": "ec-13.spec.mjs",
+          "line": 3,
+          "column": 1
+        },
+        {
+          "title": "EC-13 refresh resumes the frozen round after confirmed saves",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 3616,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:23.387Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-472d7c47d16a59276945",
+          "file": "ec-13.spec.mjs",
+          "line": 22,
+          "column": 1
+        },
+        {
+          "title": "EC-13 failed save stays put and refresh confirmation advances exactly once",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 3786,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:27.016Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-5b798b6f404cc9dae0df",
+          "file": "ec-13.spec.mjs",
+          "line": 37,
+          "column": 1
+        },
+        {
+          "title": "EC-13 load error is distinct from empty library and offers retry",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "T20"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 2859,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:30.809Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "T20"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-6e46726701bbe1281513",
+          "file": "ec-13.spec.mjs",
+          "line": 55,
+          "column": 1
+        },
+        {
+          "title": "EC-13 small library completes with keyboard and keeps specialist practice",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "T21"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 3554,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:33.676Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "T21"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-1db368b227825f7bb458",
+          "file": "ec-13.spec.mjs",
+          "line": 64,
+          "column": 1
+        },
+        {
+          "title": "EC-13 minimum daily goal never raises a lowered new-word quota",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 3343,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:37.238Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-d4cb1bbf3d6898e572e6",
+          "file": "ec-13.spec.mjs",
+          "line": 87,
+          "column": 1
+        },
+        {
+          "title": "EC-13 empty library shows loading and provides backup recovery entry",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 2922,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:40.588Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-2b06295679965394bd94",
+          "file": "ec-13.spec.mjs",
+          "line": 99,
+          "column": 1
+        },
+        {
+          "title": "EC-13 deleted card cannot count as complete and can exit to reload",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 3824,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:43.516Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-010cdf0b5b281b9ea448",
+          "file": "ec-13.spec.mjs",
+          "line": 113,
+          "column": 1
+        },
+        {
+          "title": "EC-13 specialist detour preserves the suspended daily round",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 4183,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:47.348Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-d76997f50e17d5c49ea3",
+          "file": "ec-13.spec.mjs",
+          "line": 128,
+          "column": 1
+        },
+        {
+          "title": "EC-13 a completed full round leaves the backlog for a fresh next round",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "T18"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 6034,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:51.543Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "T18"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-346d55d32f0c09f4a2f9",
+          "file": "ec-13.spec.mjs",
+          "line": 147,
+          "column": 1
+        },
+        {
+          "title": "EC-13 resuming before pending confirmation cannot review the same main card twice",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 4431,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:57.591Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-7903fbb8cef6f66e700c",
+          "file": "ec-13.spec.mjs",
+          "line": 168,
+          "column": 1
+        },
+        {
+          "title": "EC-13 standalone pending for the same card cannot count toward the daily session",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 4593,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:02.031Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-eb71b3bfd5d355367c96",
+          "file": "ec-13.spec.mjs",
+          "line": 222,
+          "column": 1
+        },
+        {
+          "title": "EC-13 an in-flight foreign recovery clears pending without advancing daily progress",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 5015,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:06.632Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-fad57e8b7d14d3c40524",
+          "file": "ec-13.spec.mjs",
+          "line": 240,
+          "column": 1
+        },
+        {
+          "title": "EC-13 late initial send confirmation preserves the next card's pending identity",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 4638,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:11.655Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-f02d30fb658008c35723",
+          "file": "ec-13.spec.mjs",
+          "line": 268,
+          "column": 3
+        },
+        {
+          "title": "EC-13 late retry confirmation preserves the next card's pending identity",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 4912,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:16.299Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-163060a14ef0aa72c900",
+          "file": "ec-13.spec.mjs",
+          "line": 268,
+          "column": 3
+        },
+        {
+          "title": "EC-13 late home retry confirmation preserves the next card's pending identity",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 4598,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:21.221Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-37a334a72621901ba11f",
+          "file": "ec-13.spec.mjs",
+          "line": 268,
+          "column": 3
+        },
+        {
+          "title": "EC-13 daily round is due-first with fixed target and visible backlog",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "T18"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3805,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:51.492Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "T18"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-4b1a793fe5cfab7da930",
+          "file": "ec-13.spec.mjs",
+          "line": 3,
+          "column": 1
+        },
+        {
+          "title": "EC-13 refresh resumes the frozen round after confirmed saves",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3531,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:55.420Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-cc66dd2e2f0b032170dc",
+          "file": "ec-13.spec.mjs",
+          "line": 22,
+          "column": 1
+        },
+        {
+          "title": "EC-13 failed save stays put and refresh confirmation advances exactly once",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3879,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:58.961Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-0af6c43503f2330deeb7",
+          "file": "ec-13.spec.mjs",
+          "line": 37,
+          "column": 1
+        },
+        {
+          "title": "EC-13 load error is distinct from empty library and offers retry",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "T20"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2970,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:02.853Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "T20"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-cd891e6b88ff653d938f",
+          "file": "ec-13.spec.mjs",
+          "line": 55,
+          "column": 1
+        },
+        {
+          "title": "EC-13 small library completes with keyboard and keeps specialist practice",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "T21"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3083,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:05.833Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "T21"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-e18c6ef8ae98210a0bc6",
+          "file": "ec-13.spec.mjs",
+          "line": 64,
+          "column": 1
+        },
+        {
+          "title": "EC-13 minimum daily goal never raises a lowered new-word quota",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2842,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:08.924Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-32f255640cb43ba52061",
+          "file": "ec-13.spec.mjs",
+          "line": 87,
+          "column": 1
+        },
+        {
+          "title": "EC-13 empty library shows loading and provides backup recovery entry",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2817,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:11.775Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-915e19a4197eb2808bdd",
+          "file": "ec-13.spec.mjs",
+          "line": 99,
+          "column": 1
+        },
+        {
+          "title": "EC-13 deleted card cannot count as complete and can exit to reload",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3397,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:14.598Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-89a41306a489d7d0771c",
+          "file": "ec-13.spec.mjs",
+          "line": 113,
+          "column": 1
+        },
+        {
+          "title": "EC-13 specialist detour preserves the suspended daily round",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3794,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:18.001Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-661735361b81122ea19d",
+          "file": "ec-13.spec.mjs",
+          "line": 128,
+          "column": 1
+        },
+        {
+          "title": "EC-13 a completed full round leaves the backlog for a fresh next round",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "T18"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5712,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:21.801Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "T18"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-a692a7358be5d1ef272a",
+          "file": "ec-13.spec.mjs",
+          "line": 147,
+          "column": 1
+        },
+        {
+          "title": "EC-13 resuming before pending confirmation cannot review the same main card twice",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4307,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:27.518Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-f0ddbf5425de4538a52d",
+          "file": "ec-13.spec.mjs",
+          "line": 168,
+          "column": 1
+        },
+        {
+          "title": "EC-13 standalone pending for the same card cannot count toward the daily session",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5066,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:31.832Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-fee0a502e734e9bc3cd2",
+          "file": "ec-13.spec.mjs",
+          "line": 222,
+          "column": 1
+        },
+        {
+          "title": "EC-13 an in-flight foreign recovery clears pending without advancing daily progress",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4812,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:36.908Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-a6cf97622d94afbeb60a",
+          "file": "ec-13.spec.mjs",
+          "line": 240,
+          "column": 1
+        },
+        {
+          "title": "EC-13 late initial send confirmation preserves the next card's pending identity",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5479,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:41.730Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-f497231912f04073031b",
+          "file": "ec-13.spec.mjs",
+          "line": 268,
+          "column": 3
+        },
+        {
+          "title": "EC-13 late retry confirmation preserves the next card's pending identity",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4997,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:47.217Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-95336337b404a705f7b0",
+          "file": "ec-13.spec.mjs",
+          "line": 268,
+          "column": 3
+        },
+        {
+          "title": "EC-13 late home retry confirmation preserves the next card's pending identity",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4850,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:52.220Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "d0047cb2147b80723542-c4b4507e83b00b4c272c",
+          "file": "ec-13.spec.mjs",
+          "line": 268,
+          "column": 3
+        }
+      ]
+    },
+    {
+      "title": "el-10.spec.mjs",
+      "file": "el-10.spec.mjs",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "EL-10 failed advice starts the exact independent practice",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "EL10"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 3711,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:19.409Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "EL10"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-37ecfee672195f34a954",
+          "file": "el-10.spec.mjs",
+          "line": 17,
+          "column": 1
+        },
+        {
+          "title": "EL-10 assisted-only advice remains separate from independent recall",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "EL10"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 3437,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:23.235Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "EL10"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-1bab8e795275334fb879",
+          "file": "el-10.spec.mjs",
+          "line": 60,
+          "column": 1
+        },
+        {
+          "title": "EL-10 no evidence explains uncertainty without diagnosing weakness",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "EL10"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 3184,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:26.681Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "EL10"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-9d206d03faf1ad8d82d4",
+          "file": "el-10.spec.mjs",
+          "line": 74,
+          "column": 1
+        },
+        {
+          "title": "EL-10 revision before entry explains original target unavailable",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "EL10"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 3233,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:29.879Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "EL10"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-8bf1c72f03d73b765e78",
+          "file": "el-10.spec.mjs",
+          "line": 83,
+          "column": 3
+        },
+        {
+          "title": "EL-10 deletion before entry explains original target unavailable",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "EL10"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 3242,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:33.126Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "EL10"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-15af341466c7b19d7512",
+          "file": "el-10.spec.mjs",
+          "line": 83,
+          "column": 3
+        },
+        {
+          "title": "EL-10 delayed advice hides answers and reveal recalculates eligibility",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "EL10"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 3271,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:36.381Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "EL10"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-4fbae4ed29ab1d501df6",
+          "file": "el-10.spec.mjs",
+          "line": 97,
+          "column": 1
+        },
+        {
+          "title": "EL-10 delayed suggestion starts its exact window and records retention",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "EL10"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 3231,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:39.662Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "EL10"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-38466ebe9cbf03ada976",
+          "file": "el-10.spec.mjs",
+          "line": 111,
+          "column": 1
+        },
+        {
+          "title": "EL-10 lost-response keeps answer and confirms one targeted event",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "EL10"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 3757,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:42.904Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "EL10"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-d2611bb3ab993702db85",
+          "file": "el-10.spec.mjs",
+          "line": 124,
+          "column": 3
+        },
+        {
+          "title": "EL-10 commit-failure keeps answer and confirms one targeted event",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "EL10"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 3892,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:46.671Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "EL10"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-f8393e2beaa57a0eea2a",
+          "file": "el-10.spec.mjs",
+          "line": 124,
+          "column": 3
+        },
+        {
+          "title": "EL-10 lost creation response continues the same frozen round",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "EL10"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 3502,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:50.574Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "EL10"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-434695e8531fe758e235",
+          "file": "el-10.spec.mjs",
+          "line": 158,
+          "column": 1
+        },
+        {
+          "title": "EL-10 course shows its own short check and delayed samples",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "EL10"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 3456,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:54.083Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "EL10"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-5a2dc5dea784155cc306",
+          "file": "el-10.spec.mjs",
+          "line": 177,
+          "column": 1
+        },
+        {
+          "title": "EL-10 deleted frozen pool offers a return without a fake pass",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "EL10"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 3632,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:57.544Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "EL10"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-ecfa8e49402c678d7965",
+          "file": "el-10.spec.mjs",
+          "line": 197,
+          "column": 1
+        },
+        {
+          "title": "EL-10 V3 restore resumes the original targeted round",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "EL10"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 6358,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:01.182Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "EL10"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-2b63ece1f3f19a97732d",
+          "file": "el-10.spec.mjs",
+          "line": 212,
+          "column": 1
+        },
+        {
+          "title": "EL-10 functional rollback keeps evidence and hides advice",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "EL10"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 5657,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:07.544Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "EL10"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-dc1698b779a420656d76",
+          "file": "el-10.spec.mjs",
+          "line": 233,
+          "column": 1
+        },
+        {
+          "title": "EL-10 unavailable browser storage explains creation recovery limits",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "EL10"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 3035,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:13.209Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "EL10"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-065daf0e999c1f85df7d",
+          "file": "el-10.spec.mjs",
+          "line": 254,
+          "column": 1
+        },
+        {
+          "title": "EL-10 same-browser restore replaces stale advice entry with imported round",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "EL10"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 6845,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:16.254Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "EL10"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-0e27e4b0e421fc6ca73d",
+          "file": "el-10.spec.mjs",
+          "line": 269,
+          "column": 1
+        },
+        {
+          "title": "EL-10 partial deletion invalidates the frozen multiword round",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "EL10"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 3409,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:23.109Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "EL10"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-0031c4c42d79a7e6ce9e",
+          "file": "el-10.spec.mjs",
+          "line": 299,
+          "column": 1
+        },
+        {
+          "title": "EL-10 failed advice starts the exact independent practice",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 3539,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:52.495Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-de2296b15aff3caa1984",
+          "file": "el-10.spec.mjs",
+          "line": 17,
+          "column": 1
+        },
+        {
+          "title": "EL-10 assisted-only advice remains separate from independent recall",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 3571,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:56.045Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-0541c839b7d769fa3652",
+          "file": "el-10.spec.mjs",
+          "line": 60,
+          "column": 1
+        },
+        {
+          "title": "EL-10 no evidence explains uncertainty without diagnosing weakness",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 3114,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:59.625Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-101aa5380d1f9469ac6d",
+          "file": "el-10.spec.mjs",
+          "line": 74,
+          "column": 1
+        },
+        {
+          "title": "EL-10 revision before entry explains original target unavailable",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 3516,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:02.745Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-626f7a3218bd693132ff",
+          "file": "el-10.spec.mjs",
+          "line": 83,
+          "column": 3
+        },
+        {
+          "title": "EL-10 deletion before entry explains original target unavailable",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 3330,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:06.266Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-503039aba2a61a22b895",
+          "file": "el-10.spec.mjs",
+          "line": 83,
+          "column": 3
+        },
+        {
+          "title": "EL-10 delayed advice hides answers and reveal recalculates eligibility",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 3260,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:09.605Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-bb2023fee70ee6b6a9fd",
+          "file": "el-10.spec.mjs",
+          "line": 97,
+          "column": 1
+        },
+        {
+          "title": "EL-10 delayed suggestion starts its exact window and records retention",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 3374,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:12.872Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-f7694657bc17c0591311",
+          "file": "el-10.spec.mjs",
+          "line": 111,
+          "column": 1
+        },
+        {
+          "title": "EL-10 lost-response keeps answer and confirms one targeted event",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 3960,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:16.251Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-54b762c1ce8b152ff901",
+          "file": "el-10.spec.mjs",
+          "line": 124,
+          "column": 3
+        },
+        {
+          "title": "EL-10 commit-failure keeps answer and confirms one targeted event",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 3353,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:20.218Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-24270780e893749630f7",
+          "file": "el-10.spec.mjs",
+          "line": 124,
+          "column": 3
+        },
+        {
+          "title": "EL-10 lost creation response continues the same frozen round",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 3514,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:23.579Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-b030f2701a7ac49d951f",
+          "file": "el-10.spec.mjs",
+          "line": 158,
+          "column": 1
+        },
+        {
+          "title": "EL-10 course shows its own short check and delayed samples",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 3800,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:27.103Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-894cb3baa2ef58d69ca8",
+          "file": "el-10.spec.mjs",
+          "line": 177,
+          "column": 1
+        },
+        {
+          "title": "EL-10 deleted frozen pool offers a return without a fake pass",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 3503,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:30.913Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-fe9137effaead01b568b",
+          "file": "el-10.spec.mjs",
+          "line": 197,
+          "column": 1
+        },
+        {
+          "title": "EL-10 V3 restore resumes the original targeted round",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 7075,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:34.422Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-70b022e15c0a90b84627",
+          "file": "el-10.spec.mjs",
+          "line": 212,
+          "column": 1
+        },
+        {
+          "title": "EL-10 functional rollback keeps evidence and hides advice",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 7329,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:41.503Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-32b19413e4597dc65858",
+          "file": "el-10.spec.mjs",
+          "line": 233,
+          "column": 1
+        },
+        {
+          "title": "EL-10 unavailable browser storage explains creation recovery limits",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 3603,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:48.837Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-222016bc474971b2f8a9",
+          "file": "el-10.spec.mjs",
+          "line": 254,
+          "column": 1
+        },
+        {
+          "title": "EL-10 same-browser restore replaces stale advice entry with imported round",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 6839,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:52.450Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-a73da6ee9013f4afaa65",
+          "file": "el-10.spec.mjs",
+          "line": 269,
+          "column": 1
+        },
+        {
+          "title": "EL-10 partial deletion invalidates the frozen multiword round",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 3380,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:59.302Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "88ead3735d96ab15793e-dd27f3c17c913ef93019",
+          "file": "el-10.spec.mjs",
+          "line": 299,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "home-workspace.spec.mjs",
+      "file": "home-workspace.spec.mjs",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "Home mixed-language course goals and translated fields cannot reveal target English",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 3,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 3054,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:19.426Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "68362d0c2b21c227bcb0-c42261519b12481a48ad",
+          "file": "home-workspace.spec.mjs",
+          "line": 3,
+          "column": 1
+        },
+        {
+          "title": "Home slow story response does not hold the daily learning action",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 3,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 3138,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:22.600Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "68362d0c2b21c227bcb0-0bad8cdac92265dfa9d7",
+          "file": "home-workspace.spec.mjs",
+          "line": 11,
+          "column": 1
+        },
+        {
+          "title": "Home previews real learning content without exposing English answers or marking lessons opened",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 3,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 2803,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:25.752Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "68362d0c2b21c227bcb0-9ea359b85b753ecd9f9a",
+          "file": "home-workspace.spec.mjs",
+          "line": 22,
+          "column": 1
+        },
+        {
+          "title": "Home optional content failure can recover while the daily round remains usable",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 3,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 2776,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:28.561Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "68362d0c2b21c227bcb0-b72443b89862a754b7d1",
+          "file": "home-workspace.spec.mjs",
+          "line": 38,
+          "column": 1
+        },
+        {
+          "title": "Home legacy story without Chinese title does not reveal the English title",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 3,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 2752,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:31.343Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "68362d0c2b21c227bcb0-c8685422850bd1bd2989",
+          "file": "home-workspace.spec.mjs",
+          "line": 51,
+          "column": 1
+        },
+        {
+          "title": "Home daily goal changes independently of the bounded round and survives reload",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 3,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 3328,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:34.101Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "68362d0c2b21c227bcb0-a55a5bfdf69135019d33",
+          "file": "home-workspace.spec.mjs",
+          "line": 60,
+          "column": 1
+        },
+        {
+          "title": "Home missing content has honest empty states and working course and story navigation",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 3,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 3096,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:37.439Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "68362d0c2b21c227bcb0-96188fb8989e07748427",
+          "file": "home-workspace.spec.mjs",
+          "line": 71,
+          "column": 1
+        },
+        {
+          "title": "Home mixed-language course goals and translated fields cannot reveal target English",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 6,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 2871,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:26.179Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "68362d0c2b21c227bcb0-fdd848bf7d3c6baebede",
+          "file": "home-workspace.spec.mjs",
+          "line": 3,
+          "column": 1
+        },
+        {
+          "title": "Home slow story response does not hold the daily learning action",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 6,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 2767,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:29.158Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "68362d0c2b21c227bcb0-129fa50fe118fade5cad",
+          "file": "home-workspace.spec.mjs",
+          "line": 11,
+          "column": 1
+        },
+        {
+          "title": "Home previews real learning content without exposing English answers or marking lessons opened",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 6,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 3030,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:31.945Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "68362d0c2b21c227bcb0-b20bd08e62ee759a5b05",
+          "file": "home-workspace.spec.mjs",
+          "line": 22,
+          "column": 1
+        },
+        {
+          "title": "Home optional content failure can recover while the daily round remains usable",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 6,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 2878,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:34.986Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "68362d0c2b21c227bcb0-f207297e1d1ac61f8a1f",
+          "file": "home-workspace.spec.mjs",
+          "line": 38,
+          "column": 1
+        },
+        {
+          "title": "Home legacy story without Chinese title does not reveal the English title",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 6,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 2992,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:37.875Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "68362d0c2b21c227bcb0-e88bcffb7dde61a466f3",
+          "file": "home-workspace.spec.mjs",
+          "line": 51,
+          "column": 1
+        },
+        {
+          "title": "Home daily goal changes independently of the bounded round and survives reload",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 6,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 3520,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:40.876Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "68362d0c2b21c227bcb0-e6834f44ac970b2d89e2",
+          "file": "home-workspace.spec.mjs",
+          "line": 60,
+          "column": 1
+        },
+        {
+          "title": "Home missing content has honest empty states and working course and story navigation",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 6,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 3028,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:44.408Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "68362d0c2b21c227bcb0-84b473585e9ba63f1878",
+          "file": "home-workspace.spec.mjs",
+          "line": 71,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "qwerty-spelling.spec.mjs",
+      "file": "qwerty-spelling.spec.mjs",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "Qwerty independent input hides pronunciation and waits for saved feedback",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3362,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:30.292Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e8ec374a5137937f4827-bdb84840f476ed795bd5",
+          "file": "qwerty-spelling.spec.mjs",
+          "line": 11,
+          "column": 1
+        },
+        {
+          "title": "Qwerty character feedback is confined to explicitly assisted spelling",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4214,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:33.662Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e8ec374a5137937f4827-cffc8540cc71952b38ab",
+          "file": "qwerty-spelling.spec.mjs",
+          "line": 45,
+          "column": 1
+        },
+        {
+          "title": "Qwerty failed save preserves text and reduced motion removes feedback movement",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3378,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:37.882Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e8ec374a5137937f4827-40a1842eae41605e0bc7",
+          "file": "qwerty-spelling.spec.mjs",
+          "line": 63,
+          "column": 1
+        },
+        {
+          "title": "Qwerty composition Enter does not prematurely submit",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3327,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:41.269Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e8ec374a5137937f4827-235bb73c2c97920c1414",
+          "file": "qwerty-spelling.spec.mjs",
+          "line": 83,
+          "column": 1
+        },
+        {
+          "title": "Qwerty Enter continues after a confirmed answer",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3185,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:44.605Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e8ec374a5137937f4827-4c50ed5a735e8ba7b59f",
+          "file": "qwerty-spelling.spec.mjs",
+          "line": 101,
+          "column": 1
+        },
+        {
+          "title": "Qwerty requested first-letter help is available through the accessible input description",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3315,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:02:47.798Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e8ec374a5137937f4827-76bf2865e39f0b960379",
+          "file": "qwerty-spelling.spec.mjs",
+          "line": 113,
+          "column": 1
+        },
+        {
+          "title": "Qwerty independent input hides pronunciation and waits for saved feedback",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 7,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 3627,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:26.878Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e8ec374a5137937f4827-04494d29b1e4149ad074",
+          "file": "qwerty-spelling.spec.mjs",
+          "line": 11,
+          "column": 1
+        },
+        {
+          "title": "Qwerty character feedback is confined to explicitly assisted spelling",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 7,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 3858,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:30.613Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e8ec374a5137937f4827-374531d3e9b2320db04d",
+          "file": "qwerty-spelling.spec.mjs",
+          "line": 45,
+          "column": 1
+        },
+        {
+          "title": "Qwerty failed save preserves text and reduced motion removes feedback movement",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 7,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 3425,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:34.484Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e8ec374a5137937f4827-0c771fa29443270c10ba",
+          "file": "qwerty-spelling.spec.mjs",
+          "line": 63,
+          "column": 1
+        },
+        {
+          "title": "Qwerty composition Enter does not prematurely submit",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 7,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 3586,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:37.921Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e8ec374a5137937f4827-cad26efec5232871a412",
+          "file": "qwerty-spelling.spec.mjs",
+          "line": 83,
+          "column": 1
+        },
+        {
+          "title": "Qwerty Enter continues after a confirmed answer",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 7,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 3768,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:41.513Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e8ec374a5137937f4827-3c01cb0dd6606eeec347",
+          "file": "qwerty-spelling.spec.mjs",
+          "line": 101,
+          "column": 1
+        },
+        {
+          "title": "Qwerty requested first-letter help is available through the accessible input description",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 7,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 3555,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T10:03:45.290Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e8ec374a5137937f4827-297125944c71f3c40996",
+          "file": "qwerty-spelling.spec.mjs",
+          "line": 113,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-11-02T10:02:19.150Z",
+    "duration": 103653.018,
+    "expected": 100,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

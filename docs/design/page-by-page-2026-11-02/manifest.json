@@ -1,0 +1,380 @@
+{
+  "date": "2026-11-02",
+  "scope": "20 张桌面设计新稿，以及 1 张已确认的故事阅读页。示例数据仅用于视觉设计。",
+  "pages": [
+    {
+      "id": "home",
+      "title": "每日学习",
+      "route": "queue",
+      "refs": [
+        "/home/clusteradmin/Desktop/english-coach/docs/design/story-reader/reference.png",
+        "/home/clusteradmin/Desktop/english-coach/docs/research/reference-images/enjoy-desktop-practice.webp",
+        "/home/clusteradmin/Desktop/english-coach/docs/design/full-app/before-home.png"
+      ],
+      "brief": "Design the TODAY HOME, not another generic dashboard. Organize as a calm daily learning desk. Header 今天的学习,date. Main open taskgroup 本轮学习 with10张=8复习+2新词 and onebutton开始本轮. Smallseparategoal 今日完成4词/最低10词;no hugeKPI. Below, a thoughtfully typeset compact learningmenu withonecourse 第1课 andonecurrentstory 雨天的小书店 /The Little Bookshop as real content objects. Story andcourse MUSTremainseparate. A smallsubordinateinline练习menu拼写听写测验混合 andonequiet建议入口. No photohero, forcedtimeline, duplicatecards, floatingrightpanel. Design looks inhabited because the content aligns beautifully, not because ofrandom art. Emphasize human learningpurpose with fine nativeproduct proportions.",
+      "source": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-953dd17a-9a80-4c3e-874f-c634d97c5280.png",
+      "status": "待视觉确认，未实现",
+      "number": 1,
+      "image": "/home/clusteradmin/Desktop/english-coach/docs/design/page-by-page-2026-11-02/screens/01-home.png",
+      "note": "把每日学习作为主行动；课程和故事作为继续学习入口。"
+    },
+    {
+      "id": "courses",
+      "title": "课程列表",
+      "route": "lessons",
+      "refs": [
+        "/home/clusteradmin/Desktop/english-coach/docs/research/reference-images/apple-books-library.png",
+        "/home/clusteradmin/Desktop/english-coach/docs/design/story-reader/reference.png"
+      ],
+      "brief": "Design COURSE LIBRARY. Heading课程, 零基础课程·20课; generated3/opened2/browsed1 separately in tiny summary. Compact verticalcatalog of3realdesignsamplecourses 第1课 日常问候,第2课 认识新朋友,第3课 在咖啡馆; explicitly designsampletitles. Eachrowhas a refinedsmalloriginaltypographicnumbercover48x64,notfakeartposter. Course1已浏览/短测待检查,course2已打开/浏览未确认,course3已生成/尚未打开. Oneprimary生成下一课, nofakecompletion20/20, nolockedpath. Bottomquietnext 第4课 尚未生成 row; contentorganized as objects withclearstates. Noinspectionrightsidebar. Keepcoherentwithsharedshellandcontentquality.",
+      "source": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-88353214-2617-4bf4-9943-433e101b398b.png",
+      "status": "待视觉确认，未实现",
+      "number": 2,
+      "revision": {
+        "oldPath": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-c67d2b72-6ec1-4b03-a3ea-c764987db8c6.png",
+        "path": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-88353214-2617-4bf4-9943-433e101b398b.png",
+        "revision": 2
+      },
+      "image": "/home/clusteradmin/Desktop/english-coach/docs/design/page-by-page-2026-11-02/screens/02-courses.png",
+      "note": "借鉴 Apple Books 的内容组织；区分课程生成、打开与浏览状态。"
+    },
+    {
+      "id": "course-detail",
+      "title": "课程学习",
+      "route": "lessons/LessonDetail",
+      "refs": [
+        "/home/clusteradmin/Desktop/english-coach/docs/design/story-reader/reference.png",
+        "/home/clusteradmin/Desktop/english-coach/docs/research/reference-images/enjoy-desktop-practice.webp"
+      ],
+      "brief": "Design COURSE DETAIL studying 第1课 日常问候 with actualbilingual content designsample. Back课程, goal学会简单问候与自我介绍. Compactstatus 已打开·浏览未确认 ·短测待检查. Mainleftwordstudysection 本课单词·先猜意思 with hello/həˈləʊ/, name/neɪm/,friend/frend/, each has smallChineseguessinput猜一下意思 and揭晓action (do notshowmeaningsbefore revealing). Mainrightorbelowconversation as precise transcript notchatbubblepile: A Hello! My name is Lily. /你好！我叫莉莉。 B Hi, Lily. I'm Tom. /你好，莉莉。我叫汤姆。 A Nice to meet you. /很高兴认识你。 speakerbuttonsinline. Distinguishwordpretestfromlearningdialogueexposure, noindependentassessmentclaim. Footeractions开始本课短测 primary, 内容已看完 separate, 稍后检查继续下一课 tertiary. Typographydrivesbeauty, calmcourseworkspace.",
+      "source": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-80064a9e-7118-4e24-b70e-f54eab04cc89.png",
+      "status": "待视觉确认，未实现",
+      "number": 3,
+      "image": "/home/clusteradmin/Desktop/english-coach/docs/design/page-by-page-2026-11-02/screens/03-course-detail.png",
+      "note": "以对话和课程内容为中心，分开词汇预习、阅读与短测。"
+    },
+    {
+      "id": "lesson-check",
+      "title": "本课短测",
+      "route": "lessons/PracticePage",
+      "refs": [
+        "/home/clusteradmin/Desktop/english-coach/docs/design/story-reader/reference.png",
+        "/home/clusteradmin/Desktop/english-coach/docs/research/reference-images/lector-cloze.webp"
+      ],
+      "brief": "Design COURSE SHORT CHECK currentquestion. Focusmodeheader课程短测 /第1课 日常问候 and返回课程. Confirmed0/3 top-right. MainpromptChinese你好32px andindependentinputempty. No targetEnglishhello anywhere, nopronunciationorIPA, no lengthboxes or livefeedback. Quiet首字母提示 actionandnote使用后按辅助记录. Bottom提交答案primary, 跳过这题secondary. Savedconfirmedprogressonly. Small3-stepquestiondotsneutralwithnocorrectcheckmarksbeforeanswers. Distinguishfromregularspellingthroughcoursecontextand3-questionboundedcount, notnewcontrols. SourceLectorisvisualtaskgroupingreferenceonly notits masterytracking. Premiumproducttypeandspacing.",
+      "source": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-25fa79f6-54d4-490e-ad2d-ffcabf8dc362.png",
+      "status": "待视觉确认，未实现",
+      "number": 4,
+      "revision": {
+        "oldPath": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-df6b81f1-45cf-4e57-b455-74c743921884.png",
+        "path": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-25fa79f6-54d4-490e-ad2d-ffcabf8dc362.png",
+        "revision": 2
+      },
+      "image": "/home/clusteradmin/Desktop/english-coach/docs/design/page-by-page-2026-11-02/screens/04-lesson-check.png",
+      "note": "聚焦一道题；提示行为必须按辅助练习记录。"
+    },
+    {
+      "id": "words",
+      "title": "单词本",
+      "route": "words",
+      "refs": [
+        "/home/clusteradmin/Desktop/english-coach/docs/design/story-reader/reference.png",
+        "/home/clusteradmin/Desktop/english-coach/docs/research/reference-images/readwise-reader-home.webp",
+        "/tmp/ec-design-before-words.png"
+      ],
+      "brief": "Design WORD LIBRARY. Realdata objects as disciplinedhighqualitylist, not scatteredcards. Heading单词本,42词, switch词汇/句子, workingsearch搜索单词或释义, quiet添加单词button. Alphabetgroups A/B/C/F/G, eachrowEnglish22px serif,IPA12px, Chinese14px, smallsemanticstatusrightaligned, speaker16px. Eightvisiblewords apple苹果,book书,coffee咖啡,family家人,garden花园,morning早晨,rain雨,teacher老师. Use neutralstatus独立证据不足 forapple,仍需巩固garden,独立回忆已有证据book, othersneutral. Notmasterypercent. TinyA-Zindexfar right. Currentselectedgarden rowpalegray. NOdetailrightsidebar onthispage. Normalreadablescanningdensityand finesttypography, headerandrowalignmentmeticulous.",
+      "source": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-d4d25fa9-5fc4-4ec3-84fd-fe31796bff6a.png",
+      "status": "待视觉确认，未实现",
+      "number": 5,
+      "image": "/home/clusteradmin/Desktop/english-coach/docs/design/page-by-page-2026-11-02/screens/05-words.png",
+      "note": "参考 Reader 的列表密度，搜索、筛选与学习证据直接可见。"
+    },
+    {
+      "id": "word-detail",
+      "title": "词条详情",
+      "route": "words/WordDetail",
+      "refs": [
+        "/home/clusteradmin/Desktop/english-coach/docs/design/story-reader/reference.png",
+        "/tmp/ec-reference-dictionary.png"
+      ],
+      "brief": "Design WORD DETAIL like a beautiful useful dictionary entry. Breadcrumb 单词本 / apple; heading apple48pxTinos,IPA/ˈæpəl/ and smallspeaker, n.苹果. Contentcolumnwidth680 with example I have an apple. /我有一个苹果。 and short记忆法 editable note. NativefineUI24pxheadingChinese maximum. Secondary narrow metadata area justifiedbyrealcontent: 当前回忆状态 独立证据不足, 独立样本1次, 最近应用内接触 今天10:24, 下次复习11月3日, notfakecertification. Bottom learninghistorylist2real-lookingtimestampedsamplerows 自评已保存 / 看过释义, clearlyseparateeventsfromindependentrecall. Primary测这个词, secondary编辑内容, quietdeletefaraway. Definitiondominant; avoidhugecardborders orgiantcoloredstatusslab. Not storyreader copy: use encyclopediaentry structure.",
+      "source": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-e1246a97-2ee1-4cd7-a619-de00030d84ee.png",
+      "status": "待视觉确认，未实现",
+      "number": 6,
+      "image": "/home/clusteradmin/Desktop/english-coach/docs/design/page-by-page-2026-11-02/screens/06-word-detail.png",
+      "note": "参考 Apple Dictionary 的词条层级，区分释义、例句与学习证据。"
+    },
+    {
+      "id": "stories",
+      "title": "故事库",
+      "route": "stories/list",
+      "refs": [
+        "/home/clusteradmin/Desktop/english-coach/docs/design/story-reader/reference.png",
+        "/home/clusteradmin/Desktop/english-coach/docs/research/reference-images/apple-books-library.png"
+      ],
+      "brief": "Design STORY LIBRARY complementingtheapprovedreaderwithoutcopyingreaderlayout. Heading故事, smallprimary生成新故事. Threeoriginalstoryobjects: 雨天的小书店 /The Little Bookshop with actualsnippet那是一个下雨的午后，莉莉走进了公园附近的一家小书店。; 花园里的早晨 /A Morning in the Garden; 一杯咖啡 /A Cup of Coffee. Firstisrealprojectsample, otherscleardesignsamples. Thinbookcover80x104 withrealistic restrained originalphotographiccrop(notlargehero), elegantEnglishserif20px andChinese16pxtitles, quietmetadatashortstorybilingual and阅读全文. Eachisonegroupedcontentrow, noheavycardborders. Deleteiconquietperrow, no inventedrecommendationfeedorgamification. A discreetnote 依据不足时可阅读已核对入门材料, notgrayedoutfailure. No course labels onstoryobjects.",
+      "source": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-b8b96324-9452-4ee8-a41a-6a720460d948.png",
+      "status": "待视觉确认，未实现",
+      "number": 7,
+      "revision": {
+        "oldPath": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-bbfa4092-0b68-4392-83b6-9cee864e423c.png",
+        "path": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-b8b96324-9452-4ee8-a41a-6a720460d948.png",
+        "revision": 2
+      },
+      "image": "/home/clusteradmin/Desktop/english-coach/docs/design/page-by-page-2026-11-02/screens/07-stories.png",
+      "note": "参考 Apple Books 的书库组织，强化标题、内容摘要和继续阅读入口。"
+    },
+    {
+      "id": "reader",
+      "title": "故事阅读",
+      "route": "stories/StoryRead",
+      "source": "/home/clusteradmin/Desktop/english-coach/docs/design/story-reader/reference.png",
+      "status": "已确认，保留原稿",
+      "number": 8,
+      "refs": [],
+      "image": "/home/clusteradmin/Desktop/english-coach/docs/design/page-by-page-2026-11-02/screens/08-reader.png",
+      "note": "保留此前已确认的故事阅读页，不套用其他页面的布局。"
+    },
+    {
+      "id": "add",
+      "title": "添加单词",
+      "route": "add",
+      "refs": [
+        "/home/clusteradmin/Desktop/english-coach/docs/design/story-reader/reference.png",
+        "/home/clusteradmin/Desktop/english-coach/docs/design/full-app/before-settings.png"
+      ],
+      "brief": "Design ADD WORDS as polishedfocused nativeentryform. Sharedshell, maincolumnmax720 atx340, heading添加单词26px, concisehelper 输入想学的单词，用逗号或空格分隔. One beautifullyspaced textarea containing apple, garden, coffee in actualsanstextnotdecorativechips; counter3/20small. PrimaryAI生成词卡36px; minornote生成后加入词库, notpreviewconfirmfeaturethatdoesn'texist. Belowthinrule, alternative体验入门词卡 and explanation无需AI，添加10张已核对释义和例句的词卡. Avoid oversizedcompetingbuttons, hugeuploadzone, AIchat aesthetic, magicwandornaments. Show subtle inlineerror at formbottom 生成失败，输入已保留 with重试action, notlosttext. Humanreadable, closeconnectioninputandaction.",
+      "source": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-1aa6b167-5c5e-4614-acc0-893616e35eea.png",
+      "status": "待视觉确认，未实现",
+      "number": 9,
+      "image": "/home/clusteradmin/Desktop/english-coach/docs/design/page-by-page-2026-11-02/screens/09-add.png",
+      "note": "保留输入和生成失败上下文，让重试与基础添加都可见。"
+    },
+    {
+      "id": "flashcards",
+      "title": "词卡学习",
+      "route": "study/StudyPage",
+      "refs": [
+        "/home/clusteradmin/Desktop/english-coach/docs/design/story-reader/reference.png",
+        "/home/clusteradmin/Desktop/english-coach/docs/research/reference-images/enjoy-desktop-practice.webp"
+      ],
+      "brief": "Design FLASHCARD STUDY frontstate. Focusmode: NOglobalsidebar, slim52pxtopbar返回今天 /词卡学习 andconfirmedprogress3/10 onright, thinprogressline30%. Centercontentmax640 sittingy260, Englishapple inTinos64px withIPA/ˈæpəl/ andsmallpronounceicon; noChinesemeaning orexamplebeforeflip. Smallcategory单词. Mainaction显示释义 (modest200x38) neartasky560, withSpacekeyboardhint. Footerquiet说明此环节为自评学习，独立回忆另行检查 (notinternals), skip onleft; nofourratingsbeforeflip. No giantcardaroundwholepage, nofakeart, no explanatoryrightsidebar, no oversizefloatingblueCTA. Craftedfocusbymicroalignmentandqualitytype, meaningfulwhitespaceinspiredEnjoy. Do notshowananswerinputsinceflashcardnotspelling.",
+      "source": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-c98218be-8933-4284-9256-37e7485fb4ab.png",
+      "status": "待视觉确认，未实现",
+      "number": 10,
+      "image": "/home/clusteradmin/Desktop/english-coach/docs/design/page-by-page-2026-11-02/screens/10-flashcards.png",
+      "note": "参考 Enjoy 的专注练习；先回忆，再展开释义和自评。"
+    },
+    {
+      "id": "spelling",
+      "title": "拼写练习",
+      "route": "spelling",
+      "refs": [
+        "/home/clusteradmin/Desktop/english-coach/docs/design/story-reader/reference.png",
+        "/home/clusteradmin/Desktop/english-coach/docs/research/reference-images/lector-cloze.webp"
+      ],
+      "brief": "Design SPELLING independentrecall. Focusmode NOsidebar. Top返回今天 /拼写练习 andconfirmed0/10, thinprogress0. Centerworkarea640wide,y260. Smallmode独立回忆, prompt苹果 inChinese32px, helper根据释义输入英文单词. Singlecontinuousinputwithdraftap, no targetEnglishanywhere, noIPA,lengthboxes, green/redlivevalidation orhintbeforeasked. Quiet提示首字母 actionbelow, smallnote使用提示后按辅助记录. Footerleft跳过, right提交答案 Enterbutton168x38. No microphone, decorations, progressclaimbeforeconfirmed. Centercompositionhascarefulverticalrhythm, no giantblanktophalf. Fineinputfocusring mutedpetrol, humanreadableChinese UI.",
+      "source": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-60c2bc31-8200-4ed7-81a0-a91c38879506.png",
+      "status": "待视觉确认，未实现",
+      "number": 11,
+      "revision": {
+        "oldPath": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-500ad952-a4ee-4231-864e-b492a501f042.png",
+        "path": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-60c2bc31-8200-4ed7-81a0-a91c38879506.png",
+        "revision": 2
+      },
+      "image": "/home/clusteradmin/Desktop/english-coach/docs/design/page-by-page-2026-11-02/screens/11-spelling.png",
+      "note": "参考 Lector 的填词聚焦方式；初始输入不泄露答案。"
+    },
+    {
+      "id": "listening",
+      "title": "听写练习",
+      "route": "listening",
+      "refs": [
+        "/home/clusteradmin/Desktop/english-coach/docs/design/story-reader/reference.png",
+        "/home/clusteradmin/Desktop/english-coach/docs/research/reference-images/enjoy-desktop-practice.webp"
+      ],
+      "brief": "Design LISTENING DICTATION. FocusmodeNOsidebar,top听写练习confirmed2/10. Maincenterat y230 smallprompt 听发音，写出单词. A refined round48pxspeakerplaybutton with label播放发音 and quiet keyboardhintCtrl+Space, notgiantdecorativeaudioorb. Oneplainanswerinputat y400 withplaceholder输入听到的单词, currentlyempty. Do notshowEnglishanswer, IPA orChinese translationinthisunansweredstate. Auxiliary播放速度 controls0.7x/0.9x/1.2x normal0.9selected ONLYif existingTTSSpeedglobalnotperpage alloweddon'tadd newcontrol: omitthemsimplyspeakerplusreplay. Footer跳过 and提交答案Enter. Makeauditorytaskdistinctthroughfunctionalcontrolsandverticalrhythm, notwaves/marketingart. Samepracticefamilyasotherpages.",
+      "source": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-a3209537-e756-4ed8-b942-471329b3e57a.png",
+      "status": "待视觉确认，未实现",
+      "number": 12,
+      "revision": {
+        "oldPath": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-7d0b6640-1b17-44f2-abc8-d276d7e47873.png",
+        "path": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-a3209537-e756-4ed8-b942-471329b3e57a.png",
+        "revision": 2
+      },
+      "image": "/home/clusteradmin/Desktop/english-coach/docs/design/page-by-page-2026-11-02/screens/12-listening.png",
+      "note": "以播放与输入为中心，减少阅读信息对听写的干扰。"
+    },
+    {
+      "id": "quiz",
+      "title": "测验",
+      "route": "quiz",
+      "refs": [
+        "/home/clusteradmin/Desktop/english-coach/docs/design/story-reader/reference.png",
+        "/home/clusteradmin/Desktop/english-coach/docs/research/reference-images/lector-cloze.webp"
+      ],
+      "brief": "Design QUIZ recognitionquestion. Focusmode NOsidebar. Top测验 with tinytype识别练习 andconfirmed1/10. MainpromptEnglishapple inTinos44px, instruction选择正确的中文释义. Fourfunctional answeroptions in2x2 restrainedrows 苹果/花园/老师/咖啡; optionA苹果 selectedneutraltintbutunsubmitted, no checkmarkorcorrectness. Smallletterkey A/B/C/Dlabels14px, nooversizednumbertiles. Explicit识别练习 (neverindependentrecall), nofakegradedanswer. Footer提交选择button and跳过, quiet1/10confirmed. Useexactly4choices withconsistentbaseline, goodhitareas, subtleborders onlynecessary, no cartoonawards.",
+      "source": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-c703fdf0-3ef0-4e03-bc15-a66dd64c16fb.png",
+      "status": "待视觉确认，未实现",
+      "number": 13,
+      "revision": {
+        "oldPath": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-ff577106-13b4-42a1-922e-92fb5ae69036.png",
+        "path": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-c703fdf0-3ef0-4e03-bc15-a66dd64c16fb.png",
+        "revision": 2
+      },
+      "image": "/home/clusteradmin/Desktop/english-coach/docs/design/page-by-page-2026-11-02/screens/13-quiz.png",
+      "note": "保留识别题属性，选中与判分状态明确分开。"
+    },
+    {
+      "id": "mixed",
+      "title": "混合练习",
+      "route": "mixed",
+      "refs": [
+        "/home/clusteradmin/Desktop/english-coach/docs/design/story-reader/reference.png",
+        "/home/clusteradmin/Desktop/english-coach/docs/research/reference-images/enjoy-desktop-practice.webp"
+      ],
+      "brief": "Design MIXED PRACTICE currenttypedquestion. FocusmodeNOsidebar. Top混合练习, confirmed4/10. A compacttop modeindicator当前：拼写 (othermodes听写/选择 graytext, NOTclickabletabsrequiringnewbehavior). CurrenttaskChinese花园, continuousanswerinputdraftgar, exactsameindependentrecallcontract:nocompletetargetword, noIPA,lengthboxes orlivecorrectness. Below quiet提示首字母. Footer提交答案 and跳过; tinynote已保存后进入下一题. Do notshowpreviouscorrectEnglishanswersnexttotarget. Distincttopcontextbutcoherentpracticefamily, samegridandcontrolsize.",
+      "source": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-6ff65bd6-b9eb-4360-a1e1-094e5da20086.png",
+      "status": "待视觉确认，未实现",
+      "number": 14,
+      "revision": {
+        "oldPath": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-065c8cb0-affe-49e4-a676-97986f4d6180.png",
+        "path": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-6ff65bd6-b9eb-4360-a1e1-094e5da20086.png",
+        "revision": 2
+      },
+      "image": "/home/clusteradmin/Desktop/english-coach/docs/design/page-by-page-2026-11-02/screens/14-mixed.png",
+      "note": "保持不同题型的一致操作位置，提示作为主动操作。"
+    },
+    {
+      "id": "advice",
+      "title": "建议练习",
+      "route": "advice",
+      "refs": [
+        "/home/clusteradmin/Desktop/english-coach/docs/design/story-reader/reference.png",
+        "/tmp/ec-reference-import.png"
+      ],
+      "brief": "Design SUGGESTED PRACTICE confirmation failurestate, faithfultoactualAdvicePracticePage. Focusmodeheader建议练习, exit返回建议. Center480wstatusblockwithsmallneutralretryicon, heading原目标尚未确认. Body 创建练习时连接中断，尚未开始本轮。请继续确认原请求。NoEnglishanswers, nosubstitutedtargets, noclaimednewpracticecreated. Primary继续确认创建, secondary返回建议. Tinycontext原目标保持不变. Errorcalmnotgiantredalertnorfullpagetechnicaltrace. A fineborderedinlinefailurestripunderheading withtext连接暂时不可用, notrandom servercode. Footerzeroresults. Referencenativefileimportforclarityofnextactiononly; noaccountselectors.",
+      "source": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-f9978f6f-4874-4618-9582-c2ec886e8de5.png",
+      "status": "待视觉确认，未实现",
+      "number": 15,
+      "revision": {
+        "oldPath": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-1b0b4a58-b2f3-47de-b8cd-767886095dd2.png",
+        "path": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-f9978f6f-4874-4618-9582-c2ec886e8de5.png",
+        "revision": 2
+      },
+      "image": "/home/clusteradmin/Desktop/english-coach/docs/design/page-by-page-2026-11-02/screens/15-advice.png",
+      "note": "展示建议练习创建失败状态；保留原请求，提供重试与返回。"
+    },
+    {
+      "id": "delayed",
+      "title": "隔日／一周回测",
+      "route": "delayed",
+      "refs": [
+        "/home/clusteradmin/Desktop/english-coach/docs/design/story-reader/reference.png",
+        "/home/clusteradmin/Desktop/english-coach/docs/research/reference-images/enjoy-desktop-practice.webp"
+      ],
+      "brief": "Design DELAYED RECALL CHECK emptyeligibilitystate. Focusmodeheader一周回测 and返回学习记录. Maincolumn560at y240, smallcalendaroutline20px, heading暂时没有符合条件的词24px. Neutral explanation当前可用记录还不足以开始一周回测，可以先进行普通练习. Labelthisisnotfailureanddoesnotmeanabilitylow WITHOUTpatronizingencouragement. Primary普通练习, secondary返回学习记录. Belowa subtletextsection 回测说明 with距应用内上次记录的间隔 and需要可核对的记录, noproficiencyorpercent. Do notinventeligibletargets orshowanswers. A containedhalfpagecompositionwithusefulreadinghierarchy, noemotionillustrationoroversizedblankutilitypanel.",
+      "source": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-3f2bc34e-76b9-4ecb-8208-bd0c371ec7a7.png",
+      "status": "待视觉确认，未实现",
+      "number": 16,
+      "revision": {
+        "oldPath": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-3cd69518-6711-4120-9199-e025fefa0df7.png",
+        "path": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-3f2bc34e-76b9-4ecb-8208-bd0c371ec7a7.png",
+        "revision": 2
+      },
+      "image": "/home/clusteradmin/Desktop/english-coach/docs/design/page-by-page-2026-11-02/screens/16-delayed.png",
+      "note": "展示间隔尚未达到的空状态；其他空态须显示实际原因。"
+    },
+    {
+      "id": "reinforcement",
+      "title": "本轮巩固",
+      "route": "study/DailySessionPage/reinforcement",
+      "refs": [
+        "/home/clusteradmin/Desktop/english-coach/docs/design/story-reader/reference.png",
+        "/home/clusteradmin/Desktop/english-coach/docs/research/reference-images/lector-cloze.webp"
+      ],
+      "brief": "Design BOUNDED REINFORCEMENT. Focusmodeheader本轮巩固, quiet本轮最多3题 and退出. CenterpromptChinese花园, independentcontinuousanswerinput empty, noEnglish targetorIPA/length/livefeedback, quiet提示首字母below. Intro一轮学习已保存，可选做少量巩固 (no needrecalculatedscheduledpromise). Footerprimary提交, secondary跳过本轮巩固. Smallnote辅助巩固不更新排期. Mainbodyfocused,but cleardistinction optionalreinforcementvsrequiredqueue. No fakeprogresscompletion. Samehighqualitypracticegrid, no giantpanelorcheerillustration.",
+      "source": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-7e1f2ff9-8194-477f-bcf1-eea9a93e9282.png",
+      "status": "待视觉确认，未实现",
+      "number": 17,
+      "revision": {
+        "oldPath": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-0d6dd193-0273-4ce1-8bab-151ce745e001.png",
+        "path": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-7e1f2ff9-8194-477f-bcf1-eea9a93e9282.png",
+        "revision": 2
+      },
+      "image": "/home/clusteradmin/Desktop/english-coach/docs/design/page-by-page-2026-11-02/screens/17-reinforcement.png",
+      "note": "明确本轮可选巩固，显示辅助记录与跳过入口。"
+    },
+    {
+      "id": "result",
+      "title": "本轮学习结果",
+      "route": "study/DailySessionPage/summary",
+      "refs": [
+        "/home/clusteradmin/Desktop/english-coach/docs/design/story-reader/reference.png",
+        "/tmp/ec-reference-screen-time.png"
+      ],
+      "brief": "Design LEARNING ROUND RESULT as eleganthonestshortreport. Focusmode no nav, top本轮学习结果 anddate. Maincontent760width, heading本轮已保存26px, subline10张卡已保存并排期;12次练习包括主队列10次和巩固2次，跳过0. Open typeset evidence table 独立提取6/8,辅助练习2/2,识别练习1/1,自评1次; do notcombineintooverallaccuracyor mastery. Subsection仍需复习: apple、garden asquiettextlinks, 下次排期11月3日. Oneprimary返回今天, secondary去做测验. No confetti, trophy,gamifiedscore, 100%claims, bigcoloredKPIcards. Strongtypographicreportidentityandfinehorizontalrules, cleardataandrestrainedsatisfaction.",
+      "source": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-b4609380-d50c-4352-80f0-4b2d429161a0.png",
+      "status": "待视觉确认，未实现",
+      "number": 18,
+      "revision": {
+        "oldPath": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-96e54e20-0047-46c3-beb6-b3c870cf7739.png",
+        "path": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-b4609380-d50c-4352-80f0-4b2d429161a0.png",
+        "revision": 2
+      },
+      "image": "/home/clusteradmin/Desktop/english-coach/docs/design/page-by-page-2026-11-02/screens/18-result.png",
+      "note": "区分主轮、巩固、辅助与自评，不把它们合并为掌握率。"
+    },
+    {
+      "id": "stats",
+      "title": "学习记录",
+      "route": "stats",
+      "refs": [
+        "/home/clusteradmin/Desktop/english-coach/docs/design/story-reader/reference.png",
+        "/tmp/ec-reference-screen-time.png"
+      ],
+      "brief": "Design LEARNING RECORDS as lucid personallearningreport, notbusinessdashboard. Heading学习记录, small最近7天 daterange10月27日—11月2日. Fourtopsummaryvalues ononeopenline 累计词汇42 /今日完成4 /今日练习6次 /连续3天; type24maxnotgiantcards. One quietcolumnchart labeled每天完成词数, realdesignsamplecounts8,0,6,10,5,7,4 aligneddatesTue27toMon2; nofakeaccuracycurve. Below elegant evidencebreakdown table counts 独立回忆已有证据14,仍需巩固9,历史证据待复测6,独立证据不足11,历史依据不完整2 (sum42). Show samplecount26 andnotconfidencepercentage. Separatemini 延迟保持 rows隔日独立成功2/3样本,一周暂无数据, smallneutral样本较少仅说明所测内容, action隔日回测/一周回测. Finishquiet查看练习指标andsuggestionscollapsed. Nativechartrestraint, finecontentgrouping, enoughdatawithoutdashboardcards.",
+      "source": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-3874d734-3bdb-43df-ad13-e9eafc33c8d4.png",
+      "status": "待视觉确认，未实现",
+      "number": 19,
+      "revision": {
+        "oldPath": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-b4e7237b-7b31-4da3-9d42-f502217d783d.png",
+        "path": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-3874d734-3bdb-43df-ad13-e9eafc33c8d4.png",
+        "revision": 2
+      },
+      "image": "/home/clusteradmin/Desktop/english-coach/docs/design/page-by-page-2026-11-02/screens/19-stats.png",
+      "note": "借鉴系统设置的分组层级，按真实学习证据组织记录。"
+    },
+    {
+      "id": "settings",
+      "title": "设置",
+      "route": "settings",
+      "refs": [
+        "/home/clusteradmin/Desktop/english-coach/docs/design/story-reader/reference.png",
+        "/tmp/ec-reference-screen-time.png",
+        "/home/clusteradmin/Desktop/english-coach/docs/design/full-app/before-settings.png"
+      ],
+      "brief": "Design SETTINGS as expertlycrafted nativepreferences page, notallcenteredfloatingcard. Sharednav, maincolumnwidth760, heading设置. Groupedrows labelleftcontrolright withsubtlegrouptitles学习偏好/外观/内容维护/数据. 发音速度 segmented慢速 标准快速 standardselected;最低完成目标5/10/15/20 with10selected andtinyhelper不改变新词配额;句子中文翻译智能/常显/隐藏 smartselected;暗色模式offtoggle. Contentmaintenance rows刷新例句每次10个 and生成句子卡每次5个 asquiettextbuttons withbriefcontext. 数据备份 row备份与恢复 chevron. Noaccount, sync, subscription,notifications ornewsettings. Beautifulrowsbaselinealignmentandhoverstates, compactproportions, sectionspacing32. Nooversizedcoloredicon tiles, noillustrations.",
+      "source": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-ea0a1aab-b7b9-4e9e-8838-6e653ebcefd1.png",
+      "status": "待视觉确认，未实现",
+      "number": 20,
+      "image": "/home/clusteradmin/Desktop/english-coach/docs/design/page-by-page-2026-11-02/screens/20-settings.png",
+      "note": "参考 macOS 设置的分组与控件层级，降低配置负担。"
+    },
+    {
+      "id": "backup",
+      "title": "备份与恢复",
+      "route": "backup",
+      "refs": [
+        "/home/clusteradmin/Desktop/english-coach/docs/design/story-reader/reference.png",
+        "/tmp/ec-reference-import.png"
+      ],
+      "brief": "Design BACKUP AND RESTORE with anactualselectedfilepreviewstate. Header返回设置 /备份与恢复. Uppercompact exportrow 下载完整备份, note不含API密钥与浏览器偏好. Lower main restorearea chosenfile english-coach-backup.json, formatV3, readyforreview notalreadysuccess. A precise impacttable 项目 当前→备份:词卡42→38,学习事件120→100,课程3→2,故事3→2. Clearlylabel全量替换, notmerge. Smallmutedambernotice现有学习内容将被替换；未包含的内容会删除。执行前自动保存当前数据库完整备份. Onecontrolleddangerprimary确认替换学习数据 nextto取消; NOTa cheerfulgreenrestorebutton. Otherminorpreviewdetailscollapsible. Nativefinefileicon16px, calmclaritynotanxiety, nofakecloudsync. Reference1PasswordfororderedfileactiononlynotpasswordproductUI.",
+      "source": "/home/clusteradmin/.codex/generated_images/01a19106-7c82-7960-8de2-72256fb8f97d/exec-d67548e9-f0fa-4869-a1bd-cecb9b67a0e8.png",
+      "status": "待视觉确认，未实现",
+      "number": 21,
+      "image": "/home/clusteradmin/Desktop/english-coach/docs/design/page-by-page-2026-11-02/screens/21-backup.png",
+      "note": "参考 1Password 导入流程，先预览完整替换影响再执行。"
+    }
+  ]
+}

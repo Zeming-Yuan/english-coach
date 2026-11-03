@@ -1,0 +1,1731 @@
+{
+  "config": {
+    "argv": [
+      "/usr/local/bin/node",
+      "/home/clusteradmin/.codex/worktrees/qwerty-spelling/english-coach/frontend/node_modules/@playwright/test/cli.js",
+      "test",
+      "--config",
+      "e2e/playwright.config.mjs",
+      "--workers",
+      "4",
+      "--grep",
+      "Qwerty |EC-05 |EL-05 |EC-07 single-card-independent-and-assisted-spelling-parity"
+    ],
+    "configFile": "/home/clusteradmin/.codex/worktrees/qwerty-spelling/english-coach/e2e/playwright.config.mjs",
+    "rootDir": "/home/clusteradmin/.codex/worktrees/qwerty-spelling/english-coach/e2e",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 4
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/tmp/ec-qwerty-regression-artifacts",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 4
+        },
+        "id": "mobile",
+        "name": "mobile",
+        "testDir": "/home/clusteradmin/.codex/worktrees/qwerty-spelling/english-coach/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "/.*\\.spec\\.mjs/"
+        ],
+        "timeout": 90000
+      },
+      {
+        "outputDir": "/tmp/ec-qwerty-regression-artifacts",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 4
+        },
+        "id": "desktop",
+        "name": "desktop",
+        "testDir": "/home/clusteradmin/.codex/worktrees/qwerty-spelling/english-coach/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "/.*\\.spec\\.mjs/"
+        ],
+        "timeout": 90000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "/tmp/ec-qwerty-regression.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.62.1",
+    "workers": 4,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "ec-05.spec.mjs",
+      "file": "ec-05.spec.mjs",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "EC-05 independent-input",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "T11"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4004,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:18.669Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "T11"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4940bfffc64f6565810b-d164fc74ccde4ca1f99d",
+          "file": "ec-05.spec.mjs",
+          "line": 14,
+          "column": 1
+        },
+        {
+          "title": "EC-05 feedback-is-assistance",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "T11"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3551,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:22.804Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "T11"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4940bfffc64f6565810b-4c40b644ac9141c09f19",
+          "file": "ec-05.spec.mjs",
+          "line": 31,
+          "column": 1
+        },
+        {
+          "title": "EC-05 lost-response-retry-saves-once",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "T06"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3323,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:26.364Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "T06"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4940bfffc64f6565810b-dbb4bb46c5be07000a6a",
+          "file": "ec-05.spec.mjs",
+          "line": 46,
+          "column": 1
+        },
+        {
+          "title": "EC-05 explicit-skip-is-not-wrong",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "T11"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3114,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:29.697Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "T11"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4940bfffc64f6565810b-553a057ea273c58c9ec8",
+          "file": "ec-05.spec.mjs",
+          "line": 77,
+          "column": 1
+        },
+        {
+          "title": "EC-05 leaving-page-creates-no-event",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "T11"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3062,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:32.821Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "T11"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4940bfffc64f6565810b-772b29a35ed41ee6b732",
+          "file": "ec-05.spec.mjs",
+          "line": 91,
+          "column": 1
+        },
+        {
+          "title": "EC-05 quiz-typed-independent",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3474,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:35.893Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4940bfffc64f6565810b-973d54187086b12c1b45",
+          "file": "ec-05.spec.mjs",
+          "line": 102,
+          "column": 1
+        },
+        {
+          "title": "EC-05 independent-input",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "T11"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 3745,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:23.362Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "T11"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4940bfffc64f6565810b-73eea650c1e3f790fb7d",
+          "file": "ec-05.spec.mjs",
+          "line": 14,
+          "column": 1
+        },
+        {
+          "title": "EC-05 feedback-is-assistance",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "T11"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 3409,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:27.228Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "T11"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4940bfffc64f6565810b-687eb06a4e55cd132cdb",
+          "file": "ec-05.spec.mjs",
+          "line": 31,
+          "column": 1
+        },
+        {
+          "title": "EC-05 lost-response-retry-saves-once",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "T06"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 3625,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:30.651Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "T06"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4940bfffc64f6565810b-71342a72b7674cb567a1",
+          "file": "ec-05.spec.mjs",
+          "line": 46,
+          "column": 1
+        },
+        {
+          "title": "EC-05 explicit-skip-is-not-wrong",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "T11"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 3902,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:34.287Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "T11"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4940bfffc64f6565810b-4ec439f84367498dba20",
+          "file": "ec-05.spec.mjs",
+          "line": 77,
+          "column": 1
+        },
+        {
+          "title": "EC-05 leaving-page-creates-no-event",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "T11"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 3626,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:38.201Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "T11"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4940bfffc64f6565810b-9cf21201f43526959eeb",
+          "file": "ec-05.spec.mjs",
+          "line": 91,
+          "column": 1
+        },
+        {
+          "title": "EC-05 quiz-typed-independent",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 3248,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:41.836Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "4940bfffc64f6565810b-f1e8a3ca3900acfeb52a",
+          "file": "ec-05.spec.mjs",
+          "line": 102,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "ec-07.spec.mjs",
+      "file": "ec-07.spec.mjs",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "EC-07 single-card-independent-and-assisted-spelling-parity",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 1,
+                  "status": "passed",
+                  "duration": 4094,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:18.687Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "20609474885b73f7c635-e0cc6dbb7aeb1a92cf9e",
+          "file": "ec-07.spec.mjs",
+          "line": 146,
+          "column": 1
+        },
+        {
+          "title": "EC-07 single-card-independent-and-assisted-spelling-parity",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3479,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:39.751Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "20609474885b73f7c635-08b58cabc6fc102e24ea",
+          "file": "ec-07.spec.mjs",
+          "line": 146,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "el-05.spec.mjs",
+      "file": "el-05.spec.mjs",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "EL-05 flashcard exposure reaches confirmed contact",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "EL05"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 4364,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:18.702Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "EL05"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e3934ec6e1a39027c2e9-9d0352f69763408655b9",
+          "file": "el-05.spec.mjs",
+          "line": 19,
+          "column": 1
+        },
+        {
+          "title": "EL-05 spelling hint stays assisted after closing and records answer contact",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "EL05"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 3646,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:23.218Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "EL05"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e3934ec6e1a39027c2e9-41e53c9c53398447bb3a",
+          "file": "el-05.spec.mjs",
+          "line": 35,
+          "column": 1
+        },
+        {
+          "title": "EL-05 practice response loss retries with one assisted event",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "EL05"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 3503,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:26.875Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "EL05"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e3934ec6e1a39027c2e9-59872e416c301284b520",
+          "file": "el-05.spec.mjs",
+          "line": 72,
+          "column": 1
+        },
+        {
+          "title": "EL-05 listening options and audio record contact",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "EL05"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 3368,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:30.385Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "EL05"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e3934ec6e1a39027c2e9-57bfb8b9ccae9e66788d",
+          "file": "el-05.spec.mjs",
+          "line": 105,
+          "column": 1
+        },
+        {
+          "title": "EL-05 quiz choice options record contact",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "EL05"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 3929,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:33.763Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "EL05"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e3934ec6e1a39027c2e9-1d71f983b4f1ed6bbc16",
+          "file": "el-05.spec.mjs",
+          "line": 137,
+          "column": 1
+        },
+        {
+          "title": "EL-05 mixed practice records answer contact",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "EL05"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 5466,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:37.705Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "EL05"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e3934ec6e1a39027c2e9-7a202a02db35345a52ea",
+          "file": "el-05.spec.mjs",
+          "line": 166,
+          "column": 1
+        },
+        {
+          "title": "EL-05 reinforcement answer display records contact",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "EL05"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 2,
+                  "status": "passed",
+                  "duration": 3693,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:43.184Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "EL05"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e3934ec6e1a39027c2e9-83c3d211df40b411f2ce",
+          "file": "el-05.spec.mjs",
+          "line": 202,
+          "column": 1
+        },
+        {
+          "title": "EL-05 flashcard exposure reaches confirmed contact",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "EL05"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 6,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 3792,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:42.024Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "EL05"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e3934ec6e1a39027c2e9-dd5d3903d86c9068d65e",
+          "file": "el-05.spec.mjs",
+          "line": 19,
+          "column": 1
+        },
+        {
+          "title": "EL-05 spelling hint stays assisted after closing and records answer contact",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "EL05"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 6,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 3356,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:45.922Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "EL05"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e3934ec6e1a39027c2e9-51ea42e350d0329f967d",
+          "file": "el-05.spec.mjs",
+          "line": 35,
+          "column": 1
+        },
+        {
+          "title": "EL-05 practice response loss retries with one assisted event",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "EL05"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 6,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 3331,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:49.285Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "EL05"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e3934ec6e1a39027c2e9-b4f76fd8ac5244cba7d9",
+          "file": "el-05.spec.mjs",
+          "line": 72,
+          "column": 1
+        },
+        {
+          "title": "EL-05 listening options and audio record contact",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "EL05"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 6,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 3130,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:52.623Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "EL05"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e3934ec6e1a39027c2e9-f4b35de129f98cc248f7",
+          "file": "el-05.spec.mjs",
+          "line": 105,
+          "column": 1
+        },
+        {
+          "title": "EL-05 quiz choice options record contact",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "EL05"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 6,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 3448,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:55.761Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "EL05"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e3934ec6e1a39027c2e9-f78ef6e577632ae4fa47",
+          "file": "el-05.spec.mjs",
+          "line": 137,
+          "column": 1
+        },
+        {
+          "title": "EL-05 mixed practice records answer contact",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "EL05"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 6,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 5210,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:59.217Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "EL05"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e3934ec6e1a39027c2e9-d2bb5776f626898a00d4",
+          "file": "el-05.spec.mjs",
+          "line": 166,
+          "column": 1
+        },
+        {
+          "title": "EL-05 reinforcement answer display records contact",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [
+                {
+                  "type": "spec",
+                  "description": "EL05"
+                }
+              ],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 6,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 3672,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:52:04.432Z",
+                  "annotations": [
+                    {
+                      "type": "spec",
+                      "description": "EL05"
+                    }
+                  ],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e3934ec6e1a39027c2e9-aca16840f7ec646a4d76",
+          "file": "el-05.spec.mjs",
+          "line": 202,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "qwerty-spelling.spec.mjs",
+      "file": "qwerty-spelling.spec.mjs",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "Qwerty independent input hides pronunciation and waits for saved feedback",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 3,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 4143,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:18.746Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e8ec374a5137937f4827-bdb84840f476ed795bd5",
+          "file": "qwerty-spelling.spec.mjs",
+          "line": 11,
+          "column": 1
+        },
+        {
+          "title": "Qwerty character feedback is confined to explicitly assisted spelling",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 3,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 4394,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:23.046Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e8ec374a5137937f4827-cffc8540cc71952b38ab",
+          "file": "qwerty-spelling.spec.mjs",
+          "line": 45,
+          "column": 1
+        },
+        {
+          "title": "Qwerty failed save preserves text and reduced motion removes feedback movement",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 3,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 3391,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:27.453Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e8ec374a5137937f4827-40a1842eae41605e0bc7",
+          "file": "qwerty-spelling.spec.mjs",
+          "line": 63,
+          "column": 1
+        },
+        {
+          "title": "Qwerty composition Enter does not prematurely submit",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 3,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 3466,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:30.856Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e8ec374a5137937f4827-235bb73c2c97920c1414",
+          "file": "qwerty-spelling.spec.mjs",
+          "line": 83,
+          "column": 1
+        },
+        {
+          "title": "Qwerty Enter continues after a confirmed answer",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 3,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 3885,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:34.336Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e8ec374a5137937f4827-4c50ed5a735e8ba7b59f",
+          "file": "qwerty-spelling.spec.mjs",
+          "line": 101,
+          "column": 1
+        },
+        {
+          "title": "Qwerty requested first-letter help is available through the accessible input description",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "mobile",
+              "projectName": "mobile",
+              "results": [
+                {
+                  "workerIndex": 3,
+                  "parallelIndex": 3,
+                  "status": "passed",
+                  "duration": 3431,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:38.232Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e8ec374a5137937f4827-76bf2865e39f0b960379",
+          "file": "qwerty-spelling.spec.mjs",
+          "line": 113,
+          "column": 1
+        },
+        {
+          "title": "Qwerty independent input hides pronunciation and waits for saved feedback",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3601,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:43.365Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e8ec374a5137937f4827-04494d29b1e4149ad074",
+          "file": "qwerty-spelling.spec.mjs",
+          "line": 11,
+          "column": 1
+        },
+        {
+          "title": "Qwerty character feedback is confined to explicitly assisted spelling",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4263,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:46.976Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e8ec374a5137937f4827-374531d3e9b2320db04d",
+          "file": "qwerty-spelling.spec.mjs",
+          "line": 45,
+          "column": 1
+        },
+        {
+          "title": "Qwerty failed save preserves text and reduced motion removes feedback movement",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3524,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:51.253Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e8ec374a5137937f4827-0c771fa29443270c10ba",
+          "file": "qwerty-spelling.spec.mjs",
+          "line": 63,
+          "column": 1
+        },
+        {
+          "title": "Qwerty composition Enter does not prematurely submit",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3454,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:54.786Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e8ec374a5137937f4827-cad26efec5232871a412",
+          "file": "qwerty-spelling.spec.mjs",
+          "line": 83,
+          "column": 1
+        },
+        {
+          "title": "Qwerty Enter continues after a confirmed answer",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3260,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:51:58.252Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e8ec374a5137937f4827-3c01cb0dd6606eeec347",
+          "file": "qwerty-spelling.spec.mjs",
+          "line": 101,
+          "column": 1
+        },
+        {
+          "title": "Qwerty requested first-letter help is available through the accessible input description",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "desktop",
+              "projectName": "desktop",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3152,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-02T08:52:01.525Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "e8ec374a5137937f4827-297125944c71f3c40996",
+          "file": "qwerty-spelling.spec.mjs",
+          "line": 113,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-11-02T08:51:18.274Z",
+    "duration": 49954.217,
+    "expected": 40,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}
