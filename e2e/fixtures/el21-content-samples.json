@@ -1,0 +1,788 @@
+{
+  "source": "Generated and linguistically reviewed by Codex in this session; replayed at the external AI adapter, not a live provider call.",
+  "samples": [
+    {
+      "id": "insufficient-1",
+      "state": "insufficient",
+      "lesson": {
+        "title": "初次见面",
+        "words": [
+          {
+            "word": "hello",
+            "phonetic": "/həˈləʊ/",
+            "meaning": "你好",
+            "example": "Hello, my name is Li.",
+            "example_cn": "你好，我叫李。"
+          },
+          {
+            "word": "yes",
+            "phonetic": "/jes/",
+            "meaning": "是的",
+            "example": "Yes, I can read this.",
+            "example_cn": "是的，我能读这个。"
+          },
+          {
+            "word": "no",
+            "phonetic": "/nəʊ/",
+            "meaning": "不",
+            "example": "No, this is not my cup.",
+            "example_cn": "不，这不是我的杯子。"
+          }
+        ],
+        "dialogue": [
+          {
+            "speaker": "A",
+            "en": "Hello, my name is Li.",
+            "cn": "你好，我叫李。"
+          },
+          {
+            "speaker": "B",
+            "en": "Hello, can you read this book?",
+            "cn": "你好，你能读这本书吗？"
+          },
+          {
+            "speaker": "A",
+            "en": "Yes, I can.",
+            "cn": "是的，我能。"
+          }
+        ],
+        "tips": [
+          "问候、肯定与否定分别使用 hello、yes 和 no。"
+        ]
+      },
+      "story": null
+    },
+    {
+      "id": "insufficient-2",
+      "state": "insufficient",
+      "lesson": {
+        "title": "在家问候",
+        "words": [
+          {
+            "word": "hello",
+            "phonetic": "/həˈləʊ/",
+            "meaning": "你好",
+            "example": "Hello, are you at home?",
+            "example_cn": "你好，你在家吗？"
+          },
+          {
+            "word": "yes",
+            "phonetic": "/jes/",
+            "meaning": "是的",
+            "example": "Yes, I am at home.",
+            "example_cn": "是的，我在家。"
+          },
+          {
+            "word": "no",
+            "phonetic": "/nəʊ/",
+            "meaning": "不",
+            "example": "No, my book is not here.",
+            "example_cn": "不，我的书不在这里。"
+          }
+        ],
+        "dialogue": [
+          {
+            "speaker": "A",
+            "en": "Hello, are you at home?",
+            "cn": "你好，你在家吗？"
+          },
+          {
+            "speaker": "B",
+            "en": "Yes, I am at home.",
+            "cn": "是的，我在家。"
+          },
+          {
+            "speaker": "A",
+            "en": "Is my book by your cup?",
+            "cn": "我的书在你的杯子旁吗？"
+          },
+          {
+            "speaker": "B",
+            "en": "No, it is on the table.",
+            "cn": "不，它在桌上。"
+          }
+        ],
+        "tips": [
+          "问候、肯定与否定分别使用 hello、yes 和 no。"
+        ]
+      },
+      "story": null
+    },
+    {
+      "id": "insufficient-3",
+      "state": "insufficient",
+      "lesson": {
+        "title": "礼貌入座",
+        "words": [
+          {
+            "word": "hello",
+            "phonetic": "/həˈləʊ/",
+            "meaning": "你好",
+            "example": "Hello, can I sit here?",
+            "example_cn": "你好，我可以坐在这里吗？"
+          },
+          {
+            "word": "yes",
+            "phonetic": "/jes/",
+            "meaning": "是的",
+            "example": "Yes, you can sit by me.",
+            "example_cn": "可以，你可以坐在我旁边。"
+          },
+          {
+            "word": "no",
+            "phonetic": "/nəʊ/",
+            "meaning": "不",
+            "example": "No, I cannot see the book.",
+            "example_cn": "不，我看不见那本书。"
+          }
+        ],
+        "dialogue": [
+          {
+            "speaker": "A",
+            "en": "Hello, can I sit here?",
+            "cn": "你好，我可以坐在这里吗？"
+          },
+          {
+            "speaker": "B",
+            "en": "Yes, you can sit by me.",
+            "cn": "可以，你可以坐在我旁边。"
+          },
+          {
+            "speaker": "A",
+            "en": "Is this your book?",
+            "cn": "这是你的书吗？"
+          },
+          {
+            "speaker": "B",
+            "en": "No, it is not my book.",
+            "cn": "不，这不是我的书。"
+          }
+        ],
+        "tips": [
+          "问候、肯定与否定分别使用 hello、yes 和 no。"
+        ]
+      },
+      "story": null
+    },
+    {
+      "id": "few-1",
+      "state": "few",
+      "lesson": {
+        "title": "初次见面",
+        "words": [
+          {
+            "word": "hello",
+            "phonetic": "/həˈləʊ/",
+            "meaning": "你好",
+            "example": "Hello, my name is Li.",
+            "example_cn": "你好，我叫李。"
+          },
+          {
+            "word": "yes",
+            "phonetic": "/jes/",
+            "meaning": "是的",
+            "example": "Yes, I can read this.",
+            "example_cn": "是的，我能读这个。"
+          },
+          {
+            "word": "no",
+            "phonetic": "/nəʊ/",
+            "meaning": "不",
+            "example": "No, this is not my cup.",
+            "example_cn": "不，这不是我的杯子。"
+          }
+        ],
+        "dialogue": [
+          {
+            "speaker": "A",
+            "en": "Hello, my name is Li.",
+            "cn": "你好，我叫李。"
+          },
+          {
+            "speaker": "B",
+            "en": "Hello, can you read this book?",
+            "cn": "你好，你能读这本书吗？"
+          },
+          {
+            "speaker": "A",
+            "en": "Yes, I can.",
+            "cn": "是的，我能。"
+          }
+        ],
+        "tips": [
+          "问候、肯定与否定分别使用 hello、yes 和 no。"
+        ]
+      },
+      "story": {
+        "title": "My book",
+        "title_cn": "我的书",
+        "targets": [
+          "hello"
+        ],
+        "sentences": [
+          {
+            "en": "My book is on the small table.",
+            "cn": "我的书在小桌上。"
+          },
+          {
+            "en": "I say hello and sit by it.",
+            "cn": "我打个招呼，在桌旁坐下。"
+          },
+          {
+            "en": "A cup of water is near me.",
+            "cn": "我旁边有一杯水。"
+          },
+          {
+            "en": "I take my book and open it.",
+            "cn": "我拿起书，把它打开。"
+          },
+          {
+            "en": "Now I read by the table and smile.",
+            "cn": "现在我在桌旁读书，笑了。"
+          },
+          {
+            "en": "This is a good day at home.",
+            "cn": "这是在家里度过的美好一天。"
+          }
+        ],
+        "check": {
+          "question": "What is on the small table?",
+          "question_cn": "小桌上有什么？",
+          "options": [
+            "book",
+            "water",
+            "cup"
+          ],
+          "options_cn": [
+            "书",
+            "水",
+            "杯子"
+          ],
+          "expected": "book",
+          "evidence_index": 0
+        }
+      }
+    },
+    {
+      "id": "few-2",
+      "state": "few",
+      "lesson": {
+        "title": "在家问候",
+        "words": [
+          {
+            "word": "hello",
+            "phonetic": "/həˈləʊ/",
+            "meaning": "你好",
+            "example": "Hello, are you at home?",
+            "example_cn": "你好，你在家吗？"
+          },
+          {
+            "word": "yes",
+            "phonetic": "/jes/",
+            "meaning": "是的",
+            "example": "Yes, I am at home.",
+            "example_cn": "是的，我在家。"
+          },
+          {
+            "word": "no",
+            "phonetic": "/nəʊ/",
+            "meaning": "不",
+            "example": "No, my book is not here.",
+            "example_cn": "不，我的书不在这里。"
+          }
+        ],
+        "dialogue": [
+          {
+            "speaker": "A",
+            "en": "Hello, are you at home?",
+            "cn": "你好，你在家吗？"
+          },
+          {
+            "speaker": "B",
+            "en": "Yes, I am at home.",
+            "cn": "是的，我在家。"
+          },
+          {
+            "speaker": "A",
+            "en": "Is my book by your cup?",
+            "cn": "我的书在你的杯子旁吗？"
+          },
+          {
+            "speaker": "B",
+            "en": "No, it is on the table.",
+            "cn": "不，它在桌上。"
+          }
+        ],
+        "tips": [
+          "问候、肯定与否定分别使用 hello、yes 和 no。"
+        ]
+      },
+      "story": {
+        "title": "At home",
+        "title_cn": "在家里",
+        "targets": [
+          "hello"
+        ],
+        "sentences": [
+          {
+            "en": "My book is on the small table.",
+            "cn": "我的书在小桌上。"
+          },
+          {
+            "en": "I say hello and sit by it.",
+            "cn": "我打个招呼，在桌旁坐下。"
+          },
+          {
+            "en": "A cup of water is near me.",
+            "cn": "我旁边有一杯水。"
+          },
+          {
+            "en": "I take my book and open it.",
+            "cn": "我拿起书，把它打开。"
+          },
+          {
+            "en": "Now I read by the table and smile.",
+            "cn": "现在我在桌旁读书，笑了。"
+          },
+          {
+            "en": "I can read my book at home now.",
+            "cn": "现在我可以在家里读我的书了。"
+          }
+        ],
+        "check": {
+          "question": "What is on the small table?",
+          "question_cn": "小桌上有什么？",
+          "options": [
+            "book",
+            "water",
+            "cup"
+          ],
+          "options_cn": [
+            "书",
+            "水",
+            "杯子"
+          ],
+          "expected": "book",
+          "evidence_index": 0
+        }
+      }
+    },
+    {
+      "id": "few-3",
+      "state": "few",
+      "lesson": {
+        "title": "礼貌入座",
+        "words": [
+          {
+            "word": "hello",
+            "phonetic": "/həˈləʊ/",
+            "meaning": "你好",
+            "example": "Hello, can I sit here?",
+            "example_cn": "你好，我可以坐在这里吗？"
+          },
+          {
+            "word": "yes",
+            "phonetic": "/jes/",
+            "meaning": "是的",
+            "example": "Yes, you can sit by me.",
+            "example_cn": "可以，你可以坐在我旁边。"
+          },
+          {
+            "word": "no",
+            "phonetic": "/nəʊ/",
+            "meaning": "不",
+            "example": "No, I cannot see the book.",
+            "example_cn": "不，我看不见那本书。"
+          }
+        ],
+        "dialogue": [
+          {
+            "speaker": "A",
+            "en": "Hello, can I sit here?",
+            "cn": "你好，我可以坐在这里吗？"
+          },
+          {
+            "speaker": "B",
+            "en": "Yes, you can sit by me.",
+            "cn": "可以，你可以坐在我旁边。"
+          },
+          {
+            "speaker": "A",
+            "en": "Is this your book?",
+            "cn": "这是你的书吗？"
+          },
+          {
+            "speaker": "B",
+            "en": "No, it is not my book.",
+            "cn": "不，这不是我的书。"
+          }
+        ],
+        "tips": [
+          "问候、肯定与否定分别使用 hello、yes 和 no。"
+        ]
+      },
+      "story": {
+        "title": "A good day",
+        "title_cn": "美好的一天",
+        "targets": [
+          "hello"
+        ],
+        "sentences": [
+          {
+            "en": "My book is on the small table.",
+            "cn": "我的书在小桌上。"
+          },
+          {
+            "en": "I say hello and sit by it.",
+            "cn": "我打个招呼，在桌旁坐下。"
+          },
+          {
+            "en": "A cup of water is near me.",
+            "cn": "我旁边有一杯水。"
+          },
+          {
+            "en": "I take my book and open it.",
+            "cn": "我拿起书，把它打开。"
+          },
+          {
+            "en": "Now I read by the table and smile.",
+            "cn": "现在我在桌旁读书，笑了。"
+          },
+          {
+            "en": "Now I put my cup by the book.",
+            "cn": "现在我把杯子放在书旁。"
+          }
+        ],
+        "check": {
+          "question": "What is on the small table?",
+          "question_cn": "小桌上有什么？",
+          "options": [
+            "book",
+            "water",
+            "cup"
+          ],
+          "options_cn": [
+            "书",
+            "水",
+            "杯子"
+          ],
+          "expected": "book",
+          "evidence_index": 0
+        }
+      }
+    },
+    {
+      "id": "sufficient-1",
+      "state": "sufficient",
+      "lesson": {
+        "title": "初次见面",
+        "words": [
+          {
+            "word": "hello",
+            "phonetic": "/həˈləʊ/",
+            "meaning": "你好",
+            "example": "Hello, my name is Li.",
+            "example_cn": "你好，我叫李。"
+          },
+          {
+            "word": "yes",
+            "phonetic": "/jes/",
+            "meaning": "是的",
+            "example": "Yes, I can read this.",
+            "example_cn": "是的，我能读这个。"
+          },
+          {
+            "word": "no",
+            "phonetic": "/nəʊ/",
+            "meaning": "不",
+            "example": "No, this is not my cup.",
+            "example_cn": "不，这不是我的杯子。"
+          }
+        ],
+        "dialogue": [
+          {
+            "speaker": "A",
+            "en": "Hello, my name is Li.",
+            "cn": "你好，我叫李。"
+          },
+          {
+            "speaker": "B",
+            "en": "Hello, can you read this book?",
+            "cn": "你好，你能读这本书吗？"
+          },
+          {
+            "speaker": "A",
+            "en": "Yes, I can.",
+            "cn": "是的，我能。"
+          }
+        ],
+        "tips": [
+          "问候、肯定与否定分别使用 hello、yes 和 no。"
+        ]
+      },
+      "story": {
+        "title": "My book",
+        "title_cn": "我的书",
+        "targets": [
+          "hello",
+          "book",
+          "water"
+        ],
+        "sentences": [
+          {
+            "en": "My book is on the small table.",
+            "cn": "我的书在小桌上。"
+          },
+          {
+            "en": "I say hello and sit by it.",
+            "cn": "我打个招呼，在桌旁坐下。"
+          },
+          {
+            "en": "A cup of water is near me.",
+            "cn": "我旁边有一杯水。"
+          },
+          {
+            "en": "I take my book and open it.",
+            "cn": "我拿起书，把它打开。"
+          },
+          {
+            "en": "Now I read by the table and smile.",
+            "cn": "现在我在桌旁读书，笑了。"
+          },
+          {
+            "en": "This is a good day at home.",
+            "cn": "这是在家里度过的美好一天。"
+          }
+        ],
+        "check": {
+          "question": "What is on the small table?",
+          "question_cn": "小桌上有什么？",
+          "options": [
+            "book",
+            "water",
+            "cup"
+          ],
+          "options_cn": [
+            "书",
+            "水",
+            "杯子"
+          ],
+          "expected": "book",
+          "evidence_index": 0
+        }
+      }
+    },
+    {
+      "id": "sufficient-2",
+      "state": "sufficient",
+      "lesson": {
+        "title": "在家问候",
+        "words": [
+          {
+            "word": "hello",
+            "phonetic": "/həˈləʊ/",
+            "meaning": "你好",
+            "example": "Hello, are you at home?",
+            "example_cn": "你好，你在家吗？"
+          },
+          {
+            "word": "yes",
+            "phonetic": "/jes/",
+            "meaning": "是的",
+            "example": "Yes, I am at home.",
+            "example_cn": "是的，我在家。"
+          },
+          {
+            "word": "no",
+            "phonetic": "/nəʊ/",
+            "meaning": "不",
+            "example": "No, my book is not here.",
+            "example_cn": "不，我的书不在这里。"
+          }
+        ],
+        "dialogue": [
+          {
+            "speaker": "A",
+            "en": "Hello, are you at home?",
+            "cn": "你好，你在家吗？"
+          },
+          {
+            "speaker": "B",
+            "en": "Yes, I am at home.",
+            "cn": "是的，我在家。"
+          },
+          {
+            "speaker": "A",
+            "en": "Is my book by your cup?",
+            "cn": "我的书在你的杯子旁吗？"
+          },
+          {
+            "speaker": "B",
+            "en": "No, it is on the table.",
+            "cn": "不，它在桌上。"
+          }
+        ],
+        "tips": [
+          "问候、肯定与否定分别使用 hello、yes 和 no。"
+        ]
+      },
+      "story": {
+        "title": "At home",
+        "title_cn": "在家里",
+        "targets": [
+          "hello",
+          "book",
+          "water"
+        ],
+        "sentences": [
+          {
+            "en": "My book is on the small table.",
+            "cn": "我的书在小桌上。"
+          },
+          {
+            "en": "I say hello and sit by it.",
+            "cn": "我打个招呼，在桌旁坐下。"
+          },
+          {
+            "en": "A cup of water is near me.",
+            "cn": "我旁边有一杯水。"
+          },
+          {
+            "en": "I take my book and open it.",
+            "cn": "我拿起书，把它打开。"
+          },
+          {
+            "en": "Now I read by the table and smile.",
+            "cn": "现在我在桌旁读书，笑了。"
+          },
+          {
+            "en": "I can read my book at home now.",
+            "cn": "现在我可以在家里读我的书了。"
+          }
+        ],
+        "check": {
+          "question": "What is on the small table?",
+          "question_cn": "小桌上有什么？",
+          "options": [
+            "book",
+            "water",
+            "cup"
+          ],
+          "options_cn": [
+            "书",
+            "水",
+            "杯子"
+          ],
+          "expected": "book",
+          "evidence_index": 0
+        }
+      }
+    },
+    {
+      "id": "sufficient-3",
+      "state": "sufficient",
+      "lesson": {
+        "title": "礼貌入座",
+        "words": [
+          {
+            "word": "hello",
+            "phonetic": "/həˈləʊ/",
+            "meaning": "你好",
+            "example": "Hello, can I sit here?",
+            "example_cn": "你好，我可以坐在这里吗？"
+          },
+          {
+            "word": "yes",
+            "phonetic": "/jes/",
+            "meaning": "是的",
+            "example": "Yes, you can sit by me.",
+            "example_cn": "可以，你可以坐在我旁边。"
+          },
+          {
+            "word": "no",
+            "phonetic": "/nəʊ/",
+            "meaning": "不",
+            "example": "No, I cannot see the book.",
+            "example_cn": "不，我看不见那本书。"
+          }
+        ],
+        "dialogue": [
+          {
+            "speaker": "A",
+            "en": "Hello, can I sit here?",
+            "cn": "你好，我可以坐在这里吗？"
+          },
+          {
+            "speaker": "B",
+            "en": "Yes, you can sit by me.",
+            "cn": "可以，你可以坐在我旁边。"
+          },
+          {
+            "speaker": "A",
+            "en": "Is this your book?",
+            "cn": "这是你的书吗？"
+          },
+          {
+            "speaker": "B",
+            "en": "No, it is not my book.",
+            "cn": "不，这不是我的书。"
+          }
+        ],
+        "tips": [
+          "问候、肯定与否定分别使用 hello、yes 和 no。"
+        ]
+      },
+      "story": {
+        "title": "A good day",
+        "title_cn": "美好的一天",
+        "targets": [
+          "hello",
+          "book",
+          "water"
+        ],
+        "sentences": [
+          {
+            "en": "My book is on the small table.",
+            "cn": "我的书在小桌上。"
+          },
+          {
+            "en": "I say hello and sit by it.",
+            "cn": "我打个招呼，在桌旁坐下。"
+          },
+          {
+            "en": "A cup of water is near me.",
+            "cn": "我旁边有一杯水。"
+          },
+          {
+            "en": "I take my book and open it.",
+            "cn": "我拿起书，把它打开。"
+          },
+          {
+            "en": "Now I read by the table and smile.",
+            "cn": "现在我在桌旁读书，笑了。"
+          },
+          {
+            "en": "Now I put my cup by the book.",
+            "cn": "现在我把杯子放在书旁。"
+          }
+        ],
+        "check": {
+          "question": "What is on the small table?",
+          "question_cn": "小桌上有什么？",
+          "options": [
+            "book",
+            "water",
+            "cup"
+          ],
+          "options_cn": [
+            "书",
+            "水",
+            "杯子"
+          ],
+          "expected": "book",
+          "evidence_index": 0
+        }
+      }
+    }
+  ]
+}

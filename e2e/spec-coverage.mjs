@@ -3,6 +3,13 @@ import fs from "node:fs";
 import {fileURLToPath} from "node:url";
 
 export const requirements = {
+  "EL-JOURNEY": [
+    "EL-21 new install completes six learning paths",
+    "EL-21 upgraded database completes six learning paths",
+    "EL-21 V3 device transfer resumes saved learning and contexts",
+    "EL-21 restore failures protect learning and allow continuation",
+    "EL-21 HTTP restore and content contracts",
+  ],
   EL20: [
     "EL-20 V1 preview explains every missing collection before confirmation",
     "EL-20 V2 preview explains every missing collection before confirmation",

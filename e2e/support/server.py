@@ -149,7 +149,10 @@ def main() -> None:
     if isinstance(llm_responses, list):
         from tests.support.llm_queue import QueuedLLM
 
-        app.state.llm_client = QueuedLLM(llm_responses)
+        app.state.llm_client = QueuedLLM(
+            llm_responses,
+            background_sentence_response=payload.get("background_sentence_response"),
+        )
 
     # 外部 AI 替身：fixture 的 external.llm=timeout/unavailable 在适配处模拟失败，
     # 不发起真实网络请求；应用其余部分仍是真实实现。

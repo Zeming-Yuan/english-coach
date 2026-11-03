@@ -124,6 +124,13 @@ export default function LessonsPage({ onExit }) {
             }
           } catch {}
         }
+        const recovered = await api(`/api/practice-sessions?purpose=lesson_check&lesson_id=${lessonId}`);
+        const latest = recovered.sessions[0];
+        if (latest) {
+          localStorage.setItem("ec.practice.active", latest.id);
+          setPracticeSessionId(latest.id);
+          return;
+        }
       }
       const created = await api("/api/practice-sessions", {
         method: "POST",

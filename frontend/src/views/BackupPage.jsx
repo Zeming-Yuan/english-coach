@@ -229,7 +229,7 @@ export default function BackupPage({ onBack, onRestored, restoring, onRestoringC
         )}
 
         {restoreResult && (
-          <p role="status" style={{ fontSize: 13 }}>
+          <p role="status" data-testid="release-journey" style={{ fontSize: 13 }}>
             {restoreResult.mode === "full_replace" ? "恢复成功" : "恢复完成"}：恢复 {restoreResult.imported_words} 张卡。恢复前备份保存在
             {" "}{restoreResult.safety_backup_path}
           </p>

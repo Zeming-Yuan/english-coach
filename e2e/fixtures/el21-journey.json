@@ -1,0 +1,122 @@
+{
+  "llm_responses": [
+    {
+      "title": "初次问候",
+      "words": [
+        {
+          "word": "hello",
+          "phonetic": "/həˈləʊ/",
+          "meaning": "你好",
+          "example": "Hello, my name is Li.",
+          "example_cn": "你好，我叫李。"
+        }
+      ],
+      "dialogue": [
+        {
+          "speaker": "A",
+          "en": "Hello, my name is Li.",
+          "cn": "你好，我叫李。"
+        },
+        {
+          "speaker": "B",
+          "en": "Hello, Li.",
+          "cn": "你好，李。"
+        }
+      ],
+      "tips": [
+        "用 hello 打招呼。"
+      ]
+    },
+    {
+      "title": "Hello at home",
+      "title_cn": "在家问候",
+      "targets": [
+        "hello"
+      ],
+      "sentences": [
+        {
+          "en": "I say hello by my small table.",
+          "cn": "我在小桌旁打了个招呼。"
+        },
+        {
+          "en": "My book is near my cup of water.",
+          "cn": "我的书在水杯旁。"
+        },
+        {
+          "en": "I sit by the table and open my book.",
+          "cn": "我坐在桌旁，把书打开。"
+        },
+        {
+          "en": "I take my cup and put it by me.",
+          "cn": "我拿起杯子，把它放在身旁。"
+        },
+        {
+          "en": "Now I read my book and smile.",
+          "cn": "现在我读着书，笑了。"
+        },
+        {
+          "en": "This is a good day at home.",
+          "cn": "这是在家里度过的美好一天。"
+        }
+      ],
+      "check": {
+        "question": "What can I say?",
+        "question_cn": "我可以说什么来打招呼？",
+        "options": [
+          "hello",
+          "book",
+          "water"
+        ],
+        "options_cn": [
+          "你好",
+          "书",
+          "水"
+        ],
+        "expected": "hello",
+        "evidence_index": 0
+      }
+    },
+    {
+      "title": "Hello at home",
+      "title_cn": "在家问候",
+      "targets": [
+        "hello"
+      ],
+      "sentences": [
+        {
+          "en": "I say hello by my table.",
+          "cn": "我在桌旁打了个招呼。"
+        },
+        {
+          "en": "My book is near me.",
+          "cn": "我的书在旁边。"
+        },
+        {
+          "en": "I sit and open my book.",
+          "cn": "我坐下来，把书打开。"
+        },
+        {
+          "en": "Now I read and smile.",
+          "cn": "现在我读着，笑了。"
+        }
+      ],
+      "check": {
+        "question": "What can I say?",
+        "question_cn": "我可以说什么来打招呼？",
+        "options": [
+          "hello",
+          "book",
+          "water"
+        ],
+        "options_cn": [
+          "你好",
+          "书",
+          "水"
+        ],
+        "expected": "hello",
+        "evidence_index": 0
+      }
+    }
+  ],
+  "background_sentence_response": {}
+}

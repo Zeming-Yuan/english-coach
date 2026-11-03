@@ -18,6 +18,47 @@ def cases(module, name, parameters=None):
 
 
 GROUPS = {
+    "learning_restore": (
+        cases(
+            "test_backup_v2",
+            "test_backup_excludes_configuration_caches_and_browser_preferences",
+        )
+        + cases(
+            "test_el21_integrated_learning_restore_qualification",
+            "test_el21_device_transfer_discovers_original_lesson_context",
+        )
+        + cases(
+            "test_full_restore",
+            "test_signed_submission_replays_after_restore_without_source_secret",
+        )
+        + cases(
+            "test_full_restore",
+            "test_response_started_before_restore_cannot_overwrite_restored_content",
+            ["direct", "empty_then_full", "empty_restart_full"],
+        )
+        + cases(
+            "test_full_restore",
+            "test_full_restore_lock_serializes_learning_and_rechecks_revision",
+        )
+        + cases(
+            "test_el01_expand_revisions_and_v3",
+            "test_el01_v3_restore_invalidates_source_question_token",
+        )
+        + cases(
+            "test_el16_bounded_ai_scene_feedback",
+            "test_el16_restore_discards_a_late_response_even_for_the_same_snapshot",
+            ["False", "True"],
+        )
+        + cases(
+            "test_el21_content_samples",
+            "test_el21_reviewed_content_publishes_in_its_preparation_state",
+            [
+                f"{state}-{number}"
+                for state in ["insufficient", "few", "sufficient"]
+                for number in range(1, 4)
+            ],
+        )
+    ),
     "installation": (
         cases("test_installation", "test_fresh_migration_contains_rating")
         + cases(
@@ -161,6 +202,8 @@ def run_pytest(command):
             raise ContractInterrupted(signum)
 
     def terminate(signum, force=False):
+        if child is None:
+            return
         try:
             if os.name == "posix":
                 os.killpg(child.pid, signal.SIGKILL if force else signum)

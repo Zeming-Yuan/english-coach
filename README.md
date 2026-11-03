@@ -418,3 +418,8 @@ V3 集合在统一 registry 登记，导出、校验和恢复共用；未知功�
 `npm --prefix frontend run test:e2e -- --ticket EL-20`；[消费者与验证边界](docs/verification/el20-contract-evidence-consumers.md)。
 
 EL-20 恢复预览逐项显示缺失的新集合；完整替换展示恢复 0 项与当前被替换量，旧部分恢复说明保留现有记录。只缺某集合时不误报已包含的修订会重建。
+
+EL-21 集成资格：新增新装、旧库升级、V3 换设备续学和故障保护旅程，连同全部既有分支在
+未过滤双视口命令执行。另一设备恢复后，课程短测可从服务端接续原轮次及提示。
+定向开发验证仍使用 `npm --prefix frontend run test:e2e -- --ticket EL-21`；
+定向成功不代表完整发行资格。[验收证据与内容核对](docs/el-release-evidence.md)。
