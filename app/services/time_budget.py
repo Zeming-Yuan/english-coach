@@ -43,6 +43,10 @@ def workload_estimates(db, enabled=True) -> dict:
     return estimates
 
 
+def recovery_available(inactive_days: int, due_count: int) -> bool:
+    return inactive_days >= 3 and due_count > 0
+
+
 def budget_plan(
     due: list[dict],
     new: list[dict],
@@ -51,9 +55,13 @@ def budget_plan(
     *,
     review_limit: int = 20,
     estimates: dict | None = None,
+    mode: str = "regular",
 ) -> dict:
     if minutes not in (3, 8, 15):
         raise ValueError("budget must be 3, 8 or 15")
+    if mode == "recovery":
+        review_limit = min(5, review_limit)
+        new_remaining = 0
     estimates = estimates or {
         kind: {"seconds": seconds, "basis": "default", "sample_count": 0}
         for kind, seconds in DEFAULT_SECONDS.items()
@@ -98,7 +106,7 @@ def budget_plan(
             if any(value["basis"] == "personal" for value in estimates.values())
             else "default",
             "estimates": estimates,
-            "mode": "regular",
+            "mode": mode,
             "reinforcement_limit": reinforcement_limit,
         },
     }

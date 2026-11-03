@@ -3,6 +3,9 @@ import fs from "node:fs";
 import {fileURLToPath} from "node:url";
 
 export const requirements = {
+  EL19: [
+    "EL-19 finite recovery saves five due words and returns to regular learning",
+  ],
   EL18: [
     "EL-18 new tab continuation discards the unanswered card partial timing",
     "EL-18 resumed unanswered card discards incomplete timing rather than calibrating",

@@ -41,6 +41,7 @@ def get_today(
     new_limit: int = 10,
     due_limit: int = 20,
     budget_minutes: Annotated[Literal[3, 8, 15], BeforeValidator(int)] = 8,
+    mode: Literal["regular", "recovery"] = "regular",
     db: Session = Depends(get_db),
     runtime: Runtime = Depends(get_runtime),
 ):
@@ -130,6 +131,7 @@ def get_today(
         due_limit,
         budget_minutes,
         personal_estimates=request.app.state.settings.personal_estimates_enabled,
+        mode=mode,
     )
     with_progress_label(queue["queue"])
     return {

@@ -1,6 +1,8 @@
 """Bounded daily main queue; priority tags never make a card due."""
 
-from sqlalchemy import literal_column, select
+from datetime import date
+
+from sqlalchemy import func, literal_column, select
 from sqlalchemy.orm import Session
 
 from app.models.card import Card
@@ -14,7 +16,7 @@ from app.services.card_payload import queue_payload
 from app.services.content_revisions import content_revision_map
 from app.services.learning import select_current_review
 from app.services.statistics import learning_day
-from app.services.time_budget import budget_plan, workload_estimates
+from app.services.time_budget import budget_plan, recovery_available, workload_estimates
 
 
 def build_daily_queue(
@@ -24,6 +26,7 @@ def build_daily_queue(
     due_limit: int = 20,
     minutes: int = 8,
     personal_estimates: bool = True,
+    mode: str = "regular",
 ):
     today = learning_day(runtime.clock.now(), runtime.learning_timezone)
     first = {}
@@ -86,7 +89,19 @@ def build_daily_queue(
         new_remaining,
         review_limit=due_limit,
         estimates=workload_estimates(db, personal_estimates),
+        mode=mode,
     )
+    last_active = db.scalar(
+        select(func.max(ReviewEvent.learning_day)).where(
+            ReviewEvent.skipped.is_(False), ReviewEvent.source != "legacy"
+        )
+    )
+    inactive_days = (
+        (date.fromisoformat(today) - date.fromisoformat(last_active)).days
+        if last_active
+        else 0
+    )
+    result["recovery_available"] = recovery_available(inactive_days, len(due))
     result["new_remaining"] = new_remaining
     return result
 

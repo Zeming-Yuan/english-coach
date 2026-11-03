@@ -340,6 +340,7 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
     const saved = storageGet("timeBudget", 8);
     return [3, 8, 15].includes(saved) ? saved : 8;
   });
+  const [mode, setMode] = useState("regular");
   const [dailyGoal, setDailyGoal] = useState(() => storageGet("dailyGoal", 10));
   const {
     loading: starterLoading,
@@ -352,7 +353,7 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
     async function load() {
       try {
         const [todayData, statsData] = await Promise.all([
-          api(budget === 8 ? "/api/today" : `/api/today?budget_minutes=${budget}`),
+          api(mode === "recovery" ? "/api/today?budget_minutes=3&mode=recovery" : budget === 8 ? "/api/today" : `/api/today?budget_minutes=${budget}`),
           api("/api/stats"),
         ]);
         if (cancelled) return;
@@ -385,7 +386,7 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
     loadMaterial("lessons", "/api/lessons", setLessonData);
     loadMaterial("stories", "/api/stories", setStoryData);
     return () => { cancelled = true; };
-  }, [reloadKey, budget]);
+  }, [reloadKey, budget, mode]);
 
   useEffect(() => {
     let cancelled = false;
@@ -465,9 +466,9 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
           <p>{isEmpty ? "从第一组单词开始" : activeSession ? "继续从上次的位置开始" : "先回忆，再继续新的内容"}</p>
         </div>
         <div className="home-round-notes">
-          {data.time_budget_enabled !== false && <label>今天可用时间 <select aria-label="今天可用时间" value={activeSession?.plan?.budget_minutes ?? budget} disabled={!!activeSession} onChange={event => {
+          {data.time_budget_enabled !== false && <label>今天可用时间 <select aria-label="今天可用时间" value={activeSession?.plan?.budget_minutes ?? data.plan?.budget_minutes ?? budget} disabled={!!activeSession} onChange={event => {
             const minutes = Number(event.target.value);
-            storageSet("timeBudget", minutes); setBudget(minutes);
+            storageSet("timeBudget", minutes); setBudget(minutes); setMode("regular");
           }}>{[3, 8, 15].map(minutes => <option key={minutes} value={minutes}>约 {minutes} 分钟</option>)}</select></label>}
           <p role="status" data-testid="time-budget-plan">预计约 {Math.ceil((plan?.estimated_seconds ?? 0) / 60)} 分钟 · 巩固至多 {plan?.reinforcement_limit ?? 3} 题。固定开销 15 秒；时间仅作估计，可保存后暂停。</p>
           {plan?.may_exceed_budget && <p role="status">至少保留一张有效词卡，本轮可能超过所选时间，可保存后暂停。</p>}
@@ -476,6 +477,12 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
             return `${label} ${value?.seconds ?? fallback} 秒（${value?.basis === "personal" ? `个人，最近 ${value.sample_count} 条中位数` : `默认，有效样本 ${value?.sample_count ?? 0}/5，不足或记录不可靠`}）`;
           }).join("；")}。后台、超过 30 秒无操作和保存等待不计主动时长；只校准未来计划。</p>
         </div>
+        {!activeSession && data.recovery_available && <div className="home-round-notes" data-testid="recovery-offer">
+          <p role="status">恢复学习：中断至少三个学习日，可先用约三分钟复习至多五张到期词，零新词；无需一次清空积压。</p>
+          {data.plan?.mode === "recovery"
+            ? <button className="btn btn-ghost" onClick={() => setMode("regular")}>选择常规计划</button>
+            : <button className="btn btn-ghost" onClick={() => setMode("recovery")}>选择恢复学习</button>}
+        </div>}
         {isEmpty ? <div className="home-welcome">
           <div><h2>欢迎来到 EnglishCoach</h2><p>添加想学的词，或先用 10 张已核对的入门词卡开始。</p></div>
           <div className="home-welcome-actions">
@@ -498,7 +505,7 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
               </div>
             </div>
             <button className="btn home-primary home-round-action" onClick={() => activeSession ? onResumeDaily() : queueTotal > 0 ? onStartDaily(data) : setView("add")}>
-              {activeSession ? "继续本轮学习" : queueTotal > 0 ? "开始今天的学习" : "添加新词"}<CaretRightIcon aria-hidden="true" size={20} />
+              {activeSession ? "继续本轮学习" : queueTotal > 0 ? (plan?.mode === "recovery" ? "开始恢复学习" : "开始今天的学习") : "添加新词"}<CaretRightIcon aria-hidden="true" size={20} />
             </button>
           </div>
           <div className="home-round-notes">
