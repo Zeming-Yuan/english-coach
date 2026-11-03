@@ -238,6 +238,15 @@ def scene_payload(
             select(SceneAttempt).where(SceneAttempt.session_id == practice.session_id)
         )
     }
+    from app.models.scene_feedback import SceneFeedback
+    from app.services.scene_feedback import feedback_payload
+
+    feedback = {
+        row.item_id: feedback_payload(row)
+        for row in db.scalars(
+            select(SceneFeedback).where(SceneFeedback.session_id == practice.session_id)
+        )
+    }
     out = []
     for item in items:
         task = rules["tasks"][item.position - 1]
@@ -266,6 +275,8 @@ def scene_payload(
                 target_mapping=row.target_mapping,
                 correction=task["correction"] if row.verdict == "rejected" else None,
             )
+        if item.item_id in feedback:
+            view["feedback"] = feedback[item.item_id]
         if "hint" in item.assistance:
             view["hint"] = task["hint"]
         if set(item.assistance) & {"answer_visible", "answer_audio"}:
@@ -274,7 +285,7 @@ def scene_payload(
     message = None
     try:
         if items:
-            _check_current(db, practice, items[0])
+            check_scene_current(db, practice, items[0])
     except (PracticeNotFoundError, PracticeStaleError) as error:
         message = str(error)
     return {
@@ -337,7 +348,9 @@ def judge(task: dict, answer: str | None, skipped: bool = False) -> str:
     return "rejected" if text in task["rejected"] else "unknown"
 
 
-def _check_current(db: Session, practice: PracticeSession, item: PracticeItem) -> None:
+def check_scene_current(
+    db: Session, practice: PracticeSession, item: PracticeItem
+) -> None:
     from app.models.content_revision import ContentRevision
     from app.services.practice import PracticeStaleError
 
@@ -375,7 +388,7 @@ def scene_help(
 
     if kind not in ("hint", "answer_visible", "answer_audio"):
         raise PracticeUnavailableError("场景仅支持任务提示或标准表达")
-    _check_current(db, practice, item)
+    check_scene_current(db, practice, item)
     # Help requested after the first response only assists subsequent practice.
     item.assistance = sorted(set(item.assistance or []) | {kind})
     db.flush()
@@ -439,7 +452,7 @@ def submit_scene(
         )
     ):
         raise PracticeConflictError("该提交标识已用于词卡作答")
-    _check_current(db, practice, item)
+    check_scene_current(db, practice, item)
     items = list(
         db.scalars(
             select(PracticeItem)

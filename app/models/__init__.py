@@ -13,6 +13,7 @@ from app.models.review import Review
 from app.models.review_baseline import ReviewBaseline
 from app.models.review_event import ReviewEvent
 from app.models.scene_attempt import SceneAttempt
+from app.models.scene_feedback import SceneFeedback
 from app.models.story import Story, StoryWord
 from app.models.story_version import StoryVersion
 
@@ -31,6 +32,7 @@ __all__ = [
     "ReviewBaseline",
     "ReviewEvent",
     "SceneAttempt",
+    "SceneFeedback",
     "Story",
     "StoryVersion",
     "StoryWord",

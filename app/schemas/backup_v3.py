@@ -21,6 +21,7 @@ from app.models.learning_contact import LearningContact
 from app.models.lesson_progress import LessonProgress
 from app.models.practice import PracticeItem, PracticeSession
 from app.models.scene_attempt import SceneAttempt
+from app.models.scene_feedback import SceneFeedback
 from app.models.story_version import StoryVersion
 from app.schemas.backup import (
     BackupValidationError,
@@ -34,6 +35,7 @@ from app.schemas.backup import (
 from app.schemas.learning import ContactKind, ContactSource
 from app.schemas.practice import PracticeAssistance
 from app.schemas.scene_backup import FullSceneAttempt, validate_scene_graph
+from app.schemas.scene_feedback_backup import FullSceneFeedback, validate_feedback_graph
 
 # 修订资源类型 ↔ 备份集合：导出、校验、映射共用同一张表。
 RESOURCE_COLLECTIONS = {
@@ -354,6 +356,16 @@ register_extension(
     lambda row, mapping: dict(row),
     model=SceneAttempt,
     unique=("attempt_id", "submission_id"),
+)
+
+
+register_extension(
+    "scene_feedback",
+    FullSceneFeedback,
+    (),
+    lambda row, mapping: dict(row),
+    model=SceneFeedback,
+    unique=("operation_id", "item_id", "attempt_id"),
 )
 
 
@@ -848,6 +860,13 @@ def validate_v3(payload: dict) -> ValidatedBackup:
         tables["learning_events"],
         tables["cards"],
         validated_extensions.get("content_revisions", []),
+        _reject,
+    )
+    validate_feedback_graph(
+        sessions,
+        items,
+        validated_extensions.get("scene_attempts", []),
+        validated_extensions.get("scene_feedback", []),
         _reject,
     )
     # Integer IDs encode persisted order for equal timestamps. Restore must not

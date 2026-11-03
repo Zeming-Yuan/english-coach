@@ -3,6 +3,9 @@ import fs from "node:fs";
 import {fileURLToPath} from "node:url";
 
 export const requirements = {
+  EL16: [
+    "EL-16 saved rule result shows bounded model feedback and visible contact",
+  ],
   EL15: [
     "EL-15 introduction independent three-turn result stays in its context",
     "EL-15 directions independent three-turn result stays in its context",
