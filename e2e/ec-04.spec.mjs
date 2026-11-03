@@ -113,8 +113,8 @@ test("EC-04 detail-rating-stays-on-failure", async ({app, page}) => {
 test("EC-04 lesson-rating-stays-on-failure", async ({appFactory, page}) => {
   const instance = await appFactory({fixture: "ec04-lesson.json"});
   await page.goto(instance.baseURL);
-  await page.locator("summary").click();
-  await page.getByRole("button", {name: /继续 →/}).click();
+  if (await page.locator("summary").locator("..").getAttribute("open") === null) await page.locator("summary").click();
+  await page.getByTestId("open-lessons").click();
   await page.locator(".lesson-list-item").first().click();
   await page.getByRole("button", {name: "猜不到"}).click();
   await page.route("**/api/reviews", (route) => route.abort("failed"), {times: 1});
@@ -132,7 +132,7 @@ test("EC-04 lesson-rating-stays-on-failure", async ({appFactory, page}) => {
 test("EC-04 story-rating-stays-on-failure", async ({appFactory, page}) => {
   const instance = await appFactory({fixture: "ec04-story.json"});
   await page.goto(instance.baseURL);
-  await page.getByRole("button", {name: /故事/}).click();
+  await page.getByRole("button", {name: "故事", exact: true}).click();
   await page.locator(".story-item-main").first().click();
   await page.locator(".sw", {hasText: "apple"}).first().click();
   await page.route("**/api/reviews", (route) => route.abort("failed"), {times: 1});

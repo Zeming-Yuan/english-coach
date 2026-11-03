@@ -45,7 +45,7 @@ test("EL-03 verified evidence reads the same on home, stats and list", async ({a
   await verifiedOnly(app, id);
 
   await page.goto(app.baseURL);
-  await expect(page.locator(".today-stats")).toContainText("独立回忆已有证据 1 张");
+  await expect(page.getByRole("region", {name: "复习与学习依据"})).toContainText("独立回忆已有证据1 张");
   await page.locator(".today-stats").click();
   await expect(page.getByTestId("evidence-overview")).toContainText("独立回忆已有证据 1 张");
   await page.goto(app.baseURL);
@@ -66,7 +66,7 @@ test("EL-03 weak evidence reads the same on home, stats and list", async ({appFa
   }
 
   await page.goto(app.baseURL);
-  await expect(page.locator(".today-stats")).toContainText("仍需巩固 1 张");
+  await expect(page.getByRole("region", {name: "复习与学习依据"})).toContainText("仍需巩固1 张");
   await page.locator(".today-stats").click();
   await expect(page.getByTestId("evidence-overview")).toContainText("仍需巩固 1 张");
   await page.goto(app.baseURL);

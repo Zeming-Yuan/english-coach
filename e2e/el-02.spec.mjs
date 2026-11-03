@@ -16,7 +16,7 @@ async function typeWord(app, id, answer = "apple", assistance = []) {
 
 async function openDetail(page, app, word = "apple") {
   await page.goto(app.baseURL);
-  await page.getByText("单词本", {exact: true}).click();
+  await page.getByRole("button", {name: "单词本", exact: true}).click();
   await page.locator(".word-item", {hasText: word}).first().click();
 }
 

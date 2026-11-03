@@ -2,7 +2,7 @@ import {test, expect} from "./support/test.mjs";
 
 async function openLessonsFromHome(page, app) {
   await page.goto(app.baseURL);
-  await page.getByText("专项练习", {exact: true}).click();
+  if (await page.getByText("专项练习", {exact: true}).locator("..").getAttribute("open") === null) await page.getByText("专项练习", {exact: true}).click();
   await page.getByTestId("open-lessons").click();
 }
 
@@ -140,8 +140,8 @@ test("EL-07 continue next lesson resets lesson state", async ({appFactory, page}
 test("EL-07 twenty generated lessons never read as completed", async ({appFactory, page}) => {
   const app = await appFactory({fixture: "el07-20-lessons.json"});
   await page.goto(app.baseURL);
-  await page.getByText("专项练习", {exact: true}).click();
-  await expect(page.locator(".lesson-entry-label")).toContainText("20 课已全部生成");
+  if (await page.getByText("专项练习", {exact: true}).locator("..").getAttribute("open") === null) await page.getByText("专项练习", {exact: true}).click();
+  await expect(page.getByRole("region", {name: "复习与学习依据"})).toContainText("旧内容 20 课 · 状态未记录 20 课");
   await expect(page.getByText(/已学完|已完成/)).toHaveCount(0);
   await page.getByTestId("open-lessons").click();
   await expect(page.locator(".lesson-entry-label")).toContainText("20 课已全部生成");

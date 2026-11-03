@@ -7,7 +7,7 @@ async function contacts(app) {
 
 async function openStory(app, page) {
   await page.goto(app.baseURL);
-  await page.getByRole("button", {name: /故事/}).click();
+  await page.getByRole("button", {name: "故事", exact: true}).click();
   await page.getByText("Apple Story", {exact: true}).click();
   await expect(page.getByTestId("content-contact-status")).toContainText("应用内接触");
 }
@@ -48,8 +48,8 @@ test("EL-06 story sentence playback records answer audio", async ({appFactory, p
 test("EL-06 lesson reading records word contacts", async ({appFactory, page}) => {
   const app = await appFactory({fixture: "ec04-lesson.json"});
   await page.goto(app.baseURL);
-  await page.getByText("专项练习", {exact: true}).click();
-  await page.locator(".lesson-entry").getByRole("button", {name: "继续 →"}).click();
+  if (await page.getByText("专项练习", {exact: true}).locator("..").getAttribute("open") === null) await page.getByText("专项练习", {exact: true}).click();
+  await page.getByTestId("open-lessons").click();
   await page.locator(".lesson-list-item").first().click();
   await expect(page.getByTestId("content-contact-status")).toContainText("应用内接触");
   // 答案（释义）真正揭晓后才算接触。
@@ -71,8 +71,8 @@ test("EL-06 lesson reading records word contacts", async ({appFactory, page}) =>
 test("EL-06 lesson dialogue playback records answer audio", async ({appFactory, page}) => {
   const app = await appFactory({fixture: "el06-lesson-dialogue.json"});
   await page.goto(app.baseURL);
-  await page.getByText("专项练习", {exact: true}).click();
-  await page.locator(".lesson-entry").getByRole("button", {name: "继续 →"}).click();
+  if (await page.getByText("专项练习", {exact: true}).locator("..").getAttribute("open") === null) await page.getByText("专项练习", {exact: true}).click();
+  await page.getByTestId("open-lessons").click();
   await page.locator(".lesson-list-item").first().click();
   await page.locator(".lesson-dialogue-row").first().click();
   await expect
@@ -104,7 +104,7 @@ test("EL-06 story point-word records contact after meaning", async ({appFactory,
 test("EL-06 offscreen story target is not a contact until visible", async ({appFactory, page}) => {
   const app = await appFactory({fixture: "el06-story-long.json"});
   await page.goto(app.baseURL);
-  await page.getByRole("button", {name: /故事/}).click();
+  await page.getByRole("button", {name: "故事", exact: true}).click();
   await page.getByText("Long Story", {exact: true}).click();
   const lastLine = page.locator(".story-sentence-row").last();
   await expect(lastLine).not.toBeInViewport();

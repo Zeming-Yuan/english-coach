@@ -122,7 +122,7 @@ def test_get_card_detail_with_reviews(ec):
     config = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
     config.set_main_option("sqlalchemy.url", ec.database_url)
     card_id = ec.seed_card(word="world", meaning="世界")
-    command.downgrade(config, "ec12_card_identity")
+    ec.rebuild_legacy_database("ec12_card_identity")
     db_session = ec.SessionLocal()
     client = ec.client
 

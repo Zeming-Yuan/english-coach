@@ -3,6 +3,27 @@ import fs from "node:fs";
 import {fileURLToPath} from "node:url";
 
 export const requirements = {
+  EL15: [
+    "EL-15 introduction independent three-turn result stays in its context",
+    "EL-15 directions independent three-turn result stays in its context",
+    "EL-15 application outcomes remain separate across scene contexts",
+    "EL-15 expansion rollback keeps drinks and original history available",
+    "EL-15 introduction commit creation and answer resume with original identities",
+    "EL-15 introduction response-loss creation and answer resume with original identities",
+    "EL-15 introduction unknown help retry and skip preserve first results",
+    "EL-15 introduction V3 browser restore continues original tasks",
+    "EL-15 introduction revision stops stale answers and keeps history",
+    "EL-15 introduction deletion stops stale answers and keeps history",
+    "EL-15 directions commit creation and answer resume with original identities",
+    "EL-15 directions response-loss creation and answer resume with original identities",
+    "EL-15 directions unknown help retry and skip preserve first results",
+    "EL-15 directions V3 browser restore continues original tasks",
+    "EL-15 directions revision stops stale answers and keeps history",
+    "EL-15 directions deletion stops stale answers and keeps history",
+    "EL-15 switching scenes resumes each saved task without crossing contexts",
+    "EL-15 preparation hides English answers separately for all three scenes",
+    "EL-15 standard expression and failed speech preserve assisted evidence",
+  ],
   EL14: [
     "EL-14 preparation keeps English answers hidden before starting",
     "EL-14 successful standard audio records its actual contact time",

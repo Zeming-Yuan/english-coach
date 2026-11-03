@@ -84,7 +84,7 @@ export default function AddPage({ onStartStudy, onAddStarter, onGoWords }) {
               <><br /><span className="warn">这些词已经进入你的词库，明天会按记忆安排复习</span></>
               <div className="learn-now-row">
                 <button className="btn btn-primary btn-small" onClick={() => onStartStudy && onStartStudy(result.data.cards)}>
-                  🕐 马上学一学（不等到明天）
+                  马上学一学（不等到明天）
                 </button>
               </div>
             </>

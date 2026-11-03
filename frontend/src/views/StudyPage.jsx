@@ -1,3 +1,4 @@
+import UiIcon from "../components/UiIcon.jsx";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "../lib/api.js";
 import { speak } from "../lib/tts.js";
@@ -163,7 +164,7 @@ export default function StudyPage({ queue, session, recoveryVersion, onProgress,
     return (
       <section className="view view-center">
         <div className="study-done">
-          <div className="done-emoji">🎉</div>
+          <div className="done-emoji"><UiIcon name="done" size={40} /></div>
           <h2>{session ? "本轮主队列已保存" : "今天的词都过了一遍"}</h2>
           <p className="done-detail">
             {graduated.length > 0 && `${graduated.length} 个词解锁了句子练习：${graduated.join("、")} — 例句已变成句子卡。`}
@@ -171,7 +172,7 @@ export default function StudyPage({ queue, session, recoveryVersion, onProgress,
           </p>
           <div className="done-actions">
             <button className="btn btn-primary" onClick={onToQuiz}>去做测验</button>
-            {onToMixed && <button className="btn btn-ghost" style={{ marginTop: 8 }} onClick={onToMixed}>🎲 再练一轮混合</button>}
+            {onToMixed && <button className="btn btn-ghost" style={{ marginTop: 8 }} onClick={onToMixed}>再练一轮混合</button>}
             <button className="btn btn-ghost" style={{ marginTop: 8 }} onClick={onExit}>← 返回队列</button>
           </div>
         </div>
@@ -249,7 +250,7 @@ export default function StudyPage({ queue, session, recoveryVersion, onProgress,
             <div className="front-phonetic">
               {isSentence ? card.word : (card.phonetic || "")}
               {isSentence && card.difficulty === "reading" &&
-                <span className="diff-chip">📖 阅读句</span>}
+                <span className="diff-chip">阅读句</span>}
             </div>
             {/* 句子卡：意群切分提示（初学友好）— 点击单块朗读，可跟读 */}
             {isSentence && (
@@ -259,7 +260,7 @@ export default function StudyPage({ queue, session, recoveryVersion, onProgress,
             {isSentence && showSentenceCn && card.example_cn && (
               <div className="front-sentence-cn">{card.example_cn}</div>
             )}
-            <button className="speak-btn" title="朗读" onClick={(e) => { e.stopPropagation(); speak(isSentence ? (card.example || card.word) : card.word); }}>🔊</button>
+            <button className="speak-btn" title="朗读" onClick={(e) => { e.stopPropagation(); speak(isSentence ? (card.example || card.word) : card.word); }} aria-label="朗读"><UiIcon name="speaker" /></button>
             <span className="flip-hint">先回想 3 秒 · 点这翻面对照</span>
           </div>
           <div className="card-face card-back">
@@ -269,7 +270,7 @@ export default function StudyPage({ queue, session, recoveryVersion, onProgress,
               <div className="back-example-block">
                 <div className="back-example">{renderClickableExample(card.example)}</div>
                 {card.example_cn && <div className="back-example-cn">{card.example_cn}</div>}
-                <button className="speak-mini" title="朗读例句" onClick={(e) => { e.stopPropagation(); speak(card.example); }}>🔊</button>
+                <button className="speak-mini" title="朗读例句" onClick={(e) => { e.stopPropagation(); speak(card.example); }} aria-label="朗读"><UiIcon name="speaker" /></button>
               </div>
             )}
             {/* 词查询浮层 */}
@@ -277,8 +278,8 @@ export default function StudyPage({ queue, session, recoveryVersion, onProgress,
               <div className="back-lookup-panel" onClick={(e) => e.stopPropagation()}>
                 <div className="back-lookup-head">
                   <b>{lookupWord.word}</b>
-                  <button className="speak-mini" onClick={() => speak(lookupWord.word)}>🔊</button>
-                  <button className="story-word-panel-close" onClick={closeLookup}>✕</button>
+                  <button className="speak-mini" onClick={() => speak(lookupWord.word)} aria-label="朗读"><UiIcon name="speaker" /></button>
+                  <button className="story-word-panel-close" onClick={closeLookup} aria-label="关闭"><UiIcon name="close" /></button>
                 </div>
                 {lookupWord.phonetic && <div className="back-lookup-phonetic">{lookupWord.phonetic}</div>}
                 <div className="back-lookup-meaning">{lookupWord.meaning || (lookupResult.status === "missing" ? "暂无释义" : "查询中…")}</div>
@@ -296,7 +297,7 @@ export default function StudyPage({ queue, session, recoveryVersion, onProgress,
             )}
             {memoText && (
               <div className="back-memo">
-                <div className="back-memo-label">🧠 你的记忆法</div>
+                <div className="back-memo-label">你的记忆法</div>
                 <div className="back-memo-content">
                   <span>{memoText}</span>
                 </div>

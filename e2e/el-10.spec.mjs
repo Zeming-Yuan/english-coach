@@ -183,7 +183,7 @@ test("EL-10 course shows its own short check and delayed samples", async ({appFa
   await submit(page);
   await expect(page.getByText("✅ 正确！")).toBeVisible();
   await page.goto(app.baseURL);
-  await page.getByText("专项练习", {exact: true}).click();
+  if (await page.getByText("专项练习", {exact: true}).locator("..").getAttribute("open") === null) await page.getByText("专项练习", {exact: true}).click();
   await page.getByTestId("open-lessons").click();
   const lesson = page.locator(".lesson-list-item").first();
   await expect(lesson).toContainText("短测：尚无");

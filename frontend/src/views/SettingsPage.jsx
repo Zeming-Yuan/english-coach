@@ -29,7 +29,8 @@ export default function SettingsPage({ darkMode, setDarkMode, onOpenBackup }) {
   return (
     <section className="view view-center">
       <div className="settings-panel" style={{ position: "static", width: "100%", maxWidth: 400 }}>
-        <div className="settings-panel-head">⚙️ 设置</div>
+        <h1 className="settings-panel-head">设置</h1>
+        <h2 className="settings-section-title">学习偏好</h2>
         <div className="settings-row">
           <span className="settings-label">发音速度</span>
           <div className="diff-group">
@@ -63,6 +64,7 @@ export default function SettingsPage({ darkMode, setDarkMode, onOpenBackup }) {
             ))}
           </div>
         </div>
+        <h2 className="settings-section-title">内容维护</h2>
         <div className="settings-row" style={{ flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
           <span className="settings-label">词库例句质量</span>
           <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>旧词卡的例句可能太简单，点击刷新为更有画面感的例句</p>
@@ -83,7 +85,7 @@ export default function SettingsPage({ darkMode, setDarkMode, onOpenBackup }) {
               setRefreshing(false);
             }
           }}>
-            {refreshing ? "刷新中…" : "🔄 刷新例句（每次10个）"}
+            {refreshing ? "刷新中…" : "刷新例句（每次10个）"}
           </button>
           {refreshResult && (
             <div style={{ fontSize: 12, color: "var(--muted)" }}>
@@ -109,9 +111,10 @@ export default function SettingsPage({ darkMode, setDarkMode, onOpenBackup }) {
               setRegenerating(false);
             }
           }}>
-            {regenerating ? "生成中…" : "📝 生成句子卡（每次5个）"}
+            {regenerating ? "生成中…" : "生成句子卡（每次5个）"}
           </button>
         </div>
+        <h2 className="settings-section-title">数据与备份</h2>
         <div className="settings-row" style={{ flexDirection: "column", alignItems: "flex-start", gap: 8 }}>
           <span className="settings-label">数据备份</span>
           <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>下载数据库全部学习内容的版本化备份</p>

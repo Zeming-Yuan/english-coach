@@ -2,7 +2,7 @@ import {test, expect} from "./support/test.mjs";
 
 async function openPractice(page, app) {
   await page.goto(app.baseURL);
-  await page.getByText("专项练习", {exact: true}).click();
+  if (await page.getByText("专项练习", {exact: true}).locator("..").getAttribute("open") === null) await page.getByText("专项练习", {exact: true}).click();
   await page.getByTestId("open-lessons").click();
   await page.locator(".lesson-list-item").first().click();
   await page.getByRole("button", {name: "开始本课短测", exact: true}).click();
@@ -100,7 +100,7 @@ test("EL-08 refresh continues the same session", async ({appFactory, page}) => {
   const app = await appFactory({fixture: "ec04-lesson.json"});
   await openPractice(page, app);
   await page.reload();
-  await page.getByText("专项练习", {exact: true}).click();
+  if (await page.getByText("专项练习", {exact: true}).locator("..").getAttribute("open") === null) await page.getByText("专项练习", {exact: true}).click();
   await page.getByTestId("open-lessons").click();
   await expect(page.getByTestId("practice-session")).toContainText("本课短测");
   await expect(page.locator('input[name="practice-answer"]')).toBeVisible();
@@ -109,7 +109,7 @@ test("EL-08 refresh continues the same session", async ({appFactory, page}) => {
 test("EL-08 zero words is explained without a fake pass", async ({appFactory, page}) => {
   const app = await appFactory({fixture: "el08-empty-lesson.json"});
   await page.goto(app.baseURL);
-  await page.getByText("专项练习", {exact: true}).click();
+  if (await page.getByText("专项练习", {exact: true}).locator("..").getAttribute("open") === null) await page.getByText("专项练习", {exact: true}).click();
   await page.getByTestId("open-lessons").click();
   await page.locator(".lesson-list-item").first().click();
   await page.getByRole("button", {name: "开始本课短测", exact: true}).click();

@@ -343,8 +343,8 @@ test("EC-14 unrelated late confirmation preserves saved reinforcement feedback",
   await page.locator(".rating-1").click();
   await expect(page.locator(".spelling-input")).toBeVisible();
   await page.getByRole("button", {name: "← 退出", exact: true}).click();
-  await page.locator("summary").click();
-  await page.locator(".error-entry").getByRole("button", {name: "复习 →", exact: true}).click();
+  if (await page.locator("summary").locator("..").getAttribute("open") === null) await page.locator("summary").click();
+  await page.getByRole("button", {name: "复习错词", exact: true}).click();
   await app.failCommitOnce();
   await page.locator(".flip-hint").first().click();
   await page.locator(".rating-3").click();
