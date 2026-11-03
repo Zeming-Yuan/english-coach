@@ -60,3 +60,25 @@
 - 应用沿用单用户本地数据范围；新增写入只引用已保存词卡作答，不扩展账户/租户/外部权限。
 - 新表升级由真实迁移夹具覆盖；回退采用保留数据的功能开关。生产发布/部署、容器编排、独立安全扫描、变异测试：N/A（本票未引入这些流程）。
 - 原生窗口切换、操作系统崩溃、跨设备浏览器 pending 恢复：未验证/不承诺；数据库完整备份与事务恢复使用自动测试。
+
+## 首次独立审查与修复
+
+范围 `ce389ca...82c68ce`：Standards 1 个 P2，Spec 2 个 P2；两个独立 reviewer
+均使用 gpt-6.1-sol / high，不修改产品文件，不运行完整门禁。
+
+- Standards / Spec：V3 时长数组重排不改变业务摘要，却按新数组次序发 ID，使最近三十条
+  改变。31 条 review（16 条 100 秒，15 条 12 秒）测试先从 56 变成 100 秒，断言失败。
+  修复采用既有场景记录的源 ID 规范化方式，恢复前按源保存次序排序。
+- Spec：题目可靠性只存在 sessionStorage，新标签页继续缺失此前操作；新增真实浏览器
+  回归先保存了约 5.4 秒的部分样本，两视口失败。修复将可靠性标记放在与每日轮次同级的
+  localStorage，跨标签页继续同一未答题会弃样；答案照常保存。
+
+修复后验证：
+
+- `.venv/bin/python -m pytest tests/test_el18_personal_active_time_estimate.py tests/test_backup_v2.py tests/test_el01_expand_revisions_and_v3.py -q` → **65 passed**，包含数组重排的 RED→GREEN。
+- EL-18 主入口双视口 → **24 passed**，`ec-e2e-static-uqJxbG`，包含跨标签页的 RED→GREEN；12 个具名分支已登记。
+- EL-17 主入口双视口 → **24 passed**，`ec-e2e-static-DPEg9V`。
+- changed-file Ruff/format、fresh-base guard、修改 Python 类型检查与 diff whitespace 检查通过。
+
+两个原审查者会对修复提交重新核对固定点到 HEAD 的非空 diff；最终两轴报告随交付反馈保存。
+首次审查的 P2 均已修复并有失败到通过的证据；没有以测试绿灯替代复审。

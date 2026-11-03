@@ -251,3 +251,30 @@ test("EL-18 resumed unanswered card discards incomplete timing rather than calib
   expect(saved.learning_events).toHaveLength(1);
   expect(saved.extensions.practice_durations).toHaveLength(0);
 });
+
+test("EL-18 new tab continuation discards the unanswered card partial timing", async ({app, page}) => {
+  await page.clock.install();
+  await app.seedCards([{word: "apple"}]);
+  await page.goto(app.baseURL);
+  await page.getByRole("button", {name: "开始今天的学习", exact: true}).click();
+  await page.clock.runFor(10000);
+  await page.getByRole("button", {name: "先到这里", exact: true}).click();
+  await page.getByRole("button", {name: "返回首页", exact: true}).click();
+  const context = page.context();
+  await page.close();
+  const reopened = await context.newPage();
+  await reopened.clock.install();
+  const durationRequests = [];
+  reopened.on("request", request => {
+    if (request.url().endsWith("/api/learning/durations")) durationRequests.push(request.postDataJSON());
+  });
+  await reopened.goto(app.baseURL);
+  await reopened.getByRole("button", {name: "继续本轮学习", exact: true}).click();
+  await reopened.clock.runFor(5000);
+  await rate(reopened);
+  await expect(reopened.getByRole("heading", {name: "本轮学习结果", exact: true})).toBeVisible();
+  expect(durationRequests).toHaveLength(0);
+  const saved = await backup(app);
+  expect(saved.learning_events).toHaveLength(1);
+  expect(saved.extensions.practice_durations).toHaveLength(0);
+});

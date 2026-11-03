@@ -4,6 +4,7 @@ import {fileURLToPath} from "node:url";
 
 export const requirements = {
   EL18: [
+    "EL-18 new tab continuation discards the unanswered card partial timing",
     "EL-18 resumed unanswered card discards incomplete timing rather than calibrating",
     "EL-18 five real answers switch future preview to personal and freeze current round",
     "EL-18 due review is timed as review rather than new word",

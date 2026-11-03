@@ -345,3 +345,27 @@ def test_el18_v2_missing_durations_restores_with_defaults(ec, ec_factory):
     assert "practice_durations" in preview["extensions"]["missing"]
     assert other.client.get("/api/today").json()["plan"]["estimate_basis"] == "default"
     assert len(other.client.get("/api/export/backup").json()["learning_events"]) == 1
+
+
+def test_el18_v3_reordered_duration_array_preserves_saved_order_and_estimate(ec):
+    from copy import deepcopy
+
+    from app.services.backup import snapshot_revision
+
+    card_id = ec.seed_card()
+    saved_attempt(ec, card_id)
+    for index in range(31):
+        payload = duration(
+            saved_attempt(ec, card_id), 100000 if index < 16 else 12000, kind="review"
+        )
+        assert (
+            ec.client.post("/api/learning/durations", json=payload).status_code == 200
+        )
+    before = ec.client.get("/api/today").json()["plan"]["estimates"]["review"]
+    assert before["seconds"] == 56
+    backup = ec.client.get("/api/export/backup").json()
+    reordered = deepcopy(backup)
+    reordered["extensions"]["practice_durations"].reverse()
+    assert snapshot_revision(reordered) == snapshot_revision(backup)
+    restore(ec, reordered)
+    assert ec.client.get("/api/today").json()["plan"]["estimates"]["review"] == before

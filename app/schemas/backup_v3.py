@@ -929,8 +929,9 @@ def validate_v3(payload: dict) -> ValidatedBackup:
     )
     # Integer IDs encode persisted order for equal timestamps. Restore must not
     # let an arbitrary JSON array order reverse first-response evidence.
-    if "scene_attempts" in validated_extensions:
-        validated_extensions["scene_attempts"].sort(key=lambda row: row["id"])
+    for name in ("scene_attempts", "practice_durations"):
+        if name in validated_extensions:
+            validated_extensions[name].sort(key=lambda row: row["id"])
     from app.services.retention import validate_retention_graph
 
     validate_retention_graph(

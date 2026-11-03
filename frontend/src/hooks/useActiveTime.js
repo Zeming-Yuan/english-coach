@@ -7,11 +7,11 @@ export function useActiveTime(identity, kind, enabled = true) {
   useEffect(() => {
     if (!identity || !enabled) { timer.current = null; return; }
     // A remounted unanswered item has an unknown earlier portion. Keep a marker
-    // for this browser tab so pause/refresh never turns a partial sample reliable.
+    // alongside the browser round so pause/refresh never turns a partial sample reliable.
     const key = `ec.active-time.${identity}`;
     try {
-      if (sessionStorage.getItem(key)) { timer.current = null; return; }
-      sessionStorage.setItem(key, "started");
+      if (localStorage.getItem(key)) { timer.current = null; return; }
+      localStorage.setItem(key, "started");
     } catch { timer.current = null; return; }
     const current = activeTimer();
     timer.current = current;
