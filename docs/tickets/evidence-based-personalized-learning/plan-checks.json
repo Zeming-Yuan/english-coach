@@ -1,0 +1,10 @@
+{
+  "counts": {
+    "plans": 21,
+    "python_blocks": 89,
+    "javascript_blocks": 46,
+    "json_blocks": 3,
+    "pure_rule_examples": 96
+  },
+  "scope": "Documentation code syntax and isolated pure rule examples only; no product tests run."
+}

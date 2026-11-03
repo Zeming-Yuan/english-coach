@@ -1,0 +1,247 @@
+{
+  "repository": "Zeming-Yuan/english-coach",
+  "baseline": "5868cd1629bc3c36f2bfd5a1009ae048481c94f8",
+  "date": "2026-10-30",
+  "issues": {
+    "spec": {
+      "number": 1,
+      "id": 6116743390,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/1",
+      "title": "EnglishCoach：可靠性与每日学习闭环规格及执行总览",
+      "body_sha256": "bf7fbcd3c2a1877a3b4e01ba5d5075647c288e35f2188cd411517e75e08e2587"
+    },
+    "EC-01": {
+      "number": 2,
+      "id": 6116744661,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/2",
+      "title": "EC-01：全新安装和旧库升级后能打开真实首页",
+      "body_sha256": "71da4d96d6960ed495296f5826175b47686763ae12f2dffde4671e5420abb8af"
+    },
+    "EC-02": {
+      "number": 3,
+      "id": 6116747148,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/3",
+      "title": "EC-02：没有 AI 密钥也能体验首轮学习",
+      "body_sha256": "29c4b06362e712155826183e4a670e38671621c662c09951da73c5e38dc2b1c9"
+    },
+    "EC-03": {
+      "number": 4,
+      "id": 6116753085,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/4",
+      "title": "EC-03：Expand：新增学习事件，首次看见真实评分轨迹",
+      "body_sha256": "c4477db91eaf67eb8149f82c116b77ebf9f83027cf553e5e8aefa8e4dce0d941"
+    },
+    "EC-04": {
+      "number": 5,
+      "id": 6116757658,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/5",
+      "title": "EC-04：迁移自评分：保存确认、幂等重试与刷新恢复",
+      "body_sha256": "3a496edd46213ce3bf40c3cef0963abded2946926f10f6b7697ca5ccc90d50e0"
+    },
+    "EC-05": {
+      "number": 6,
+      "id": 6116760799,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/6",
+      "title": "EC-05：迁移拼写与填空：一次提交，区分独立回忆和提示",
+      "body_sha256": "02ced6da6c47b6193d653ea375bb766a837a5c16b9d57a72daf7beb898fbefc8"
+    },
+    "EC-06": {
+      "number": 7,
+      "id": 6116764088,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/7",
+      "title": "EC-06：迁移测验选择与听力：服务端判分，识别练习不改排期",
+      "body_sha256": "8f803fd5b8b2c90a02f4e0ebb069232439235261732ca6bfcc79122481984971"
+    },
+    "EC-07": {
+      "number": 8,
+      "id": 6116767122,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/8",
+      "title": "EC-07：迁移混合练习：同题同规则，一次操作只记录一次",
+      "body_sha256": "11550b1e74e80b7af70f6c5386dda4f5acfa00a15aff3175449297bd25278135"
+    },
+    "EC-08": {
+      "number": 9,
+      "id": 6116771319,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/9",
+      "title": "EC-08：跨天历史、热力图和连续学习天数可信",
+      "body_sha256": "892687175e99a222da53c30c3bd09c79653b96b8a5e92470f1b49aa789bea9a1"
+    },
+    "EC-09": {
+      "number": 10,
+      "id": 6116800032,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/10",
+      "title": "EC-09：区分正确率与自评通过率，可靠调节新词量",
+      "body_sha256": "6b784d1b5903b48baa64aa23db547e3f2d2fc205c0f0608461281d27e1d6c3a5"
+    },
+    "EC-10": {
+      "number": 11,
+      "id": 6116804302,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/11",
+      "title": "EC-10：从界面导出完整、带版本的数据库备份",
+      "body_sha256": "250483918b3cbae6b51c104134bd3a4139334ba126510355699e1e9545feeb62"
+    },
+    "EC-11": {
+      "number": 12,
+      "id": 6116807572,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/12",
+      "title": "EC-11：旧备份导入不串卡，失败不清空原进度",
+      "body_sha256": "94033ec3ed3da39185355556360e62c8cfc9beaf16e7776ac4d597e261957a48"
+    },
+    "EC-12": {
+      "number": 13,
+      "id": 6116811189,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/13",
+      "title": "EC-12：完整备份恢复到另一实例后继续学习",
+      "body_sha256": "d85452b6b680f798a07e19ab351372b9d28c7ef9e6e287a416159982547fded6"
+    },
+    "EC-13": {
+      "number": 14,
+      "id": 6116815303,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/14",
+      "title": "EC-13：首页一键开始到期优先、目标固定的每日学习",
+      "body_sha256": "6eae6674e90b20cd7b8bbf4ac2916e4da5aed4422d9d71fc9651fac0c08c54c5"
+    },
+    "EC-14": {
+      "number": 15,
+      "id": 6116819278,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/15",
+      "title": "EC-14：结束主队列后做有限巩固并获得可信反馈",
+      "body_sha256": "46ac49ab1a6ad50774a9d25fcf1ecc2f958082c9670ca8254ddd6e95be5a42c4"
+    },
+    "EC-15": {
+      "number": 16,
+      "id": 6116822861,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/16",
+      "title": "EC-15：Contract：收口到唯一学习记录规则，移除旧业务分支",
+      "body_sha256": "3003639cc393b5aeb04a20521e0014153e7d6884aaf679f39163416dbbd36323"
+    },
+    "EC-16": {
+      "number": 17,
+      "id": 6116827331,
+      "url": "https://github.com/Zeming-Yuan/english-coach/issues/17",
+      "title": "EC-16：在新机器到换设备的完整旅程中独立验收",
+      "body_sha256": "23d5718c9734663c548c8e7cb5bd2f0aabe3d5697edfb501d359b283d14572ef"
+    }
+  },
+  "dependencies": [
+    [
+      "EC-01",
+      "EC-02"
+    ],
+    [
+      "EC-01",
+      "EC-03"
+    ],
+    [
+      "EC-03",
+      "EC-04"
+    ],
+    [
+      "EC-03",
+      "EC-05"
+    ],
+    [
+      "EC-03",
+      "EC-06"
+    ],
+    [
+      "EC-05",
+      "EC-07"
+    ],
+    [
+      "EC-06",
+      "EC-07"
+    ],
+    [
+      "EC-04",
+      "EC-08"
+    ],
+    [
+      "EC-05",
+      "EC-09"
+    ],
+    [
+      "EC-06",
+      "EC-09"
+    ],
+    [
+      "EC-08",
+      "EC-09"
+    ],
+    [
+      "EC-03",
+      "EC-10"
+    ],
+    [
+      "EC-10",
+      "EC-11"
+    ],
+    [
+      "EC-04",
+      "EC-12"
+    ],
+    [
+      "EC-11",
+      "EC-12"
+    ],
+    [
+      "EC-09",
+      "EC-13"
+    ],
+    [
+      "EC-13",
+      "EC-14"
+    ],
+    [
+      "EC-07",
+      "EC-15"
+    ],
+    [
+      "EC-09",
+      "EC-15"
+    ],
+    [
+      "EC-12",
+      "EC-15"
+    ],
+    [
+      "EC-02",
+      "EC-16"
+    ],
+    [
+      "EC-14",
+      "EC-16"
+    ],
+    [
+      "EC-15",
+      "EC-16"
+    ]
+  ],
+  "sub_issues": [
+    "EC-01",
+    "EC-02",
+    "EC-03",
+    "EC-04",
+    "EC-05",
+    "EC-06",
+    "EC-07",
+    "EC-08",
+    "EC-09",
+    "EC-10",
+    "EC-11",
+    "EC-12",
+    "EC-13",
+    "EC-14",
+    "EC-15",
+    "EC-16"
+  ],
+  "verified_at": "2026-10-30T09:49:05.755581+00:00",
+  "verification": {
+    "issues": 17,
+    "tickets_with_full_plans": 16,
+    "ready_for_agent_labels": 17,
+    "native_sub_issues": 16,
+    "native_blocking_edges": 23,
+    "remote_body_hashes_match": true
+  }
+}

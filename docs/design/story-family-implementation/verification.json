@@ -1,0 +1,38 @@
+{
+  "head": "6b9a6dcf0a241acd0b54c6abd5c9ffcfea4b8e36",
+  "playwright": {
+    "startTime": "2026-11-02T06:42:00.282Z",
+    "duration": 117432.677,
+    "expected": 38,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "frontend_node": {
+    "tests": 7,
+    "pass": 7,
+    "fail": 0
+  },
+  "build": "npm --prefix frontend run build: exit 0",
+  "browser": "Chromium /home/clusteradmin/.cache/ms-playwright/chromium-1248/chrome-linux-arm64/chrome",
+  "command": "EC_STATIC_DIR=/tmp/ec-story-theme-static EC_OUTPUT_DIR=/tmp/ec-story-theme-complete EC_REPORT_PATH=/tmp/ec-story-theme-complete.json node frontend/node_modules/@playwright/test/cli.js test --config /tmp/ec-story-playwright.config.mjs e2e/story-theme.spec.mjs e2e/full-design.spec.mjs e2e/reader-design.spec.mjs e2e/el-04.spec.mjs e2e/ec-07.spec.mjs e2e/el-12.spec.mjs e2e/el-13.spec.mjs --grep \"word detail|workspace navigation|external font|full design|reader |EL-04|single-card-independent|EL-12 simpler story preserves|EL-13 recognition and independent|EL-13 reopening\"",
+  "config_note": "临时配置只扩展仓库 e2e/playwright.config.mjs，将 locale 设为 zh-CN，并指定现有 Chromium 可执行文件；未跳过断言。",
+  "source_sha256": {
+    "frontend/index.html": "6f4c3251cb1f56f0c34926d0252c8b7cc92be60a4d76ddc257fa4157d6a0ef49",
+    "frontend/package.json": "ddf938357956b0992a0a913d42761e1d0cb33eaa51dd0460558f907a0e9bfe0b",
+    "frontend/package-lock.json": "5f588f592b4e6c64238a1fd3802db0d6994752f69fbb317ae42599ff768eadd5",
+    "frontend/src/App.jsx": "94f0e55af62299e36ce1ad6bb12929ed5457b73941d6e9cab09a5e4fcb8baecf",
+    "frontend/src/main.jsx": "19eefe8eba747827905efe6b650d4916cb9ed3596612e8334bcc479d49458e13",
+    "frontend/src/components/AppNavigation.jsx": "6f5c0364b7b82079fc4d9b7f9150025909d16be2f4349a6db6f2c9be56f1af2e",
+    "frontend/src/components/UiIcon.jsx": "604bc6147b53a0b96d3184b88ab7537b67356136e4f76c46ba6579013a3feb45",
+    "frontend/src/styles/product-theme.css": "e24f80f8e33e8b405bef2b63d852015e1151994ce2d5ca1c890b3dade95d6272",
+    "frontend/src/views/WordsPage.jsx": "5754554306ac0932e09eac7d3c9e9980bd3a5d40defed3df1f0f41e5270236f2",
+    "frontend/src/views/StoriesPage.jsx": "577e3c634c7f483cabc4410b1411f527db0dad16395ecc840d8c6b5eae4faa9e",
+    "frontend/src/views/story-reader.css": "c6faf70930ebfc138cddb1bcb53333aa486df5c5aa37a05078cccef6a48166be",
+    "frontend/src/views/SettingsPage.jsx": "92bda59cc1c00ce5988fa399331be984cb6019767bae1c18210ac6a21e058bc7",
+    "frontend/src/views/StatsPage.jsx": "9c47f521eba38fcb84f3e55f914fd709718738b856cc10207cabe466b94810ad",
+    "frontend/src/views/MixedPage.jsx": "0c2a3d4992daf8a90edef9d92daf88947ecacc4dc0c7688ae7d6508627ac20fe"
+  },
+  "preview_url": "http://127.0.0.1:51157/",
+  "preview_database": "isolated fixture full-design.json; no user database writes"
+}

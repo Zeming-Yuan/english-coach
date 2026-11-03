@@ -1,0 +1,17 @@
+{
+  "base": "7cfbafec2730294a6e74ed0d445bb9b5e79ffad9",
+  "referenceCommit": "1182426f2bd0a28c95302c33f9e19136b1262a70",
+  "preview": "http://127.0.0.1:47275/",
+  "branch": "codex/qwerty-spelling",
+  "relatedBrowserTests": 40,
+  "sourceFiles": {
+    "frontend/src/components/SpellingBoard.jsx": "5414fde5fae0faa5b66c2e3ea973703644055a325c01ec2e1ad135afaa56f8a2",
+    "frontend/src/views/SpellingPage.jsx": "68d464b4657eb5df546dc2cc4be1fc6abe204e1878f7729a5da90324b47abdd1",
+    "frontend/src/styles/qwerty-spelling.css": "77495c1dcfae139a68f8c0bff2af0a0dd745d480070bb3324ee28c94fc7a8e27",
+    "frontend/src/main.jsx": "05aaa28589829741c1895c77565333754d3e809dd00fbb45c88f5ea0432107ec",
+    "e2e/qwerty-spelling.spec.mjs": "874632046c68ce03c68485172578f3ad24f44519e424fedf9752395c4339e2e5"
+  },
+  "browser": "Chromium1248 arm64",
+  "worktreeOnly": true,
+  "published": false
+}

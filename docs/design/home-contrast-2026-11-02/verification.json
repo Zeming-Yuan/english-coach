@@ -1,0 +1,31 @@
+{
+  "head": "7cfbafec2730294a6e74ed0d445bb9b5e79ffad9",
+  "base": "7cfbafec2730294a6e74ed0d445bb9b5e79ffad9",
+  "source_sha256": {
+    "frontend/src/App.jsx": "38fc6945553bdb358446ef7a557efe360da359d5859294573ac826f7e6826fb2",
+    "frontend/src/main.jsx": "217cd5c64064e142fe593e2c3404dbc4c34679bb9b9223f433be0247248082a8",
+    "frontend/src/styles/home-workspace.css": "512ebbeff2ede12759a7dafece9e5805583262210792cee09381a794108f40f8",
+    "e2e/home-workspace.spec.mjs": "7e5bc9f4f401d3666993568584b925ef59e79087f84c0ee94e5eca9b7a9087c5",
+    "e2e/fixtures/home-preview-safety.json": "cd115450f9c950bca11fc3066c6333844325d3a3a6fdd9f2ee6409d7da3e33a6",
+    "e2e/ec-13.spec.mjs": "245c5f7810fd826779a12277238d2cdcd7c6047fb74fa141856c8532bcf0c378",
+    "app/static/images/home-reading.png": "4395ae7ef45b300bf7b14acd29b616f16cc27df95c07ddc92dc64447fa65a7ec"
+  },
+  "build": "/tmp/ec-home-build-verified",
+  "preview": "http://127.0.0.1:47275/",
+  "demo_preview": "http://127.0.0.1:48111/",
+  "browser_tests": {
+    "startTime": "2026-11-02T10:02:19.150Z",
+    "duration": 103653.018,
+    "expected": 100,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "library_tests": {
+    "passed": 7
+  },
+  "scope": "Home, EC-01, EC-13, EL-10, Qwerty; not a full release run",
+  "review": "Correctness and Spec independent reviews: three P2 findings fixed and rechecked; no remaining substantive findings",
+  "external_publish": false,
+  "committed": false
+}

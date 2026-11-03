@@ -1,0 +1,53 @@
+{
+  "errors": [],
+  "fontResults": {
+    ".workspace-sidebar nav button span": {
+      "platform": {
+        "fonts": [
+          {
+            "familyName": "Noto Sans SC Thin",
+            "postScriptName": "NotoSansSC-Thin",
+            "isCustomFont": true,
+            "glyphCount": 2
+          }
+        ]
+      },
+      "computed": {
+        "font": "20px / 30px \"Noto Sans SC Variable\", \"Noto Sans SC\", \"Noto Sans CJK SC\", \"PingFang SC\", \"Microsoft YaHei\", system-ui, sans-serif",
+        "fontFamily": "\"Noto Sans SC Variable\", \"Noto Sans SC\", \"Noto Sans CJK SC\", \"PingFang SC\", \"Microsoft YaHei\", system-ui, sans-serif"
+      }
+    },
+    ".word-section-title": {
+      "platform": {
+        "fonts": [
+          {
+            "familyName": "Noto Sans SC Thin",
+            "postScriptName": "NotoSansSC-Thin",
+            "isCustomFont": true,
+            "glyphCount": 2
+          }
+        ]
+      },
+      "computed": {
+        "font": "500 22px / 33px \"Noto Sans SC Variable\", \"Noto Sans SC\", \"Noto Sans CJK SC\", \"PingFang SC\", \"Microsoft YaHei\", system-ui, sans-serif",
+        "fontFamily": "\"Noto Sans SC Variable\", \"Noto Sans SC\", \"Noto Sans CJK SC\", \"PingFang SC\", \"Microsoft YaHei\", system-ui, sans-serif"
+      }
+    },
+    ".word-detail-word": {
+      "platform": {
+        "fonts": [
+          {
+            "familyName": "Tinos",
+            "postScriptName": "Tinos-Regular",
+            "isCustomFont": true,
+            "glyphCount": 5
+          }
+        ]
+      },
+      "computed": {
+        "font": "80px / 92px Tinos, \"Times New Roman\", serif",
+        "fontFamily": "Tinos, \"Times New Roman\", serif"
+      }
+    }
+  }
+}

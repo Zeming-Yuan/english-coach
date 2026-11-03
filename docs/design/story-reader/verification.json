@@ -1,0 +1,102 @@
+{
+  "date": "2026-11-02",
+  "scope": "Approved story-reader visual implementation; no backend changes by this design task.",
+  "build": {
+    "command": "npm --prefix frontend run build",
+    "result": "passed",
+    "bundle": "index-Ds-AGV_d.js"
+  },
+  "unit": {
+    "command": "node --test frontend/src/lib/*.test.mjs",
+    "passed": 7,
+    "failed": 0
+  },
+  "story_http": {
+    "command": ".venv/bin/python -m pytest -q tests/test_frontend.py tests/test_stories.py",
+    "passed": 8,
+    "failed": 0
+  },
+  "reader_browser": {
+    "report": "/tmp/ec-reader-ui-final.json",
+    "passed": 8,
+    "failed": 0,
+    "viewports": [
+      "420x880",
+      "1280x720"
+    ]
+  },
+  "regression_browser": {
+    "report": "/tmp/ec-reader-final-tests.json",
+    "passed": 18,
+    "failed": 2,
+    "failures": [
+      "EL-06 story sentence playback records answer audio [mobile]",
+      "EL-06 story sentence playback records answer audio [desktop]"
+    ]
+  },
+  "audio_isolated": {
+    "report": "/tmp/ec-reader-audio-current.json",
+    "passed": 2,
+    "failed": 0
+  },
+  "baseline_audio_sequence": {
+    "report": "/tmp/ec-reader-baseline-sequence.json",
+    "passed": 5,
+    "failed": 1,
+    "failure": "EL-06 story sentence playback records answer audio [desktop]",
+    "baseline": "HEAD App.jsx and StoriesPage.jsx compiled separately, same test server and backend"
+  },
+  "full_python": {
+    "command": ".venv/bin/python -m pytest -q",
+    "passed": 642,
+    "failed": 28,
+    "duration_seconds": 552.56,
+    "failures": [
+      "tests/test_el09_delayed_recall_check.py::test_el09_legacy_input_between_issue_and_submit_keeps_backup_restorable",
+      "tests/test_el09_delayed_recall_check.py::test_el09_legacy_wrong_input_is_not_independent_retention_failure",
+      "tests/test_cards_api.py::test_get_card_detail_with_reviews",
+      "tests/test_daily_session.py::test_daily_queue_uses_current_state_not_stale_due_rows",
+      "tests/test_learning_events.py::test_current_state_prefers_last_review_over_id",
+      "tests/test_learning_events.py::test_downgrade_keeps_events_and_upgrade_is_idempotent",
+      "tests/test_memory_contract.py::test_contract_archives_duplicate_states_and_preserves_allocator",
+      "tests/test_memory_contract.py::test_contract_rejects_unsafe_duplicate_before_archiving",
+      "tests/test_memory_contract.py::test_contract_preflight_rejects_invalid_fsrs_without_changes[stability--1]",
+      "tests/test_memory_contract.py::test_contract_preflight_rejects_invalid_fsrs_without_changes[difficulty--1]",
+      "tests/test_memory_contract.py::test_contract_preflight_rejects_invalid_fsrs_without_changes[difficulty-10.01]",
+      "tests/test_memory_contract.py::test_contract_preflight_rejects_invalid_fsrs_without_changes[step--1]",
+      "tests/test_memory_contract.py::test_contract_preflight_rejects_invalid_fsrs_without_changes[step-0.5]",
+      "tests/test_memory_contract.py::test_contract_preflight_rejects_invalid_fsrs_without_changes[review_count--1]",
+      "tests/test_memory_contract.py::test_contract_preflight_rejects_invalid_fsrs_without_changes[review_count-0.5]",
+      "tests/test_memory_contract.py::test_contract_preflight_rejects_invalid_fsrs_without_changes[elapsed_days--1]",
+      "tests/test_memory_contract.py::test_contract_preflight_rejects_invalid_fsrs_without_changes[elapsed_days-0.5]",
+      "tests/test_memory_contract.py::test_contract_preflight_rejects_invalid_fsrs_without_changes[state--1]",
+      "tests/test_memory_contract.py::test_contract_preflight_rejects_invalid_fsrs_without_changes[state-4]",
+      "tests/test_memory_contract.py::test_contract_preflight_rejects_invalid_fsrs_without_changes[state-1.5]",
+      "tests/test_memory_contract.py::test_contract_preflight_rejects_invalid_fsrs_without_changes[rating-0]",
+      "tests/test_memory_contract.py::test_contract_preflight_rejects_invalid_fsrs_without_changes[rating-5]",
+      "tests/test_memory_contract.py::test_contract_preflight_rejects_invalid_fsrs_without_changes[rating-1.5]",
+      "tests/test_memory_contract.py::test_contract_preflight_rejects_invalid_fsrs_without_changes[stability-inf]",
+      "tests/test_memory_contract.py::test_contract_preflight_rejects_invalid_fsrs_without_changes[difficulty-inf]",
+      "tests/test_memory_contract.py::test_contract_preflight_preserves_valid_zero_and_unknown_fields[None-None-0]",
+      "tests/test_memory_contract.py::test_contract_preflight_preserves_valid_zero_and_unknown_fields[0-4-10]",
+      "tests/test_restore_identity_migration.py::test_upgrade_preserves_graph_and_retired_card_ids_for_normal_inserts"
+    ],
+    "note": "The tested tree also contains concurrent EL-09 backend work. Migration failures raise the EL-09 destructive-downgrade guard. This task did not change backend code."
+  },
+  "visual_evidence": {
+    "source": "reference.png",
+    "desktop": "desktop.png",
+    "mobile": "mobile.png",
+    "lookup": "mobile-lookup.png",
+    "viewport": "1487x1058",
+    "density": 1,
+    "console_page_errors": []
+  },
+  "full_narration": {
+    "sentences": 11,
+    "all_within_200_chars": true,
+    "first": "It was a rainy afternoon.",
+    "last": "Inside, Lily found a new world.",
+    "error_toast": false
+  }
+}

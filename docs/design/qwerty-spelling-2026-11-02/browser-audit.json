@@ -1,0 +1,11 @@
+{
+  "desktop": {
+    "overflow": false,
+    "background": "rgb(252, 250, 246)",
+    "font": "ui-monospace, SFMono-Regular, Consolas, \"Liberation Mono\", monospace"
+  },
+  "mobile": {
+    "overflow": false
+  },
+  "pageErrors": []
+}

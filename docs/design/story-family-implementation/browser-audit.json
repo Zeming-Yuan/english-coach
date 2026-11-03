@@ -1,0 +1,577 @@
+{
+  "results": [
+    {
+      "id": "home",
+      "device": "desktop",
+      "width": 1488,
+      "height": 1056,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/home-desktop.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": {
+        "background": "rgb(48, 46, 43)",
+        "color": "rgb(252, 250, 246)"
+      }
+    },
+    {
+      "id": "home",
+      "device": "mobile",
+      "width": 420,
+      "height": 880,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/home-mobile.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": {
+        "background": "rgb(48, 46, 43)",
+        "color": "rgb(252, 250, 246)"
+      }
+    },
+    {
+      "id": "courses",
+      "device": "desktop",
+      "width": 1488,
+      "height": 1056,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/courses-desktop.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": {
+        "background": "rgb(48, 46, 43)",
+        "color": "rgb(252, 250, 246)"
+      }
+    },
+    {
+      "id": "courses",
+      "device": "mobile",
+      "width": 420,
+      "height": 880,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/courses-mobile.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": {
+        "background": "rgb(48, 46, 43)",
+        "color": "rgb(252, 250, 246)"
+      }
+    },
+    {
+      "id": "course-detail",
+      "device": "desktop",
+      "width": 1488,
+      "height": 1056,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/course-detail-desktop.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": {
+        "background": "rgb(48, 46, 43)",
+        "color": "rgb(252, 250, 246)"
+      }
+    },
+    {
+      "id": "course-detail",
+      "device": "mobile",
+      "width": 420,
+      "height": 880,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/course-detail-mobile.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": {
+        "background": "rgb(48, 46, 43)",
+        "color": "rgb(252, 250, 246)"
+      }
+    },
+    {
+      "id": "lesson-check",
+      "device": "desktop",
+      "width": 1488,
+      "height": 1056,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/lesson-check-desktop.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": {
+        "background": "rgb(48, 46, 43)",
+        "color": "rgb(252, 250, 246)"
+      }
+    },
+    {
+      "id": "lesson-check",
+      "device": "mobile",
+      "width": 420,
+      "height": 880,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/lesson-check-mobile.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": {
+        "background": "rgb(48, 46, 43)",
+        "color": "rgb(252, 250, 246)"
+      }
+    },
+    {
+      "id": "words",
+      "device": "desktop",
+      "width": 1488,
+      "height": 1056,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/words-desktop.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": null
+    },
+    {
+      "id": "words",
+      "device": "mobile",
+      "width": 420,
+      "height": 880,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/words-mobile.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": null
+    },
+    {
+      "id": "word-detail",
+      "device": "desktop",
+      "width": 1488,
+      "height": 1056,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/word-detail-desktop.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": {
+        "background": "rgb(48, 46, 43)",
+        "color": "rgb(252, 250, 246)"
+      }
+    },
+    {
+      "id": "word-detail",
+      "device": "mobile",
+      "width": 420,
+      "height": 880,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/word-detail-mobile.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": {
+        "background": "rgb(48, 46, 43)",
+        "color": "rgb(252, 250, 246)"
+      }
+    },
+    {
+      "id": "stories",
+      "device": "desktop",
+      "width": 1488,
+      "height": 1056,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/stories-desktop.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": {
+        "background": "rgb(48, 46, 43)",
+        "color": "rgb(252, 250, 246)"
+      }
+    },
+    {
+      "id": "stories",
+      "device": "mobile",
+      "width": 420,
+      "height": 880,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/stories-mobile.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": {
+        "background": "rgb(48, 46, 43)",
+        "color": "rgb(252, 250, 246)"
+      }
+    },
+    {
+      "id": "reader",
+      "device": "desktop",
+      "width": 1488,
+      "height": 1056,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/reader-desktop.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": null
+    },
+    {
+      "id": "reader",
+      "device": "mobile",
+      "width": 420,
+      "height": 880,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/reader-mobile.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": null
+    },
+    {
+      "id": "reader-lookup",
+      "device": "desktop",
+      "width": 1488,
+      "height": 1056,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/reader-lookup-desktop.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": null
+    },
+    {
+      "id": "reader-lookup",
+      "device": "mobile",
+      "width": 420,
+      "height": 880,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/reader-lookup-mobile.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": null
+    },
+    {
+      "id": "add",
+      "device": "desktop",
+      "width": 1488,
+      "height": 1056,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/add-desktop.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": {
+        "background": "rgb(241, 238, 232)",
+        "color": "rgb(48, 46, 43)"
+      }
+    },
+    {
+      "id": "add",
+      "device": "mobile",
+      "width": 420,
+      "height": 880,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/add-mobile.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": {
+        "background": "rgb(241, 238, 232)",
+        "color": "rgb(48, 46, 43)"
+      }
+    },
+    {
+      "id": "stats",
+      "device": "desktop",
+      "width": 1488,
+      "height": 1056,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/stats-desktop.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": null
+    },
+    {
+      "id": "stats",
+      "device": "mobile",
+      "width": 420,
+      "height": 880,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/stats-mobile.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": null
+    },
+    {
+      "id": "settings",
+      "device": "desktop",
+      "width": 1488,
+      "height": 1056,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/settings-desktop.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": null
+    },
+    {
+      "id": "settings",
+      "device": "mobile",
+      "width": 420,
+      "height": 880,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/settings-mobile.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": null
+    },
+    {
+      "id": "settings-dark",
+      "device": "desktop",
+      "width": 1488,
+      "height": 1056,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/settings-dark-desktop.png",
+      "overflow": false,
+      "paper": "rgb(35, 33, 31)",
+      "ink": "rgb(237, 231, 220)",
+      "primary": null
+    },
+    {
+      "id": "settings-dark",
+      "device": "mobile",
+      "width": 420,
+      "height": 880,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/settings-dark-mobile.png",
+      "overflow": false,
+      "paper": "rgb(35, 33, 31)",
+      "ink": "rgb(237, 231, 220)",
+      "primary": null
+    },
+    {
+      "id": "backup",
+      "device": "desktop",
+      "width": 1488,
+      "height": 1056,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/backup-desktop.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": {
+        "background": "rgb(48, 46, 43)",
+        "color": "rgb(252, 250, 246)"
+      }
+    },
+    {
+      "id": "backup",
+      "device": "mobile",
+      "width": 420,
+      "height": 880,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/backup-mobile.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": {
+        "background": "rgb(48, 46, 43)",
+        "color": "rgb(252, 250, 246)"
+      }
+    },
+    {
+      "id": "spelling",
+      "device": "desktop",
+      "width": 1488,
+      "height": 1056,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/spelling-desktop.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": null
+    },
+    {
+      "id": "spelling",
+      "device": "mobile",
+      "width": 420,
+      "height": 880,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/spelling-mobile.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": null
+    },
+    {
+      "id": "listening",
+      "device": "desktop",
+      "width": 1488,
+      "height": 1056,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/listening-desktop.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": null
+    },
+    {
+      "id": "listening",
+      "device": "mobile",
+      "width": 420,
+      "height": 880,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/listening-mobile.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": null
+    },
+    {
+      "id": "quiz",
+      "device": "desktop",
+      "width": 1488,
+      "height": 1056,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/quiz-desktop.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": null
+    },
+    {
+      "id": "quiz",
+      "device": "mobile",
+      "width": 420,
+      "height": 880,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/quiz-mobile.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": null
+    },
+    {
+      "id": "mixed",
+      "device": "desktop",
+      "width": 1488,
+      "height": 1056,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/mixed-desktop.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": null
+    },
+    {
+      "id": "mixed",
+      "device": "mobile",
+      "width": 420,
+      "height": 880,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/mixed-mobile.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": null
+    },
+    {
+      "id": "delayed",
+      "device": "desktop",
+      "width": 1488,
+      "height": 1056,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/delayed-desktop.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": {
+        "background": "rgb(48, 46, 43)",
+        "color": "rgb(252, 250, 246)"
+      }
+    },
+    {
+      "id": "delayed",
+      "device": "mobile",
+      "width": 420,
+      "height": 880,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/delayed-mobile.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": {
+        "background": "rgb(48, 46, 43)",
+        "color": "rgb(252, 250, 246)"
+      }
+    },
+    {
+      "id": "advice",
+      "device": "desktop",
+      "width": 1488,
+      "height": 1056,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/advice-desktop.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": {
+        "background": "rgb(48, 46, 43)",
+        "color": "rgb(252, 250, 246)"
+      }
+    },
+    {
+      "id": "advice",
+      "device": "mobile",
+      "width": 420,
+      "height": 880,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/advice-mobile.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": {
+        "background": "rgb(48, 46, 43)",
+        "color": "rgb(252, 250, 246)"
+      }
+    },
+    {
+      "id": "flashcards",
+      "device": "desktop",
+      "width": 1488,
+      "height": 1056,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/flashcards-desktop.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": null
+    },
+    {
+      "id": "flashcards",
+      "device": "mobile",
+      "width": 420,
+      "height": 880,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/flashcards-mobile.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": null
+    },
+    {
+      "id": "reinforcement",
+      "device": "desktop",
+      "width": 1488,
+      "height": 1056,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/reinforcement-desktop.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": null
+    },
+    {
+      "id": "reinforcement",
+      "device": "mobile",
+      "width": 420,
+      "height": 880,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/reinforcement-mobile.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": null
+    },
+    {
+      "id": "result",
+      "device": "desktop",
+      "width": 1488,
+      "height": 1056,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/result-desktop.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": {
+        "background": "rgb(48, 46, 43)",
+        "color": "rgb(252, 250, 246)"
+      }
+    },
+    {
+      "id": "result",
+      "device": "mobile",
+      "width": 420,
+      "height": 880,
+      "path": "/home/clusteradmin/Desktop/english-coach/docs/design/story-family-implementation/screens/result-mobile.png",
+      "overflow": false,
+      "paper": "rgb(252, 250, 246)",
+      "ink": "rgb(48, 46, 43)",
+      "primary": {
+        "background": "rgb(48, 46, 43)",
+        "color": "rgb(252, 250, 246)"
+      }
+    }
+  ],
+  "errors": []
+}
