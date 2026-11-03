@@ -48,6 +48,9 @@ def main() -> None:
     os.environ["PERSONAL_ESTIMATES_ENABLED"] = str(
         settings_payload.get("personal_estimates_enabled", True)
     )
+    os.environ["RECOVERY_MODE_ENABLED"] = str(
+        settings_payload.get("recovery_mode_enabled", True)
+    )
     os.environ["TIME_BUDGET_ENABLED"] = str(
         settings_payload.get("time_budget_enabled", True)
     )

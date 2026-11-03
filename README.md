@@ -393,3 +393,17 @@ V3 导出、校验与恢复包含 `mode`、`parent_version_id`、固定题目和
 功能回退：设置 `PERSONAL_ESTIMATES_ENABLED=false` 后重启，仅让预览使用有标注的
 默认估算，保留全部时长、答案和 V3 适配。定向双视口验证使用
 `npm --prefix frontend run test:e2e -- --ticket EL-18`，具名分支已登记到完整覆盖校验。
+
+### 中断后恢复学习（EL-19）
+
+距最后已保存的活跃学习日达到三天且有到期词时，首页可选择“恢复学习”：约三分钟、
+至多五张到期词、本轮零新词。也可继续选择常规计划；仅打开首页不算学习。
+保存后可暂停、刷新继续同一轮，结束显示本段保存量及剩余到期，不要求清空积压，
+不重置既有 FSRS。无真实活动历史或没有到期词时不制造恢复任务。
+
+功能回退：设置 `RECOVERY_MODE_ENABLED=false` 并重启，隐藏推荐并拒绝新恢复预览；
+已开始轮次仍可继续/退出，事件和 FSRS 保留。恢复模式只接受三分钟预算，常规
+预算偏好不会被覆盖。定向双视口验证：
+`npm --prefix frontend run test:e2e -- --ticket EL-19`。
+
+验收映射、运行身份和未验证门禁见 [EL-19 验证记录](docs/verification/el19-return-to-learning-mode.md)。

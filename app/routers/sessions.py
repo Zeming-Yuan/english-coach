@@ -3,12 +3,13 @@
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import literal_column, select
+from sqlalchemy import func, literal_column, select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models.card import Card
 from app.models.review_event import ReviewEvent
+from app.runtime import Runtime, get_runtime
 from app.services.content_revisions import content_revision_map
 from app.services.daily_session import build_reinforcement
 from app.services.learning import _event_payload
@@ -61,7 +62,11 @@ def reinforcement(session_id: UUID, db: Session = Depends(get_db)):
 
 
 @router.get("/sessions/{session_id}/summary")
-def summary(session_id: UUID, db: Session = Depends(get_db)):
+def summary(
+    session_id: UUID,
+    db: Session = Depends(get_db),
+    runtime: Runtime = Depends(get_runtime),
+):
     from app.models.review import Review
     from app.services.daily_session import summarize_session
 
@@ -84,5 +89,12 @@ def summary(session_id: UUID, db: Session = Depends(get_db)):
         if cid in cards
     ]
     data["next_due"] = min(due.values(), default=None)
+    data["remaining_due"] = db.scalar(
+        select(func.count(Review.id))
+        .join(Card, Card.id == Review.card_id)
+        .where(
+            Card.kind == "word", Review.due <= runtime.clock.now().replace(tzinfo=None)
+        )
+    )
     data["session_id"] = str(session_id)
     return data

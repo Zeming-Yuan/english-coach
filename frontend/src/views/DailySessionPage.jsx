@@ -145,17 +145,18 @@ export default function DailySessionPage({ session, onSessionChange, onFinish, o
     await load();
   };
   if (summary) return <section className="view view-center"><div className="study-done">
-    <h2>{paused ? "本段已保存结果" : "本轮学习结果"}</h2>
+    <h2>{paused ? "本段已保存结果" : session.plan?.mode === "recovery" ? "恢复学习结果" : "本轮学习结果"}</h2>
     <p className="done-detail">{summary.counts.completed_cards} 张卡已保存并排期；主队列 {summary.counts.main} 次，巩固 {summary.counts.reinforcement} 次；跳过 {summary.counts.skipped} 次。</p>
     {[["retrieval", "独立提取"], ["assisted", "辅助练习"], ["recognition", "识别练习"], ["self_report", "自评"]].map(([key, label]) => <p key={key}>{label}：{summary.metrics[key].count ? `${summary.metrics[key].successes} / ${summary.metrics[key].count}` : "暂无数据"}</p>)}
     <p>仍需复习：{summary.weak_words.map(w => w.word).join("、") || "本轮暂无薄弱词"}</p>
     <p>{summary.next_due ? `已有排期：${summary.next_due}` : "暂无排期，可稍后返回队列继续学习"}</p>
+    {session.plan?.mode === "recovery" && <p role="status" data-testid="recovery-remaining">剩余到期 {summary.remaining_due} 张，可另选常规计划；无需一次清空积压。</p>}
     {paused ? <>
       <p>本轮目标 {session.target} 张，仍有 {session.target - session.index} 张未完成</p>
       <button className="btn btn-primary" onClick={onPauseExit}>返回首页</button>
       <button className="btn btn-ghost" onClick={continueRound}>继续本轮学习</button>
     </> : <>
-      <button className="btn btn-primary" onClick={onFinish}>← 返回队列</button>
+      <button className="btn btn-primary" onClick={onFinish}>{session.plan?.mode === "recovery" ? "继续常规计划" : "← 返回队列"}</button>
       <button className="btn btn-ghost" onClick={() => { onFinish(); studyProps.onToQuiz(); }}>去做测验</button>
     </>}
   </div></section>;

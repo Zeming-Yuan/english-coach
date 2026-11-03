@@ -83,3 +83,15 @@
 - 本票具名浏览器分支在 `e2e/el-18.spec.mjs`，HTTP/规则边界在
   `tests/test_el18_personal_active_time_estimate.py`，执行证据见
   `docs/verification/el18-personal-active-time-estimate.md`。
+
+## EL-19：中断后有限恢复
+
+- `/api/today` 的 `recovery_available` 读取已保存的真实活跃学习日和当前到期词；
+  显式 `budget_minutes=3&mode=recovery` 生成最多五张到期词、零新词的有限队列。
+- 继续复用每日浏览器冻结轮次与统一保存确认，结果读取真实剩余到期量；恢复选择
+  不写活动、不改常规预算偏好、不重置 FSRS、不引入持久集合。口径见 ADR-0002。
+- 本票 HTTP/浏览器分支分别在 `tests/test_el19_return_to_learning_mode.py`、
+  `e2e/el-19.spec.mjs`，纳入现有具名完整覆盖登记。
+
+- EL-19 回退开关为 `RECOVERY_MODE_ENABLED`：只关闭新推荐/预览，冻结轮次可继续；
+  三分钟恢复预算不受常规预算选择回退影响。证据见 `docs/verification/el19-return-to-learning-mode.md`。
