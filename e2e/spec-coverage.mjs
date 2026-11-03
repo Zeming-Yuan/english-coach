@@ -9,6 +9,7 @@ export const requirements = {
     "EL-21 V3 device transfer resumes saved learning and contexts",
     "EL-21 restore failures protect learning and allow continuation",
     "EL-21 HTTP restore and content contracts",
+    "EL-21 unavailable browser storage resumes the saved course context",
   ],
   EL20: [
     "EL-20 V1 preview explains every missing collection before confirmation",

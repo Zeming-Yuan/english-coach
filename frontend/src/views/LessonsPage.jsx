@@ -127,7 +127,7 @@ export default function LessonsPage({ onExit }) {
         const recovered = await api(`/api/practice-sessions?purpose=lesson_check&lesson_id=${lessonId}`);
         const latest = recovered.sessions[0];
         if (latest) {
-          localStorage.setItem("ec.practice.active", latest.id);
+          try { localStorage.setItem("ec.practice.active", latest.id); } catch {}
           setPracticeSessionId(latest.id);
           return;
         }

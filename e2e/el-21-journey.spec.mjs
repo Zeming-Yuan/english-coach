@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import {normalizedBackup} from "./support/backup-comparison.mjs";
 import path from "node:path";
 import {spawnSync} from "node:child_process";
 import {test, expect, pythonBin} from "./support/test.mjs";
@@ -169,7 +170,7 @@ for (const legacy of [false, true]) {
     await upload(page, saved);
     await button(page, "确认替换学习数据").click();
     await expect(page.getByTestId("release-journey")).toContainText("恢复成功");
-    expect(normalized(await backup(target))).toEqual(normalized(saved));
+    expect(normalizedBackup(await backup(target))).toEqual(normalizedBackup(saved));
     await scene(page, target, "问路");
     await expect(page.getByTestId("scene-session")).toContainText("本场景独立通过");
     await page.goto(target.baseURL);
@@ -182,32 +183,6 @@ for (const legacy of [false, true]) {
   });
 }
 
-
-function normalized(payload) {
-  const refs = Object.fromEntries(["cards", "lessons", "stories"].map(name => [name,
-    Object.fromEntries(payload[name].map(row => [row.id,
-      name === "cards" ? `${row.kind}:${row.word}` : name === "lessons" ? row.level : row.title]))]));
-  const normalize = value => {
-    if (Array.isArray(value)) return value.map(normalize);
-    if (!value || typeof value !== "object") return value;
-    return Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).flatMap(([key, item]) => {
-      if (key === "id" && typeof item === "number" || key === "feedback_epoch") return [];
-      if (key === "raw") return [[key, item]]; // immutable migration audit, not live references
-      const parent = {card_id: "cards", sentence_card_id: "cards", lesson_id: "lessons", story_id: "stories"}[key];
-      if (parent && item != null) return [[key, refs[parent][item]]];
-      if (key === "resource_id") return [[key, refs[{card: "cards", lesson: "lessons", story: "stories"}[value.resource_kind]][item]]];
-      return [[key, normalize(item)]];
-    }));
-  };
-  const copy = structuredClone(payload);
-  delete copy.exported_at;
-  for (const event of copy.learning_events) delete event.fingerprint; // recomputed with remapped card ID
-  for (const rows of [...Object.values(copy).filter(Array.isArray), ...Object.values(copy.extensions)]) {
-    const mapped = rows.map(normalize).sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
-    rows.splice(0, rows.length, ...mapped);
-  }
-  return copy;
-}
 
 // Transfer unfinished contexts, rather than just counting restored records.
 test("EL-21 V3 device transfer resumes saved learning and contexts", async ({appFactory, page}) => {
@@ -302,4 +277,29 @@ test("EL-21 HTTP restore and content contracts", async ({}, testInfo) => {
   const report = JSON.parse(result.stdout.trim().split(/\r?\n/).at(-1));
   expect(report.group).toBe("learning_restore");
   expect(report.passed_cases).toHaveLength(19);
+});
+
+
+test("EL-21 unavailable browser storage resumes the saved course context", async ({appFactory, page}) => {
+  const app = await appFactory({fixture: "el21-journey.json"});
+  await generatedLesson(page, app);
+  await button(page, "提示首字母").click();
+  await expect(page.getByTestId("practice-session")).toContainText("首字母：h");
+  const original = (await backup(app)).extensions.practice_sessions[0].session_id;
+  // A different browser has no local pointer; service-owned help must still resume.
+  const other = await page.context().browser().newContext({viewport: page.viewportSize()});
+  try {
+    await other.addInitScript(() => {
+      Storage.prototype.setItem = function () { throw new DOMException("quota", "QuotaExceededError"); };
+    });
+    const next = await other.newPage();
+    await lessons(next, app);
+    await next.locator(".lesson-list-item").first().click();
+    await button(next, "开始本课短测").click();
+    await expect(next.getByTestId("practice-session")).toContainText("首字母：h");
+    expect((await backup(app)).extensions.practice_sessions.map(row => row.session_id)).toEqual([original]);
+    await lessonAnswer(next);
+    await button(next, "查看结果").click();
+    await expect(next.getByTestId("practice-session")).toContainText("本课短测：待巩固");
+  } finally {await other.close();}
 });

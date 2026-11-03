@@ -25,6 +25,7 @@ def test_el21_release_requires_new_journey():
         "EL-21 V3 device transfer resumes saved learning and contexts",
         "EL-21 restore failures protect learning and allow continuation",
         "EL-21 HTTP restore and content contracts",
+        "EL-21 unavailable browser storage resumes the saved course context",
     ]
 
 
@@ -61,8 +62,8 @@ console.log(JSON.stringify(rejected));
         text=True,
     )
     rejected = json.loads(result.stdout)
-    assert len(rejected) == 30
-    assert len({tuple(row) for row in rejected}) == 30
+    assert len(rejected) == 36
+    assert len({tuple(row) for row in rejected}) == 36
 
 
 def test_el21_failed_run_identifies_its_workspace():
@@ -196,3 +197,34 @@ def test_el21_context_discovery_rejects_cross_purpose_filters(ec, query):
     before = ec.snapshot()
     assert ec.client.get("/api/practice-sessions?" + query).status_code == 422
     assert ec.snapshot() == before
+
+
+def test_el21_transfer_comparison_retains_event_and_contact_order():
+    result = subprocess.run(
+        [
+            "node",
+            "--input-type=module",
+            "-e",
+            r"""
+import {normalizedBackup} from "./e2e/support/backup-comparison.mjs";
+const payload = {cards: [{id: 1, word: "hello", kind: "word"}], lessons: [], stories: [],
+  learning_events: [{id: "a", correct: false, occurred_at: "2026-10-01T01:00:00"},
+                    {id: "b", correct: true, occurred_at: "2026-10-01T01:00:00"}],
+  extensions: {learning_contacts: [{id: 1, submission_id: "a", source: "card_detail"},
+                                  {id: 2, submission_id: "b", source: "words_list"}]}};
+const original = JSON.stringify(normalizedBackup(payload));
+const eventReversal = structuredClone(payload);
+eventReversal.learning_events.reverse();
+const contactReversal = structuredClone(payload);
+contactReversal.extensions.learning_contacts.reverse();
+console.log(JSON.stringify([
+  original !== JSON.stringify(normalizedBackup(eventReversal)),
+  original !== JSON.stringify(normalizedBackup(contactReversal))
+]));
+""",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert json.loads(result.stdout) == [True, True]
