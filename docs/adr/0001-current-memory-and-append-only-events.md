@@ -107,3 +107,10 @@
 ## EC-16 实际旧版只读演练
 
 真实归档基线 `5868cd1629bc3c36f2bfd5a1009ae048481c94f8` 只在 SQLite backup 副本上启动，不执行旧迁移。SQLite URI 只读连接与 HTTP 修改方法 503 同时保护；旧 GET 自动翻译的隐式写入也被阻止并明确返回只读失败。当前完整快照在旧读取/被阻止写入后不变，关闭旧实例后当前后端继续追加事件。原版写入不能安全降级，不能以旧快照覆盖新进度；详见 [兼容边界](../release-compatibility.md)。
+
+
+## EL-20：内部消费者最终边界
+
+当前记忆状态与真实事件的写入 owner 保持不变；旧提交回放仍优先返回原缓存，不能刷新当前证据。graduation、review_submission 与当前状态选择器仍有真实调用者，保留兼容接口；次数只解释句子练习解锁。
+
+最终 owner/现存调用者、回退与实际验证范围见 [EL-20 契约核对](../verification/el20-contract-evidence-consumers.md)。

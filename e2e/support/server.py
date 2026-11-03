@@ -123,12 +123,14 @@ def main() -> None:
             control = json.loads(control_file.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             return
-        if control.get("fail_commit_once"):
-            # 后台接触确认不消耗“下一次作答写入失败”的注入。
-            changed = session.info.get("flush_changes", [])
-            if changed and all(isinstance(obj, LearningContact) for obj in changed):
-                return
-            control["fail_commit_once"] = False
+        # 接触故障独立注入；后台接触不消耗既有作答/恢复故障。
+        changed = session.info.get("flush_changes", [])
+        contact_only = changed and all(
+            isinstance(obj, LearningContact) for obj in changed
+        )
+        failure_key = "fail_contact_commit_once" if contact_only else "fail_commit_once"
+        if control.get(failure_key):
+            control[failure_key] = False
             control_file.write_text(json.dumps(control), encoding="utf-8")
             raise OSError("injected commit failure")
 
