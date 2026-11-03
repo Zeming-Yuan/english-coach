@@ -71,14 +71,21 @@ def feedback(
 
 @router.get("/practice-sessions")
 def active(
-    purpose: Literal["delayed_check", "targeted"],
+    purpose: Literal["delayed_check", "targeted", "lesson_check"],
     window: Literal["day", "week"] | None = None,
+    lesson_id: int | None = None,
     db: Session = Depends(get_db),
 ):
     """恢复其他浏览器/V3 中的待处理轮次；只返回轮次身份。"""
     if (purpose == "delayed_check") != (window is not None):
         raise HTTPException(status_code=422, detail="回测需要窗口，专项练习不使用窗口")
-    return {"sessions": active_sessions(db, purpose, window)}
+    if (purpose == "lesson_check") != (lesson_id is not None) or (
+        lesson_id is not None and lesson_id <= 0
+    ):
+        raise HTTPException(
+            status_code=422, detail="课程短测需要有效课程，其他用途不使用课程"
+        )
+    return {"sessions": active_sessions(db, purpose, window, lesson_id)}
 
 
 def _not_found(error: Exception) -> HTTPException:

@@ -49,7 +49,7 @@ function sourceFingerprint() {
   }
   return hash.digest("hex");
 }
-const provenance = {head: git("rev-parse", "HEAD"), started_at: new Date().toISOString(), source_sha256: sourceFingerprint(), working_tree: git("status", "--short"), ticket, static_dir: staticDir};
+const provenance = {workspace: {root: fs.realpathSync(root), git_common_dir: fs.realpathSync(path.resolve(root, git("rev-parse", "--git-common-dir")))}, head: git("rev-parse", "HEAD"), started_at: new Date().toISOString(), source_sha256: sourceFingerprint(), working_tree: git("status", "--short"), ticket, static_dir: staticDir};
 if (process.env.EC_CHROMIUM_EXECUTABLE) {
   const executable = process.env.EC_CHROMIUM_EXECUTABLE;
   const version = spawnSync(executable, ["--version"], {encoding: "utf8"});
@@ -57,7 +57,11 @@ if (process.env.EC_CHROMIUM_EXECUTABLE) {
   provenance.chromium = {executable, version: version.stdout.trim(), sha256: createHash("sha256").update(fs.readFileSync(executable)).digest("hex")};
 }
 const statusPath = path.join(diagnostics, "run.json");
-function record(status, detail = "") { fs.writeFileSync(statusPath, JSON.stringify({...provenance, status, detail}, null, 2)); }
+function record(status, detail = "") {
+  const finished_at = status === "started" ? undefined : new Date().toISOString();
+  const report_sha256 = fs.existsSync(reportPath) ? createHash("sha256").update(fs.readFileSync(reportPath)).digest("hex") : undefined;
+  fs.writeFileSync(statusPath, JSON.stringify({...provenance, status, detail, finished_at, report_sha256}, null, 2));
+}
 record("started");
 console.log(`Release diagnostics: ${diagnostics}`);
 let exitCode = 1;

@@ -566,12 +566,15 @@ def get_session(db: Session, session_id, runtime: Runtime | None = None) -> dict
     return _session_payload(db, _session_by_public(db, session_id), runtime)
 
 
-def active_sessions(db: Session, purpose: str, window: str | None) -> list[dict]:
+def active_sessions(
+    db: Session, purpose: str, window: str | None, lesson_id: int | None = None
+) -> list[dict]:
     rows = db.scalars(
         select(PracticeSession)
         .where(
             PracticeSession.purpose == purpose,
             PracticeSession.window == window,
+            PracticeSession.lesson_id == lesson_id,
             PracticeSession.status == "active",
         )
         .order_by(PracticeSession.created_at.desc(), PracticeSession.id.desc())

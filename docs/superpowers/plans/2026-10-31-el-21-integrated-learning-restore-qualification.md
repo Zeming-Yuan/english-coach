@@ -14,7 +14,9 @@
 
 **Blocked by:** EL-20。
 
-**Status:** 计划已编写，产品未实现；以下代码块是未来实施内容，本次不把计划语法检查当作产品测试通过。
+**Status:** 已实施并通过本地集成资格。冻结提交 `36a61b2`：完整 pytest 1038 passed、未过滤双视口 786 passed，独立 Standards / Spec 复审均 0 项发现；未推送、合并或部署。逐项验收、TDD、修复及未验证边界见 [EL-21 发行证据](../../el-release-evidence.md)。
+
+**执行收口：** 以下步骤与代码块保留为原计划参考，实际测试统一在 `e2e/el-21-journey.spec.mjs`、`tests/test_el21_integrated_learning_restore_qualification.py` 和内容样本测试中实现；复用现有覆盖算法，没有另建 `qualification_keys` 状态机或生产资格 API。发现的新设备课程短测续接缺口已在现有服务/页面修复，并同步 ADR-0006。原计划的人工作业由用户明确授权改为 Agent 内容核对；词汇不足的故事采用既有固定入门行为，其余状态各三篇生成材料，不把外部回放当作线上供应商验证。实际目标均以发行证据的 AC01–AC43 映射及本地票勾选为准。
 
 ## Global Constraints
 
@@ -302,4 +304,4 @@ git commit -m "test: qualify el-21 recovery and compatibility"
 - 本票对应：AC01、AC02、AC03、AC04、AC05、AC06、AC07、AC08、AC09、AC10、AC11、AC12、AC13、AC14、AC15、AC16、AC17、AC18、AC19、AC20、AC21、AC22、AC23、AC24、AC25、AC26、AC27、AC28、AC29、AC30、AC31、AC32、AC33、AC34、AC35、AC36、AC37、AC38、AC39、AC40、AC41、AC42、AC43。Task 1负责用户可见闭环，Task 2负责相关异常/兼容/回退；EL-21只检查组合完整性。
 - 自检：规格范围与所有勾选条件已进入接入步骤；方法/字段按Shared Interfaces；Review Focus在Task 2具有规则输入或公开场景归属。
 - 执行时若首条已由前置正确实现，记录实际绿灯并补真正未覆盖的边界，不人为破坏产品造红灯。
-- 当前产物是计划，不把其中未来测试命令或示例片段称为已经实现/通过。
+- 本文件中的示例片段不是执行证据；以链接的冻结提交、实际源码、完整报告和审查记录证明实施结果。
