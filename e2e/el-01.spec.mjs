@@ -16,7 +16,7 @@ function upload(page, backup) {
 }
 
 async function openDetail(page, word) {
-  await page.getByText("单词本", {exact: true}).click();
+  await page.getByRole("button", {name: "单词本", exact: true}).click();
   await page.locator(".word-item", {hasText: word}).first().click();
 }
 

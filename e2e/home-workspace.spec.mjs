@@ -1,5 +1,16 @@
 import {test, expect} from "./support/test.mjs";
 
+test("Home recommended review distinguishes failure from an empty queue and retries independently", async ({appFactory, page}) => {
+  const app = await appFactory({fixture: "full-design.json"});
+  await page.route("**/api/recommended?limit=5", route => route.abort("failed"), {times: 1});
+  await page.goto(app.baseURL);
+  await expect(page.getByRole("alert").filter({hasText: "推荐复习暂时无法读取"})).toBeVisible({timeout: 3000});
+  await page.route("**/api/lessons", route => route.abort("failed"));
+  await page.getByRole("button", {name: "重新读取推荐词", exact: true}).click();
+  await expect(page.getByRole("region", {name: "推荐复习"})).toContainText("目前没有推荐复习词");
+  await expect(page.getByRole("region", {name: "当前课程"})).toContainText("苹果");
+});
+
 test("Home mixed-language course goals and translated fields cannot reveal target English", async ({appFactory, page}) => {
   const app = await appFactory({fixture: "home-preview-safety.json"});
   await page.goto(app.baseURL);

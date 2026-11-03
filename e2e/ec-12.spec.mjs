@@ -143,7 +143,7 @@ test("EC-12 confirmed restore discards frozen daily and single-card practice", a
   await page.getByRole("button", {name: /单词本/}).click();
   await page.locator(".word-item", {hasText: "obsolete"}).click();
   await page.getByRole("button", {name: /测这个词/}).click();
-  await expect(page.locator(".study-count")).toHaveText("1 / 1");
+  await expect(page.locator(".study-count")).toHaveText("已保存 0 / 1");
   // Settings detour deliberately keeps App mounted with both old practice states.
   await page.getByRole("button", {name: "设置", exact: true}).click();
   await page.getByRole("button", {name: "备份与恢复", exact: true}).click();
@@ -164,7 +164,7 @@ test("EC-12 confirmed restore discards frozen daily and single-card practice", a
   expect(restored.cards.every(card => !oldIds.includes(card.id))).toBe(true);
   expect(restored.learning_events.filter(event => event.stage === "main")).toHaveLength(1);
   await page.getByRole("button", {name: "← 返回队列", exact: true}).click();
-  await page.getByText("专项练习", {exact: true}).click();
+  if (await page.getByText("专项练习", {exact: true}).locator("..").getAttribute("open") === null) await page.getByText("专项练习", {exact: true}).click();
   await page.getByRole("button", {name: /拼写练习/}).click();
   await expect(page.getByText("旧词", {exact: true})).toHaveCount(0);
   await expect(page.getByRole("textbox")).toBeVisible();

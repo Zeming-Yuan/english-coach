@@ -330,6 +330,7 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
   const [materialErrors, setMaterialErrors] = useState({});
   const [materialsLoading, setMaterialsLoading] = useState({lessons: true, stories: true});
   const [recommended, setRecommended] = useState([]);
+  const [recommendedReload, setRecommendedReload] = useState(0);
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
   const [loadError, setLoadError] = useState("");
@@ -374,9 +375,19 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
     load();
     loadMaterial("lessons", "/api/lessons", setLessonData);
     loadMaterial("stories", "/api/stories", setStoryData);
-    loadMaterial("recommended", "/api/recommended?limit=5", result => setRecommended(result.recommended || []));
     return () => { cancelled = true; };
   }, [reloadKey]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setMaterialsLoading(current => ({...current, recommended: true}));
+    setMaterialErrors(current => ({...current, recommended: false}));
+    api("/api/recommended?limit=5")
+      .then(result => {if (!cancelled) setRecommended(result.recommended || []);})
+      .catch(() => {if (!cancelled) setMaterialErrors(current => ({...current, recommended: true}));})
+      .finally(() => {if (!cancelled) setMaterialsLoading(current => ({...current, recommended: false}));});
+    return () => {cancelled = true;};
+  }, [recommendedReload, reloadKey]);
 
   if (loading) return <div className="story-empty">加载中…</div>;
   if (!data) {
@@ -510,10 +521,15 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
       </div>
 
       <section className="home-evidence" aria-label="复习与学习依据">
-        {(errorCount > 0 || recommended.length > 0) && <div className="home-review-queues">
+        <div className="home-review-queues">
           {errorCount > 0 && <div><span>需要巩固：上次答错的 {errorCount} 个词</span><button className="home-text-link" onClick={() => {setStudyQueue(data.error_cards || []); setView("study");}}>复习错词<CaretRightIcon aria-hidden="true" /></button></div>}
-          {recommended.length > 0 && <div><span>推荐复习：{recommended.map(c => homeChinesePreview(c.meaning, "待复习词")).join("、")}</span><button className="home-text-link" onClick={() => {setStudyQueue(recommended); setView("study");}}>复习推荐词<CaretRightIcon aria-hidden="true" /></button></div>}
-        </div>}
+          <section aria-label="推荐复习">
+            {materialsLoading.recommended ? <p role="status">正在读取推荐复习词…</p>
+              : materialErrors.recommended ? <div><p role="alert">推荐复习暂时无法读取，其他学习仍可继续。</p><button className="home-text-link" onClick={() => setRecommendedReload(version => version + 1)}>重新读取推荐词<CaretRightIcon aria-hidden="true" /></button></div>
+                : recommended.length > 0 ? <div><span>推荐复习：{recommended.map(c => homeChinesePreview(c.meaning, "待复习词")).join("、")}</span><button className="home-text-link" onClick={() => {setStudyQueue(recommended); setView("study");}}>复习推荐词<CaretRightIcon aria-hidden="true" /></button></div>
+                  : <p>目前没有推荐复习词。</p>}
+          </section>
+        </div>
         <div className="home-evidence-grid"><LearningAdvice onStart={onAdvice} />
           <div className="home-evidence-summary"><h3>学习依据</h3>{data.evidence_counts && <dl>{["verified", "weak", "stale", "history_incomplete", "insufficient"].map(key => <div key={key}><dt>{data.evidence_labels?.[key] || ({verified: "独立回忆已有证据", weak: "仍需巩固", stale: "历史证据，待复测", history_incomplete: "历史依据不完整", insufficient: "独立证据不足"})[key]}</dt><dd>{data.evidence_counts[key] || 0} 张</dd></div>)}</dl>}
             {!materialsLoading.lessons && !materialErrors.lessons && lessonData && <p className="home-course-status">课程：已生成 {lessonData.counts?.generated ?? 0}/20 课 · 已打开 {lessonData.counts?.opened ?? 0} 课 · 已浏览 {lessonData.counts?.browsed ?? 0} 课{lessonData.counts?.old_content ? ` · 旧内容 ${lessonData.counts.old_content} 课` : ""}{lessonData.counts?.unrecorded ? ` · 状态未记录 ${lessonData.counts.unrecorded} 课` : ""}</p>}

@@ -1,0 +1,37 @@
+{
+  "tables": {
+    "cards": [
+      {"id": 1, "word": "apple", "kind": "word", "meaning": "释义apple"},
+      {"id": 2, "word": "ice cream", "kind": "word", "meaning": "释义ice cream"},
+      {"id": 3, "word": "tea", "kind": "word", "meaning": "释义tea"},
+      {"id": 4, "word": "coffee", "kind": "word", "meaning": "释义coffee"},
+      {"id": 5, "word": "left", "kind": "word", "meaning": "释义left"},
+      {"id": 6, "word": "then", "kind": "word", "meaning": "释义then"},
+      {"id": 7, "word": "book", "kind": "word", "meaning": "释义book"},
+      {"id": 8, "word": "pine", "kind": "word", "meaning": "释义pine"}
+    ],
+    "stories": [
+      {"id": 1, "title": "Reader regression 1", "title_cn": "回归故事1", "content": "An apple—a day.", "content_cn": "测试译文。"},
+      {"id": 2, "title": "Reader regression 2", "title_cn": "回归故事2", "content": "An apple's color.", "content_cn": "测试译文。"},
+      {"id": 3, "title": "Reader regression 3", "title_cn": "回归故事3", "content": "Some ice cream.", "content_cn": "测试译文。"},
+      {"id": 4, "title": "Reader regression 4", "title_cn": "回归故事4", "content": "tea/coffee left;then.", "content_cn": "测试译文。"},
+      {"id": 5, "title": "Reader regression 5", "title_cn": "回归故事5", "content": "Tea. Coffee.", "content_cn": "测试译文。"},
+      {"id": 6, "title": "Reader regression 6", "title_cn": "回归故事6", "content": "Tom has a book. Ann reads the book.", "content_cn": "测试译文。"},
+      {"id": 7, "title": "Reader regression 7", "title_cn": "回归故事7", "content": "Pineapple.", "content_cn": "测试译文。"}
+    ],
+    "story_words": [
+      {"id": 1, "story_id": 1, "card_id": 1},
+      {"id": 2, "story_id": 2, "card_id": 1},
+      {"id": 3, "story_id": 3, "card_id": 2},
+      {"id": 4, "story_id": 4, "card_id": 3},
+      {"id": 5, "story_id": 4, "card_id": 4},
+      {"id": 6, "story_id": 4, "card_id": 5},
+      {"id": 7, "story_id": 4, "card_id": 6},
+      {"id": 8, "story_id": 5, "card_id": 3},
+      {"id": 9, "story_id": 5, "card_id": 4},
+      {"id": 10, "story_id": 6, "card_id": 7},
+      {"id": 11, "story_id": 7, "card_id": 1},
+      {"id": 12, "story_id": 7, "card_id": 8}
+    ]
+  }
+}

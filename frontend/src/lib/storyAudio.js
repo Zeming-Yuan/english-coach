@@ -1,8 +1,9 @@
 /** Adapt book punctuation and long prose to the existing ASCII/200-char TTS API. */
 export function storyAudioSegments(text) {
   const normalized = (text || "").normalize("NFKD")
+    .replace(/\p{M}/gu, "")
     .replace(/[‘’]/g, "'").replace(/[—–]/g, "-").replace(/…/g, "...")
-    .replace(/[“”"]/g, "").replace(/[^A-Za-z0-9' ,.!?\-:\s]/g, "")
+    .replace(/[“”"]/g, " ").replace(/[^A-Za-z0-9' ,.!?\-:\s]/g, " ")
     .replace(/\s+/g, " ").trim();
   const segments = [];
   for (let sentence of normalized.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || []) {

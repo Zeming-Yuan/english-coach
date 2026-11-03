@@ -239,11 +239,13 @@ function StoryRead({ story, onBack }) {
     try {
       for (const segment of storyAudioSegments(text)) {
         if (run !== speechRun.current) break;
-        const tokens = new Set(segment.split(/\s+/).map(cleanToken));
         const result = await speak(segment, null, () => {
           for (const id of ids || []) {
             const target = story.words.find(word => word.id === id);
-            if (target?.content_revision && tokens.has(target.word.toLowerCase())) {
+            // Match the server's visible_card_ids ASCII letter boundaries, including phrases.
+            const word = target?.word?.trim();
+            const escaped = word?.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+            if (target?.content_revision && word && new RegExp(`(^|[^A-Za-z])${escaped}(?![A-Za-z])`, "i").test(segment)) {
               recordPracticeContact({cardId: id, revision: target.content_revision, source: "story", kind: "answer_audio"});
             }
           }
@@ -296,7 +298,10 @@ function StoryRead({ story, onBack }) {
   };
 
   const renderTokens = (text) => {
+    let offset = 0;
     return text.split(/(\s+)/).map((tok, i) => {
+      const tokenOffset = offset;
+      offset += tok.length;
       if (/^\s+$/.test(tok)) return tok;
       const clean = cleanToken(tok);
       const isLearned = story.words.some((w) => w.word.toLowerCase() === clean);
@@ -307,9 +312,10 @@ function StoryRead({ story, onBack }) {
             onClick={(event) => {
               selectedToken.current = event.currentTarget;
               const sentences = typeof Intl.Segmenter === "function"
-                ? Array.from(new Intl.Segmenter("en", {granularity: "sentence"}).segment(text), s => s.segment)
-                : [text];
-              setSelectedContext((sentences.find(sentence => sentence.split(/\s+/).some(word => cleanToken(word) === clean)) || text).trim());
+                ? Array.from(new Intl.Segmenter("en", {granularity: "sentence"}).segment(text))
+                : [{index: 0, segment: text}];
+              const sentence = sentences.find(({index, segment}) => tokenOffset >= index && tokenOffset < index + segment.length);
+              setSelectedContext((sentence?.segment || text).trim());
               handleWordClick(tok);
             }}>
             {tok}

@@ -19,3 +19,14 @@ test("long prose fits the existing 200-character speech limit without dropping w
 test("empty or unsupported-only prose does not request audio", () => {
   assert.deepEqual(storyAudioSegments("\n 中文\n"), []);
 });
+
+test("punctuation separates spoken words instead of merging them", () => {
+  assert.deepEqual(storyAudioSegments("tea/coffee left;then"), ["tea coffee left then"]);
+  const segments = storyAudioSegments(("tea/coffee left;then ").repeat(30));
+  assert.ok(segments.every(segment => segment.length <= 200 && /^[\x00-\x7F]+$/.test(segment)));
+  assert.equal(segments.join(" "), ("tea coffee left then ").repeat(30).trim());
+});
+
+test("unsupported separators preserve word boundaries without splitting accented words", () => {
+  assert.deepEqual(storyAudioSegments("red&blue tea(coffee) a naïve café."), ["red blue tea coffee a naive cafe."]);
+});
