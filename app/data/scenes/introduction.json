@@ -1,13 +1,25 @@
 {
   "scene_id": "introduction",
   "title": "自我介绍",
-  "rule_version": "introduction-v1",
-  "content_revision": 1,
-  "review_basis": "2026-11-03 用户已人工核对并接受本份表达与边界；见 app/data/README.md。",
+  "rule_version": "introduction-v2",
+  "content_revision": 2,
+  "review_basis": "沿用 2026-11-03 用户核对的 v1 表达；v2 将无姓名的语法片段保留为未判定，见 app/data/README.md。",
   "context": "introduction:meeting-over-tea",
   "speaker": "新朋友",
   "situation": "虚构的新朋友见面：介绍自己的姓名、来自哪里，以及喜欢喝茶。姓名和地点只作为任务槽位，不评价专名拼写。",
-  "support_words": ["my", "name", "is", "i", "am", "i'm", "from", "come", "like", "enjoy", "tea"],
+  "support_words": [
+    "my",
+    "name",
+    "is",
+    "i",
+    "am",
+    "i'm",
+    "from",
+    "come",
+    "like",
+    "enjoy",
+    "tea"
+  ],
   "tasks": [
     {
       "task_key": "name",
@@ -15,9 +27,33 @@
       "role": "你好，很高兴认识你。请介绍一下你的姓名。",
       "hint": "先说介绍姓名的句式，再填入自己的姓名。",
       "standard": "My name is Li.",
-      "patterns": ["my name is (?P<slot>[^\\W\\d_]+(?:[-' ][^\\W\\d_]+){0,5})", "(?:i am|i'm) (?P<slot>[^\\W\\d_]+(?:[-' ][^\\W\\d_]+){0,5})"],
-      "slot": {"kind": "name", "excluded_words": ["not", "no", "unknown", "don't", "and", "or", "is", "from", "like"]},
-      "rejected": ["my name is", "i am", "i'm"],
+      "patterns": [
+        "my name is (?P<slot>[^\\W\\d_]+(?:[-' ][^\\W\\d_]+){0,5})",
+        "(?:i am|i'm) (?P<slot>[^\\W\\d_]+(?:[-' ][^\\W\\d_]+){0,5})"
+      ],
+      "slot": {
+        "kind": "name",
+        "excluded_words": [
+          "not",
+          "no",
+          "unknown",
+          "don't",
+          "and",
+          "or",
+          "is",
+          "from",
+          "like",
+          "i",
+          "am",
+          "my",
+          "name"
+        ]
+      },
+      "rejected": [
+        "my name is",
+        "i am",
+        "i'm"
+      ],
       "correction": "请用介绍姓名的完整句式，并补上姓名。",
       "target_words": []
     },
@@ -27,9 +63,28 @@
       "role": "很高兴认识你。请介绍一下你来自哪里。",
       "hint": "说明来自哪里，并填入一个地点。",
       "standard": "I am from Beijing.",
-      "patterns": ["(?:i am|i'm|i come) from (?P<slot>[^\\W\\d_]+(?:[-' ][^\\W\\d_]+){0,5})"],
-      "slot": {"kind": "place", "excluded_words": ["not", "no", "unknown", "don't", "and", "or", "from", "is", "like"]},
-      "rejected": ["i am from", "i'm from", "i come from"],
+      "patterns": [
+        "(?:i am|i'm|i come) from (?P<slot>[^\\W\\d_]+(?:[-' ][^\\W\\d_]+){0,5})"
+      ],
+      "slot": {
+        "kind": "place",
+        "excluded_words": [
+          "not",
+          "no",
+          "unknown",
+          "don't",
+          "and",
+          "or",
+          "from",
+          "is",
+          "like"
+        ]
+      },
+      "rejected": [
+        "i am from",
+        "i'm from",
+        "i come from"
+      ],
       "correction": "请在来自哪里的句式后补上一个地点。",
       "target_words": []
     },
@@ -39,10 +94,20 @@
       "role": "谢谢你的介绍。请说说你对喝茶的喜好。",
       "hint": "用肯定的完整句式表达喜欢茶。",
       "standard": "I like tea.",
-      "patterns": ["i (?:like|enjoy) (?:drinking )?tea", "i love tea"],
-      "rejected": ["tea", "i like", "i do not like tea", "i don't like tea"],
+      "patterns": [
+        "i (?:like|enjoy) (?:drinking )?tea",
+        "i love tea"
+      ],
+      "rejected": [
+        "tea",
+        "i like",
+        "i do not like tea",
+        "i don't like tea"
+      ],
       "correction": "请用完整句式表达喜欢茶，而不只说饮品名。",
-      "target_words": ["tea"]
+      "target_words": [
+        "tea"
+      ]
     }
   ]
 }

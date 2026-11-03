@@ -51,6 +51,7 @@ def create_app(
         version="0.1.0",
     )
     runtime.scene_evidence_enabled = settings.scenes_enabled
+    runtime.scene_expansions_enabled = settings.scene_expansions_enabled
     app.state.settings = settings
     app.state.runtime = runtime
     app.state.llm_client = LazyLLMClient(settings)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from datetime import UTC
 from pathlib import Path
 from uuid import uuid4
@@ -23,17 +24,81 @@ from app.services.practice import (
 )
 from app.services.write_transaction import run_write
 
+SCENE_RULE_FILES = {
+    "drinks": {"drinks-v1": "drinks.json"},
+    "introduction": {
+        "introduction-v1": "introduction-v1.json",
+        "introduction-v2": "introduction.json",
+    },
+    "directions": {"directions-v1": "directions.json"},
+}
 
-def scene_rules(scene_id: str | None) -> dict:
-    if scene_id not in ("drinks", "introduction", "directions"):
+
+def scene_rules(scene_id: str | None, rule_version: str | None = None) -> dict:
+    """Latest registered version by default; old material stays registered for V3."""
+    versions = SCENE_RULE_FILES.get(scene_id or "")
+    if not versions:
         raise PracticeNotFoundError("场景不存在")
+    version = rule_version or next(reversed(versions))
+    if version not in versions:
+        raise PracticeNotFoundError("场景规则版本未登记")
     data = json.loads(
-        (Path(__file__).parents[1] / f"data/scenes/{scene_id}.json").read_text()
+        (Path(__file__).parents[1] / "data/scenes" / versions[version]).read_text()
     )
+    _validate_material(data, scene_id, version)
     data["content_hash"] = hashlib.sha256(
         json.dumps(data, sort_keys=True).encode()
     ).hexdigest()
     return data
+
+
+def _validate_material(data: dict, scene_id: str | None, version: str) -> None:
+    """Reject broken distributed rules before they can create persistent tasks."""
+    try:
+        tasks = data["tasks"]
+        valid = (
+            data["scene_id"] == scene_id
+            and data["rule_version"] == version
+            and type(data["content_revision"]) is int
+            and data["content_revision"] > 0
+            and len(tasks) == 3
+            and len({t["task_key"] for t in tasks}) == 3
+        )
+        for task in tasks:
+            valid = valid and all(
+                isinstance(task[field], str) and task[field].strip()
+                for field in (
+                    "task_key",
+                    "goal",
+                    "role",
+                    "hint",
+                    "standard",
+                    "correction",
+                )
+            )
+            valid = (
+                valid
+                and isinstance(task["target_words"], list)
+                and all(
+                    isinstance(word, str) and re.fullmatch(r"[a-z]+", word)
+                    for word in task["target_words"]
+                )
+            )
+            if not task["patterns"] or not isinstance(task["rejected"], list):
+                valid = False
+            for pattern in task["patterns"]:
+                compiled = re.compile(pattern)
+                if "slot" in task and "slot" not in compiled.groupindex:
+                    valid = False
+            if (
+                judge(task, task["standard"]) != "accepted"
+                or judge(task, task["role"]) == "accepted"
+            ):
+                valid = False
+        if not valid:
+            raise ValueError("场景材料身份、三个任务、目标映射或模板无效")
+    except (KeyError, TypeError, re.error) as error:
+        raise ValueError("场景材料结构或表达规则无效") from error
 
 
 def scene_tasks(scene_id: str) -> list[str]:
@@ -210,12 +275,16 @@ def scene_payload(
     except (PracticeNotFoundError, PracticeStaleError) as error:
         message = str(error)
     return {
-        "application_verified": (runtime is None or runtime.scene_evidence_enabled)
+        "application_verified": (
+            runtime is None or _scene_evidence_enabled(runtime, practice.scene_id)
+        )
         and message is None
         and scene_status(out) == "independent"
         and any(t["novel"] for i in out for t in i.get("target_mapping", [])),
         "message": message,
         "can_continue": message is None,
+        "creation_enabled": runtime is None
+        or _scene_evidence_enabled(runtime, practice.scene_id),
         "id": practice.session_id,
         "purpose": "scene",
         "scene_id": practice.scene_id,
@@ -508,7 +577,7 @@ def application_dimensions(db: Session, revisions: dict, runtime: Runtime) -> di
                 successes[-1].occurred_at.replace(tzinfo=UTC) if successes else None
             )
             historical = (
-                not runtime.scene_evidence_enabled
+                not _scene_evidence_enabled(runtime, scene_id)
                 or content_hash != scene_rules(scene_id)["content_hash"]
             )
             if historical:
@@ -552,6 +621,12 @@ def application_dimensions(db: Session, revisions: dict, runtime: Runtime) -> di
             "contexts": contexts,
         }
     return result
+
+
+def _scene_evidence_enabled(runtime: Runtime, scene_id: str | None) -> bool:
+    return runtime.scene_evidence_enabled and (
+        scene_id == "drinks" or runtime.scene_expansions_enabled
+    )
 
 
 def _application_summary(status: str, count: int, last_at) -> dict:

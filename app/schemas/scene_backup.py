@@ -85,7 +85,7 @@ def validate_scene_graph(
                 )
             continue
         try:
-            rules = scene_rules(p["scene_id"])
+            rules = scene_rules(p["scene_id"], rule_version=p["rule_version"])
         except PracticeNotFoundError:
             reject("practice_sessions", index, "scene_id", "场景规则未登记")
         rows = sorted(

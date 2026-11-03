@@ -62,7 +62,7 @@ function Standard({text}) {
   </div>;
 }
 
-function SceneRun({initial, onRestart, onExit}) {
+function SceneRun({initial, creationEnabled, onRestart, onExit}) {
   const scope = `scene:${initial.id}`;
   const restored = useRef(loadPending(scope));
   const [run, setRun] = useState(initial);
@@ -117,7 +117,7 @@ function SceneRun({initial, onRestart, onExit}) {
         <p>{run.application_verified ? '指定语境应用已有证据（仅对应列明的目标修订）' : '迁移能力尚未验证；缺少目标映射或照抄教学例句不证明新情境。'}</p>
         {run.items.map(i => <p key={i.id}>{i.position}. {i.prompt}：{verdictLabel(i)}{i.assistance.length ? ' · 辅助' : ''} · {i.answer || '未作答'}</p>)}
       </div>
-      <button className="btn btn-primary" onClick={onRestart}>新开一轮</button>
+      {creationEnabled && <button className="btn btn-primary" onClick={onRestart}>新开一轮</button>}
     </> : <>
       <p>第 {index + 1}/3 轮 · 目标：{item.prompt}</p>
       <p className="lesson-progress">{run.speaker || '店员'}：{item.role}</p>
@@ -152,7 +152,7 @@ function SceneRun({initial, onRestart, onExit}) {
         }}>放弃这条待确认</button>
       </div>}
     </>}
-    {!run.can_continue && <button className="btn btn-primary" disabled={blocked} onClick={onRestart}>新开一轮</button>}
+    {!run.can_continue && creationEnabled && <button className="btn btn-primary" disabled={blocked} onClick={onRestart}>新开一轮</button>}
   </section>;
 }
 
@@ -187,7 +187,7 @@ export default function ScenePage({onExit}) {
     } catch (e) {if (live.current) setError('场景尚未确认保存：' + e.message);}
     finally {if (live.current) setBusy(false);}
   };
-  if (run) return <SceneRun key={run.id} initial={run} onRestart={() => start(run.scene_id, true)} onExit={() => setRun(null)} />;
+  if (run) return <SceneRun key={run.id} initial={run} creationEnabled={catalog?.scenes.find(s => s.id === run.scene_id)?.enabled === true} onRestart={() => start(run.scene_id, true)} onExit={() => setRun(null)} />;
   return <section className="view">
     <button className="btn btn-ghost btn-small" onClick={onExit}>返回队列</button>
     <h2 className="page-title">场景练习</h2>
@@ -199,7 +199,7 @@ export default function ScenePage({onExit}) {
       <p>{scene.situation}</p>
       {scene.task_goal.map(goal => <p key={goal}>{goal}</p>)}
       <Preparation preparation={scene.preparation} />
-      {(catalog.enabled || scene.session_id) && <button className="btn btn-primary" disabled={busy || !!pending.current} onClick={() => start(scene.id)}>{scene.title}</button>}
+      {(scene.enabled || scene.session_id) && <button className="btn btn-primary" disabled={busy || !!pending.current} onClick={() => start(scene.id)}>{scene.title}</button>}
     </article>)}
     {pending.current && <div className="save-state-actions">
       <button className="btn btn-primary" disabled={busy} onClick={() => start(pending.current.scene_id)}>继续确认保存</button>
