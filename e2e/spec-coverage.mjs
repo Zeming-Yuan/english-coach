@@ -4,6 +4,7 @@ import {fileURLToPath} from "node:url";
 
 export const requirements = {
   EL22: [
+    "EL-22 a pre-restore tab cannot repopulate advice in the restored data scope",
     "EL-22 a stale tab leaving after completion cannot downgrade future advice",
     "EL-22 deleting every card still offers the frozen round and an explicit invalid-round exit",
     "EL-22 selected time gives one next step and resumes the same saved round",

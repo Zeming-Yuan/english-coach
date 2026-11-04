@@ -43,7 +43,7 @@
 
 ## 切片 4：本浏览器的完成观察与建议
 
-- 观察只记录轮次 ID、开始时间和中断/完整保存标记，保留最近 30 轮；不存词卡内容或答案，不进入数据库/FSRS/配额/完成统计。原冻结轮次仍是唯一进度来源。
+- 观察只记录轮次 ID、开始时间和中断/完整保存标记，保留最近 30 轮明细及更早记录的建议摘要；不存词卡内容或答案，不进入数据库/FSRS/配额/完成统计。原冻结轮次仍是唯一进度来源。
 - 最近三轮两次中断时未来默认建议三分钟；连续三轮完整保存后按 3→8→15 逐档恢复，常规预算偏好是自动建议上限。用户显式改选可覆盖。中断后再完成仍保留中断；同轮重复暂停/刷新/并发标签页按 ID 合并。仅跳过记中性结束，打断上调连续数。
 - 原生 Web Locks 串行合并和恢复清理，恢复 generation 拒绝跨恢复迟到的旧观察；确认完整保存后不接受旧标签页的迟到中断。存储失败不阻断学习。直接关窗未可靠观察时不推断完成/退出；不承诺跨设备。
 - `BackupPage` 等待原恢复完成回调，成功后清除旧浏览器建议；全日预算偏好、服务器学习记录/配额照旧。读取/保存失败不制造完整保存观察。
@@ -79,10 +79,10 @@
 
 前端类型/独立 lint N/A（未配置）；Python 类型/静态检查 N/A（未改 Python）。生产构建、最终 EL-22、基线检查和独立双轴审查结果在最终验证节补记。
 
-## 最终验证与验收映射
+## 审查修复前的验证与验收映射
 
-- 最终 EL-22：**22 passed**（11 个具名分支 × mobile/desktop），`ec-e2e-static-Nkmjcc`；无 skipped/flaky/unexpected。额外逐项核对 `requirements.EL22` 与同次报告，22 个唯一执行与必需标题精确对应。包含旧页迟到保护 GREEN、详情键盘展开、空库冻结轮次修复。
-- 当前生产产物：`npm --prefix frontend run build` → exit 0；JS `index-wNQHW4Sa.js`、CSS `index-D3hpSMeN.css`，产物及 index 随本片提交。主入口 E2E 同时对当前源码做独立新构建。
+- 修复前 EL-22：**22 passed**（11 个具名分支 × mobile/desktop），`ec-e2e-static-Nkmjcc`；无 skipped/flaky/unexpected。额外逐项核对 `requirements.EL22` 与同次报告，22 个唯一执行与必需标题精确对应。包含旧页迟到保护 GREEN、详情键盘展开、空库冻结轮次修复。
+- 修复前生产产物：`npm --prefix frontend run build` → exit 0；JS `index-wNQHW4Sa.js`、CSS `index-D3hpSMeN.css`，产物及 index 随本片提交。主入口 E2E 同时对当前源码做独立新构建。
 - 最终受影响浏览器证据：本票 22 次当前源码成功；上节相关五组 140 次成功，版本边界已明确；不冒充全量回归或相同源摘要。
 - fresh origin/dev guard / diff whitespace / 覆盖校验自测通过；本片没有 Python 变更，guard 的 Ruff 步骤无文件可运行，不能写成 Python lint/类型全量通过。
 - 最终 E2E 时 HEAD 为 `c1bd487` 加未提交的本片源码，run.json 记录实际 source_sha256 与工作树；运行结束后只补验证记录并提交，不把测试产物身份误当最终提交号。
@@ -98,3 +98,40 @@
 
 全量 pytest、未过滤 E2E、真实付费模型/TTS、原生系统崩溃/直接关窗、生产发布仍未验证；跨设备轮次建议不在承诺范围。独立安全扫描、容器、迁移/seed/不可逆降级 N/A（本票未配置或引入）；新写入仅浏览器建议，无新增权限或服务器数据集合。
 独立 Standards / Spec 最后复核固定 `c1bd487` 到本片提交，并回看 `8d827cc` 到 HEAD 的全部本票变更；结果后补。
+
+## 独立审查发现与修复
+
+### Standards（固定 c1bd487 → 1f52037）
+
+1 个 P2：观察在回调时读取 generation，恢复前的旧标签页可能取得新范围身份，违反 ADR 的恢复隔离约束。
+
+### Spec（固定 c1bd487 → 1f52037，回看原始基线）
+
+2 个 P2：上述恢复隔离问题；仅截取最近 30 轮并从默认 15 分钟重算，清理旧中断后会在没有稳定完成的情况下错误加量。
+
+### 修复及红绿证据
+
+- 轮次开始时冻结 generation，合并观察时在锁内核对；旧格式没有身份的轮次不补造观察，保留原学习流程。真实双页备份恢复旅程 RED `/tmp/ec84-review-restore-red-report.json`（两视口错误降为 3），GREEN `/tmp/ec84-review-restore-green-report.json`（2 passed，保持 8）。
+- 单一建议归约器将淘汰的明细折为档位、连续数、最近两次中断标记与截止点；不保留旧明细，不重复折入迟到轮次。连续 30 轮真实跳过 RED `/tmp/ec84-review-retention-red-report.json`（错误上调到 8），GREEN `/tmp/ec84-review-retention-green-report.json`（2 passed，每轮保持 3；150 条跳过事件，原 FSRS reviews 不变）。
+- 推荐理由改为“此前的中断记录”，不把摘要中的历史中断说成仍在最近三轮。README、ADR 与首页详情同步说明 30 轮明细和更早摘要的边界。
+- 修复后的新源码验证见下节；独立复核在固定提交后进行。
+
+## 审查修复后的最终验证
+
+所有主入口都在同一冻结源码下执行：HEAD `1f52037172f1a2a176ffecefb4cdc6ca00ca2397` 加上述修复，source_sha256 `1eefb57027ff5026a83eaf05902e74deff2ef2b8bbf6990656c20f219eec81e5`。六组进程全部 exit 0、run.json 为 passed；源码/HEAD 未在运行期间变化。结果收齐后才补本节。
+
+| 范围 | 结果 | e2e/release-results 下的 run |
+| --- | --- | --- |
+| EL-22 | 24 passed | ec-e2e-static-IX4wGO |
+| EC-13 | 32 passed | ec-e2e-static-T5hU4y |
+| EC-14 | 32 passed | ec-e2e-static-Lfvhd3 |
+| EL-17 | 24 passed | ec-e2e-static-pW9j0P |
+| EL-18 | 24 passed | ec-e2e-static-ukRBWj |
+| EL-19 | 28 passed | ec-e2e-static-zfjqdp |
+
+- 合计 **164 次成功**，0 skipped / unexpected / flaky；逐项脚本确认 EL-22 的 12 个必需标题 × 两视口正好对应 24 个唯一成功执行，包含恢复前旧页与 30 轮保留边界。所有六组静态 JS/CSS 哈希均与当前提交产物对应。
+- `.venv/bin/python -m pytest tests/test_frontend.py tests/test_daily_session.py tests/test_session_summary.py tests/test_el17_time_budget_daily_plan.py tests/test_el18_personal_active_time_estimate.py -q` 再执行：**49 passed in 84.86s**，`/tmp/ec84-final-fixed-pytest.log`。
+- `npm --prefix frontend run build` exit 0；JS `index-UOQt5XGB.js` SHA256 `6f3e2e848edf35e62541744400423b6c9db66c0e80392f64dc72e8e70237366a`，CSS `index-D3hpSMeN.css` SHA256 `60667cbec3c41475d6ab7b48fc4f3b8405c0b03a9d4f3d5c2824bc41b30b7b1a`。
+- fresh `.venv/bin/python scripts/agent_check.py --base dev --lint`、`git diff --check`、`node e2e/spec-coverage.mjs --self-test` exit 0。origin/dev 仍为批准基线；未配置的前端类型/lint、无改动的 Python 类型/lint仍为 N/A。
+- 已实际查看本轮手机 shorter-advice、手机/桌面 steady-advice 截图；历史原因文案与开始按钮可见。未改动的空故事封面在临时验收构建仍缺图，不属于本票改动。
+- 验收映射继续适用上表，异常/数据范围补充 EL-22 pre-restore tab 与 skipped rounds 的 30 轮真实事件断言。未运行的全量、生产与外部服务门禁仍按上文明确标记，不将定向回归解释为完整发行资格。

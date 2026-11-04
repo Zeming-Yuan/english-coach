@@ -180,7 +180,7 @@ test("EL-22 three uninterrupted completions restore advice and backup replacemen
   await advancePastDue(app);
   await page.reload();
   await expect(page.getByTestId("round-target")).toContainText("本轮目标 12 张");
-  await expect(page.getByTestId("next-step-reason")).toContainText("连续完成三轮");
+  await expect(page.getByTestId("next-step-reason")).toContainText("已保存的完成记录");
   await page.screenshot({path: test.info().outputPath("steady-advice.png")});
   // Explicit choices remain possible, and the regular preference survives restore.
   await page.getByLabel("今天可用时间").selectOption("15");
@@ -206,7 +206,7 @@ test("EL-22 skipped rounds do not count as stable completed work or change memor
   await expect(page.getByLabel("今天可用时间")).toHaveValue("3");
   await advancePastDue(app);
   const before = await (await app.request.get("/api/export/backup")).json();
-  for (let round = 0; round < 3; round++) {
+  for (let round = 0; round < 30; round++) {
     await page.reload();
     await start(page);
     for (let position = 1; position <= 5; position++) {
@@ -216,11 +216,13 @@ test("EL-22 skipped rounds do not count as stable completed work or change memor
     await page.getByRole("button", {name: "跳过本轮巩固", exact: true}).click();
     await expect(page.locator(".done-detail")).toContainText("0 张卡已保存并排期");
     await page.getByRole("button", {name: "← 返回队列", exact: true}).click();
+    await expect(page.getByLabel("今天可用时间")).toHaveValue("3", {timeout: 3000});
   }
   await expect(page.getByLabel("今天可用时间")).toHaveValue("3", {timeout: 3000});
+  await expect(page.getByTestId("next-step-reason")).not.toContainText("最近三轮");
   const after = await (await app.request.get("/api/export/backup")).json();
   expect(after.reviews).toEqual(before.reviews);
-  expect(after.learning_events.slice(before.learning_events.length)).toHaveLength(15);
+  expect(after.learning_events.slice(before.learning_events.length)).toHaveLength(150);
   expect(after.learning_events.slice(before.learning_events.length).every(event => event.skipped && !event.scheduled)).toBe(true);
 });
 
@@ -307,4 +309,38 @@ test("EL-22 a stale tab leaving after completion cannot downgrade future advice"
     await expect(page.getByLabel("今天可用时间")).toHaveValue("8", {timeout: 3000});
     expect((await (await app.request.get("/api/export/backup")).json()).learning_events).toEqual(before.learning_events);
   } finally {await sibling?.close();}
+});
+
+test("EL-22 a pre-restore tab cannot repopulate advice in the restored data scope", async ({appFactory, page}) => {
+  test.setTimeout(180000);
+  const app = await appFactory({fixture: "el18-rollback.json"});
+  await app.seedCards(Array.from({length: 12}, (_, i) => ({word: `word${i}`})));
+  const backup = await (await app.request.get("/api/export/backup")).json();
+  await page.goto(app.baseURL);
+  await start(page);
+  const sibling = await page.context().newPage();
+  try {
+    await sibling.goto(app.baseURL);
+    await sibling.getByRole("button", {name: "继续本轮学习", exact: true}).click();
+    await expect(sibling.locator(".study-count")).toHaveText("1 / 10");
+    await page.getByRole("button", {name: "设置", exact: true}).click();
+    await page.getByRole("button", {name: "备份与恢复", exact: true}).click();
+    await page.locator('input[type="file"]').setInputFiles({name: "original.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(backup))});
+    await page.getByRole("button", {name: "确认替换学习数据", exact: true}).click();
+    await expect(page.getByRole("status")).toContainText("恢复成功");
+    await page.getByRole("button", {name: "返回设置", exact: true}).click();
+    await page.getByRole("button", {name: "设置", exact: true}).click();
+    await sibling.getByRole("button", {name: "← 退出", exact: true}).click();
+    await expect(sibling.getByRole("button", {name: "继续本轮学习", exact: true})).toBeVisible();
+    await page.reload();
+    await start(page);
+    await rate(page);
+    await expect(page.locator(".study-count")).toHaveText("2 / 10");
+    await page.getByRole("button", {name: "← 退出", exact: true}).click();
+    await page.getByRole("button", {name: "继续本轮学习", exact: true}).click();
+    await finishRound(page);
+    // There has been only one interruption in the restored data scope.
+    await expect(page.getByLabel("今天可用时间")).toHaveValue("8", {timeout: 3000});
+    expect((await (await app.request.get("/api/export/backup")).json()).learning_events).toHaveLength(10);
+  } finally {await sibling.close();}
 });

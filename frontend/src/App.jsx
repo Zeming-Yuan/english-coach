@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, Component } from "react";
 import { api } from "./lib/api.js";
 import { storageGet, storageSet } from "./lib/utils.js";
-import {recordRoundOutcome, resetRoundOutcomes, roundBudgetCap, subscribeRoundAdvice} from "./lib/roundOutcomes.js";
+import {recordRoundOutcome, resetRoundOutcomes, roundBudgetCap, roundObservationGeneration, subscribeRoundAdvice} from "./lib/roundOutcomes.js";
 import { setTtsRate } from "./lib/tts.js";
 import { refreshPendingContacts } from "./lib/contacts.js";
 import { loadPending, sendPending, clearPending, savePending } from "./lib/learning.js";
@@ -207,7 +207,7 @@ export default function App() {
     });
   };
   const startDaily = (data) => {
-    const session = { id: crypto.randomUUID(), queue: data.queue, target: data.target, index: 0, remainingDue: data.remaining_due, reviewCount: data.review_count, newCount: data.new_count, plan: data.plan, startedAt: Date.now() };
+    const session = { id: crypto.randomUUID(), observationGeneration: roundObservationGeneration(), queue: data.queue, target: data.target, index: 0, remainingDue: data.remaining_due, reviewCount: data.review_count, newCount: data.new_count, plan: data.plan, startedAt: Date.now() };
     updateDaily(session);
     setIsDailyStudy(true);
     setStudyQueue(session.queue);
@@ -487,8 +487,8 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
             ? budget > roundCap
               ? `你选择了约 ${budget} 分钟，仍可改为本浏览器建议的约 ${roundCap} 分钟。`
               : roundCap === 3
-                ? "本浏览器最近三轮有两轮中途退出，先用约 3 分钟完成一小轮。"
-                : `本浏览器已连续完成三轮，可逐步增加；本轮按约 ${budget} 分钟安排。`
+                ? "根据本浏览器此前的中断记录，先用约 3 分钟找回完成节奏。"
+                : `根据本浏览器已保存的完成记录，可逐步增加；本轮按约 ${budget} 分钟安排。`
           : data.review_count > 0
             ? `先复习本轮的 ${data.review_count} 张到期词卡，再按余量安排新词。`
             : `先学本轮的 ${data.new_count} 个新词，再用少量练习巩固。`;
@@ -537,7 +537,7 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
         </>}
         <details className="home-plan-details">
           <summary>计划详情与目标设置</summary>
-          <p>轮次建议只参考本浏览器最近 30 轮的实际暂停、退出和完成；不改变排期或全日新词配额，不随数据库备份转移。刷新继续同一轮，重复暂停不重复计轮。</p>
+          <p>本浏览器保留最近 30 轮实际暂停、退出和完成的明细，并保留更早记录的建议摘要；不改变排期或全日新词配额，不随数据库备份转移。刷新继续同一轮，重复暂停不重复计轮。</p>
             <div className="home-goal">
               <div className="home-goal-label">今日完成 <b>{done}</b><span className="goal-total">/ {target}</span><span>词</span></div>
               <div className="home-goal-controls">
