@@ -7,7 +7,31 @@ let ttsVoice = null;
 let hasEnVoice = false;
 const audioCache = new Map();
 const failedAudio = new Set();
-const activeAudio = new WeakMap();
+
+// 同一时刻只允许一个在线音频；新朗读先停掉上一段，避免两句交叉。
+let currentAudio = null;
+let cancelCurrentAudio = null;
+
+function stopOnlineAudio() {
+  const cancel = cancelCurrentAudio;
+  const audio = currentAudio;
+  cancelCurrentAudio = null;
+  currentAudio = null;
+  if (cancel) cancel();
+  if (audio) {
+    audio.pause();
+    audio.currentTime = 0;
+  }
+}
+
+// 本地语音同样只保留一段；被新朗读打断时返回 canceled。
+let cancelLocalSpeech = null;
+
+function stopLocalAudio() {
+  const cancel = cancelLocalSpeech;
+  cancelLocalSpeech = null;
+  if (cancel) cancel();
+}
 
 const hasSpeech = typeof window !== "undefined" && "speechSynthesis" in window;
 
@@ -50,10 +74,13 @@ function notifyStarted(onStarted) {
  * @param {string} word
  * @param {HTMLElement|null} btn - 发音时加 .speaking 样式
  * @param {Function|null} onStarted - 实际开始播放时回调；预热、下载与失败不回调
- * @returns {Promise<"online"|"local"|"none">} 实际使用的发音来源；调用方可提示降级
+ * @returns {Promise<"online"|"local"|"none"|"canceled">} 实际使用的发音来源；
+ *   canceled 表示被新的朗读打断，调用方不应提示失败
  */
 export function speak(word, btn = null, onStarted = null) {
   if (!word) return Promise.resolve("none");
+  stopOnlineAudio();
+  stopLocalAudio();
   if (hasSpeech) speechSynthesis.cancel();
 
   return new Promise((resolve) => {
@@ -78,31 +105,36 @@ function speakOnline(word, done, fallback, onStarted) {
     audio = new Audio(`/api/tts/audio/${encodeURIComponent(word)}${retry}`);
     audioCache.set(word, audio);
   }
-  // Replaying a cached element retires its previous caller first. Settling
-  // that caller must neither mutate this new playback nor start a late voice.
-  activeAudio.get(audio)?.();
   let finished = false;
+  // 只有当前播放能清空全局指针，避免旧回调误停新音频。
+  const release = () => {
+    if (currentAudio === audio) {
+      currentAudio = null;
+      cancelCurrentAudio = null;
+    }
+  };
   const cancel = () => {
     if (finished) return;
     finished = true;
     clearTimeout(safetyTimeout);
-    if (activeAudio.get(audio) === cancel) activeAudio.delete(audio);
-    done("none");
+    release();
+    done("canceled");
   };
-  activeAudio.set(audio, cancel);
+  currentAudio = audio;
+  cancelCurrentAudio = cancel;
   const finish = () => {
     if (finished) return;
     finished = true;
     clearTimeout(safetyTimeout);
     failedAudio.delete(word);
-    if (activeAudio.get(audio) === cancel) activeAudio.delete(audio);
+    release();
     done("online");
   };
   const failed = () => {
     if (finished) return;
     finished = true;
     clearTimeout(safetyTimeout);
-    if (activeAudio.get(audio) === cancel) activeAudio.delete(audio);
+    release();
     failedAudio.add(word);
     if (audioCache.get(word) === audio) audioCache.delete(word);
     // Stop the failed request so it cannot start speaking after the fallback.
@@ -138,12 +170,24 @@ function speakLocal(word, done, onStarted) {
   }
   const u = new SpeechSynthesisUtterance(word);
   let finished = false;
+  const release = () => {
+    if (cancelLocalSpeech === cancel) cancelLocalSpeech = null;
+  };
   const finish = (mode) => {
     if (finished) return;
     finished = true;
     clearTimeout(timer);
+    release();
     done(mode);
   };
+  const cancel = () => {
+    if (finished) return;
+    finished = true;
+    clearTimeout(timer);
+    release();
+    done("canceled");
+  };
+  cancelLocalSpeech = cancel;
   // 无音频设备时浏览器可能既不触发 onend 也不触发 onerror。
   const timer = setTimeout(() => finish("none"), Math.max(word.length * 150, 1500));
   u.lang = "en-US";
