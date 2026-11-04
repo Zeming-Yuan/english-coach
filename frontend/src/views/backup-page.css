@@ -1,0 +1,145 @@
+/* Backup is a document review flow. Keep warnings and the final action in
+   normal reading order; never hide replacement consequences behind disclosure. */
+.product-app .backup-panel {
+  position: static;
+  width: 100%;
+  min-width: 0;
+}
+.product-app .backup-panel .settings-panel-head { margin: 0 0 12px; }
+.product-app .backup-panel .backup-intro {
+  max-width: 46em;
+  margin: 0 0 20px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.product-app .backup-panel .backup-download { min-height: 44px; }
+.product-app .backup-panel .backup-upload {
+  margin-top: 32px;
+  padding: 28px 0 0;
+  border-top: 1px solid var(--line);
+}
+.backup-upload h2 { margin: 0 0 18px; font-size: 19px; font-weight: 500; }
+.product-app .backup-upload .settings-label { font-size: 13px; color: var(--muted); }
+.product-app .backup-panel .backup-file {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: var(--nav-paper);
+  overflow: hidden;
+}
+.product-app .backup-panel .backup-file::file-selector-button {
+  min-height: 40px;
+  background: var(--paper);
+}
+.product-app .backup-panel .backup-hint {
+  max-width: 48em;
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.backup-preview {
+  margin-top: 28px;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  overflow-wrap: anywhere;
+}
+.product-app .backup-preview .backup-preview-kicker {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: .08em;
+  color: var(--mint);
+}
+.backup-preview h2 { margin: 0 0 22px; font-size: 25px; line-height: 1.4; font-weight: 500; }
+.backup-preview-full h2 { color: var(--coral); }
+.backup-missing > p { margin: 0 0 14px; font-size: 14px; }
+.backup-missing ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 28px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border-top: 1px solid var(--line);
+}
+.backup-missing li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+.backup-missing li > span:last-child { color: var(--muted); text-align: right; }
+.backup-compatibility { margin-top: 22px; }
+.backup-compatibility:empty { display: none; }
+.product-app .backup-compatibility > p {
+  margin: 0;
+  padding: 7px 0 7px 16px;
+  border-left: 2px solid var(--line);
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.85;
+}
+.product-app .backup-preview .backup-summary {
+  margin: 0 0 22px;
+  padding: 16px 18px;
+  border-radius: 7px;
+  background: var(--nav-paper);
+  font-size: 14px;
+}
+.product-app .backup-preview-full .backup-summary { background: var(--coral-soft); }
+.backup-count-summary { margin: 14px 0; font-size: 14px; }
+.product-app .backup-panel .backup-counts { margin: 18px 0; font-size: 14px; }
+.product-app .backup-panel .backup-counts > div {
+  display: grid;
+  grid-template-columns: minmax(100px, 1fr) 2fr;
+  gap: 20px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+}
+.backup-counts dt { font-weight: 500; }
+.backup-counts dd { margin: 0; color: var(--muted); }
+.product-app .backup-preview .backup-safety {
+  margin: 22px 0 16px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--ink);
+}
+.backup-preview-full .backup-safety { font-weight: 500; }
+.backup-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+.product-app .backup-actions .btn { min-height: 46px; padding-inline: 20px; }
+.product-app .backup-panel .backup-success {
+  margin: 18px 0;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--success-soft);
+  color: var(--success);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.product-app .backup-panel .backup-contents {
+  margin-top: 32px;
+  padding: 24px 0 0;
+  border-top: 1px solid var(--line);
+}
+.backup-contents .settings-label { font-size: 13px; font-weight: 500; }
+.product-app .backup-contents p { margin: 6px 0 18px; font-size: 13px; color: var(--muted); }
+.product-app .backup-panel .backup-back { margin-top: 6px; }
+.backup-panel :is(button, input):focus-visible { outline: 2px solid var(--mint); outline-offset: 4px; }
+@media (max-width: 640px) {
+  .backup-preview { padding: 20px 16px; margin-inline: -4px; }
+  .backup-preview h2 { font-size: 23px; margin-bottom: 18px; }
+  .backup-missing ul { grid-template-columns: minmax(0, 1fr); }
+  .backup-actions { flex-direction: column; }
+  .backup-actions .btn { width: 100%; justify-content: center; }
+  .product-app .backup-panel .backup-counts > div { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+}
