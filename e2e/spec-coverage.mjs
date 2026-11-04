@@ -3,6 +3,9 @@ import fs from "node:fs";
 import {fileURLToPath} from "node:url";
 
 export const requirements = {
+  EL22: [
+    "EL-22 selected time gives one next step and resumes the same saved round",
+  ],
   "EL-JOURNEY": [
     "EL-21 new install completes six learning paths",
     "EL-21 upgraded database completes six learning paths",

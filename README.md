@@ -423,3 +423,9 @@ EL-21 集成资格：新增新装、旧库升级、V3 换设备续学和故障�
 未过滤双视口命令执行。另一设备恢复后，课程短测可从服务端接续原轮次及提示。
 定向开发验证仍使用 `npm --prefix frontend run test:e2e -- --ticket EL-21`；
 定向成功不代表完整发行资格。[验收证据与内容核对](docs/el-release-evidence.md)。
+
+### 每日学习入口（#84）
+
+选择今天可用时间后，首页“今天下一步”显示一个学习入口和一句推荐理由。
+未完成的轮次优先继续；暂停、刷新后仍保留原卡序、目标与预算。
+定向验证：`npm --prefix frontend run test:e2e -- --ticket EL-22`；见 [验证记录](docs/verification/daily-learning-flow.md)。

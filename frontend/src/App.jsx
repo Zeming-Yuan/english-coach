@@ -456,14 +456,27 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
     ["mixed", "混合练习", "组合题型，巩固薄弱项", "stack"],
   ];
   const retryMaterials = () => setReloadKey(key => key + 1);
+  const nextStepReason = activeSession
+    ? activeSession.complete
+      ? "主队列已保存，继续可选巩固或查看本轮结果。"
+      : `上轮还有 ${activeSession.target - activeSession.index} 张未完成，先从保存的位置继续。`
+    : isEmpty
+      ? "先添加想学的词，或从入门词卡开始。"
+      : queueTotal === 0
+        ? "当前没有待学词卡，今天可以结束了，也可自选练习。"
+        : plan?.mode === "recovery"
+          ? "先用一小轮到期复习找回节奏，无需一次清空积压。"
+          : data.review_count > 0
+            ? `先复习本轮的 ${data.review_count} 张到期词卡，再按余量安排新词。`
+            : `先学本轮的 ${data.new_count} 个新词，再用少量练习巩固。`;
 
   return (
     <section className="view home-workspace" aria-label="今天的学习">
       {showEveningReminder && <p className="home-reminder">今天还没有完成记录，可以从一轮学习开始。</p>}
-      <section className="home-round" aria-labelledby="home-title">
+      <section className="home-round" aria-label="今天下一步">
         <div className="home-round-heading">
           <h1 id="home-title">今天的学习</h1>
-          <p>{isEmpty ? "从第一组单词开始" : activeSession ? "继续从上次的位置开始" : "先回忆，再继续新的内容"}</p>
+          <p data-testid="next-step-reason">{nextStepReason}</p>
         </div>
         <div className="home-round-notes">
           {data.time_budget_enabled !== false && <label>今天可用时间 <select aria-label="今天可用时间" value={activeSession?.plan?.budget_minutes ?? data.plan?.budget_minutes ?? budget} disabled={!!activeSession} onChange={event => {
