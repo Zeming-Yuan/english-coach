@@ -17,7 +17,7 @@ openai>=1.50
 fsrs>=4.5
 
 # 发音合成（微软 Edge 在线语音，免 API key）
-edge-tts>=7.0
+edge-tts>=7.3.1  # 7.2.x 起微软握手返回 403，7.3.1 已验证可用
 
 # 代码质量（开发规范：提交前 ruff check + format 必须通过）
 ruff>=0.8
