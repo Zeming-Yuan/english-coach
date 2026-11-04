@@ -6,7 +6,8 @@
 - REASONING：讲解、debug、复杂问答、Agent 工具循环
     → mimo-v2.5-pro（推理档）
 
-用法：model=route(Task.BULK)。以后想换模型只改这一个文件。
+用法：model=route(Task.BULK)。默认按任务路由；调用方传入
+model_override（来自 LLM_MODEL 或设置页）可统一覆盖，换供应商只改配置。
 """
 
 from enum import Enum
@@ -28,6 +29,9 @@ ROUTES = {
 }
 
 
-def route(task: Task) -> str:
-    """按任务类型返回模型名。"""
+def route(task: Task, *, model_override: str = "") -> str:
+    """按任务类型返回模型名；显式覆盖优先。"""
+    configured = model_override.strip()
+    if configured:
+        return configured
     return ROUTES[task]

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { api } from "../lib/api.js";
 import { storageGet, storageSet } from "../lib/utils.js";
 import { setTtsRate } from "../lib/tts.js";
@@ -14,6 +14,56 @@ export default function SettingsPage({ darkMode, setDarkMode, onOpenBackup }) {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshResult, setRefreshResult] = useState(null);
   const [regenerating, setRegenerating] = useState(false);
+  const [aiConfig, setAiConfig] = useState(null);
+  const [aiBaseUrl, setAiBaseUrl] = useState("");
+  const [aiModel, setAiModel] = useState("");
+  const [aiKey, setAiKey] = useState("");
+  const [aiBusy, setAiBusy] = useState("");
+  const [aiTest, setAiTest] = useState(null);
+
+  useEffect(() => {
+    let alive = true;
+    api("/api/ai-config")
+      .then((r) => {
+        if (!alive) return;
+        setAiConfig(r);
+        setAiBaseUrl(r.base_url);
+        setAiModel(r.model);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const aiPayload = () => ({ base_url: aiBaseUrl, model: aiModel, api_key: aiKey });
+
+  const saveAiConfig = async () => {
+    setAiBusy("save");
+    setAiTest(null);
+    try {
+      const r = await api("/api/ai-config", { method: "PUT", body: JSON.stringify(aiPayload()) });
+      setAiConfig(r);
+      setAiKey("");
+      showToast("✅ AI 服务配置已保存");
+    } catch (e) {
+      showToast("保存失败：" + e.message);
+    } finally {
+      setAiBusy("");
+    }
+  };
+
+  const testAiConfig = async () => {
+    setAiBusy("test");
+    setAiTest(null);
+    try {
+      setAiTest(await api("/api/ai-config/test", { method: "POST", body: JSON.stringify(aiPayload()) }));
+    } catch (e) {
+      setAiTest({ ok: false, error: e.message });
+    } finally {
+      setAiBusy("");
+    }
+  };
 
   const updateRate = (r) => {
     setRate(r);
@@ -63,6 +113,28 @@ export default function SettingsPage({ darkMode, setDarkMode, onOpenBackup }) {
               <button key={o.v} className={`diff-btn ${cnMode === o.v ? "diff-active" : ""}`} onClick={() => { setCnMode(o.v); storageSet("sentenceCnMode", o.v); }}>{o.l}</button>
             ))}
           </div>
+        </div>
+        <h2 className="settings-section-title">AI 服务</h2>
+        <div className="settings-row" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
+          <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
+            用于生成词卡、故事与查词。保存后立即生效；配置只存在本机 data/llm_config.json，不进入备份。
+          </p>
+          <label className="settings-label" htmlFor="ai-base-url">服务地址</label>
+          <input id="ai-base-url" className="word-search-input" value={aiBaseUrl} onChange={(e) => setAiBaseUrl(e.target.value)} placeholder="https://api.deepseek.com" autoComplete="off" spellCheck={false} />
+          <label className="settings-label" htmlFor="ai-model">模型</label>
+          <input id="ai-model" className="word-search-input" value={aiModel} onChange={(e) => setAiModel(e.target.value)} placeholder="deepseek-flash" autoComplete="off" spellCheck={false} />
+          <label className="settings-label" htmlFor="ai-key">API Key</label>
+          <input id="ai-key" className="word-search-input" type="password" value={aiKey} onChange={(e) => setAiKey(e.target.value)} placeholder={aiConfig?.has_key ? "已保存，留空则不修改" : "sk-..."} autoComplete="new-password" />
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <button className="btn btn-primary btn-small" disabled={!!aiBusy} onClick={saveAiConfig}>{aiBusy === "save" ? "保存中…" : "保存配置"}</button>
+            <button className="btn btn-ghost btn-small" disabled={!!aiBusy} onClick={testAiConfig}>{aiBusy === "test" ? "测试中…" : "测试连接"}</button>
+            <span style={{ fontSize: 12, color: "var(--muted)" }}>{aiConfig?.has_key ? "密钥已配置" : "密钥未配置"}</span>
+          </div>
+          {aiTest && (
+            <p role="status" style={{ fontSize: 12, margin: 0, color: aiTest.ok ? "var(--success)" : "var(--coral)" }}>
+              {aiTest.ok ? "✅ 连接成功" : `❌ ${aiTest.error}`}
+            </p>
+          )}
         </div>
         <h2 className="settings-section-title">内容维护</h2>
         <div className="settings-row" style={{ flexDirection: "column", alignItems: "flex-start", gap: 8 }}>

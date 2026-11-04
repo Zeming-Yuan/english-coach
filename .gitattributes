@@ -1,2 +1,6 @@
 # Generated visual documents retain their original binary bytes.
 *.pdf binary
+
+# Vite copies index.html verbatim; keep LF so builds stay diff-clean.
+frontend/index.html text eol=lf
+app/static/index.html text eol=lf

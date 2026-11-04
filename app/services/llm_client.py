@@ -28,11 +28,17 @@ class LazyLLMClient:
     def chat(self):
         return self._client().chat
 
+    @property
+    def settings(self) -> Settings:
+        """所属请求的配置；模型覆盖等读这里，避免读全局单例。"""
+        return self._settings
+
     def _client(self) -> OpenAI:
         if not self._settings.llm_api_key:
             raise LLMNotConfigured(
-                "AI 未配置：请在 .env 设置 LLM_API_KEY 与 LLM_BASE_URL"
-                "（见 README 配置说明）。本地学习功能不受影响。"
+                "AI 未配置：请在应用「设置 → AI 服务」或 .env 配置"
+                " LLM_API_KEY 与 LLM_BASE_URL（见 README 配置说明）。"
+                "本地学习功能不受影响。"
             )
         if self._openai is None:
             self._openai = OpenAI(
