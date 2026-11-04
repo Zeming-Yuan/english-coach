@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, Component } from "react";
 import { api } from "./lib/api.js";
 import { storageGet, storageSet } from "./lib/utils.js";
+import {recordRoundOutcome, resetRoundOutcomes, roundBudgetCap, subscribeRoundAdvice} from "./lib/roundOutcomes.js";
 import { setTtsRate } from "./lib/tts.js";
 import { refreshPendingContacts } from "./lib/contacts.js";
 import { loadPending, sendPending, clearPending, savePending } from "./lib/learning.js";
@@ -212,6 +213,12 @@ export default function App() {
     setStudyQueue(session.queue);
     setView("study");
   };
+  const lastDailyStudy = useRef(null);
+  useEffect(() => {
+    const previous = lastDailyStudy.current;
+    if (view !== "study" && previous && !previous.complete) void recordRoundOutcome(previous, "interrupted");
+    lastDailyStudy.current = view === "study" && isDailyStudy ? dailySession : null;
+  }, [view, isDailyStudy, dailySession]);
   const [singleCard, setSingleCard] = useState(null);
   const [restoringBackup, setRestoringBackup] = useState(false);
   const [queueVersion, setQueueVersion] = useState(0);
@@ -279,7 +286,8 @@ export default function App() {
         {view === "advice" && <AdvicePracticePage request={adviceRequest} onExit={() => setView("stats")} onNormal={() => setView("spelling")} />}
         {view === "delayed" && <DelayedCheckPage key={delayedWindow} window={delayedWindow} onExit={() => setView("stats")} onNormal={() => setView("spelling")} />}
         {view === "settings" && <SettingsPage darkMode={darkMode} setDarkMode={setDarkMode} onOpenBackup={() => setView("backup")} />}
-        {view === "backup" && <BackupPage restoring={restoringBackup} onRestoringChange={setRestoringBackup} onBack={() => setView("settings")} onRestored={() => {
+        {view === "backup" && <BackupPage restoring={restoringBackup} onRestoringChange={setRestoringBackup} onBack={() => setView("settings")} onRestored={async () => {
+          await resetRoundOutcomes();
           setAdviceRequest(null);
           try { localStorage.removeItem("ec.advice.request"); } catch {}
           setIsDailyStudy(false);
@@ -289,7 +297,7 @@ export default function App() {
           setQueueVersion((v) => v + 1);
         }} />}
         {view === "lessons" && <LessonsPage onExit={() => setView("queue")} />}
-        {view === "study" && (isDailyStudy ? <DailySessionPage session={dailySession} onSessionChange={(details) => updateDailyDetails(dailySession.id, details)} onFinish={() => { updateDaily({...dailySession, finished: true}); setView("queue"); }} onPauseExit={() => setView("queue")} recoveryVersion={queueVersion} onAbort={() => { setIsDailyStudy(false); updateDaily(null); setStudyQueue([]); setView("queue"); }} onProgress={confirmDailyCard} queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} /> : <StudyPage recoveryVersion={queueVersion} session={isDailyStudy ? dailySession : null} onAbort={() => { setIsDailyStudy(false); updateDaily(null); setStudyQueue([]); setView("queue"); }} onProgress={confirmDailyCard} queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} />)}
+        {view === "study" && (isDailyStudy ? <DailySessionPage session={dailySession} onRoundObserved={recordRoundOutcome} onSessionChange={(details) => updateDailyDetails(dailySession.id, details)} onFinish={() => { updateDaily({...dailySession, finished: true}); setView("queue"); }} onPauseExit={() => setView("queue")} recoveryVersion={queueVersion} onAbort={() => { setIsDailyStudy(false); updateDaily(null); setStudyQueue([]); setView("queue"); }} onProgress={confirmDailyCard} queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} /> : <StudyPage recoveryVersion={queueVersion} session={isDailyStudy ? dailySession : null} onAbort={() => { setIsDailyStudy(false); updateDaily(null); setStudyQueue([]); setView("queue"); }} onProgress={confirmDailyCard} queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} />)}
         {view === "quiz" && <QuizPage onExit={() => setView("queue")} />}
         {view === "spelling" && <SpellingPage onExit={() => { setView("queue"); setSingleCard(null); }} singleCard={singleCard} />}
         {view === "listening" && <ListeningPage onExit={() => setView("queue")} />}
@@ -336,10 +344,19 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
   const [loadError, setLoadError] = useState("");
+  const [roundCap, setRoundCap] = useState(roundBudgetCap);
+  const explicitBudget = useRef(false);
   const [budget, setBudget] = useState(() => {
     const saved = storageGet("timeBudget", 8);
-    return [3, 8, 15].includes(saved) ? saved : 8;
+    return Math.min([3, 8, 15].includes(saved) ? saved : 8, roundCap);
   });
+  useEffect(() => subscribeRoundAdvice(cap => {
+    setRoundCap(cap);
+    if (!explicitBudget.current) {
+      const saved = storageGet("timeBudget", 8);
+      setBudget(Math.min([3, 8, 15].includes(saved) ? saved : 8, cap));
+    }
+  }), []);
   const [mode, setMode] = useState("regular");
   const [dailyGoal, setDailyGoal] = useState(() => storageGet("dailyGoal", 10));
   const {
@@ -434,7 +451,7 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
   const activeSession = dailySession && !dailySession.finished ? dailySession : null;
   const plan = activeSession?.plan ?? data.plan;
   const errorCount = (data.error_cards || []).length;
-  const isEmpty = stats?.total_cards === 0;
+  const isEmpty = stats?.total_cards === 0 && !activeSession;
 
   // 每日最低目标、新词建议与本轮卡数分别表达。
   const done = stats?.reviewed_today || 0;
@@ -466,6 +483,12 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
         ? "当前没有待学词卡，今天可以结束了，也可自选练习。"
         : plan?.mode === "recovery"
           ? "先用一小轮到期复习找回节奏，无需一次清空积压。"
+          : roundCap < 15 && data.time_budget_enabled !== false
+            ? budget > roundCap
+              ? `你选择了约 ${budget} 分钟，仍可改为本浏览器建议的约 ${roundCap} 分钟。`
+              : roundCap === 3
+                ? "本浏览器最近三轮有两轮中途退出，先用约 3 分钟完成一小轮。"
+                : `本浏览器已连续完成三轮，可逐步增加；本轮按约 ${budget} 分钟安排。`
           : data.review_count > 0
             ? `先复习本轮的 ${data.review_count} 张到期词卡，再按余量安排新词。`
             : `先学本轮的 ${data.new_count} 个新词，再用少量练习巩固。`;
@@ -481,7 +504,7 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
         <div className="home-round-notes">
           {data.time_budget_enabled !== false && <label>今天可用时间 <select aria-label="今天可用时间" value={activeSession?.plan?.budget_minutes ?? data.plan?.budget_minutes ?? budget} disabled={!!activeSession} onChange={event => {
             const minutes = Number(event.target.value);
-            storageSet("timeBudget", minutes); setBudget(minutes); setMode("regular");
+            explicitBudget.current = true; storageSet("timeBudget", minutes); setBudget(minutes); setMode("regular");
           }}>{[3, 8, 15].map(minutes => <option key={minutes} value={minutes}>约 {minutes} 分钟</option>)}</select></label>}
           <p role="status" data-testid="time-budget-plan">预计约 {Math.ceil((plan?.estimated_seconds ?? 0) / 60)} 分钟 · 巩固至多 {plan?.reinforcement_limit ?? 3} 题</p>
           {plan?.may_exceed_budget && <p role="status">至少保留一张有效词卡，本轮可能超过所选时间，可保存后暂停。</p>}
@@ -514,6 +537,7 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
         </>}
         <details className="home-plan-details">
           <summary>计划详情与目标设置</summary>
+          <p>轮次建议只参考本浏览器最近 30 轮的实际暂停、退出和完成；不改变排期或全日新词配额，不随数据库备份转移。刷新继续同一轮，重复暂停不重复计轮。</p>
             <div className="home-goal">
               <div className="home-goal-label">今日完成 <b>{done}</b><span className="goal-total">/ {target}</span><span>词</span></div>
               <div className="home-goal-controls">

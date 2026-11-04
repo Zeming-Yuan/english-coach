@@ -23,7 +23,7 @@ function BudgetNotice({session}) {
 }
 
 /** Daily orchestration only; main progress and attempt commits keep their existing owners. */
-export default function DailySessionPage({ session, onSessionChange, onFinish, onPauseExit, ...studyProps }) {
+export default function DailySessionPage({ session, onSessionChange, onFinish, onPauseExit, onRoundObserved, ...studyProps }) {
 
   const mounted = useRef(false);
   const readSequence = useRef(0);
@@ -85,10 +85,15 @@ export default function DailySessionPage({ session, onSessionChange, onFinish, o
     if (!pause) onSessionChange({phase: "summary"});
     try {
       const saved = await api(`/api/sessions/${session.id}/summary`);
-      if (ownsRead(request)) setSummary(saved);
+      if (ownsRead(request)) {
+        if (saved.session_id === session.id && (pause || (session.complete && saved.counts.main >= session.target))) {
+          await onRoundObserved?.(session, pause ? "interrupted" : saved.counts.completed_cards >= session.target ? "completed" : "ended");
+        }
+        if (ownsRead(request)) setSummary(saved);
+      }
     } catch (e) { if (ownsRead(request)) setError(`结果加载失败：${e.message}`); }
     finally { if (ownsRead(request)) setLoading(false); }
-  }, [session, onSessionChange]);
+  }, [session, onSessionChange, onRoundObserved]);
   const load = async () => {
     if (!ownsSession()) return;
     const request = ++readSequence.current;
