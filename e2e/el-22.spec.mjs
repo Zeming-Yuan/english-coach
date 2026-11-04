@@ -18,6 +18,7 @@ test("EL-22 selected time gives one next step and resumes the same saved round",
   await rate(page);
   await expect(page.locator(".study-count")).toHaveText("2 / 2");
   await page.getByRole("button", {name: "先到这里", exact: true}).click();
+  await expect(page.getByTestId("daily-closure")).toHaveCount(0);
   await page.getByRole("button", {name: "返回首页", exact: true}).click();
   await page.reload();
   await expect(next.getByTestId("next-step-reason")).toHaveText("上轮还有 1 张未完成，先从保存的位置继续。");
@@ -48,4 +49,29 @@ test("EL-22 home keeps its action above the fold and exposes estimates only on d
   await next.getByText("计划详情与目标设置", {exact: true}).click();
   await expect(next.getByRole("progressbar", {name: "今日最低目标进度"})).toHaveAttribute("aria-valuemax", "15");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test("EL-22 saved completion closes the day while weak words and optional details remain honest", async ({app, page}) => {
+  const ids = await app.seedCards([{word: "apple", meaning: "苹果"}, {word: "book", meaning: "书"}]);
+  await page.goto(app.baseURL);
+  await start(page);
+  await rate(page, 1);
+  await rate(page);
+  await page.getByRole("button", {name: "跳过本轮巩固", exact: true}).click();
+  await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toBeVisible();
+  await expect(page.getByTestId("daily-closure")).toHaveText("本轮已完成，今天可以结束了。");
+  await expect(page.locator(".done-detail")).toContainText("2 张卡已保存并排期");
+  await expect(page.getByText("仍需复习：apple", {exact: true})).toBeVisible();
+  await expect(page.getByText("自评：1 / 2", {exact: true})).not.toBeVisible();
+  const before = await (await app.request.get("/api/export/backup")).json();
+  await page.getByText("查看详细学习记录与自选练习", {exact: true}).click();
+  await expect(page.getByText("自评：1 / 2", {exact: true})).toBeVisible();
+  await expect(page.getByRole("button", {name: "去做测验", exact: true})).toBeVisible();
+  const after = await (await app.request.get("/api/export/backup")).json();
+  expect(after.learning_events).toEqual(before.learning_events);
+  expect(after.learning_events.map(event => event.card_id)).toEqual(ids);
+  await page.getByText("查看详细学习记录与自选练习", {exact: true}).click();
+  await page.screenshot({path: test.info().outputPath("daily-closure.png")});
+  await page.getByRole("button", {name: "← 返回队列", exact: true}).click();
+  await expect(page.getByTestId("next-step-reason")).toContainText("今天可以结束了");
 });

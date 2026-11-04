@@ -4,6 +4,7 @@ import {fileURLToPath} from "node:url";
 
 export const requirements = {
   EL22: [
+    "EL-22 saved completion closes the day while weak words and optional details remain honest",
     "EL-22 home keeps its action above the fold and exposes estimates only on demand",
     "EL-22 Home daily goal changes independently of the bounded round and survives reload",
     "EL-22 selected time gives one next step and resumes the same saved round",
