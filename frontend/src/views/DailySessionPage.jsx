@@ -23,7 +23,7 @@ function BudgetNotice({session}) {
 }
 
 /** Daily orchestration only; main progress and attempt commits keep their existing owners. */
-export default function DailySessionPage({ session, onSessionChange, onFinish, onPauseExit, ...studyProps }) {
+export default function DailySessionPage({ session, onSessionChange, onFinish, onPauseExit, onRoundObserved, ...studyProps }) {
 
   const mounted = useRef(false);
   const readSequence = useRef(0);
@@ -85,10 +85,15 @@ export default function DailySessionPage({ session, onSessionChange, onFinish, o
     if (!pause) onSessionChange({phase: "summary"});
     try {
       const saved = await api(`/api/sessions/${session.id}/summary`);
-      if (ownsRead(request)) setSummary(saved);
+      if (ownsRead(request)) {
+        if (saved.session_id === session.id && (pause || (session.complete && saved.counts.main >= session.target))) {
+          await onRoundObserved?.(session, pause ? "interrupted" : saved.counts.completed_cards >= session.target ? "completed" : "ended");
+        }
+        if (ownsRead(request)) setSummary(saved);
+      }
     } catch (e) { if (ownsRead(request)) setError(`结果加载失败：${e.message}`); }
     finally { if (ownsRead(request)) setLoading(false); }
-  }, [session, onSessionChange]);
+  }, [session, onSessionChange, onRoundObserved]);
   const load = async () => {
     if (!ownsSession()) return;
     const request = ++readSequence.current;
@@ -144,21 +149,28 @@ export default function DailySessionPage({ session, onSessionChange, onFinish, o
     attempt.clear();
     await load();
   };
-  if (summary) return <section className="view view-center"><div className="study-done">
+  if (summary) return <section className="view view-center"><div className="study-done daily-summary">
     <h2>{paused ? "本段已保存结果" : session.plan?.mode === "recovery" ? "恢复学习结果" : "本轮学习结果"}</h2>
+    {!paused && <p role="status" className="daily-closure" data-testid="daily-closure">本轮已完成，今天可以结束了。</p>}
     <p className="done-detail">{summary.counts.completed_cards} 张卡已保存并排期；主队列 {summary.counts.main} 次，巩固 {summary.counts.reinforcement} 次；跳过 {summary.counts.skipped} 次。</p>
-    {[["retrieval", "独立提取"], ["assisted", "辅助练习"], ["recognition", "识别练习"], ["self_report", "自评"]].map(([key, label]) => <p key={key}>{label}：{summary.metrics[key].count ? `${summary.metrics[key].successes} / ${summary.metrics[key].count}` : "暂无数据"}</p>)}
     <p>仍需复习：{summary.weak_words.map(w => w.word).join("、") || "本轮暂无薄弱词"}</p>
-    <p>{summary.next_due ? `已有排期：${summary.next_due}` : "暂无排期，可稍后返回队列继续学习"}</p>
+
     {session.plan?.mode === "recovery" && <p role="status" data-testid="recovery-remaining">剩余到期 {summary.remaining_due} 张，可另选常规计划；无需一次清空积压。</p>}
     {paused ? <>
       <p>本轮目标 {session.target} 张，仍有 {session.target - session.index} 张未完成</p>
       <button className="btn btn-primary" onClick={onPauseExit}>返回首页</button>
       <button className="btn btn-ghost" onClick={continueRound}>继续本轮学习</button>
     </> : <>
-      <button className="btn btn-primary" onClick={onFinish}>{session.plan?.mode === "recovery" ? "继续常规计划" : "← 返回队列"}</button>
-      <button className="btn btn-ghost" onClick={() => { onFinish(); studyProps.onToQuiz(); }}>去做测验</button>
+      <button className="btn btn-primary" onClick={onFinish}>{session.plan?.mode === "recovery" ? "今天先到这里" : "← 返回队列"}</button>
+      {session.plan?.mode === "recovery" && <button className="btn btn-ghost" onClick={onFinish}>继续常规计划</button>}
+
     </>}
+    <details className="daily-summary-details">
+      <summary>查看详细学习记录与自选练习</summary>
+    {[["retrieval", "独立提取"], ["assisted", "辅助练习"], ["recognition", "识别练习"], ["self_report", "自评"]].map(([key, label]) => <p key={key}>{label}：{summary.metrics[key].count ? `${summary.metrics[key].successes} / ${summary.metrics[key].count}` : "暂无数据"}</p>)}
+    <p>{summary.next_due ? `已有排期：${summary.next_due}` : "暂无排期，可稍后返回队列继续学习"}</p>
+      {!paused && <button className="btn btn-ghost" onClick={() => { onFinish(); studyProps.onToQuiz(); }}>去做测验</button>}
+    </details>
   </div></section>;
   if (paused) return <section className="view view-center">
     {loading && <p role="status">正在读取本段已保存结果…</p>}

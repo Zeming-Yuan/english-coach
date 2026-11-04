@@ -110,7 +110,7 @@ export default function BackupPage({ onBack, onRestored, restoring, onRestoringC
         throw new Error("恢复响应无效");
       }
       setRestoreResult(result);
-      onRestored?.();
+      await onRestored?.();
       setCandidate(null);
       setDone(false);
       if (inputRef.current) inputRef.current.value = "";

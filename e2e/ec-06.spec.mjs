@@ -289,7 +289,7 @@ for (const failure of ["timeout", "error"]) {
     expect(preload.ok()).toBe(true);
     expect(await preload.json()).toEqual({cached: false});
     await page.goto(app.baseURL);
-    if (await page.locator("summary").locator("..").getAttribute("open") === null) await page.locator("summary").click();
+    if (await page.getByText("专项练习", {exact: true}).locator("..").getAttribute("open") === null) await page.getByText("专项练习", {exact: true}).click();
     await page.getByRole("button", {name: /听写练习/}).click();
     await expect(page.locator(".listening-option").first()).toBeVisible();
     await page.locator(".btn-speak-large").click();

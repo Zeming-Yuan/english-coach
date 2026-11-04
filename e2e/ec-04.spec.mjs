@@ -113,7 +113,7 @@ test("EC-04 detail-rating-stays-on-failure", async ({app, page}) => {
 test("EC-04 lesson-rating-stays-on-failure", async ({appFactory, page}) => {
   const instance = await appFactory({fixture: "ec04-lesson.json"});
   await page.goto(instance.baseURL);
-  if (await page.locator("summary").locator("..").getAttribute("open") === null) await page.locator("summary").click();
+  if (await page.getByText("专项练习", {exact: true}).locator("..").getAttribute("open") === null) await page.getByText("专项练习", {exact: true}).click();
   await page.getByTestId("open-lessons").click();
   await page.locator(".lesson-list-item").first().click();
   await page.getByRole("button", {name: "猜不到"}).click();

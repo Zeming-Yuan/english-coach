@@ -89,6 +89,7 @@ test("EC-13 minimum daily goal never raises a lowered new-word quota", async ({a
   await app.request.post("/api/reviews", {data: {card_id: ids[0], rating: 1, source: "study", kind: "self_rating", submission_id: crypto.randomUUID()}});
   await page.goto(app.baseURL);
   await expect(page.getByTestId("new-word-limit")).toContainText("新词建议 5 个");
+  await page.getByText("计划详情与目标设置", {exact: true}).click();
   await page.locator(".goal-daily-set").selectOption("20");
   await expect(page.locator(".goal-total")).toHaveText("/ 20");
   await expect(page.getByTestId("new-word-limit")).toContainText("新词建议 5 个");

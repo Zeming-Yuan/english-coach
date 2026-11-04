@@ -68,12 +68,14 @@ test("Home legacy story without Chinese title does not reveal the English title"
   await expect(story).toContainText("读一个小故事");
 });
 
-test("Home daily goal changes independently of the bounded round and survives reload", async ({app, page}) => {
+test("EL-22 Home daily goal changes independently of the bounded round and survives reload", async ({app, page}) => {
   await app.seedCards([{word: "apple", meaning: "苹果"}, {word: "book", meaning: "书"}]);
   await page.goto(app.baseURL);
+  await page.getByText("计划详情与目标设置", {exact: true}).click();
   await page.getByLabel("每日最低完成目标").selectOption("15");
   await expect(page.getByTestId("round-target")).toContainText("本轮目标 2 张");
   await page.reload();
+  await page.getByText("计划详情与目标设置", {exact: true}).click();
   await expect(page.getByRole("progressbar", {name: "今日最低目标进度"})).toHaveAttribute("aria-valuemax", "15");
   await page.getByRole("button", {name: "开始今天的学习", exact: true}).click();
   await expect(page.locator(".view-study")).toBeVisible();

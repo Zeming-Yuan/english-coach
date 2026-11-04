@@ -25,6 +25,7 @@ test("EC-09 target-does-not-override-new-limit", async ({app, page}) => {
   });
 
   await page.goto(app.baseURL);
+  await page.getByText("计划详情与目标设置", {exact: true}).click();
   await page.locator(".goal-daily-set").selectOption("20");
   await expect(page.getByTestId("new-word-limit")).toContainText("5");
   await expect(page.locator("body")).not.toContainText("${");

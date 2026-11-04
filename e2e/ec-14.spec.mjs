@@ -49,6 +49,7 @@ test("EC-14 reinforcement uses independent typed save and real summary", async (
   await page.locator(".spelling-input").press("Enter");
   await continueAfterSaved(page);
   await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toBeVisible();
+  await page.getByText("查看详细学习记录与自选练习", {exact: true}).click();
   await expect(page.getByText("独立提取：1 / 1", {exact: true})).toBeVisible();
   await page.screenshot({path: `/tmp/english-coach-followup-2026-10-31/ec14-summary-${test.info().project.name}.png`});
   await expect(page.getByText("仍需复习：本轮暂无薄弱词", {exact: true})).toBeVisible();
@@ -68,6 +69,7 @@ test("EC-14 assisted reinforcement stays weak without another schedule", async (
   await page.locator(".spelling-input").fill("apple");
   await continueAfterSaved(page);
   await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toBeVisible();
+  await page.getByText("查看详细学习记录与自选练习", {exact: true}).click();
   await expect(page.getByText("辅助练习：1 / 1", {exact: true})).toBeVisible();
   await expect(page.getByText("仍需复习：apple", {exact: true})).toBeVisible();
   const events = (await (await app.request.get(`/api/cards/${id}`)).json()).learning_events;
@@ -109,6 +111,7 @@ test("EC-14 no weak items reads summary and a summary failure remains retryable"
   await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toHaveCount(0);
   await page.getByRole("button", {name: "重试加载", exact: true}).click();
   await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toBeVisible();
+  await page.getByText("查看详细学习记录与自选练习", {exact: true}).click();
   await expect(page.getByText("自评：1 / 1", {exact: true})).toBeVisible();
 });
 
@@ -343,7 +346,7 @@ test("EC-14 unrelated late confirmation preserves saved reinforcement feedback",
   await page.locator(".rating-1").click();
   await expect(page.locator(".spelling-input")).toBeVisible();
   await page.getByRole("button", {name: "← 退出", exact: true}).click();
-  if (await page.locator("summary").locator("..").getAttribute("open") === null) await page.locator("summary").click();
+  if (await page.getByText("专项练习", {exact: true}).locator("..").getAttribute("open") === null) await page.getByText("专项练习", {exact: true}).click();
   await page.getByRole("button", {name: "复习错词", exact: true}).click();
   await app.failCommitOnce();
   await page.locator(".flip-hint").first().click();

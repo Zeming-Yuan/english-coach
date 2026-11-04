@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, Component } from "react";
 import { api } from "./lib/api.js";
 import { storageGet, storageSet } from "./lib/utils.js";
+import {recordRoundOutcome, resetRoundOutcomes, roundBudgetCap, roundObservationGeneration, subscribeRoundAdvice} from "./lib/roundOutcomes.js";
 import { setTtsRate } from "./lib/tts.js";
 import { refreshPendingContacts } from "./lib/contacts.js";
 import { loadPending, sendPending, clearPending, savePending } from "./lib/learning.js";
@@ -206,12 +207,18 @@ export default function App() {
     });
   };
   const startDaily = (data) => {
-    const session = { id: crypto.randomUUID(), queue: data.queue, target: data.target, index: 0, remainingDue: data.remaining_due, reviewCount: data.review_count, newCount: data.new_count, plan: data.plan, startedAt: Date.now() };
+    const session = { id: crypto.randomUUID(), observationGeneration: roundObservationGeneration(), queue: data.queue, target: data.target, index: 0, remainingDue: data.remaining_due, reviewCount: data.review_count, newCount: data.new_count, plan: data.plan, startedAt: Date.now() };
     updateDaily(session);
     setIsDailyStudy(true);
     setStudyQueue(session.queue);
     setView("study");
   };
+  const lastDailyStudy = useRef(null);
+  useEffect(() => {
+    const previous = lastDailyStudy.current;
+    if (view !== "study" && previous && !previous.complete) void recordRoundOutcome(previous, "interrupted");
+    lastDailyStudy.current = view === "study" && isDailyStudy ? dailySession : null;
+  }, [view, isDailyStudy, dailySession]);
   const [singleCard, setSingleCard] = useState(null);
   const [restoringBackup, setRestoringBackup] = useState(false);
   const [queueVersion, setQueueVersion] = useState(0);
@@ -279,7 +286,8 @@ export default function App() {
         {view === "advice" && <AdvicePracticePage request={adviceRequest} onExit={() => setView("stats")} onNormal={() => setView("spelling")} />}
         {view === "delayed" && <DelayedCheckPage key={delayedWindow} window={delayedWindow} onExit={() => setView("stats")} onNormal={() => setView("spelling")} />}
         {view === "settings" && <SettingsPage darkMode={darkMode} setDarkMode={setDarkMode} onOpenBackup={() => setView("backup")} />}
-        {view === "backup" && <BackupPage restoring={restoringBackup} onRestoringChange={setRestoringBackup} onBack={() => setView("settings")} onRestored={() => {
+        {view === "backup" && <BackupPage restoring={restoringBackup} onRestoringChange={setRestoringBackup} onBack={() => setView("settings")} onRestored={async () => {
+          await resetRoundOutcomes();
           setAdviceRequest(null);
           try { localStorage.removeItem("ec.advice.request"); } catch {}
           setIsDailyStudy(false);
@@ -289,7 +297,7 @@ export default function App() {
           setQueueVersion((v) => v + 1);
         }} />}
         {view === "lessons" && <LessonsPage onExit={() => setView("queue")} />}
-        {view === "study" && (isDailyStudy ? <DailySessionPage session={dailySession} onSessionChange={(details) => updateDailyDetails(dailySession.id, details)} onFinish={() => { updateDaily({...dailySession, finished: true}); setView("queue"); }} onPauseExit={() => setView("queue")} recoveryVersion={queueVersion} onAbort={() => { setIsDailyStudy(false); updateDaily(null); setStudyQueue([]); setView("queue"); }} onProgress={confirmDailyCard} queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} /> : <StudyPage recoveryVersion={queueVersion} session={isDailyStudy ? dailySession : null} onAbort={() => { setIsDailyStudy(false); updateDaily(null); setStudyQueue([]); setView("queue"); }} onProgress={confirmDailyCard} queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} />)}
+        {view === "study" && (isDailyStudy ? <DailySessionPage session={dailySession} onRoundObserved={recordRoundOutcome} onSessionChange={(details) => updateDailyDetails(dailySession.id, details)} onFinish={() => { updateDaily({...dailySession, finished: true}); setView("queue"); }} onPauseExit={() => setView("queue")} recoveryVersion={queueVersion} onAbort={() => { setIsDailyStudy(false); updateDaily(null); setStudyQueue([]); setView("queue"); }} onProgress={confirmDailyCard} queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} /> : <StudyPage recoveryVersion={queueVersion} session={isDailyStudy ? dailySession : null} onAbort={() => { setIsDailyStudy(false); updateDaily(null); setStudyQueue([]); setView("queue"); }} onProgress={confirmDailyCard} queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} />)}
         {view === "quiz" && <QuizPage onExit={() => setView("queue")} />}
         {view === "spelling" && <SpellingPage onExit={() => { setView("queue"); setSingleCard(null); }} singleCard={singleCard} />}
         {view === "listening" && <ListeningPage onExit={() => setView("queue")} />}
@@ -336,10 +344,19 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
   const [loadError, setLoadError] = useState("");
+  const [roundCap, setRoundCap] = useState(roundBudgetCap);
+  const explicitBudget = useRef(false);
   const [budget, setBudget] = useState(() => {
     const saved = storageGet("timeBudget", 8);
-    return [3, 8, 15].includes(saved) ? saved : 8;
+    return Math.min([3, 8, 15].includes(saved) ? saved : 8, roundCap);
   });
+  useEffect(() => subscribeRoundAdvice(cap => {
+    setRoundCap(cap);
+    if (!explicitBudget.current) {
+      const saved = storageGet("timeBudget", 8);
+      setBudget(Math.min([3, 8, 15].includes(saved) ? saved : 8, cap));
+    }
+  }), []);
   const [mode, setMode] = useState("regular");
   const [dailyGoal, setDailyGoal] = useState(() => storageGet("dailyGoal", 10));
   const {
@@ -434,7 +451,7 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
   const activeSession = dailySession && !dailySession.finished ? dailySession : null;
   const plan = activeSession?.plan ?? data.plan;
   const errorCount = (data.error_cards || []).length;
-  const isEmpty = stats?.total_cards === 0;
+  const isEmpty = stats?.total_cards === 0 && !activeSession;
 
   // 每日最低目标、新词建议与本轮卡数分别表达。
   const done = stats?.reviewed_today || 0;
@@ -456,26 +473,42 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
     ["mixed", "混合练习", "组合题型，巩固薄弱项", "stack"],
   ];
   const retryMaterials = () => setReloadKey(key => key + 1);
+  const nextStepReason = activeSession
+    ? activeSession.complete
+      ? "主队列已保存，继续可选巩固或查看本轮结果。"
+      : `上轮还有 ${activeSession.target - activeSession.index} 张未完成，先从保存的位置继续。`
+    : isEmpty
+      ? "先添加想学的词，或从入门词卡开始。"
+      : queueTotal === 0
+        ? "当前没有待学词卡，今天可以结束了，也可自选练习。"
+        : plan?.mode === "recovery"
+          ? "先用一小轮到期复习找回节奏，无需一次清空积压。"
+          : roundCap < 15 && data.time_budget_enabled !== false
+            ? budget > roundCap
+              ? `你选择了约 ${budget} 分钟，仍可改为本浏览器建议的约 ${roundCap} 分钟。`
+              : roundCap === 3
+                ? "根据本浏览器此前的中断记录，先用约 3 分钟找回完成节奏。"
+                : `根据本浏览器已保存的完成记录，可逐步增加；本轮按约 ${budget} 分钟安排。`
+          : data.review_count > 0
+            ? `先复习本轮的 ${data.review_count} 张到期词卡，再按余量安排新词。`
+            : `先学本轮的 ${data.new_count} 个新词，再用少量练习巩固。`;
 
   return (
     <section className="view home-workspace" aria-label="今天的学习">
       {showEveningReminder && <p className="home-reminder">今天还没有完成记录，可以从一轮学习开始。</p>}
-      <section className="home-round" aria-labelledby="home-title">
+      <section className="home-round" aria-label="今天下一步">
         <div className="home-round-heading">
           <h1 id="home-title">今天的学习</h1>
-          <p>{isEmpty ? "从第一组单词开始" : activeSession ? "继续从上次的位置开始" : "先回忆，再继续新的内容"}</p>
+          <p data-testid="next-step-reason">{nextStepReason}</p>
         </div>
         <div className="home-round-notes">
           {data.time_budget_enabled !== false && <label>今天可用时间 <select aria-label="今天可用时间" value={activeSession?.plan?.budget_minutes ?? data.plan?.budget_minutes ?? budget} disabled={!!activeSession} onChange={event => {
             const minutes = Number(event.target.value);
-            storageSet("timeBudget", minutes); setBudget(minutes); setMode("regular");
+            explicitBudget.current = true; storageSet("timeBudget", minutes); setBudget(minutes); setMode("regular");
           }}>{[3, 8, 15].map(minutes => <option key={minutes} value={minutes}>约 {minutes} 分钟</option>)}</select></label>}
-          <p role="status" data-testid="time-budget-plan">预计约 {Math.ceil((plan?.estimated_seconds ?? 0) / 60)} 分钟 · 巩固至多 {plan?.reinforcement_limit ?? 3} 题。固定开销 15 秒；时间仅作估计，可保存后暂停。</p>
+          <p role="status" data-testid="time-budget-plan">预计约 {Math.ceil((plan?.estimated_seconds ?? 0) / 60)} 分钟 · 巩固至多 {plan?.reinforcement_limit ?? 3} 题</p>
           {plan?.may_exceed_budget && <p role="status">至少保留一张有效词卡，本轮可能超过所选时间，可保存后暂停。</p>}
-          <p role="status" data-testid="estimate-basis">{plan?.estimate_basis === "personal" ? "个人估算（部分类型可能仍用默认值）" : "默认估算"}：{[["review", "复习", 20], ["new", "新词", 40], ["reinforcement", "巩固", 20]].map(([kind, label, fallback]) => {
-            const value = plan?.estimates?.[kind];
-            return `${label} ${value?.seconds ?? fallback} 秒（${value?.basis === "personal" ? `个人，最近 ${value.sample_count} 条中位数` : `默认，有效样本 ${value?.sample_count ?? 0}/5，不足或记录不可靠`}）`;
-          }).join("；")}。后台、超过 30 秒无操作和保存等待不计主动时长；只校准未来计划。</p>
+
         </div>
         {!activeSession && data.recovery_available && <div className="home-round-notes" data-testid="recovery-offer">
           <p role="status">恢复学习：中断至少三个学习日，可先用约三分钟复习至多五张到期词，零新词；无需一次清空积压。</p>
@@ -497,6 +530,14 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
               <h2>{activeSession || queueTotal > 0 ? "本轮学习" : "今日复习已完成"}</h2>
               {activeSession || queueTotal > 0 ? <p data-testid="round-target">本轮目标 {activeSession?.target ?? data.target} 张 · 到期复习 {activeSession?.reviewCount ?? data.review_count} 张 · 新词 {activeSession?.newCount ?? data.new_count} 个</p> : <p>{data.new_remaining === 0 ? "今日新词余量已用完，可稍后复习或继续专项练习。" : "当前没有到期词或待学新词，可继续专项练习。"}</p>}
             </div>
+            <button className="btn home-primary home-round-action" onClick={() => activeSession ? onResumeDaily() : queueTotal > 0 ? onStartDaily(data) : setView("add")}>
+              {activeSession ? "继续本轮学习" : queueTotal > 0 ? (plan?.mode === "recovery" ? "开始恢复学习" : "开始今天的学习") : "添加新词"}<CaretRightIcon aria-hidden="true" size={20} />
+            </button>
+          </div>
+        </>}
+        <details className="home-plan-details">
+          <summary>计划详情与目标设置</summary>
+          <p>本浏览器保留最近 30 轮实际暂停、退出和完成的明细，并保留更早记录的建议摘要；不改变排期或全日新词配额，不随数据库备份转移。刷新继续同一轮，重复暂停不重复计轮。</p>
             <div className="home-goal">
               <div className="home-goal-label">今日完成 <b>{done}</b><span className="goal-total">/ {target}</span><span>词</span></div>
               <div className="home-goal-controls">
@@ -504,15 +545,16 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
                 <label className="home-goal-change">更改目标<select className="goal-daily-set" aria-label="每日最低完成目标" value={dailyGoal} title="每日最低完成目标（不改变新词配额或本轮张数）" onChange={e => {const n = parseInt(e.target.value); setDailyGoal(n); storageSet("dailyGoal", n);}}>{[5, 10, 15, 20].map(n => <option key={n} value={n}>至少 {n} 词/日</option>)}</select></label>
               </div>
             </div>
-            <button className="btn home-primary home-round-action" onClick={() => activeSession ? onResumeDaily() : queueTotal > 0 ? onStartDaily(data) : setView("add")}>
-              {activeSession ? "继续本轮学习" : queueTotal > 0 ? (plan?.mode === "recovery" ? "开始恢复学习" : "开始今天的学习") : "添加新词"}<CaretRightIcon aria-hidden="true" size={20} />
-            </button>
-          </div>
           <div className="home-round-notes">
             <span data-testid="remaining-due">另有 {activeSession?.remainingDue ?? data.remaining_due} 张到期词，完成后可继续下一轮</span>
             <span data-testid="new-word-limit">新词建议 {adaptiveGoal} 个 · 今日剩余 {data.new_remaining ?? adaptiveGoal} 个 · 有效样本 {data.sample_count ?? 0}</span>
           </div>
-        </>}
+          <p>固定开销 15 秒；时间仅作估计，可保存后暂停。</p>
+          <p role="status" data-testid="estimate-basis">{plan?.estimate_basis === "personal" ? "个人估算（部分类型可能仍用默认值）" : "默认估算"}：{[["review", "复习", 20], ["new", "新词", 40], ["reinforcement", "巩固", 20]].map(([kind, label, fallback]) => {
+            const value = plan?.estimates?.[kind];
+            return `${label} ${value?.seconds ?? fallback} 秒（${value?.basis === "personal" ? `个人，最近 ${value.sample_count} 条中位数` : `默认，有效样本 ${value?.sample_count ?? 0}/5，不足或记录不可靠`}）`;
+          }).join("；")}。后台、超过 30 秒无操作和保存等待不计主动时长；只校准未来计划。</p>
+        </details>
       </section>
 
       <div className="home-content-grid">

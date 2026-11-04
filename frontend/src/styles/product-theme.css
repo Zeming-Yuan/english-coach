@@ -561,3 +561,10 @@ body.dark .product-app .btn-primary:hover { background: #d8cec0; border-color: #
   .word-detail-evidence .word-detail-status { grid-template-columns: 1fr; }
   .word-detail-view .word-detail-example { font-size: 26px; }
 }
+
+.product-app .daily-summary { max-width: 640px; }
+.product-app .daily-closure { font-size: 20px; line-height: 1.7; color: var(--ink); margin: 18px 0; }
+.product-app .daily-summary-details { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--line); text-align: left; }
+.product-app .daily-summary-details > summary { cursor: pointer; color: var(--muted); font-size: 14px; }
+.product-app .daily-summary-details > p { margin-top: 12px; }
+.product-app .daily-summary-details > button { margin-top: 16px; }

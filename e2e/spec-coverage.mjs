@@ -3,6 +3,20 @@ import fs from "node:fs";
 import {fileURLToPath} from "node:url";
 
 export const requirements = {
+  EL22: [
+    "EL-22 a pre-restore tab cannot repopulate advice in the restored data scope",
+    "EL-22 a stale tab leaving after completion cannot downgrade future advice",
+    "EL-22 deleting every card still offers the frozen round and an explicit invalid-round exit",
+    "EL-22 selected time gives one next step and resumes the same saved round",
+    "EL-22 home keeps its action above the fold and exposes estimates only on demand",
+    "EL-22 saved completion closes the day while weak words and optional details remain honest",
+    "EL-22 two interrupted rounds shorten only future advice without counting repeated pauses",
+    "EL-22 three uninterrupted completions restore advice and backup replacement resets its scope",
+    "EL-22 skipped rounds do not count as stable completed work or change memory schedules",
+    "EL-22 unavailable browser storage cannot block saved learning or invent completed observations",
+    "EL-22 empty due and recovery reasons reflect the real queue without creating learning events",
+    "EL-22 Home daily goal changes independently of the bounded round and survives reload",
+  ],
   "EL-JOURNEY": [
     "EL-21 new install completes six learning paths",
     "EL-21 upgraded database completes six learning paths",
