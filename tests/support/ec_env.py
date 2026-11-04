@@ -90,6 +90,7 @@ class ECEnv:
             database_url=self.database_url,
             llm_api_key="",
             llm_base_url="http://127.0.0.1:9/v1",
+            llm_config_path=str(self.root / "llm_config.json"),
             deepseek_api_key="",
             deepseek_base_url="",
         )

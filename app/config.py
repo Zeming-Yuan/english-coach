@@ -19,9 +19,13 @@ class Settings(BaseSettings):
         hide_input_in_errors=True,
     )
 
-    # LLM API（OpenAI 兼容协议，当前：小米 MiMo Token Plan）
+    # LLM API（OpenAI 兼容协议）
     llm_api_key: str = ""
     llm_base_url: str = "https://token-plan-cn.xiaomimimo.com/v1"
+    # 统一模型名；留空则按任务路由（BULK/REASONING）
+    llm_model: str = ""
+    # 设置页保存的配置（覆盖 .env）；备份只导出数据库，不包含此文件
+    llm_config_path: str = "data/llm_config.json"
 
     # 数据库连接（默认本地 SQLite）
     database_url: str = "sqlite:///./data/english_coach.db"

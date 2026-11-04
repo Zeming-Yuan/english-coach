@@ -257,6 +257,8 @@ function StoryRead({ story, onBack }) {
             }
           }
         });
+        // 被下一次朗读打断不是失败，不再提示。
+        if (run !== speechRun.current || result === "canceled") break;
         if (result === "none") { showToast("暂时无法朗读，请稍后重试"); break; }
         // Only completed playback that really started can support the next segment.
         playedPrefix = started ? playedText : "";
@@ -413,7 +415,7 @@ function StoryRead({ story, onBack }) {
               <button className="story-word-panel-close" aria-label="关闭词语释义" onClick={dismissWord}><XIcon aria-hidden="true" /></button>
             </div>
             <h2 className="story-word-panel-word" lang="en">{activeWord.word}</h2>
-            <div className="reader-pronunciation">{activeWord.phonetic && <span className="story-word-panel-phonetic">{activeWord.phonetic}</span>}<button className="reader-tool" aria-label={`朗读 ${activeWord.word}`} onClick={() => speak(activeWord.word)}><SpeakerHighIcon aria-hidden="true" /></button></div>
+            <div className="reader-pronunciation">{activeWord.phonetic && <span className="story-word-panel-phonetic">{activeWord.phonetic}</span>}<button className="reader-tool" aria-label={`朗读 ${activeWord.word}`} onClick={() => contactAudio(activeWord.word, null)}><SpeakerHighIcon aria-hidden="true" /></button></div>
             <div className="story-word-panel-meaning" aria-live="polite">
               {activeWord.meaning || (lookupResult.status === "missing" ? "暂无释义" : "查询中…")}
             </div>

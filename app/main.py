@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from app.config import Settings
 from app.config import settings as app_settings
 from app.routers import (
+    ai_config,
     cards,
     export,
     health,
@@ -31,6 +32,7 @@ from app.routers import (
     tts,
 )
 from app.runtime import Runtime, SystemClock
+from app.services import ai_config_store
 from app.services.llm import bind_llm_client, reset_llm_client
 from app.services.llm_client import LazyLLMClient, LLMNotConfigured
 
@@ -43,6 +45,9 @@ def create_app(
 ) -> FastAPI:
     """构建应用；测试可注入配置、运行时和静态目录。"""
     settings = settings or app_settings
+    # 设置页保存的配置优先于 .env，启动时加载。
+    llm_config_path = Path(settings.llm_config_path)
+    ai_config_store.load_into(settings, llm_config_path)
     runtime = runtime or Runtime(SystemClock(), settings.learning_timezone)
 
     app = FastAPI(
@@ -54,6 +59,7 @@ def create_app(
     runtime.scene_expansions_enabled = settings.scene_expansions_enabled
     app.state.settings = settings
     app.state.runtime = runtime
+    app.state.llm_config_path = llm_config_path
     app.state.llm_client = LazyLLMClient(settings)
 
     @app.middleware("http")
@@ -72,6 +78,7 @@ def create_app(
 
     # 注册路由
     app.include_router(health.router, prefix="/api", tags=["health"])
+    app.include_router(ai_config.router, prefix="/api", tags=["ai-config"])
     app.include_router(today.router, prefix="/api", tags=["today"])
     app.include_router(sessions.router, prefix="/api", tags=["sessions"])
     app.include_router(reviews.router, prefix="/api", tags=["reviews"])

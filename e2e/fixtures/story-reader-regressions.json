@@ -28,7 +28,8 @@
       {"id": 10, "title": "Reader regression 10", "title_cn": "回归故事10", "content": "Lily’s book.", "content_cn": "测试译文。"},
       {"id": 11, "title": "Reader regression 11", "title_cn": "回归故事11", "content": "A well—read child.", "content_cn": "测试译文。"},
       {"id": 12, "title": "Reader regression 12", "title_cn": "回归故事12", "content": "中文 apple.", "content_cn": "测试译文。"},
-      {"id": 13, "title": "Reader regression 13", "title_cn": "回归故事13", "content": "A well–known child.", "content_cn": "测试译文。"}
+      {"id": 13, "title": "Reader regression 13", "title_cn": "回归故事13", "content": "A well–known child.", "content_cn": "测试译文。"},
+      {"id": 14, "title": "Reader regression 14", "title_cn": "回归故事14", "content": "Tea is hot.\nCoffee is warm.", "content_cn": "测试译文。"}
     ],
     "story_words": [
       {"id": 1, "story_id": 1, "card_id": 1},

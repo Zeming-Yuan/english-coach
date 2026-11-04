@@ -198,6 +198,7 @@ export default function MixedPage({ onExit }) {
               })
           : null,
       );
+      if (mode === "canceled") return;
       setAudioHint(
         mode === "online"
           ? ""

@@ -65,6 +65,7 @@ export default function ListeningPage({ onExit }) {
         }),
       );
       if (!announce) return;
+      if (mode === "canceled") return;
       if (mode === "online") setAudioHint("");
       else if (mode === "local") {
         setAudioHint("在线发音不可用，已使用本地语音；也可直接看释义选择答案。");

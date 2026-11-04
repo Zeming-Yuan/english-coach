@@ -6,12 +6,13 @@ async function openReader(page, appFactory, storyId) {
   await page.addInitScript(() => {
     window.__readerAudio = [];
     window.Audio = class {
-      constructor(src) { this.src = src; this.ended = false; }
+      constructor(src) { this.src = src; this.ended = false; this.paused = true; this.pauseCount = 0; }
       play() {
+        this.paused = false;
         window.__readerAudio.push(this);
         return new Promise((resolve, reject) => { this.start = resolve; this.fail = reject; });
       }
-      pause() {}
+      pause() { this.paused = true; this.pauseCount += 1; }
       removeAttribute() {}
       load() {}
     };
@@ -65,6 +66,69 @@ test("story audio does not confirm targets in a segment that has not started", a
   await page.evaluate(() => { window.__readerAudio[1].ended = true; window.__readerAudio[1].onended(); });
   await expect(page.getByRole("button", {name: "朗读", exact: true})).toBeVisible();
   expect(await audioIds(app)).toEqual([3]);
+});
+
+test("starting a new story sentence stops the previous audio", async ({page, appFactory}) => {
+  await openReader(page, appFactory, 14);
+  await page.getByRole("button", {name: "朗读第 1 段"}).click();
+  await expect.poll(() => page.evaluate(() => window.__readerAudio.length)).toBe(1);
+  await page.getByRole("button", {name: "朗读第 2 段"}).click();
+  await expect.poll(() => page.evaluate(() => window.__readerAudio.length)).toBe(2);
+  const previous = await page.evaluate(() => {
+    const audio = window.__readerAudio[0];
+    return {paused: audio.paused, pauseCount: audio.pauseCount};
+  });
+  expect(previous.paused).toBe(true);
+  expect(previous.pauseCount).toBeGreaterThan(0);
+});
+
+test("local speech fallback cannot keep reading after a word starts", async ({page, appFactory}) => {
+  const app = await appFactory({fixture: "story-reader-regressions.json"});
+  await page.addInitScript(() => {
+    window.__local = {spoken: [], canceled: [], active: null};
+    window.Audio = class {
+      constructor(src) { this.src = src; this.ended = false; }
+      play() { return Promise.reject(new Error("no online audio")); }
+      pause() {}
+      removeAttribute() {}
+      load() {}
+    };
+    window.SpeechSynthesisUtterance = class {
+      constructor(text) { this.text = text; }
+    };
+    Object.defineProperty(window, "speechSynthesis", {
+      configurable: true,
+      value: {
+        getVoices: () => [{lang: "en-US", localService: true}],
+        speak(utterance) {
+          window.__local.spoken.push(utterance.text);
+          window.__local.active = utterance;
+          if (utterance.onstart) utterance.onstart();
+        },
+        cancel() {
+          const current = window.__local.active;
+          if (!current) return;
+          window.__local.canceled.push(current.text);
+          window.__local.active = null;
+          // Real browsers may fire onend when an utterance is cancelled.
+          if (current.onend) current.onend();
+        },
+      },
+    });
+  });
+  await page.goto(app.baseURL);
+  await page.getByRole("button", {name: "打开故事库", exact: true}).click();
+  await page.getByText("Reader regression 14", {exact: true}).click();
+  // 整段朗读走本地兜底，停在第一段。
+  await page.getByRole("button", {name: "朗读", exact: true}).click();
+  await expect.poll(() => page.evaluate(() => window.__local.spoken.length)).toBe(1);
+  // 点词朗读必须掐断整段朗读，而不是被下一段反掐。
+  await page.getByRole("button", {name: "查词 tea", exact: true}).first().click();
+  await page.getByRole("button", {name: "朗读 tea", exact: true}).click();
+  await page.waitForTimeout(1000);
+  const local = await page.evaluate(() => ({spoken: window.__local.spoken, active: window.__local.active?.text}));
+  expect(local.spoken).toEqual(["Tea is hot.", "tea"]);
+  expect(local.active).toBe("tea");
 });
 
 test("repeated story word shows the sentence containing the clicked occurrence", async ({page, appFactory}) => {

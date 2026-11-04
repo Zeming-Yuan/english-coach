@@ -15,6 +15,8 @@
 import json
 from contextvars import ContextVar
 
+from openai.types.chat import ChatCompletionMessageParam
+
 from app.config import settings
 from app.services.llm_client import LazyLLMClient, LLMNotConfigured
 from app.services.model_router import Task, route
@@ -47,12 +49,15 @@ def _complete(system: str, user: str | None, task: Task) -> str | None:
 
     唯一例外：AI 未配置时抛 LLMNotConfigured，由 HTTP 层映射为 503。
     """
-    messages = [{"role": "system", "content": system}]
+    messages: list[ChatCompletionMessageParam] = [{"role": "system", "content": system}]
     if user is not None:
         messages.append({"role": "user", "content": user})
+    llm = current_llm_client()
+    # 测试替身只需实现 chat 端口；没有 settings 时按默认路由。
+    model_override = getattr(getattr(llm, "settings", None), "llm_model", "")
     try:
-        resp = current_llm_client().chat.completions.create(
-            model=route(task),
+        resp = llm.chat.completions.create(
+            model=route(task, model_override=model_override or ""),
             messages=messages,
             response_format={"type": "json_object"},
         )
@@ -80,6 +85,8 @@ def generate_json(
     return data if isinstance(data, dict) else None
 
 
-def generate_text(system: str, user: str | None = None, task: Task = Task.BULK) -> str | None:
+def generate_text(
+    system: str, user: str | None = None, task: Task = Task.BULK
+) -> str | None:
     """纯文本生成（不做 JSON 解析）。"""
     return _complete(system, user, task)

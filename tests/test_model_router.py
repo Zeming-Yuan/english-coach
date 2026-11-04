@@ -13,3 +13,13 @@ def test_reasoning_routes_to_pro():
 
 def test_every_task_has_a_route():
     assert set(ROUTES) == set(Task)
+
+
+def test_model_override_applies_to_every_task():
+    assert route(Task.BULK, model_override="deepseek-flash") == "deepseek-flash"
+    assert route(Task.REASONING, model_override="deepseek-flash") == "deepseek-flash"
+
+
+def test_blank_override_keeps_task_routes():
+    assert route(Task.BULK, model_override="  ") == FLASH_MODEL
+    assert route(Task.REASONING, model_override="") == PRO_MODEL

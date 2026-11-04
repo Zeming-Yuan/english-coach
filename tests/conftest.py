@@ -1,11 +1,21 @@
 """pytest 公共夹具：每个测试用独立 SQLite 文件库，互不污染。"""
 
 import os
+import tempfile
+import uuid
+from pathlib import Path
 
 # 测试进程自带占位配置：绝不读取真实密钥、不发起真实付费 AI 调用。
 # 必须在导入 app 之前设置（环境变量优先于 .env）。
 os.environ["LLM_API_KEY"] = ""
 os.environ["LLM_BASE_URL"] = "http://127.0.0.1:9/v1"
+os.environ["LLM_MODEL"] = ""
+# 隔离设置页保存的文件，避免读到开发者本机的真实配置。
+os.environ["LLM_CONFIG_PATH"] = str(
+    Path(tempfile.gettempdir())
+    / f"ec-llm-config-{uuid.uuid4().hex}"
+    / "llm_config.json"
+)
 os.environ.pop("DEEPSEEK_API_KEY", None)
 os.environ.pop("DEEPSEEK_BASE_URL", None)
 

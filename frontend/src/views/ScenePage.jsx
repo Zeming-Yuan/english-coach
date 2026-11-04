@@ -55,6 +55,7 @@ function Standard({text}) {
           pendingAudio.current = targets;
           confirmAudio(targets).then(failed => {if (failed) setError('音频接触依据尚未确认，可继续确认接触');});
         });
+        if (mode === 'canceled') return;
         setSpeech(mode === 'none' ? '语音暂不可用，文字与已存结果仍可使用。' : '已播放标准表达');
       } catch (e) {setError('朗读前的目标依据无法读取：' + e.message);}
     }}>朗读标准表达</button>
