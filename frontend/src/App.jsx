@@ -483,12 +483,9 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
             const minutes = Number(event.target.value);
             storageSet("timeBudget", minutes); setBudget(minutes); setMode("regular");
           }}>{[3, 8, 15].map(minutes => <option key={minutes} value={minutes}>约 {minutes} 分钟</option>)}</select></label>}
-          <p role="status" data-testid="time-budget-plan">预计约 {Math.ceil((plan?.estimated_seconds ?? 0) / 60)} 分钟 · 巩固至多 {plan?.reinforcement_limit ?? 3} 题。固定开销 15 秒；时间仅作估计，可保存后暂停。</p>
+          <p role="status" data-testid="time-budget-plan">预计约 {Math.ceil((plan?.estimated_seconds ?? 0) / 60)} 分钟 · 巩固至多 {plan?.reinforcement_limit ?? 3} 题</p>
           {plan?.may_exceed_budget && <p role="status">至少保留一张有效词卡，本轮可能超过所选时间，可保存后暂停。</p>}
-          <p role="status" data-testid="estimate-basis">{plan?.estimate_basis === "personal" ? "个人估算（部分类型可能仍用默认值）" : "默认估算"}：{[["review", "复习", 20], ["new", "新词", 40], ["reinforcement", "巩固", 20]].map(([kind, label, fallback]) => {
-            const value = plan?.estimates?.[kind];
-            return `${label} ${value?.seconds ?? fallback} 秒（${value?.basis === "personal" ? `个人，最近 ${value.sample_count} 条中位数` : `默认，有效样本 ${value?.sample_count ?? 0}/5，不足或记录不可靠`}）`;
-          }).join("；")}。后台、超过 30 秒无操作和保存等待不计主动时长；只校准未来计划。</p>
+
         </div>
         {!activeSession && data.recovery_available && <div className="home-round-notes" data-testid="recovery-offer">
           <p role="status">恢复学习：中断至少三个学习日，可先用约三分钟复习至多五张到期词，零新词；无需一次清空积压。</p>
@@ -510,6 +507,13 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
               <h2>{activeSession || queueTotal > 0 ? "本轮学习" : "今日复习已完成"}</h2>
               {activeSession || queueTotal > 0 ? <p data-testid="round-target">本轮目标 {activeSession?.target ?? data.target} 张 · 到期复习 {activeSession?.reviewCount ?? data.review_count} 张 · 新词 {activeSession?.newCount ?? data.new_count} 个</p> : <p>{data.new_remaining === 0 ? "今日新词余量已用完，可稍后复习或继续专项练习。" : "当前没有到期词或待学新词，可继续专项练习。"}</p>}
             </div>
+            <button className="btn home-primary home-round-action" onClick={() => activeSession ? onResumeDaily() : queueTotal > 0 ? onStartDaily(data) : setView("add")}>
+              {activeSession ? "继续本轮学习" : queueTotal > 0 ? (plan?.mode === "recovery" ? "开始恢复学习" : "开始今天的学习") : "添加新词"}<CaretRightIcon aria-hidden="true" size={20} />
+            </button>
+          </div>
+        </>}
+        <details className="home-plan-details">
+          <summary>计划详情与目标设置</summary>
             <div className="home-goal">
               <div className="home-goal-label">今日完成 <b>{done}</b><span className="goal-total">/ {target}</span><span>词</span></div>
               <div className="home-goal-controls">
@@ -517,15 +521,16 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
                 <label className="home-goal-change">更改目标<select className="goal-daily-set" aria-label="每日最低完成目标" value={dailyGoal} title="每日最低完成目标（不改变新词配额或本轮张数）" onChange={e => {const n = parseInt(e.target.value); setDailyGoal(n); storageSet("dailyGoal", n);}}>{[5, 10, 15, 20].map(n => <option key={n} value={n}>至少 {n} 词/日</option>)}</select></label>
               </div>
             </div>
-            <button className="btn home-primary home-round-action" onClick={() => activeSession ? onResumeDaily() : queueTotal > 0 ? onStartDaily(data) : setView("add")}>
-              {activeSession ? "继续本轮学习" : queueTotal > 0 ? (plan?.mode === "recovery" ? "开始恢复学习" : "开始今天的学习") : "添加新词"}<CaretRightIcon aria-hidden="true" size={20} />
-            </button>
-          </div>
           <div className="home-round-notes">
             <span data-testid="remaining-due">另有 {activeSession?.remainingDue ?? data.remaining_due} 张到期词，完成后可继续下一轮</span>
             <span data-testid="new-word-limit">新词建议 {adaptiveGoal} 个 · 今日剩余 {data.new_remaining ?? adaptiveGoal} 个 · 有效样本 {data.sample_count ?? 0}</span>
           </div>
-        </>}
+          <p>固定开销 15 秒；时间仅作估计，可保存后暂停。</p>
+          <p role="status" data-testid="estimate-basis">{plan?.estimate_basis === "personal" ? "个人估算（部分类型可能仍用默认值）" : "默认估算"}：{[["review", "复习", 20], ["new", "新词", 40], ["reinforcement", "巩固", 20]].map(([kind, label, fallback]) => {
+            const value = plan?.estimates?.[kind];
+            return `${label} ${value?.seconds ?? fallback} 秒（${value?.basis === "personal" ? `个人，最近 ${value.sample_count} 条中位数` : `默认，有效样本 ${value?.sample_count ?? 0}/5，不足或记录不可靠`}）`;
+          }).join("；")}。后台、超过 30 秒无操作和保存等待不计主动时长；只校准未来计划。</p>
+        </details>
       </section>
 
       <div className="home-content-grid">

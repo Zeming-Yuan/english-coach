@@ -27,3 +27,25 @@ test("EL-22 selected time gives one next step and resumes the same saved round",
   await expect(page.locator(".front-main")).toHaveText("word1");
   await page.screenshot({path: test.info().outputPath("resume.png")});
 });
+
+test("EL-22 home keeps its action above the fold and exposes estimates only on demand", async ({app, page}) => {
+  await app.seedCards([{word: "apple", meaning: "苹果"}]);
+  await page.goto(app.baseURL);
+  const next = page.getByRole("region", {name: "今天下一步", exact: true});
+  await expect(next.getByTestId("time-budget-plan")).toBeVisible();
+  await expect(next.getByTestId("estimate-basis")).not.toBeVisible({timeout: 3000});
+  await expect(next.getByLabel("每日最低完成目标")).not.toBeVisible();
+  await expect(next.getByTestId("time-budget-plan")).toBeVisible();
+  const action = next.getByRole("button", {name: "开始今天的学习", exact: true});
+  await expect(action).toBeInViewport({ratio: 1});
+  await expect(next.getByRole("heading", {name: "今天的学习", exact: true})).toBeInViewport({ratio: 1});
+  await page.screenshot({path: test.info().outputPath("home-focused.png")});
+  await next.getByText("计划详情与目标设置", {exact: true}).click();
+  await expect(next.getByTestId("estimate-basis")).toBeVisible();
+  await next.getByLabel("每日最低完成目标").selectOption("15");
+  await expect(next.getByTestId("round-target")).toContainText("1 张");
+  await page.reload();
+  await next.getByText("计划详情与目标设置", {exact: true}).click();
+  await expect(next.getByRole("progressbar", {name: "今日最低目标进度"})).toHaveAttribute("aria-valuemax", "15");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});

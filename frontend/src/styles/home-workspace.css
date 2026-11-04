@@ -190,3 +190,25 @@ body.dark .home-story > [role="alert"] { color: #f0b6a1; }
   .home-evidence-grid { grid-template-columns: minmax(0,1fr); gap: 26px; }
   .home-welcome-actions .home-primary { width: 100%; }
 }
+
+/* Daily task hierarchy: planning details stay available on demand. */
+.home-round-heading { display: block; margin-bottom: 16px; }
+.home-round-heading > p { padding: 8px 0 0; border: 0; line-height: 1.7; }
+.home-round-body { grid-template-columns: minmax(0,1fr) auto; margin-top: 20px; }
+.home-round-summary { grid-row: auto; }
+.home-round-action { grid-column: auto; }
+.home-round-notes { font-size: 14px; line-height: 1.7; }
+.home-round-notes label { display: flex; align-items: center; gap: 10px; }
+.home-round-notes select { min-height: 36px; border: 1px solid #8c8275; border-radius: 4px; background: #35342f; color: #fff7eb; padding: 4px 8px; }
+.home-round-notes [data-testid="time-budget-plan"] { align-self: center; color: #e1d7c9; }
+.home-plan-details { margin-top: 18px; padding-top: 14px; border-top: 1px solid #777166; font-size: 13px; line-height: 1.8; color: #e1d7c9; }
+.home-plan-details > summary { cursor: pointer; width: fit-content; color: #e9c5a9; }
+.home-plan-details > p { margin-top: 12px; }
+.home-plan-details .home-goal { padding: 16px 0 0; border: 0; max-width: 440px; }
+.home-plan-details .home-round-notes { display: grid; font-size: 13px; }
+@media (max-width: 680px) {
+  .home-round-body { grid-template-columns: minmax(0,1fr); gap: 16px; }
+  .home-round-notes { gap: 10px; }
+  .home-round-heading { margin-bottom: 12px; }
+  .home-workspace .home-round-heading h1 { font-size: 29px; }
+}

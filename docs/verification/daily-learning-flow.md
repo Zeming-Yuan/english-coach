@@ -12,10 +12,18 @@
 - GREEN：`EC_CHROMIUM_EXECUTABLE=/usr/bin/google-chrome npm --prefix frontend run test:e2e -- --ticket EL-22` → 2 passed，`ec-e2e-static-trGcok`。验证三分钟目标、唯一开始按钮、暂停/刷新后同索引继续、未提前揭示英文答案。构建在同次主入口完成。
 - 基线公开接口：`.venv/bin/python -m pytest tests/test_daily_session.py tests/test_session_summary.py -q` → 14 passed。
 - 前端独立类型/静态命令 N/A：package.json 未配置；没有 Python 产品变更，不扩大类型检查范围。
-- 审查固定点为上述实施基线，审查结果待独立 reviewer 返回后补记。
+- 独立 Standards / Spec reviewer 对 `8d827cc...e371bf1` 均无 actionable findings；未直接验证的理由分支继续标记为补充验证范围。
 
 ## 门禁边界
 
 全量 pytest、未过滤 E2E、真实外部模型/音频和生产部署未验证；按用户要求只运行受影响范围。
 本票不增加账户/权限、数据库写入或迁移。安全扫描、容器、不可逆迁移恢复 N/A；不声称既有发布流程通过。
 回滚方式：撤回前端改动，保留所有服务器学习事件、时长与排期。
+
+## 切片 2：首页信息层级
+
+- 样本、估算公式、目标设置、余量折入原生 details，键盘和触屏均可展开。时间、理由、本轮任务和开始保留在外层，沿用当前视觉系统。
+- RED：初次 negative visibility 断言遇到加载空态提前通过，最终缺少详情入口而超时；停止该轮，不作为有效红灯证据。补“预估已可见”的前置条件后，`ec-e2e-static-xvabQQ` 两视口均因估算依据仍在外层可见失败。
+- GREEN：EL-22 6 passed，`ec-e2e-static-02ycfc`；EC-09 6 passed，`ec-e2e-static-4EFVne`；EC-13 32 passed，`ec-e2e-static-6MDXHc`。均使用 README 主入口、新构建、独立数据库和实际 Chrome 双视口；所有结果收齐后才修改文档。
+- 截图已实际查看：桌面/移动 home-focused，验证标题和开始按钮完整在首屏，手机无横向溢出。更新既有目标测试，仅增加真实展开步骤，保留原断言。
+- 独立前端类型/静态命令仍 N/A；本片无后端改动。审查固定点 `e371bf1`。
