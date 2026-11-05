@@ -3,6 +3,8 @@
 from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
+import pytest
+
 from app.models.card import Card
 from app.models.review import Review
 
@@ -215,3 +217,88 @@ def test_delete_card_cascades(client, db_session):
 def test_update_card_not_found(client):
     resp = client.put("/api/cards/999", json={"meaning": "x"})
     assert resp.status_code == 404
+
+
+@pytest.mark.parametrize(
+    "invalid",
+    [
+        {
+            "example": "The cat slept beside my desk all morning.",
+            "example_cn": "猫睡在桌边。",
+        },
+        {"example": "new", "example_cn": "翻译", "explanation": None},
+    ],
+)
+def test_regenerate_incomplete_output_preserves_content_and_revision(ec, invalid):
+    from tests.support.llm_queue import QueuedLLM
+
+    ec.client.post("/api/cards/starter")
+    old = ec.client.get("/api/cards").json()["cards"][0]
+    ec.app.state.llm_client = QueuedLLM([invalid])
+
+    resp = ec.client.post(f"/api/cards/{old['id']}/regenerate")
+
+    assert resp.status_code == 502
+    current = ec.client.get(f"/api/cards/{old['id']}").json()
+    for field in ("example", "example_cn", "explanation", "content_revision"):
+        assert current[field] == old[field]
+
+
+@pytest.mark.parametrize("cards", [None, "bad", {"word": "pear"}, 3])
+def test_generate_non_array_cards_returns_upstream_failure(ec, cards):
+    from tests.support.llm_queue import QueuedLLM
+
+    ec.app.state.llm_client = QueuedLLM([{"cards": cards}])
+    response = ec.client.post("/api/cards/generate", json={"words": ["pear"]})
+    assert response.status_code == 502
+    assert ec.client.get("/api/cards").json()["cards"] == []
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        {"unknown": "ignored"},
+        {"id": 99999},
+        {"created_at": "1990-01-01", "kind": "sentence", "difficulty": "reading"},
+    ],
+)
+def test_generated_card_keeps_content_but_ignores_non_content_fields(ec, extra):
+    from tests.support.llm_queue import QueuedLLM
+
+    ec.app.state.llm_client = QueuedLLM(
+        [{"cards": [{"word": "pear", "meaning": "梨", **extra}]}]
+    )
+    response = ec.client.post("/api/cards/generate", json={"words": ["pear"]})
+    assert response.status_code == 200
+    assert response.json()["generated"] == 1
+    card_id = response.json()["cards"][0]["id"]
+    card = ec.client.get(f"/api/cards/{card_id}").json()
+    assert card["word"] == "pear"
+    assert card["meaning"] == "梨"
+    assert card["id"] != 99999
+    assert not card["created_at"].startswith("1990")
+    assert card["kind"] == "word"
+    assert card["difficulty"] == "basic"
+
+
+def test_generated_cards_skip_malformed_items_without_losing_valid_card(ec):
+    from tests.support.llm_queue import QueuedLLM
+
+    ec.app.state.llm_client = QueuedLLM(
+        [
+            {
+                "cards": [
+                    None,
+                    "bad",
+                    3,
+                    {"word": ["pear"]},
+                    {"word": "pear", "example": 42},
+                    {"word": "apple", "meaning": "苹果"},
+                ]
+            }
+        ]
+    )
+    response = ec.client.post("/api/cards/generate", json={"words": ["pear", "apple"]})
+    assert response.status_code == 200
+    assert response.json()["generated"] == 1
+    assert response.json()["cards"][0]["word"] == "apple"

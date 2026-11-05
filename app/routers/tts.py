@@ -5,7 +5,7 @@
 
 延迟优化：
 1. 合成结果缓存（dict）——同一文本第二次起零等待
-2. 流式返回（StreamingResponse）——边合成边发，首字节更快
+2. 完整合成后返回——避免把中途失败的音频当作成功交付
 3. /preload 预合成——前端可提前暖缓存
 """
 
@@ -16,7 +16,7 @@ from collections import OrderedDict
 
 import edge_tts
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import Response
 
 logger = logging.getLogger(__name__)
 
@@ -72,30 +72,22 @@ def _validate(text: str) -> str:
 
 
 @router.get("/tts/audio/{word}")
-def tts_audio(word: str):
-    """合成单词发音：缓存命中立即返回，未命中流式合成。"""
+async def tts_audio(word: str):
+    """合成单词发音；完整成功后才返回或缓存音频。"""
     text = _validate(word)
-
-    # 缓存命中：秒回
     cached = _cache.get(text)
     if cached is not None:
         return Response(content=cached, media_type="audio/mpeg")
 
-    # 未命中：流式合成（side effect：结果进缓存）
-    async def chunk_stream():
-        try:
-            buf = io.BytesIO()
-            async for chunk in _synthesize(text):
-                buf.write(chunk)
-                yield chunk
-            data = buf.getvalue()
-            if data:
-                _cache_put(text, data)
-        except (OSError, ValueError, TimeoutError) as exc:
-            logger.warning("TTS synthesis failed for %r: %s", text, exc)
-            yield b""
-
-    return StreamingResponse(chunk_stream(), media_type="audio/mpeg")
+    try:
+        data = await _synthesize_all(text)
+        if not data:
+            raise ValueError("No audio returned")
+    except Exception as exc:  # 外部合成故障必须在响应前报告
+        logger.warning("TTS synthesis failed for %r: %s", text, exc)
+        raise HTTPException(status_code=502, detail="Audio synthesis failed") from exc
+    _cache_put(text, data)
+    return Response(content=data, media_type="audio/mpeg")
 
 
 @router.get("/tts/audio/{word}/preload")

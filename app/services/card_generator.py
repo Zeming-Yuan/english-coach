@@ -18,7 +18,7 @@ SYSTEM_PROMPT = (
     "例：'可数名词，复数加s | a cat / cats / kitten(小猫) | 不要写成 catt'\n"
     "6. contexts: 2–3 条对话体语境例句（两人简短对话，目标词必须出现，用词简单），中英成对。\n"
     "7. related_words: 词族/近义词数组（2-4个），每个元素含 word 和 meaning。"
-    "例：[{\"word\": \"kitten\", \"meaning\": \"小猫\"}, {\"word\": \"pet\", \"meaning\": \"宠物\"}]。"
+    '例：[{"word": "kitten", "meaning": "小猫"}, {"word": "pet", "meaning": "宠物"}]。'
     "优先选同词族（如 teach→teacher）和常用近义词，用词简单零基础可懂。\n"
     "8. chunks: 把 example 按意群切分为数组（3-6 段，每段 2-6 词，逗号/连接词/介词短语处切分），"
     "每块标注角色 role（subject=主语 / predicate=谓宾 / adverbial=状语）。\n"
@@ -47,11 +47,19 @@ def regenerate_example(word: str) -> tuple[str, str, str]:
     data = generate_json(_REGENERATE_PROMPT, word)
     if data is None:
         raise ValueError("LLM 失败")
-    return (
-        data.get("example", ""),
-        data.get("example_cn", ""),
-        data.get("explanation", ""),
-    )
+    example = data.get("example")
+    example_cn = data.get("example_cn")
+    explanation = data.get("explanation")
+    if (
+        not isinstance(example, str)
+        or not example.strip()
+        or not isinstance(example_cn, str)
+        or not example_cn.strip()
+        or not isinstance(explanation, str)
+        or not explanation.strip()
+    ):
+        raise ValueError("LLM 返回的例句、翻译或讲解不完整")
+    return example, example_cn, explanation
 
 
 def generate_cards(words: list[str], db: Session) -> list[Card]:
@@ -60,20 +68,42 @@ def generate_cards(words: list[str], db: Session) -> list[Card]:
     new_words = [w for w in words if w not in existing]
     if not new_words:
         return []  # 全部已存在：不调 API，白烧钱（教学点 12）
-    data = generate_json(SYSTEM_PROMPT, json.dumps({"words": new_words}, ensure_ascii=False))
+    data = generate_json(
+        SYSTEM_PROMPT, json.dumps({"words": new_words}, ensure_ascii=False)
+    )
     if data is None:
         raise ValueError("LLM 失败")
+    generated = data.get("cards")
+    if not isinstance(generated, list):
+        raise ValueError("LLM 返回的词卡格式错误")  # noqa: TRY004 — 生成失败的公共契约
     cards = []
-    for c in data.get("cards", []):
+    content_fields = {
+        "word",
+        "phonetic",
+        "meaning",
+        "example",
+        "example_cn",
+        "explanation",
+        "contexts",
+        "related_words",
+        "chunks",
+    }
+    for c in generated:
+        if not isinstance(c, dict):
+            continue
+        if not isinstance(c.get("word"), str) or not c["word"].strip():
+            continue
+        if any(
+            key in c and c[key] is not None and not isinstance(c[key], str)
+            for key in ("phonetic", "meaning", "example", "example_cn", "explanation")
+        ):
+            continue
         try:
+            c = {key: value for key, value in c.items() if key in content_fields}
             if not isinstance(c.get("contexts"), list):
                 c["contexts"] = []
             if not isinstance(c.get("related_words"), list):
                 c["related_words"] = []
-            if not c.get("word"):
-                continue
-            c.pop("kind", None)  # 防御：AI 不能决定卡片类型
-            c.pop("difficulty", None)  # 防御：难度由系统决定
             if isinstance(c.get("chunks"), list):
                 # 兼容对象数组 [{text, role}] 或字符串数组
                 c["chunks"] = [
@@ -83,8 +113,10 @@ def generate_cards(words: list[str], db: Session) -> list[Card]:
             else:
                 c["chunks"] = None
             # 质量校验：例句太短或太简单则清空（让前端显示"换一个"按钮）
-            example = c.get("example", "")
-            if len(example) < 15 or example.lower().startswith(("this is ", "i have ", "i like ", "it is ")):
+            example = c.get("example") or ""
+            if len(example) < 15 or example.lower().startswith(
+                ("this is ", "i have ", "i like ", "it is ")
+            ):
                 c["example"] = ""
                 c["example_cn"] = ""
             cards.append(Card(**c, kind="word", difficulty="basic"))

@@ -69,7 +69,7 @@ def test_tts_audio_too_long():
 
 
 def test_tts_audio_synthesis_fails(monkeypatch):
-    """合成失败（网络异常）→ 流式输出空（前端静默，不 500）。"""
+    """合成失败必须在成功响应前报告。"""
 
     async def _boom(text: str):
         raise OSError("network down")
@@ -78,8 +78,9 @@ def test_tts_audio_synthesis_fails(monkeypatch):
     monkeypatch.setattr(tts, "_synthesize", _boom)
     client = TestClient(app)
     resp = client.get("/api/tts/audio/rain")
-    assert resp.status_code == 200  # 流式端点始终 200，失败输出空
-    assert resp.content == b""
+    assert resp.status_code == 502
+    assert resp.json()["detail"]
+    assert "rain" not in tts._cache
 
 
 def test_tts_preload_caches(monkeypatch):
@@ -92,3 +93,22 @@ def test_tts_preload_caches(monkeypatch):
     client = TestClient(app)
     resp = client.get("/api/tts/audio/banana/preload")
     assert resp.json()["cached"] is True
+
+
+@pytest.mark.parametrize(
+    "failure", [OSError("network down"), RuntimeError("transport failed"), None]
+)
+def test_tts_incomplete_audio_is_not_delivered_or_cached(ec, monkeypatch, failure):
+    async def incomplete(text):
+        if failure is not None:
+            yield b"partial-mp3"
+            raise failure
+        if False:
+            yield b""
+
+    monkeypatch.setattr(tts, "_synthesize", incomplete)
+    response = ec.client.get("/api/tts/audio/pear")
+    assert response.status_code == 502
+    assert response.json()["detail"]
+    assert b"partial-mp3" not in response.content
+    assert "pear" not in tts._cache

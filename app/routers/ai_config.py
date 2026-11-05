@@ -68,12 +68,17 @@ def put_ai_config(payload: AIConfigIn, request: Request):
     settings = request.app.state.settings
     _reject_keyless_address_change(settings, payload)
     path: Path = request.app.state.llm_config_path
-    ai_config_store.save(
-        path,
-        base_url=payload.base_url,
-        model=payload.model,
-        api_key=payload.api_key,
-    )
+    try:
+        ai_config_store.save(
+            path,
+            base_url=payload.base_url,
+            model=payload.model,
+            api_key=payload.api_key,
+        )
+    except (OSError, ValueError) as exc:
+        raise HTTPException(
+            status_code=503, detail="无法保存 AI 配置；请检查本机配置文件"
+        ) from exc
     ai_config_store.load_into(settings, path)
     # 客户端缓存了旧配置，换新实例让后续请求立即使用新配置。
     request.app.state.llm_client = LazyLLMClient(settings)

@@ -46,10 +46,13 @@ def save(path: Path, *, base_url: str, model: str, api_key: str | None) -> None:
     current: dict = {}
     try:
         loaded = json.loads(path.read_text(encoding="utf-8"))
-        if isinstance(loaded, dict):
-            current = loaded
-    except (OSError, ValueError):
-        pass
+    except FileNotFoundError:
+        loaded = {}
+    except (OSError, ValueError) as exc:
+        raise ValueError("无法读取已保存的 AI 配置；请先修复配置文件") from exc
+    if not isinstance(loaded, dict):
+        raise ValueError("已保存的 AI 配置格式错误；请先修复配置文件")  # noqa: TRY004 — 配置文件内容无效
+    current = loaded
 
     payload = {"base_url": base_url, "model": model}
     key = (api_key or "").strip()
