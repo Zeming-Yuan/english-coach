@@ -63,3 +63,22 @@ test("partial feedback retry keeps confirmed targets and original submission ide
     assert.equal(pendingVisibleContactLookups().length, 0);
   } finally {clearVisibleContactLookups(); globalThis.fetch = originalFetch;}
 });
+
+test("a rejected outdated feedback target settles without inventing contact", async () => {
+  storage();
+  const originalFetch = globalThis.fetch;
+  let posts = 0;
+  globalThis.fetch = async (path) => {
+    if (path === "/api/cards") return response({cards: cards.slice(0, 1)});
+    posts++;
+    return {ok: false, status: 409, statusText: "Conflict", json: async () => ({detail: "content changed"})};
+  };
+  try {
+    beginVisibleContactLookup("terminal", {source: "scene", text: "apple"});
+    const result = await retryVisibleContactLookup("lookup:terminal");
+    assert.equal(result.failed.length, 0);
+    assert.equal(result.unrecorded.length, 1);
+    assert.equal(pendingVisibleContactLookups().length, 0);
+    assert.equal(posts, 1);
+  } finally {clearVisibleContactLookups(); globalThis.fetch = originalFetch;}
+});

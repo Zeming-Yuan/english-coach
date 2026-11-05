@@ -176,3 +176,23 @@ test("partially confirmed feedback keeps its target identities after a reload", 
   expect(pear).toHaveLength(2);
   expect(pear[0].submission_id).toBe(pear[1].submission_id);
 });
+
+for (const screen of ["recovery", "feedback"]) {
+  test(`outdated feedback contact settles honestly in ${screen}`, async ({page}) => {
+    if (screen === "recovery") await page.addInitScript(() => localStorage.setItem("ec.contact.lookup:terminal-ui", JSON.stringify({awaiting_targets: true, source: "scene", text: "apple"})));
+    let posts = 0;
+    await page.route("**/api/**", route => {
+      if (new URL(route.request().url()).pathname === "/api/cards") return route.fulfill({json: {cards: [{id: 1, kind: "word", word: "apple", content_revision: {identity: "old", version: 1}}]}});
+      posts++; return route.fulfill({status: 409, json: {detail: "content changed"}});
+    });
+    if (screen === "recovery") {
+      await ui.mount(page, "/src/components/ContactRecovery.jsx");
+      await page.getByRole("button", {name: "继续确认反馈接触", exact: true}).click();
+    } else {
+      await ui.mount(page, "/src/components/SceneFeedback.jsx", JSON.stringify({session: {id: "scene", content_hash: "hash"}, item: {id: "item", attempt_id: "attempt", feedback: {text: "apple", origin: "template"}}}));
+    }
+    await expect(page.getByText("部分反馈目标已删除或修订，该次接触未记录；请重新查看当前内容。", {exact: true})).toBeVisible();
+    await expect(page.getByRole("button", {name: /继续确认.*接触/})).toHaveCount(0);
+    expect(posts).toBe(1);
+  });
+}

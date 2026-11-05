@@ -108,19 +108,35 @@ async function resolveVisibleContactLookup(scope) {
     persistVisibleLookup(scope, record);
   }
   record.confirmed ||= [];
-  const targets = record.targets.filter(({card}) => !record.confirmed.includes(card.content_revision.identity));
+  record.unrecorded ||= [];
+  const targets = record.targets.filter(({card}) =>
+    !record.confirmed.includes(card.content_revision.identity) && !record.unrecorded.includes(card.content_revision.identity));
   const outcomes = await Promise.allSettled(targets.map(async ({card, pending}) => {
     if (!stillOwned()) throw new Error("反馈所属数据已变化，请重新查看反馈。");
     const targetScope = scopeFor({source: "scene", kind: "answer_visible", cardId: card.id});
     savePending(targetScope, pending, PREFIX);
-    await send(targetScope, pending);
+    try {
+      await send(targetScope, pending);
+    } catch (error) {
+      if (error.retryable !== false) throw error;
+      // A deleted/revised target cannot accept this exposure. Retire the
+      // request honestly; it is neither confirmed nor useful to retry.
+      if (stillOwned()) {
+        record.unrecorded.push(card.content_revision.identity);
+        persistVisibleLookup(scope, record);
+      }
+      return;
+    }
     if (stillOwned()) {
       record.confirmed.push(card.content_revision.identity);
       persistVisibleLookup(scope, record);
     }
   }));
   if (!stillOwned()) throw new Error("反馈所属数据已变化，请重新查看反馈。");
-  const result = {failed: targets.filter((_, index) => outcomes[index].status === "rejected").map(({card}) => card)};
+  const result = {
+    failed: targets.filter((_, index) => outcomes[index].status === "rejected").map(({card}) => card),
+    unrecorded: record.targets.filter(({card}) => record.unrecorded.includes(card.content_revision.identity)).map(({card}) => card),
+  };
   if (!transferVisibleLookup(scope, result.failed)) {
     throw new Error("部分反馈接触尚未确认，浏览器未能保存待确认目标，请重试。");
   }

@@ -17,6 +17,7 @@ function ItemFeedback({session, item}) {
   const [note, setNote] = useState('');
   const [retry, setRetry] = useState(0);
   const [contactError, setContactError] = useState('');
+  const [contactNote, setContactNote] = useState('');
   const [contactRetry, setContactRetry] = useState(0);
   const element = useRef(null);
   const confirmed = useRef(new Set());
@@ -51,8 +52,11 @@ function ItemFeedback({session, item}) {
       try {
         const result = await retryVisibleContactLookup(lookupScope);
         const {targets} = result;
-        targets.filter(card => !result.failed.includes(card)).forEach(card => confirmed.current.add(card.content_revision.identity));
-        if (live) setContactError(result.failed.length ? '反馈接触依据尚未确认，可继续确认接触。' : '');
+        targets.filter(card => !result.failed.includes(card) && !result.unrecorded.includes(card)).forEach(card => confirmed.current.add(card.content_revision.identity));
+        if (live) {
+          setContactError(result.failed.length ? '反馈接触依据尚未确认，可继续确认接触。' : '');
+          setContactNote(result.unrecorded.length ? '部分反馈目标已删除或修订，该次接触未记录；请重新查看当前内容。' : '');
+        }
       } catch (e) {if (live) setContactError('反馈接触依据尚未确认：' + e.message);}
     };
     const observer = new IntersectionObserver(entries => {
@@ -69,6 +73,7 @@ function ItemFeedback({session, item}) {
     {data && <p ref={element}>{data.text}</p>}
     {(data?.correction || (!data && item.correction)) && <p>{data?.correction || item.correction}</p>}
     {note && <p role="note">{note}</p>}
+    {contactNote && <p role="note">{contactNote}</p>}
     {error && <p role="alert">{error}<button className="btn btn-ghost btn-small" onClick={() => setRetry(n => n + 1)}>重试反馈</button></p>}
     {contactError && <p role="alert">{contactError}<button className="btn btn-ghost btn-small" onClick={() => setContactRetry(n => n + 1)}>继续确认接触</button></p>}
   </div>;

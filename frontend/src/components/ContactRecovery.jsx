@@ -21,7 +21,7 @@ export default function ContactRecovery() {
     setBusy(scope); setError(''); setNote('');
     try {
       const result = await retryVisibleContactLookup(scope);
-      setNote(result.failed.length ? '已找到反馈目标词；接触仍有待确认记录，依据尚不完整。' : '反馈接触已确认。');
+      setNote(result.failed.length ? '已找到反馈目标词；接触仍有待确认记录，依据尚不完整。' : result.unrecorded.length ? '部分反馈目标已删除或修订，该次接触未记录；请重新查看当前内容。' : '反馈接触已确认。');
     } catch (cause) {setError('反馈接触尚未确认：' + cause.message);}
     finally {setBusy(''); setLookups(pendingVisibleContactLookups());}
   };
