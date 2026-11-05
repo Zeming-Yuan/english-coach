@@ -5,7 +5,7 @@ app.services.learning；本文件只保留旧函数签名与结果形状。
 """
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 
 from sqlalchemy.orm import Session
 
@@ -22,7 +22,7 @@ class ReviewResult:
     """提交一次复习后的可观察结果。"""
 
     card_id: int
-    next_due: datetime
+    next_due: datetime | None
     graduated: bool
     sentence_card_id: int | None = None
 
@@ -59,9 +59,7 @@ def submit_review(
         upgrade=upgrade_sentence_card,
     )
     next_due = (
-        datetime.fromisoformat(result.next_due)
-        if result.next_due is not None
-        else datetime.now(timezone.utc)
+        datetime.fromisoformat(result.next_due) if result.next_due is not None else None
     )
     return ReviewResult(
         card_id=result.card_id,

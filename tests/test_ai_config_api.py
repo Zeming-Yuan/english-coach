@@ -244,7 +244,10 @@ def test_connection_failure_returns_reason(ec, monkeypatch):
         },
     )
 
-    assert resp.json() == {"ok": False, "error": "401 Invalid API Key"}
+    assert resp.json() == {
+        "ok": False,
+        "error": "AI 连接失败；请检查服务地址、网络、密钥和模型",
+    }
 
 
 @pytest.mark.parametrize("saved", ['{"api_key": "sk-preserve",', '["invalid"]'])

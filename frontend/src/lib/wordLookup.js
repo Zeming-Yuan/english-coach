@@ -11,7 +11,7 @@ import { cleanToken } from "./utils.js";
  * @param {{ learnedWords?: Array<{word: string}> }} opts 已学词（如故事目标词）
  * @returns {{ word, result, open, close, markLearned }}
  *  word: { word, phonetic, meaning, card_id? } 面板数据
- *  result: { status: "idle"|"loading"|"found"|"missing", isLearned?: boolean }
+ *  result: { status: "idle"|"loading"|"found"|"missing"|"error", isLearned?: boolean }
  */
 export function useWordLookup({ learnedWords = [] } = {}) {
   const [word, setWord] = useState(null);
@@ -36,8 +36,8 @@ export function useWordLookup({ learnedWords = [] } = {}) {
       if (sequence !== requestSequence.current) return;
       setWord({ word: clean, phonetic: r.phonetic, meaning: r.meaning, card_id: r.card_id });
       setResult({ status: r.found ? "found" : "missing", isLearned: false });
-    } catch {
-      if (sequence === requestSequence.current) setResult({ status: "missing", isLearned: false });
+    } catch (error) {
+      if (sequence === requestSequence.current) setResult({ status: "error", error: error.message, isLearned: false });
     }
   };
 

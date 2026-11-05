@@ -137,3 +137,28 @@ test("a cleared pending request is not reloaded when storage removal is denied",
   clearPending("retired");
   assert.equal(loadPending("retired"), null);
 });
+
+test('a saved answer stays successful when duration observation notification fails', async () => {
+  const originalFetch=globalThis.fetch;
+  const originalWindow=globalThis.window;
+  const unhandled=[];
+  const observe=error=>unhandled.push(error);
+  process.on('unhandledRejection',observe);
+  globalThis.window={dispatchEvent(){throw Error('notification unavailable');}};
+  globalThis.fetch=async()=>({ok:true,json:async()=>({committed:true})});
+  try {
+    const pending=makePending('/api/typing/check',{card_id:5});
+    pending.duration={sample_id:'notify-fails',active_ms:20};
+    assert.equal((await sendPending(pending)).committed,true);
+    await new Promise(resolve=>setImmediate(resolve));
+    assert.deepEqual(unhandled,[]);
+  } finally {process.off('unhandledRejection',observe);globalThis.fetch=originalFetch;globalThis.window=originalWindow;}
+});
+
+test('submission ids remain valid UUIDs when randomUUID is unavailable',()=>{
+  const descriptor=Object.getOwnPropertyDescriptor(globalThis,'crypto');
+  const secure=globalThis.crypto;
+  Object.defineProperty(globalThis,'crypto',{configurable:true,value:{getRandomValues:secure.getRandomValues.bind(secure)}});
+  try {assert.match(makePending('/api/reviews',{card_id:1}).payload.submission_id,UUID);}
+  finally {Object.defineProperty(globalThis,'crypto',descriptor);}
+});

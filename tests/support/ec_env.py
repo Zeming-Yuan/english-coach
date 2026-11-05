@@ -111,7 +111,9 @@ class ECEnv:
             bind=self.engine, class_=EnvSession, autoflush=False, autocommit=False
         )
         self.app = self._build_app()
-        self.client = TestClient(self.app, raise_server_exceptions=False)
+        self.client = TestClient(
+            self.app, raise_server_exceptions=False, client=("127.0.0.1", 50000)
+        )
 
     def _migrate(self) -> None:
         config = Config(str(ROOT / "alembic.ini"))
@@ -210,7 +212,9 @@ class ECEnv:
         self.client.close()
         self.runtime = Runtime(self.clock, self.settings.learning_timezone)
         self.app = self._build_app()
-        self.client = TestClient(self.app, raise_server_exceptions=False)
+        self.client = TestClient(
+            self.app, raise_server_exceptions=False, client=("127.0.0.1", 50000)
+        )
 
     def close(self) -> None:
         try:

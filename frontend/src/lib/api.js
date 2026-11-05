@@ -3,10 +3,16 @@
  */
 
 export async function api(path, opts = {}) {
-  const resp = await fetch(path, {
-    headers: { "Content-Type": "application/json" },
-    ...opts,
-  });
+  let resp;
+  try {
+    resp = await fetch(path, {
+      headers: { "Content-Type": "application/json" },
+      ...opts,
+    });
+  } catch (error) {
+    if (error?.name === "AbortError") throw error;
+    throw new Error("网络连接失败，请检查网络后重试", {cause: error});
+  }
   if (!resp.ok) {
     let detail = resp.statusText;
     try {
@@ -26,5 +32,6 @@ export async function api(path, opts = {}) {
     error.status = resp.status;
     throw error;
   }
-  return resp.json();
+  const text = await resp.text();
+  return text.trim() ? JSON.parse(text) : null;
 }

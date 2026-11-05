@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session
 
 from app.models.card import Card
@@ -50,8 +50,7 @@ def next_revision(
 ) -> int:
     """返回下一修订号；没有语义变化时保持 current。"""
     changed = any(
-        key in fields
-        and semantic_value(before.get(key)) != semantic_value(value)
+        key in fields and semantic_value(before.get(key)) != semantic_value(value)
         for key, value in changes.items()
     )
     return current + int(changed)
@@ -76,12 +75,18 @@ def _new_revision(resource_kind: str, resource_id: int) -> ContentRevision:
 def _revision_row(
     db: Session, resource_kind: str, resource_id: int
 ) -> ContentRevision | None:
-    return db.execute(
-        select(ContentRevision).where(
-            ContentRevision.resource_kind == resource_kind,
-            ContentRevision.resource_id == resource_id,
+    return (
+        db.execute(
+            select(ContentRevision)
+            .execution_options(populate_existing=True)
+            .where(
+                ContentRevision.resource_kind == resource_kind,
+                ContentRevision.resource_id == resource_id,
+            )
         )
-    ).scalars().first()
+        .scalars()
+        .first()
+    )
 
 
 def ensure_content_revisions(db: Session) -> None:
@@ -103,9 +108,7 @@ def ensure_content_revisions(db: Session) -> None:
     db.flush()
 
 
-def get_content_revision(
-    db: Session, resource_kind: str, resource_id: int
-) -> dict:
+def get_content_revision(db: Session, resource_kind: str, resource_id: int) -> dict:
     """读取当前修订。实体创建、迁移和恢复都会初始化身份；缺失即数据异常。"""
     _model(resource_kind)
     row = _revision_row(db, resource_kind, resource_id)
@@ -120,18 +123,21 @@ def lesson_word_cards(db: Session, lesson: Lesson) -> list[dict]:
     names = [word.get("word") for word in words if word.get("word")]
     cards = (
         db.execute(
-            select(Card).where(Card.kind == "word", Card.word.in_(names))
+            select(Card).where(
+                Card.kind == "word",
+                func.lower(Card.word).in_([name.lower() for name in names]),
+            )
         )
         .scalars()
         .all()
     )
     by_word = {}
     for card in cards:
-        by_word.setdefault(card.word, card)
+        by_word.setdefault(card.word.casefold(), card)
     revisions = content_revision_map(db, "card", [card.id for card in cards])
     result = []
     for word in words:
-        card = by_word.get(word.get("word"))
+        card = by_word.get((word.get("word") or "").casefold())
         if card is None:
             continue
         result.append(
@@ -156,7 +162,9 @@ def content_revision_map(
     return {
         row.resource_id: {"identity": row.identity, "version": row.version}
         for row in db.execute(
-            select(ContentRevision).where(
+            select(ContentRevision)
+            .execution_options(populate_existing=True)
+            .where(
                 ContentRevision.resource_kind == resource_kind,
                 ContentRevision.resource_id.in_(ids),
             )
@@ -183,13 +191,19 @@ def advance_content_revision(
     if entity is None:
         raise LookupError(f"{resource_kind}:{resource_id} 不存在")
     fields = SEMANTIC_FIELDS_BY_KIND[resource_kind]
-    before = {
-        key: getattr(entity, key, None) for key in fields if hasattr(entity, key)
-    }
+    before = {key: getattr(entity, key, None) for key in fields if hasattr(entity, key)}
     row = _revision_row(db, resource_kind, resource_id)
     if row is None:
         row = _new_revision(resource_kind, resource_id)
         db.add(row)
-    row.version = next_revision(before, changes, row.version, fields)
     db.flush()
+    if next_revision(before, changes, row.version, fields) != row.version:
+        db.execute(
+            update(ContentRevision)
+            .where(ContentRevision.id == row.id)
+            .values(version=ContentRevision.version + 1)
+            .execution_options(synchronize_session=False)
+        )
+        db.refresh(row)
+
     return {"identity": row.identity, "version": row.version}

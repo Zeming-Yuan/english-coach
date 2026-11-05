@@ -1,3 +1,4 @@
+import {randomUUID} from "../lib/utils.js";
 import {useActiveTime} from "../hooks/useActiveTime.js";
 import UiIcon from "../components/UiIcon.jsx";
 import React, { useState, useEffect, useRef, useCallback } from "react";
@@ -19,7 +20,7 @@ import RatingButtons from "../components/RatingButtons.jsx";
  * onExit: () => void 返回队列
  * onToQuiz: () => void 进测验
  */
-export default function StudyPage({ queue, session, recoveryVersion, onProgress, onAbort, onPause, onExit, onToQuiz, onToMixed }) {
+export default function StudyPage({ queue = [], session, recoveryVersion, onProgress, onAbort, onPause, onExit, onToQuiz, onToMixed }) {
   const [standaloneIdx, setStandaloneIdx] = useState(0);
   const idx = session ? session.index : standaloneIdx;
   const [flipped, setFlipped] = useState(false);
@@ -36,7 +37,7 @@ export default function StudyPage({ queue, session, recoveryVersion, onProgress,
   // 中文翻译档位：auto=复习<3次显示，>=3次自动隐藏；on=常显；off=隐藏
   const [cnMode, setCnMode] = useState(() => storageGet("sentenceCnMode", "auto"));
   // 每日主队列复用固定会话 ID；专项自评使用独立 ID。
-  const [sessionId] = useState(() => session?.id || crypto.randomUUID());
+  const [sessionId] = useState(() => session?.id || randomUUID());
   const timedCard = queue[idx];
   const captureDuration = useActiveTime(
     timedCard ? `${sessionId}:${timedCard.id}:${idx}` : null,
@@ -191,7 +192,7 @@ export default function StudyPage({ queue, session, recoveryVersion, onProgress,
     );
   }
 
-  if (!card) return null;
+  if (!card) return <section className="view"><p role="status">没有待学习的卡片</p><button className="btn btn-ghost" onClick={onExit}>返回队列</button></section>;
 
   // 对话体句子：按 A:/B: 分行渲染为气泡
   const isDialog = isSentence && /^A:/m.test(card.example || "");
@@ -294,7 +295,7 @@ export default function StudyPage({ queue, session, recoveryVersion, onProgress,
                   <button className="story-word-panel-close" onClick={closeLookup} aria-label="关闭"><UiIcon name="close" /></button>
                 </div>
                 {lookupWord.phonetic && <div className="back-lookup-phonetic">{lookupWord.phonetic}</div>}
-                <div className="back-lookup-meaning">{lookupWord.meaning || (lookupResult.status === "missing" ? "暂无释义" : "查询中…")}</div>
+                <div className="back-lookup-meaning">{lookupWord.meaning || (lookupResult.status === "error" ? `查询失败：${lookupResult.error}，请点词重试` : lookupResult.status === "missing" ? "暂无释义" : "查询中…")}</div>
               </div>
             )}
             {contexts.length > 0 && (

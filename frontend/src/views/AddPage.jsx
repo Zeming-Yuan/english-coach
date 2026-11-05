@@ -1,6 +1,5 @@
 import React, { useState, useRef } from "react";
 import { api } from "../lib/api.js";
-import { escapeHtml } from "../lib/utils.js";
 import { showToast } from "../App.jsx";
 import { useStarterCards } from "../hooks/useStarterCards.js";
 
@@ -79,7 +78,7 @@ export default function AddPage({ onStartStudy, onAddStarter, onGoWords }) {
           {loading && <><span className="spinner" /><span className="loading">AI 生成中，请稍候…</span></>}
           {result?.success && (
             <>
-              <span className="ok">✅ 生成 {result.data.generated} 张卡：{result.data.cards.map((c) => escapeHtml(c.word)).join("、")}</span>
+              <span className="ok">✅ 生成 {result.data.generated} 张卡：{result.data.cards.map((c) => c.word).join("、")}</span>
               {result.data.skipped > 0 && <><br /><span className="warn">{result.data.skipped} 个已存在跳过</span></>}
               <><br /><span className="warn">这些词已经进入你的词库，明天会按记忆安排复习</span></>
               <div className="learn-now-row">

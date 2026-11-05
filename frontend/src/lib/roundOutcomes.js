@@ -70,7 +70,7 @@ export function roundObservationGeneration() {
 }
 
 export function recordRoundOutcome(session, outcome) {
-  if (!session?.id || !Number.isFinite(session.startedAt) || session.target <= 0 ||
+  if (!session?.id || !Number.isFinite(session.startedAt) || (!Number.isSafeInteger(session.target) || session.target <= 0) ||
       !["interrupted", "completed", "ended"].includes(outcome) ||
       (outcome !== "interrupted" && !session.complete) ||
       (outcome === "interrupted" && session.complete)) return Promise.resolve(false);

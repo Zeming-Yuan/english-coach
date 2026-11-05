@@ -1,3 +1,4 @@
+import {randomUUID} from "../lib/utils.js";
 import {useCallback, useEffect, useRef} from "react";
 import {activeTimer} from "../lib/activeTime.js";
 
@@ -27,7 +28,7 @@ export function useActiveTime(identity, kind, enabled = true) {
   return useCallback(target => {
     if (target.duration || !timer.current || !enabled) return target;
     return {...target, duration: {
-      sample_id: crypto.randomUUID(), submission_id: target.payload.submission_id,
+      sample_id: randomUUID(), submission_id: target.payload.submission_id,
       kind, active_ms: timer.current.stop(),
     }};
   }, [kind, enabled]);

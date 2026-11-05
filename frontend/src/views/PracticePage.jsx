@@ -171,6 +171,9 @@ export default function PracticePage({ sessionId, onExit, onRestart, onNormal, a
     setLoading(true);
     api(`/api/practice-sessions/${sessionId}`)
       .then((data) => {
+        if (!Array.isArray(data?.items) || data.items.some(item => !item || typeof item.id !== "string" || typeof item.status !== "string")) {
+          throw new Error("练习数据不完整，请返回重新加载");
+        }
         if (!cancelled) setSession(data);
       })
       .catch((cause) => {
@@ -197,7 +200,7 @@ export default function PracticePage({ sessionId, onExit, onRestart, onNormal, a
     [session, retryItemId],
   );
   const processed = session?.items.filter((item) => item.status !== "pending" && item.status !== "stale") || [];
-  const showSummary = session && session.lifecycle !== "unavailable" && session.items.length > 0 && !activeItem && !staleItem;
+  const showSummary = session && session.lifecycle !== "unavailable" && session.items.length > 0 && !activeItem && !staleItem && !feedback && !retryItem;
 
   const restart = (weakOnly) => {
     if (storyCheck) return onRestart();
@@ -333,6 +336,7 @@ export default function PracticePage({ sessionId, onExit, onRestart, onNormal, a
           )}
           {delayed && <button className="btn btn-ghost" onClick={onNormal}>普通练习</button>}
           {delayed && !session.items.length && <button className="btn btn-primary" onClick={() => restart(false)}>重新查找候选</button>}
+          {!session.items.length && <p role="status">本轮没有可练习的题目，请返回重新选择。</p>}
           {!session.items.length && !showSummary && (
             <button className="btn btn-ghost" onClick={onExit}>
               {back}

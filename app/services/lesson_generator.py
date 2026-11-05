@@ -87,15 +87,16 @@ def validate_lesson(data) -> dict:
         if key in seen_words:
             raise ValueError(f"课程内容不合法：单词重复：{form}")
         seen_words.add(key)
+        phonetic = word.get("phonetic")
+        if phonetic is not None and not isinstance(phonetic, str):
+            raise ValueError(f"课程内容不合法：{form} 的音标必须是文本")
         clean_words.append(
             {
                 "word": form,
-                "phonetic": word.get("phonetic") or "",
+                "phonetic": (phonetic or "").strip(),
                 "meaning": _text(word.get("meaning"), f"{form} 的释义"),
                 "example": _text(word.get("example"), f"{form} 的例句"),
-                "example_cn": _text(
-                    word.get("example_cn"), f"{form} 的例句翻译"
-                ),
+                "example_cn": _text(word.get("example_cn"), f"{form} 的例句翻译"),
             }
         )
     dialogue = data.get("dialogue")
@@ -140,9 +141,7 @@ def _level_prompt(level: int) -> str:
     )
 
 
-def generate_next_lesson(
-    db: Session, *, operation_id=None, runtime: Runtime
-) -> Lesson:
+def generate_next_lesson(db: Session, *, operation_id=None, runtime: Runtime) -> Lesson:
     """确定下一课并在写锁内复核；路由不先读库再进入写模块。"""
     if operation_id is not None:
         existing = (
@@ -197,15 +196,18 @@ def generate_lesson(
         if max_level >= level:
             raise LessonLevelConflictError(f"第 {level} 课已存在，请重新加载")
         words = content["words"]
-        existing_words = set(
-            session.scalars(
+        existing_words = {
+            name.casefold(): name
+            for name in session.scalars(
                 select(Card.word).where(
-                    Card.word.in_([word["word"] for word in words])
+                    Card.kind == "word",
+                    func.lower(Card.word).in_([word["word"].lower() for word in words]),
                 )
             )
-        )
+        }
         for word in words:
-            if word["word"] in existing_words:
+            if word["word"].casefold() in existing_words:
+                word["word"] = existing_words[word["word"].casefold()]
                 continue
             session.add(
                 Card(

@@ -67,6 +67,7 @@ export default function LessonsPage({ onExit }) {
   });
   const [activeLesson, setActiveLesson] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [generating, setGenerating] = useState(false);
   const [hasNextPending, setHasNextPending] = useState(() =>
     Boolean(loadPending(NEXT_SCOPE, NEXT_PREFIX)),
@@ -85,14 +86,16 @@ export default function LessonsPage({ onExit }) {
   }, [activeLesson]);
 
   const loadLessons = useCallback(
-    () =>
-      api("/api/lessons").then((d) => {
+    () => {
+      setLoadError("");
+      return api("/api/lessons").then((d) => {
         setLessons(d.lessons);
         setNextLevel(d.next_level);
         setIsDone(d.is_done);
         setCounts(d.counts || {});
         return d;
-      }),
+      }).catch(error => {setLoadError(error.message); throw error;}).finally(() => setLoading(false));
+    },
     [],
   );
 
@@ -213,10 +216,13 @@ export default function LessonsPage({ onExit }) {
   }
 
   if (loading) return <div className="story-empty">加载中…</div>;
+  if (loadError && !activeLesson) return <div role="alert">加载失败：{loadError}<button className="btn btn-ghost" onClick={() => {setLoading(true); loadLessons().catch(() => {});}}>重试加载</button></div>;
 
   // 课程学习页
   if (activeLesson) {
     return (
+      <>
+      {loadError && <div role="alert">课程列表刷新失败：{loadError}<button className="btn btn-ghost" onClick={() => loadLessons().catch(() => {})}>重试刷新</button></div>}
       <LessonDetail
         key={activeLesson.id}
         lesson={activeLesson}
@@ -226,6 +232,7 @@ export default function LessonsPage({ onExit }) {
         onStartPractice={startPractice}
         generating={generating}
       />
+      </>
     );
   }
 

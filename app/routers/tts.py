@@ -77,6 +77,7 @@ async def tts_audio(word: str):
     text = _validate(word)
     cached = _cache.get(text)
     if cached is not None:
+        _cache.move_to_end(text)
         return Response(content=cached, media_type="audio/mpeg")
 
     try:
@@ -94,11 +95,13 @@ async def tts_audio(word: str):
 async def tts_audio_preload(word: str):
     """预合成并入缓存（前端可提前调用，之后播放零延迟）。"""
     text = _validate(word)
-    if text not in _cache:
+    if text in _cache:
+        _cache.move_to_end(text)
+    else:
         try:
             data = await _synthesize_all(text)
             if data:
                 _cache_put(text, data)
-        except (OSError, ValueError, TimeoutError) as exc:
+        except Exception as exc:  # noqa: BLE001 — 预热与播放使用相同的外部失败边界
             logger.warning("TTS preload failed for %r: %s", text, exc)
     return {"cached": text in _cache}

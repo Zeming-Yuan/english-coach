@@ -6,6 +6,8 @@
 触发点：/api/reviews、/api/listening/score、/api/typing/check
 """
 
+from datetime import UTC, datetime
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -29,6 +31,7 @@ def record_error(db: Session, card_id: int, is_correct: bool) -> int:
     # 答错：加权
     if row:
         row.error_count += 1
+        row.last_error_at = datetime.now(UTC).replace(tzinfo=None)
         return row.error_count
     db.add(ErrorCard(card_id=card_id, error_count=1))
     return 1

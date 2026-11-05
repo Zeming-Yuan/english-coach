@@ -287,7 +287,8 @@ export default function MixedPage({ onExit }) {
         skipped: record.skipped,
         userInput: record.value,
       });
-      const savedItemId = itemIdFor(record.items[record.idx]);
+      const savedItem = record.items[record.idx];
+      const savedItemId = itemIdFor(savedItem);
       if (savedItemId) clearAssistance("mixed", savedItemId);
       setStats((s) =>
         result.correct
@@ -299,9 +300,9 @@ export default function MixedPage({ onExit }) {
                 skippedList: [
                   ...(s.skippedList || []),
                   {
-                    card_id: item.q.card_id,
-                    word: result.expected || item.q.word,
-                    meaning: item.q.meaning || item.q.prompt,
+                    card_id: savedItem.q.card_id,
+                    word: result.expected || savedItem.q.word,
+                    meaning: savedItem.q.meaning || savedItem.q.prompt,
                   },
                 ],
               }
@@ -310,7 +311,7 @@ export default function MixedPage({ onExit }) {
                 wrongList: [
                   ...s.wrongList,
                   {
-                    meaning: item.q.meaning || item.q.prompt,
+                    meaning: savedItem.q.meaning || savedItem.q.prompt,
                     expected: result.expected,
                   },
                 ],

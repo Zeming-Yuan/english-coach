@@ -30,3 +30,7 @@ test("punctuation separates spoken words instead of merging them", () => {
 test("unsupported separators preserve word boundaries without splitting accented words", () => {
   assert.deepEqual(storyAudioSegments("red&blue tea(coffee) a naïve café."), ["red blue tea coffee a naive cafe."]);
 });
+
+test('spoken text preserves letters that Unicode decomposition does not expand',()=>{
+  assert.deepEqual(storyAudioSegments('Straße and smørrebrød.'),['Strasse and smorrebrod.']);
+});

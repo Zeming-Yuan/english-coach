@@ -17,16 +17,18 @@ export default function WordsPage({ onBack }) {
   const [query, setQuery] = useState("");
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [quickPeek, setQuickPeek] = useState(null);
   const [peekPos, setPeekPos] = useState({ x: 0, y: 0 });
   const [tab, setTab] = useState("words"); // words | sentences
 
   const loadCards = useCallback(() => {
+    setLoadError("");
     return api("/api/cards").then((d) => {
       setAllCards(d.cards);
       prewarmTts(d.cards.map((c) => c.kind === "sentence" ? (c.example || c.word) : c.word));
       setLoading(false);
-    }).catch(() => setLoading(false));
+    }).catch(error => {setLoadError(error.message); setLoading(false);});
   }, []);
 
   useEffect(() => {
@@ -144,10 +146,14 @@ export default function WordsPage({ onBack }) {
     });
 
   if (loading) return <div className="story-empty">加载中…</div>;
+  if (loadError && !detail) return <div role="alert">加载失败：{loadError}<button className="btn btn-ghost" onClick={() => {setLoading(true); loadCards();}}>重试加载</button></div>;
 
   // 详情页
   if (detail) {
-    return <WordDetail key={detail} cardId={detail} onBack={() => setDetail(null)} allCards={filtered} setDetail={setDetail} onCardChanged={loadCards} />;
+    return <>
+      {loadError && <div role="alert">词表刷新失败：{loadError}<button className="btn btn-ghost" onClick={loadCards}>重试刷新</button></div>}
+      <WordDetail key={detail} cardId={detail} onBack={() => setDetail(null)} allCards={filtered} setDetail={setDetail} onCardChanged={loadCards} />
+    </>;
   }
 
   // 点击关闭快速查阅
@@ -323,6 +329,7 @@ function LearningEventRow({ event }) {
 /* ============ 单词详情子组件 ============ */
 function WordDetail({ cardId, onBack, allCards, setDetail, onCardChanged }) {
   const [c, setCard] = useState(null);
+  const [loadError, setLoadError] = useState("");
   const [loading, setLoading] = useState(true);
   const attempt = useLearningAttempt("card_detail:" + cardId);
 
@@ -331,10 +338,14 @@ function WordDetail({ cardId, onBack, allCards, setDetail, onCardChanged }) {
   const prevCard = allCards && currentIndex > 0 ? allCards[currentIndex - 1] : null;
   const nextCard = allCards && currentIndex < allCards.length - 1 ? allCards[currentIndex + 1] : null;
 
-  useEffect(() => {
+  const loadDetail = useCallback(() => {
     setLoading(true);
-    api(`/api/cards/${cardId}`).then((d) => { setCard(d); setLoading(false); }).catch(() => setLoading(false));
+    setLoadError("");
+    return api(`/api/cards/${cardId}`).then(setCard)
+      .catch(error => {setCard(null); setLoadError(error.message);})
+      .finally(() => setLoading(false));
   }, [cardId]);
+  useEffect(() => {loadDetail();}, [loadDetail]);
 
   const rateCard = async (rating) => {
     if (!c || attempt.phase === "saving" || attempt.phase === "failed") return;
@@ -369,7 +380,7 @@ function WordDetail({ cardId, onBack, allCards, setDetail, onCardChanged }) {
     try {
       const r = await api(`/api/cards/${c.id}/hard`, { method: "POST" });
       setCard({ ...c, is_hard: r.is_hard });
-    } catch {}
+    } catch (error) {showToast("更新失败：" + error.message);}
   };
 
   const deleteCard = async () => {
@@ -377,7 +388,7 @@ function WordDetail({ cardId, onBack, allCards, setDetail, onCardChanged }) {
     try {
       await api(`/api/cards/${c.id}`, { method: "DELETE" });
       onBack();
-    } catch {}
+    } catch (error) {showToast("删除失败：" + error.message);}
   };
 
   const [pendingExample, setPendingExample] = useState(null);
@@ -472,7 +483,7 @@ function WordDetail({ cardId, onBack, allCards, setDetail, onCardChanged }) {
   };
 
   if (loading) return <div className="story-empty">加载中…</div>;
-  if (!c) return <div className="story-empty">加载失败</div>;
+  if (!c) return <div role="alert">加载失败：{loadError}<button className="btn btn-ghost" onClick={loadDetail}>重试加载</button><button className="btn btn-ghost" onClick={onBack}>返回单词本</button></div>;
 
   const contexts = Array.isArray(c.contexts) ? c.contexts : [];
 

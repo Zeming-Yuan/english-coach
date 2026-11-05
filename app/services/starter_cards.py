@@ -23,13 +23,25 @@ def starter_card_rows() -> list[dict]:
 def load_starter_cards(db: Session, rows: list[dict] | None = None) -> list[Card]:
     """只添加尚不存在的词卡，返回本次新增；已存在内容保持原样，不写回任何字段。"""
     added: list[Card] = []
+    seen = set()
     for row in rows if rows is not None else starter_card_rows():
+        if row["word"] in seen:
+            continue
+        seen.add(row["word"])
         existing = db.scalar(
             select(Card).where(Card.word == row["word"], Card.kind == "word")
         )
         if existing is not None:
             continue
-        card = Card(**row, kind="word", difficulty="basic")
+        card = Card(
+            **{
+                key: value
+                for key, value in row.items()
+                if key in {"word", "phonetic", "meaning", "example", "example_cn"}
+            },
+            kind="word",
+            difficulty="basic",
+        )
         db.add(card)
         added.append(card)
     return added

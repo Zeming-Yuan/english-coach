@@ -22,8 +22,16 @@ export function assistanceFor(scope, itemId) {
   if (memory.has(key)) return [...memory.get(key)];
   try {
     const saved = JSON.parse(localStorage.getItem(key) || "[]");
-    return Array.isArray(saved) ? saved.filter((kind) => ALLOWED.has(kind)) : [];
+    const clean = Array.isArray(saved) ? [...new Set(saved.filter(kind => ALLOWED.has(kind)))].sort() : [];
+    if (JSON.stringify(saved) !== JSON.stringify(clean)) {
+      try {
+        if (clean.length) localStorage.setItem(key, JSON.stringify(clean));
+        else localStorage.removeItem(key);
+      } catch {}
+    }
+    return clean;
   } catch {
+    try { localStorage.removeItem(key); } catch {}
     return [];
   }
 }

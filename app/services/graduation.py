@@ -156,8 +156,8 @@ def upgrade_sentence_card(
                 # 升级轮廓句卡（保留原 id，前端已引用）
                 changes = {
                     "example": example,
-                    "example_cn": data.get("example_cn", existing.example_cn),
-                    "meaning": data.get("example_cn", existing.meaning),
+                    "example_cn": data.get("example_cn") or existing.example_cn,
+                    "meaning": data.get("example_cn") or existing.meaning,
                 }
                 advance_content_revision(db, "card", existing.id, changes)
                 existing.example = changes["example"]

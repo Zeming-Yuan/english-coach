@@ -1,5 +1,6 @@
 """AI 服务配置路由：设置页自行填写地址/密钥/模型，保存后热生效。"""
 
+from ipaddress import ip_address
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
@@ -44,9 +45,27 @@ def _probe(settings: Settings) -> None:
     )
 
 
+def _require_local_management(request: Request) -> None:
+    """管理操作只接受直连本机；反代必须隔离这些管理路由。"""
+    forwarded = any(
+        name == "forwarded" or name.startswith("x-forwarded-") or name == "x-real-ip"
+        for name in request.headers
+    )
+    try:
+        local = (
+            request.client is not None and ip_address(request.client.host).is_loopback
+        )
+    except ValueError:
+        local = False
+    if not local or forwarded:
+        raise HTTPException(status_code=403, detail="AI 配置管理仅允许本机直连访问")
+
+
 def _error_text(exc: Exception) -> str:
-    text = str(exc).strip() or type(exc).__name__
-    return text[:300]
+    status = getattr(exc, "status_code", None)
+    if isinstance(status, int) and 400 <= status <= 599:
+        return f"AI 服务返回 HTTP {status}；请检查地址、密钥和模型"
+    return "AI 连接失败；请检查服务地址、网络、密钥和模型"
 
 
 def _reject_keyless_address_change(settings: Settings, payload: AIConfigIn) -> None:
@@ -65,6 +84,7 @@ def get_ai_config(request: Request):
 
 @router.put("/ai-config")
 def put_ai_config(payload: AIConfigIn, request: Request):
+    _require_local_management(request)
     settings = request.app.state.settings
     _reject_keyless_address_change(settings, payload)
     path: Path = request.app.state.llm_config_path
@@ -87,6 +107,7 @@ def put_ai_config(payload: AIConfigIn, request: Request):
 
 @router.post("/ai-config/test")
 def test_ai_config(payload: AIConfigIn, request: Request):
+    _require_local_management(request)
     settings = request.app.state.settings
     _reject_keyless_address_change(settings, payload)
     api_key = (payload.api_key or "").strip() or settings.llm_api_key

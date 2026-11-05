@@ -26,12 +26,11 @@ export const norm = (s) => (s || "").toLowerCase().trim();
 /** 今日队列 → 拼写池（错词/新词/到期卡，空则全库兜底）——三视图共用 */
 export async function fetchSpellPool() {
   const data = await api("/api/today");
-  let pool = [...(data.error_cards || []), ...data.new_cards, ...data.due_cards].filter(
-    (c) => c.kind === "word"
-  );
+  let pool = [data?.error_cards, data?.new_cards, data?.due_cards]
+    .flatMap(rows => Array.isArray(rows) ? rows : []).filter(c => c?.kind === "word");
   if (pool.length === 0) {
     const allData = await api("/api/cards");
-    pool = allData.cards.filter((c) => c.kind === "word");
+    pool = (Array.isArray(allData?.cards) ? allData.cards : []).filter(c => c?.kind === "word");
   }
   return pool;
 }
@@ -61,10 +60,10 @@ async function judgeAnswer(item, value, fsrsOnSpell) {
       });
       if (fsrsOnSpell) {
         // 专属拼写练习例外：答对/答错也算一次复习（进 FSRS 并可触发毕业）
-        api("/api/reviews", {
+        await api("/api/reviews", {
           method: "POST",
           body: JSON.stringify({ card_id: q.card_id, rating: r.correct ? 3 : 1 }),
-        }).catch(() => {});
+        });
       }
       return { correct: r.correct, expected: r.expected };
     }
@@ -203,13 +202,13 @@ export function usePracticeSession({
 
   /** 已确认保存后统一进入反馈与统计：只有 committed 的结果才会到这里。 */
   const applySaved = useCallback(
-    (outcome, value, skipped = false) => {
+    (outcome, value, skipped = false, target = item) => {
       const correct = outcome.correct;
       if (correct) sfxSuccess();
       else sfxFail();
       if (speakOnAnswer && outcome.expected) {
         speak(outcome.expected, null, () => {
-          if (onAnswerAudioRef.current) onAnswerAudioRef.current(item);
+          if (onAnswerAudioRef.current) onAnswerAudioRef.current(target);
         });
       }
       setFeedback({
@@ -225,7 +224,7 @@ export function usePracticeSession({
               ...s,
               wrongList: [
                 ...s.wrongList,
-                { item, userInput: skipped ? null : value, expected: outcome.expected },
+                { item: target, userInput: skipped ? null : value, expected: outcome.expected },
               ],
             }
       );
@@ -295,6 +294,7 @@ export function usePracticeSession({
         applySaved(outcome, value, false);
         return outcome;
       } catch (e) {
+        setSaveError("尚未确认保存：" + (e?.message || e));
         submittedRef.current = false;
         throw e;
       }
@@ -334,6 +334,9 @@ export function usePracticeSession({
       }
       setFeedback({ correct: false, expected, userInput: null, skipped: true });
       setStats((s) => ({ ...s, wrongList: [...s.wrongList, { item, userInput: null, expected }] }));
+    } catch (error) {
+      setSaveError("尚未确认保存：" + (error?.message || error));
+      return null;
     } finally {
       submittedRef.current = false;
     }
@@ -380,8 +383,18 @@ export function usePracticeSession({
     setSaveError("");
     try {
       const result = await sendPending(saved);
+      if (result.committed !== true) throw new Error("尚未确认保存");
       clearPending(TYPED_PENDING_SCOPE);
       setPendingResume(null);
+      // A committed old answer may no longer be due in the new pool. Give its
+      // feedback its own item, preserving every unanswered item in this round.
+      const restoredIndex = items.findIndex((entry, index) => index >= idx && entry.q?.card_id === saved.payload.card_id);
+      const restoredItems = [...items];
+      const target = restoredIndex >= 0 ? restoredItems.splice(restoredIndex, 1)[0]
+        : {type: "spell", q: {card_id: saved.payload.card_id, word: result.expected}};
+      restoredItems.splice(idx, 0, target);
+      setItems(restoredItems);
+      applySaved(result, saved.payload.user_input, saved.payload.skipped, target);
       return result;
     } catch {
       setSaveError("请检查网络后重试");
@@ -390,7 +403,7 @@ export function usePracticeSession({
       submittedRef.current = false;
       setSaving(false);
     }
-  }, []);
+  }, [items, idx, applySaved]);
 
   /** 手动下一题（反馈阶段按钮；done 判定在 advance 内）。 */
   const next = useCallback(() => {
