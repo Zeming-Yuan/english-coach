@@ -563,6 +563,7 @@ def test_downgrade_keeps_events_and_upgrade_is_idempotent(ec, tmp_path):
     with engine.begin() as connection:
         for table_name, collection in [
             ("cards", "cards"),
+            ("reviews", "reviews"),
             ("review_events", "learning_events"),
         ]:
             table = Table(table_name, MetaData(), autoload_with=connection)
@@ -587,6 +588,7 @@ def test_downgrade_keeps_events_and_upgrade_is_idempotent(ec, tmp_path):
             connection.scalar(text("SELECT id FROM review_events"))
             == response.json()["event_id"]
         )
+        assert connection.scalar(text("SELECT COUNT(*) FROM review_baselines")) == 0
     engine.dispose()
 
 
@@ -622,3 +624,63 @@ def test_review_unique_conflict_with_different_body_returns_conflict(ec):
     after = ec.client.get(f"/api/cards/{card_id}").json()
     assert after["learning_events"] == before["learning_events"]
     assert after["memory_state"] == before["memory_state"]
+
+
+def test_baseline_upgrade_recovers_after_ddl_and_partial_capture(tmp_path):
+    """A retry after nontransactional DDL captures missing rows exactly once."""
+    url = f"sqlite:///{tmp_path / 'partial-baseline.db'}"
+    config = _migration_config(url)
+    command.upgrade(config, "b1c2d3e4f501")
+    engine = create_engine(url)
+    try:
+        with engine.begin() as conn:
+            conn.execute(
+                text("INSERT INTO cards (word, kind) VALUES ('apple', 'word')")
+            )
+            for count in (1, 2):
+                conn.execute(
+                    text(
+                        "INSERT INTO reviews (card_id, state, due, stability, difficulty, "
+                        "elapsed_days, review_count) VALUES (1, 1, '2026-10-29', 1, 5, 0, :count)"
+                    ),
+                    {"count": count},
+                )
+        command.upgrade(config, "b1c2d3e4f502")
+        # Leave both DDL tables and one captured row, as a failed MySQL run can.
+        with engine.begin() as conn:
+            conn.execute(
+                text("DELETE FROM review_baselines WHERE source_review_id = 2")
+            )
+            saved = conn.execute(
+                text("SELECT id, captured_at FROM review_baselines")
+            ).one()
+            conn.execute(
+                text("UPDATE alembic_version SET version_num = 'b1c2d3e4f501'")
+            )
+        command.upgrade(config, "b1c2d3e4f502")
+        with engine.connect() as conn:
+            rows = (
+                conn.execute(
+                    text(
+                        "SELECT source_review_id FROM review_baselines ORDER BY source_review_id"
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            assert rows == [1, 2]
+            assert (
+                conn.execute(
+                    text(
+                        "SELECT id, captured_at FROM review_baselines WHERE source_review_id = 1"
+                    )
+                ).one()
+                == saved
+            )
+            assert conn.scalar(text("SELECT COUNT(*) FROM review_events")) == 0
+        command.downgrade(config, "b1c2d3e4f501")
+        command.upgrade(config, "b1c2d3e4f502")
+        with engine.connect() as conn:
+            assert conn.scalar(text("SELECT COUNT(*) FROM review_baselines")) == 2
+    finally:
+        engine.dispose()

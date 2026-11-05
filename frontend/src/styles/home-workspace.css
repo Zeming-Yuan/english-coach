@@ -25,10 +25,10 @@
 .home-workspace .home-text-link svg { width: 18px; flex-shrink: 0; }
 .home-workspace .home-reminder { padding: 10px 18px; font-size: 14px; color: #705431; background: #e5d7bf; border-radius: 7px; }
 .home-workspace .home-round { padding: 22px 30px 16px; border-radius: 12px; background: #35342f; color: #fff7eb; }
-.home-round-heading { display: flex; align-items: center; gap: 25px; margin-bottom: 18px; }
+.home-round-heading { display: block; margin-bottom: 16px; }
 .home-workspace .home-round-heading h1 { font-size: 36px; line-height: 1.4; color: #fff7eb; }
-.home-round-heading > p { padding-left: 25px; border-left: 1px solid #847e73; color: #e1d7c9; font-size: 16px; }
-.home-round-body { display: grid; grid-template-columns: 1.1fr 1.25fr auto; align-items: center; gap: 26px; }
+.home-round-heading > p { padding: 8px 0 0; border: 0; line-height: 1.7; color: #e1d7c9; font-size: 16px; }
+.home-round-body { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 26px; margin-top: 20px; }
 .home-round-summary { padding-left: 18px; border-left: 4px solid #c98b62; }
 .home-workspace .home-round-summary h2 { color: #fff7eb; font-size: 25px; }
 .home-round-summary > p { margin-top: 6px; font-size: 15px; line-height: 1.8; color: #e1d7c9; }
@@ -44,7 +44,7 @@
 .home-workspace .home-primary { background: var(--home-accent); border: 1px solid var(--home-accent); color: #fff9f1; min-height: 56px; font-size: 18px; font-weight: 500; padding: 13px 24px; }
 .home-workspace .home-primary:hover { background: #884d30; border-color: #884d30; }
 .home-round-action { white-space: nowrap; }
-.home-round-notes { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 5px 24px; margin-top: 12px; color: #c8bfb1; font-size: 11px; }
+.home-round-notes { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 5px 24px; margin-top: 12px; color: #c8bfb1; font-size: 14px; line-height: 1.7; }
 .home-round .home-primary:focus-visible, .home-round .home-on-dark:focus-visible { outline-color: #f0c8aa; }
 .home-content-grid { display: grid; grid-template-columns: 1.25fr 1fr; gap: 16px; }
 .home-content-grid > section { min-width: 0; padding: 22px 26px; border-radius: 10px; }
@@ -124,10 +124,18 @@ body.dark .home-workspace :is(.home-course,.home-specialists) { border-color: va
 body.dark .home-practice-grid > button:hover { background: #43392e; }
 body.dark .home-story > [role="alert"] { color: #f0b6a1; }
 
+.home-round-notes label { display: flex; align-items: center; gap: 10px; }
+.home-round-notes select { min-height: 36px; border: 1px solid #8c8275; border-radius: 4px; background: #35342f; color: #fff7eb; padding: 4px 8px; }
+.home-round-notes [data-testid="time-budget-plan"] { align-self: center; color: #e1d7c9; }
+.home-plan-details { margin-top: 18px; padding-top: 14px; border-top: 1px solid #777166; font-size: 13px; line-height: 1.8; color: #e1d7c9; }
+.home-plan-details > summary { cursor: pointer; width: fit-content; color: #e9c5a9; }
+.home-plan-details > p { margin-top: 12px; }
+.home-plan-details .home-goal { padding: 16px 0 0; border: 0; max-width: 440px; }
+.home-plan-details .home-round-notes { display: grid; font-size: 13px; }
+
 @media (max-width: 1350px) {
   .home-round-body { grid-template-columns: 1fr 1fr; gap: 20px; }
   .home-round-action { grid-column: 2; justify-self: end; }
-  .home-round-summary { grid-row: 1 / span 2; }
   .home-goal { padding-left: 20px; }
   .home-round-heading { margin-bottom: 20px; }
   .home-story-preview { grid-template-columns: minmax(0,1fr) 112px; gap: 14px; }
@@ -152,16 +160,16 @@ body.dark .home-story > [role="alert"] { color: #f0b6a1; }
   .product-app.view-queue .topbar { padding-inline: 16px; }
   .view-queue .home-workspace { gap: 14px; }
   .home-workspace .home-round { padding: 22px 20px 18px; border-radius: 9px; }
-  .home-round-heading { display: block; margin-bottom: 24px; }
+  .home-round-heading { margin-bottom: 12px; }
   .home-workspace .home-round-heading h1 { font-size: 29px; }
   .home-round-heading > p { padding: 0; border: 0; font-size: 13px; margin-top: 5px; }
-  .home-round-body { grid-template-columns: minmax(0,1fr); gap: 20px; }
+  .home-round-body { grid-template-columns: minmax(0,1fr); gap: 16px; }
   .home-round-summary { grid-row: auto; padding-left: 13px; }
   .home-workspace .home-round-summary h2 { font-size: 22px; }
   .home-round-summary > p { font-size: 13px; }
   .home-goal { padding: 15px 0 0; border-left: 0; border-top: 1px solid #777166; }
   .home-round-action { grid-column: auto; justify-self: stretch; }
-  .home-round-notes { font-size: 10px; gap: 6px; }
+  .home-round-notes { gap: 10px; }
   .home-content-grid { grid-template-columns: minmax(0,1fr); gap: 14px; }
   .home-content-grid > section { padding: 20px; }
   .home-section-head { flex-wrap: nowrap; }
@@ -189,26 +197,4 @@ body.dark .home-story > [role="alert"] { color: #f0b6a1; }
   .home-workspace .home-evidence { padding: 22px 8px; }
   .home-evidence-grid { grid-template-columns: minmax(0,1fr); gap: 26px; }
   .home-welcome-actions .home-primary { width: 100%; }
-}
-
-/* Daily task hierarchy: planning details stay available on demand. */
-.home-round-heading { display: block; margin-bottom: 16px; }
-.home-round-heading > p { padding: 8px 0 0; border: 0; line-height: 1.7; }
-.home-round-body { grid-template-columns: minmax(0,1fr) auto; margin-top: 20px; }
-.home-round-summary { grid-row: auto; }
-.home-round-action { grid-column: auto; }
-.home-round-notes { font-size: 14px; line-height: 1.7; }
-.home-round-notes label { display: flex; align-items: center; gap: 10px; }
-.home-round-notes select { min-height: 36px; border: 1px solid #8c8275; border-radius: 4px; background: #35342f; color: #fff7eb; padding: 4px 8px; }
-.home-round-notes [data-testid="time-budget-plan"] { align-self: center; color: #e1d7c9; }
-.home-plan-details { margin-top: 18px; padding-top: 14px; border-top: 1px solid #777166; font-size: 13px; line-height: 1.8; color: #e1d7c9; }
-.home-plan-details > summary { cursor: pointer; width: fit-content; color: #e9c5a9; }
-.home-plan-details > p { margin-top: 12px; }
-.home-plan-details .home-goal { padding: 16px 0 0; border: 0; max-width: 440px; }
-.home-plan-details .home-round-notes { display: grid; font-size: 13px; }
-@media (max-width: 680px) {
-  .home-round-body { grid-template-columns: minmax(0,1fr); gap: 16px; }
-  .home-round-notes { gap: 10px; }
-  .home-round-heading { margin-bottom: 12px; }
-  .home-workspace .home-round-heading h1 { font-size: 29px; }
 }

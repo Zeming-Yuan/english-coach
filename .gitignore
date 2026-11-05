@@ -1,6 +1,8 @@
 # ---- 安全红线：密钥与本地配置，绝不提交 ----
 .env
 .env.local
+.env.*
+!.env.example
 *.pem
 *.key
 
@@ -20,6 +22,9 @@ htmlcov/
 /data/
 *.sqlite3
 *.db
+*.db.bak-*
+*.db-wal
+*.db-shm
 
 # ---- IDE / 系统 ----
 .idea/

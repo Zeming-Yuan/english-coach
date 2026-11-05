@@ -313,6 +313,8 @@ body {
   background: var(--mint-soft); color: #1E5C4D;
   border-bottom-right-radius: 4px;
 }
+body.dark .bubble-a { background: var(--card); color: var(--ink); }
+body.dark .bubble-b { background: var(--mint-soft); color: var(--ink); }
 
 /* 卡片离场方向动画 + 入场 */
 .card.leave-left {
@@ -1146,6 +1148,9 @@ body {
 .history-rating.rating-1 { background: #FFE4E0; color: var(--coral); }
 .history-rating.rating-2 { background: #FFF3DE; color: #B8860B; }
 .history-rating.rating-3 { background: var(--mint-soft); color: #137A62; }
+body.dark .history-rating.rating-1 { background: var(--coral-soft); color: var(--ink); }
+body.dark .history-rating.rating-2 { background: var(--sun-soft); color: var(--ink); }
+body.dark .history-rating.rating-3 { background: var(--mint-soft); color: var(--ink); }
 .history-rating.rating-4 { background: var(--mint-soft); color: #137A62; }
 .history-rating.state-0 { background: #EBEDF0; color: var(--muted); }
 .history-rating.state-1 { background: #FFF3DE; color: #B8860B; }

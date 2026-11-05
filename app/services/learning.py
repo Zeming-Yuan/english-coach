@@ -14,12 +14,13 @@ import hashlib
 import json
 import threading
 from datetime import UTC, datetime
+from functools import partial
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import literal_column, select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.models.card import Card
 from app.models.review import Review
@@ -569,6 +570,12 @@ def start_pending_upgrade(db: Session, upgrade=None) -> None:
     if upgrade_card_id is None:
         return
     target = upgrade or upgrade_sentence_card
+    if target is upgrade_sentence_card:
+        # A fresh background Session must keep the originating application's DB.
+        target = partial(
+            target,
+            session_factory=sessionmaker(bind=db.get_bind(), autoflush=False),
+        )
     ctx = contextvars.copy_context()
     threading.Thread(
         target=ctx.run, args=(target, upgrade_card_id), daemon=True
@@ -593,7 +600,7 @@ def submit_attempt(
                 session, cmd, runtime, correct_override=correct_override
             ),
         )
-    except IntegrityError:
+    except IntegrityError as error:
         # 并发同标识提交：唯一约束挡住后回读已保存结果
         existing = _event_by_submission(db, str(cmd.submission_id))
         if existing is None:
@@ -602,7 +609,7 @@ def submit_attempt(
         if verified is not None:
             verified = business_context(verified)
         if existing.fingerprint != canonical_attempt(cmd, verified_question=verified):
-            raise SubmissionConflictError(str(cmd.submission_id))
+            raise SubmissionConflictError(str(cmd.submission_id)) from error
         result = AttemptResult.model_validate(existing.response)
 
     start_pending_upgrade(db, upgrade)

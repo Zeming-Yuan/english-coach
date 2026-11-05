@@ -21,7 +21,7 @@ export async function startSourceUI() {
       resolveId(id) { if (id.startsWith("\0source-ui-")) return id; },
       load(id) { return entries.get(id); },
     }],
-    server: {host: "127.0.0.1", port: 0, fs: {allow: [root]}},
+    server: {host: "127.0.0.1", port: 0, fs: {allow: [root, fs.realpathSync(path.join(root, "frontend/node_modules"))]}},
   });
   await server.listen();
   const origin = server.resolvedUrls.local[0].replace(/\/$/, "");

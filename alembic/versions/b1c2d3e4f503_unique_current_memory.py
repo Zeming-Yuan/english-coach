@@ -30,6 +30,12 @@ def upgrade() -> None:
             "reviews contains invalid legacy timestamps; repair before contract"
         ) from error
     for row in rows:
+        if row["last_review"] is not None and not isinstance(
+            row["last_review"], datetime
+        ):
+            raise RuntimeError(
+                f"reviews row {row['id']} has invalid last_review; repair before contract"
+            )
         for field in ("review_count", "elapsed_days", "step"):
             if field == "step" and row[field] is None:
                 continue
