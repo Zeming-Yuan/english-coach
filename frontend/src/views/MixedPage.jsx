@@ -15,10 +15,30 @@ import SpellingBoard from "../components/SpellingBoard.jsx";
 // 队列上下文随唯一待确认请求保存；不交给只恢复单个结果的全局自评恢复条。
 const PENDING_KEY = "ec.mixed.pending";
 let memoryPending = null;
+const optionalText = value => value == null || typeof value === "string";
+function validMixedPending(record) {
+  if (!record || !Array.isArray(record.items) || !record.items.length ||
+      !Number.isInteger(record.idx) || record.idx < 0 || record.idx >= record.items.length ||
+      !record.stats || !Number.isFinite(record.stats.correct) || !Number.isFinite(record.stats.skipped) ||
+      !Array.isArray(record.stats.wrongList) || !Array.isArray(record.stats.skippedList) ||
+      !Array.isArray(record.assistance)) return false;
+  if (![...record.stats.wrongList, ...record.stats.skippedList].every(entry =>
+      entry && optionalText(entry.meaning) && optionalText(entry.expected) && optionalText(entry.word))) return false;
+  if (!record.items.every(item => item && ["spell", "listen", "choice"].includes(item.type) &&
+      item.q && Number.isInteger(item.q.card_id) &&
+      optionalText(item.q.meaning) && optionalText(item.q.prompt) && optionalText(item.q.word) &&
+      (item.type === "spell" ? typeof item.q.word === "string" :
+        Array.isArray(item.q.options) && item.q.options.every(option => typeof option === "string")))) return false;
+  const request = record.pending;
+  if (!request || !["/api/typing/check", "/api/listening/score", "/api/quiz/score"].includes(request.path) || !request.payload) return false;
+  const answer = request.path === "/api/quiz/score" ? request.payload.answers?.[0] : request.payload;
+  return typeof answer?.submission_id === "string" && answer.submission_id.length > 0 &&
+    answer.card_id === record.items[record.idx].q.card_id;
+}
 function loadMixedPending() {
-  if (memoryPending) return memoryPending;
   try {
-    return JSON.parse(localStorage.getItem(PENDING_KEY) || "null");
+    const record = memoryPending || JSON.parse(localStorage.getItem(PENDING_KEY) || "null");
+    return validMixedPending(record) ? record : null;
   } catch {
     return null;
   }

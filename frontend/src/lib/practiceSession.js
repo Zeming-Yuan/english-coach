@@ -304,37 +304,39 @@ export function usePracticeSession({
 
   /** 跳过：先完成视图提供的保存（若有），成功后才显示反馈；输入题保存 correct=null。 */
   const skip = useCallback(async () => {
-    if (!item || feedback || phase !== "ready") return;
-    if (typeof item.skip === "function") {
-      await item.skip();
-    } else {
-      const config = typedAttemptRef.current?.(item) ?? null;
-      if (config) {
-        submittedRef.current = true;
-        try {
-          const result = await sendTypedAttempt(item, null, true, config);
-          applySaved(
-            { correct: result.correct, expected: result.expected },
-            null,
-            true
-          );
-        } catch {
-          // 失败保留待确认请求，由页面的重试入口处理
-        } finally {
-          submittedRef.current = false;
+    if (!item || feedback || submittedRef.current || phase !== "ready") return;
+    submittedRef.current = true;
+    try {
+      if (typeof item.skip === "function") {
+        await item.skip();
+      } else {
+        const config = typedAttemptRef.current?.(item) ?? null;
+        if (config) {
+          try {
+            const result = await sendTypedAttempt(item, null, true, config);
+            applySaved(
+              { correct: result.correct, expected: result.expected },
+              null,
+              true
+            );
+          } catch {
+            // 失败保留待确认请求，由页面的重试入口处理
+          }
+          return;
         }
-        return;
       }
+      sfxFail();
+      const expected = q?.word || q?.answer || "";
+      if (speakOnAnswer && expected) {
+        speak(expected, null, () => {
+          if (onAnswerAudioRef.current) onAnswerAudioRef.current(item);
+        });
+      }
+      setFeedback({ correct: false, expected, userInput: null, skipped: true });
+      setStats((s) => ({ ...s, wrongList: [...s.wrongList, { item, userInput: null, expected }] }));
+    } finally {
+      submittedRef.current = false;
     }
-    sfxFail();
-    const expected = q?.word || q?.answer || "";
-    if (speakOnAnswer && expected) {
-      speak(expected, null, () => {
-        if (onAnswerAudioRef.current) onAnswerAudioRef.current(item);
-      });
-    }
-    setFeedback({ correct: false, expected, userInput: null, skipped: true });
-    setStats((s) => ({ ...s, wrongList: [...s.wrongList, { item, userInput: null, expected }] }));
   }, [item, feedback, phase, q, speakOnAnswer, sendTypedAttempt, applySaved]);
 
   /** 失败后重试原 pending，不换 submission_id。 */

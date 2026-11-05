@@ -72,7 +72,7 @@ export function useLearningAttempt(scope, preparePending) {
 
   const submit = useCallback(
     (path, payload) => {
-      if (pending.current) {
+      if (busy.current || pending.current) {
         return Promise.reject(
           new Error("请先继续确认或明确放弃待确认提交"),
         );
@@ -86,6 +86,7 @@ export function useLearningAttempt(scope, preparePending) {
   const retry = useCallback(() => run(pending.current), [run]);
 
   const clear = useCallback(() => {
+    if (busy.current) return;
     // A previous screen can finish after another screen has started a new
     // submission in this scope. Only remove the request this hook owns.
     const ownedId = pending.current?.payload.submission_id;

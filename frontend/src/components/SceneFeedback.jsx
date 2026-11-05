@@ -6,6 +6,10 @@ import {beginVisibleContactLookup, recordVisibleCards} from '../lib/contacts.js'
 const PREFIX = 'ec.feedback.';
 
 export default function SceneFeedback({session, item}) {
+  return <ItemFeedback key={`${session.id}:${session.content_hash}:${item.id}:${item.attempt_id}`} session={session} item={item} />;
+}
+
+function ItemFeedback({session, item}) {
   const scope = `${session.id}:${item.id}`;
   const pending = useRef(loadPending(scope, PREFIX));
   const [data, setData] = useState(item.feedback || null);
