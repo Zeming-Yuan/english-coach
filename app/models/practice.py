@@ -9,6 +9,7 @@ from datetime import datetime
 
 from sqlalchemy import (
     JSON,
+    Boolean,
     DateTime,
     ForeignKey,
     Integer,
@@ -31,6 +32,12 @@ class PracticeSession(Base):
         String(36), unique=True, index=True, nullable=False
     )
     purpose: Mapped[str] = mapped_column(String(30), nullable=False)
+    weak_only: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="0"
+    )
+    targets_explicit: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="0"
+    )
     lesson_id: Mapped[int | None] = mapped_column(
         ForeignKey("lessons.id", ondelete="CASCADE"), index=True, nullable=True
     )

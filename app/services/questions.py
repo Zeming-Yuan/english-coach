@@ -12,7 +12,7 @@ import hashlib
 import hmac
 import json
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from app.models.card import Card
 
@@ -68,15 +68,15 @@ def issue_question(
     options = list(options)
     if expected not in options:
         raise ValueError("expected answer must be one of the options")
-    issued_at = now or datetime.now(timezone.utc)
+    issued_at = now or datetime.now(UTC)
     if issued_at.tzinfo is None:
-        issued_at = issued_at.replace(tzinfo=timezone.utc)
+        issued_at = issued_at.replace(tzinfo=UTC)
     payload = {
         "card_id": card.id,
         "kind": kind,
         "options": options,
         "expected": expected,
-        "expires_at": (issued_at + ttl).astimezone(timezone.utc).isoformat(),
+        "expires_at": (issued_at + ttl).astimezone(UTC).isoformat(),
         "kid": _key_id(secret),
     }
     if revision is not None:
@@ -92,7 +92,7 @@ def _decode(token: str) -> dict:
         encoded, signature = token.rsplit(".", 1)
         raw = base64.urlsafe_b64decode(encoded.encode("ascii"))
         payload = json.loads(raw)
-    except (ValueError, TypeError, UnicodeError) as error:
+    except (ValueError, TypeError, UnicodeError, RecursionError) as error:
         raise InvalidQuestionToken("题目上下文无效，请重新加载题目") from error
     if not isinstance(payload, dict):
         raise InvalidQuestionToken("题目上下文无效，请重新加载题目")
@@ -116,13 +116,15 @@ def verify_question(token: str, secret: bytes, now: datetime) -> dict:
     if payload.get("kid") != _key_id(secret):
         raise QuestionTokenStale("题目上下文已失效，请重新加载题目")
     expected_signature = _sign(decoded["raw"], secret)
-    if not hmac.compare_digest(str(decoded["signature"]), expected_signature):
+    if not decoded["signature"].isascii() or not hmac.compare_digest(
+        decoded["signature"], expected_signature
+    ):
         raise InvalidQuestionToken("题目上下文无效，请重新加载题目")
     _validate_payload(payload)
     expires_at = datetime.fromisoformat(payload["expires_at"])
     if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
-    reference = now if now.tzinfo is not None else now.replace(tzinfo=timezone.utc)
+        expires_at = expires_at.replace(tzinfo=UTC)
+    reference = now if now.tzinfo is not None else now.replace(tzinfo=UTC)
     if reference >= expires_at:
         raise QuestionTokenExpired("题目已过期，请重新加载题目")
     return payload

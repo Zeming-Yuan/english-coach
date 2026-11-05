@@ -88,6 +88,14 @@ def _validate_material(data: dict, scene_id: str | None, version: str) -> None:
             )
             if not task["patterns"] or not isinstance(task["rejected"], list):
                 valid = False
+            if "slot" in task and (
+                not isinstance(task["slot"], dict)
+                or not isinstance(task["slot"].get("excluded_words"), list)
+                or not all(
+                    isinstance(word, str) for word in task["slot"]["excluded_words"]
+                )
+            ):
+                raise ValueError("场景材料 slot 规则无效")
             for pattern in task["patterns"]:
                 compiled = re.compile(pattern)
                 if "slot" in task and "slot" not in compiled.groupindex:

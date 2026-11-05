@@ -241,6 +241,8 @@ class FullPracticeSession(FullRow):
     ]
     version_id: str | None = None
     scene_id: str | None = None
+    weak_only: bool = Field(default=False, strict=True)
+    targets_explicit: bool = Field(default=False, strict=True)
     scene_snapshot: dict | None = None
     feedback_epoch: str | None = None
     lesson_id: int | None = Field(default=None, gt=0, strict=True)

@@ -51,13 +51,13 @@ def _streak(events: list[EventDict], today: str) -> int:
 
 def _first_scheduled_day(events: list[EventDict]) -> dict[int, str]:
     """每张卡第一条真实排期事件所在的学习日；迁移基线不参与。"""
-    first: dict[int, tuple[datetime, str, str]] = {}
+    first: dict[int, tuple[datetime, int, str]] = {}
     for event in events:
         if not event["scheduled"]:
             continue
         key = (
             event["occurred_at"],
-            event["event_id"],
+            event.get("saved_order", 0),
             event["learning_day"],
         )
         card_id = event["card_id"]
@@ -152,7 +152,7 @@ def adaptive_new_limit(
     start = (datetime.fromisoformat(today).date() - timedelta(days=6)).isoformat()
     first: dict[tuple[int, str], EventDict] = {}
     for event in sorted(
-        events, key=lambda item: (item["occurred_at"], item["event_id"])
+        events, key=lambda item: (item["occurred_at"], item.get("saved_order", 0))
     ):
         eligible_kind = event["kind"] == "self_rating" or (
             event["kind"] == "typed" and not event["assistance"]
@@ -202,7 +202,8 @@ def history_days(
     for day in first_days.values():
         if start <= day <= end:
             counts.setdefault(
-                day, {"reviews": 0, "reviewed_words": set(), "skipped": 0, "new_cards": 0}
+                day,
+                {"reviews": 0, "reviewed_words": set(), "skipped": 0, "new_cards": 0},
             )["new_cards"] += 1
 
     result: list[dict[str, int | str]] = []

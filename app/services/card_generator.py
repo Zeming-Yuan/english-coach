@@ -65,7 +65,7 @@ def regenerate_example(word: str) -> tuple[str, str, str]:
 def generate_cards(words: list[str], db: Session) -> list[Card]:
     """批量生成词卡：调 LLM → 解析 JSON → 入库（已存在的单词跳过）。"""
     existing = {w for (w,) in db.query(Card.word).filter(Card.word.in_(words)).all()}
-    new_words = [w for w in words if w not in existing]
+    new_words = list(dict.fromkeys(w for w in words if w not in existing))
     if not new_words:
         return []  # 全部已存在：不调 API，白烧钱（教学点 12）
     data = generate_json(
@@ -88,10 +88,13 @@ def generate_cards(words: list[str], db: Session) -> list[Card]:
         "related_words",
         "chunks",
     }
+    seen = set(existing)
     for c in generated:
         if not isinstance(c, dict):
             continue
         if not isinstance(c.get("word"), str) or not c["word"].strip():
+            continue
+        if c["word"] in seen:
             continue
         if any(
             key in c and c[key] is not None and not isinstance(c[key], str)
@@ -119,7 +122,9 @@ def generate_cards(words: list[str], db: Session) -> list[Card]:
             ):
                 c["example"] = ""
                 c["example_cn"] = ""
+                c["chunks"] = None
             cards.append(Card(**c, kind="word", difficulty="basic"))
+            seen.add(c["word"])
         except (TypeError, ValueError):
             continue  # 跳过格式错误的卡，不阻塞整批
     db.add_all(cards)

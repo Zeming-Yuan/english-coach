@@ -140,7 +140,8 @@ def _context(db: Session, session_id: str, item_id: str) -> dict:
             SceneAttempt.attempt_id == item.first_task_attempt_id
         )
     )
-    assert answer is not None and practice.scene_snapshot is not None
+    if answer is None or practice.scene_snapshot is None:
+        raise PracticeUnavailableError("反馈依据不完整，请重新读取场景")
     rules = practice.scene_snapshot
     task = rules["tasks"][item.position - 1]
     return {
@@ -173,6 +174,8 @@ def _context(db: Session, session_id: str, item_id: str) -> dict:
 def _expression(context: dict, enabled: bool) -> dict:
     replies = context["scene"]["replies"]
     correction = context["previous_result"]["correction"]
+    if not replies:
+        raise PracticeUnavailableError("反馈模板暂不可用，已存答案和规则结果仍可读取")
     fallback = {"text": replies[0], "correction": correction, "origin": "template"}
     if not expression_allowed(fallback, replies, correction, context["forbidden"]):
         raise PracticeUnavailableError("反馈模板暂不可用，已存答案和规则结果仍可读取")

@@ -15,10 +15,7 @@ T = TypeVar("T")
 
 def _dbapi_transaction_active(db: Session) -> bool:
     """Session 可能已因只读查询 autobegin；真正需要拒绝的是 DBAPI 写事务。"""
-    try:
-        connection = db.connection().connection.driver_connection
-    except Exception:  # noqa: BLE001 — 无法确认时按不干净处理
-        return True
+    connection = db.connection().connection.driver_connection
     return bool(getattr(connection, "in_transaction", False))
 
 
@@ -31,6 +28,9 @@ def run_write(db: Session, operation: Callable[[Session], T]) -> T:
         result = operation(db)
         db.commit()
         return result
-    except BaseException:
-        db.rollback()
+    except BaseException as error:
+        try:
+            db.rollback()
+        except Exception as rollback_error:  # noqa: BLE001 — preserve the operation failure
+            error.add_note(f"Rollback also failed: {rollback_error!r}")
         raise

@@ -1,5 +1,6 @@
 """Workload estimates only; never scoring or scheduling inputs."""
 
+import math
 from math import isfinite
 from statistics import median
 
@@ -62,10 +63,25 @@ def budget_plan(
     if mode == "recovery":
         review_limit = min(5, review_limit)
         new_remaining = 0
-    estimates = estimates or {
-        kind: {"seconds": seconds, "basis": "default", "sample_count": 0}
-        for kind, seconds in DEFAULT_SECONDS.items()
-    }
+    estimates = (
+        estimates
+        if estimates is not None
+        else {
+            kind: {"seconds": seconds, "basis": "default", "sample_count": 0}
+            for kind, seconds in DEFAULT_SECONDS.items()
+        }
+    )
+    for kind in DEFAULT_SECONDS:
+        value = estimates.get(kind)
+        if (
+            not isinstance(value, dict)
+            or isinstance(value.get("seconds"), bool)
+            or not isinstance(value.get("seconds"), (int, float))
+            or not math.isfinite(value["seconds"])
+            or value["seconds"] <= 0
+            or value.get("basis") not in {"personal", "default"}
+        ):
+            raise ValueError(f"invalid workload estimate: {kind}")
     review_seconds, new_seconds, reinforcement_seconds = (
         estimates[kind]["seconds"] for kind in DEFAULT_SECONDS
     )
