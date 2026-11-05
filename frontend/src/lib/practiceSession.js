@@ -386,9 +386,14 @@ export function usePracticeSession({
       if (result.committed !== true) throw new Error("尚未确认保存");
       clearPending(TYPED_PENDING_SCOPE);
       setPendingResume(null);
-      const restoredIndex = items.findIndex(entry => entry.q?.card_id === saved.payload.card_id);
-      const target = items[restoredIndex] || {type: "spell", q: {card_id: saved.payload.card_id, word: result.expected}};
-      if (restoredIndex >= 0) setIdx(restoredIndex);
+      // A committed old answer may no longer be due in the new pool. Give its
+      // feedback its own item, preserving every unanswered item in this round.
+      const restoredIndex = items.findIndex((entry, index) => index >= idx && entry.q?.card_id === saved.payload.card_id);
+      const restoredItems = [...items];
+      const target = restoredIndex >= 0 ? restoredItems.splice(restoredIndex, 1)[0]
+        : {type: "spell", q: {card_id: saved.payload.card_id, word: result.expected}};
+      restoredItems.splice(idx, 0, target);
+      setItems(restoredItems);
       applySaved(result, saved.payload.user_input, saved.payload.skipped, target);
       return result;
     } catch {
@@ -398,7 +403,7 @@ export function usePracticeSession({
       submittedRef.current = false;
       setSaving(false);
     }
-  }, [items, applySaved]);
+  }, [items, idx, applySaved]);
 
   /** 手动下一题（反馈阶段按钮；done 判定在 advance 内）。 */
   const next = useCallback(() => {

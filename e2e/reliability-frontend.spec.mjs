@@ -178,3 +178,62 @@ test('refreshing lesson progress keeps the current reader mounted',async({page})
     await expect(page.getByText('apple',{exact:true})).toBeVisible({timeout:2000});
   }finally{release();}
 });
+
+test('recovered answers keep all newly loaded unanswered questions in the round',async({page})=>{
+  for (const includeRecovered of [false,true]) {
+  await page.addInitScript(()=>localStorage.setItem('ec.pending.typed-attempt',JSON.stringify({path:'/api/typing/check',payload:{card_id:1,user_input:'apple',source:'spelling',submission_id:'old-answer'}})));
+  await page.route('**/api/typing/check',route=>route.fulfill({json:{committed:true,correct:true,expected:'apple'}}));
+  await ui.mountSource(page, `import {usePracticeSession} from '/src/lib/practiceSession.js';
+    function Component(){const p=usePracticeSession({buildItems:async()=>${JSON.stringify([{type:'spell',q:{card_id:2,word:'pear'}}, ...(includeRecovered ? [{type:'spell',q:{card_id:1,word:'apple'}}] : [])])},typedAttempt:()=>({source:'spelling'})});window.practice=p;return React.createElement('p',{},p.phase);}`);
+  await expect(page.getByText('ready',{exact:true})).toBeVisible();
+  await page.evaluate(()=>window.practice.resumePending());
+  await expect.poll(()=>page.evaluate(()=>({word:window.practice.q.word,total:window.practice.total,correct:window.practice.stats.correct})),{timeout:2000}).toEqual({word:'apple',total:2,correct:1});
+  await page.evaluate(()=>window.practice.next());
+  await expect.poll(()=>page.evaluate(()=>({phase:window.practice.phase,word:window.practice.q.word})),{timeout:2000}).toEqual({phase:'ready',word:'pear'});
+  }
+});
+
+test('failed lesson progress refresh preserves the open reader and reports the error',async({page})=>{
+  const lesson={id:1,level:1,title:'Reader',content:{words:[],dialogue:[]},words:[{id:1,word:'apple',meaning:'苹果'}],card_ids:{apple:1}};
+  let loads=0;
+  await page.route('**/api/**',route=>{
+    const path=new URL(route.request().url()).pathname;
+    if(path==='/api/lessons')return route.fulfill(++loads===1?{json:{lessons:[lesson],next_level:2,is_done:false}}:{status:503,json:{detail:'progress offline'}});
+    if(path==='/api/lessons/1')return route.fulfill({json:lesson});
+    if(path.endsWith('/opened'))return route.fulfill({json:{learning_progress:{status:'opened'}}});
+    return route.fulfill({json:{committed:true}});
+  });
+  await ui.mount(page,'/src/views/LessonsPage.jsx');
+  await page.getByText('第 1 课 · Reader',{exact:true}).last().click();
+  await expect(page.getByRole('alert')).toContainText('progress offline');
+  await expect(page.getByText('apple',{exact:true})).toBeVisible({timeout:2000});
+});
+
+test('a failed word-list refresh preserves the current edited card detail',async({page})=>{
+  const card={id:1,kind:'word',word:'apple',meaning:'苹果',contexts:[],review_count:0};
+  let loads=0;
+  await page.route('**/api/cards',route=>route.fulfill(++loads===1?{json:{cards:[card]}}:{status:503,json:{detail:'word list offline'}}));
+  await page.route('**/api/cards/1',route=>route.fulfill({json:card}));
+  await page.route('**/api/tts/**',route=>route.fulfill({body:''}));
+  await ui.mount(page,'/src/views/WordsPage.jsx');
+  await page.locator('.word-item').click();
+  page.on('dialog',dialog=>dialog.accept('new meaning'));
+  await page.getByRole('button',{name:/编辑内容/}).click();
+  await expect(page.getByRole('alert')).toContainText('word list offline');
+  await expect(page.locator('.word-detail-view')).toBeVisible({timeout:2000});
+});
+
+test('adding a lookup word updates reader state and allows reopening its definition',async({page})=>{
+  const story={id:1,mode:'legacy',title:'Reader story',content:'Apple.',words:[],visible_card_ids:[],line_card_ids:[[]]};
+  await page.route('**/api/stories',route=>route.fulfill({json:{stories:[story],generation_enabled:false,simplification_enabled:false}}));
+  await page.route('**/api/stories/1',route=>route.fulfill({json:story}));
+  await page.route('**/api/lookup/apple',route=>route.fulfill({json:{found:true,meaning:'苹果',phonetic:'/apple/',card_id:null}}));
+  await page.route('**/api/cards/generate',route=>route.fulfill({json:{generated:1,cards:[{id:20,word:'apple',meaning:'苹果',phonetic:'/apple/'}]}}));
+  await ui.mount(page,'/src/views/StoriesPage.jsx');
+  await page.locator('.story-item-title').click();
+  await page.getByRole('button',{name:'查词 apple',exact:true}).click();
+  await page.getByRole('button',{name:'加入单词本',exact:true}).click();
+  await expect(page.locator('.reader-targets summary')).toContainText('1');
+  await expect(page.getByRole('button',{name:'加入单词本',exact:true})).toHaveCount(0);
+  await expect(page.locator('.story-word-panel-meaning')).toContainText('苹果');
+});

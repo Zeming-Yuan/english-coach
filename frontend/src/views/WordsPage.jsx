@@ -146,11 +146,14 @@ export default function WordsPage({ onBack }) {
     });
 
   if (loading) return <div className="story-empty">加载中…</div>;
-  if (loadError) return <div role="alert">加载失败：{loadError}<button className="btn btn-ghost" onClick={() => {setLoading(true); loadCards();}}>重试加载</button></div>;
+  if (loadError && !detail) return <div role="alert">加载失败：{loadError}<button className="btn btn-ghost" onClick={() => {setLoading(true); loadCards();}}>重试加载</button></div>;
 
   // 详情页
   if (detail) {
-    return <WordDetail key={detail} cardId={detail} onBack={() => setDetail(null)} allCards={filtered} setDetail={setDetail} onCardChanged={loadCards} />;
+    return <>
+      {loadError && <div role="alert">词表刷新失败：{loadError}<button className="btn btn-ghost" onClick={loadCards}>重试刷新</button></div>}
+      <WordDetail key={detail} cardId={detail} onBack={() => setDetail(null)} allCards={filtered} setDetail={setDetail} onCardChanged={loadCards} />
+    </>;
   }
 
   // 点击关闭快速查阅
