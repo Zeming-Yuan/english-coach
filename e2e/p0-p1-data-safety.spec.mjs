@@ -30,9 +30,13 @@ test("restoring through the app clears old pending records and their recovery ac
       : null;
     return route.fulfill(data ? {json: data} : {status: 503, json: {detail: "unavailable fixture"}});
   });
-  await page.addInitScript(() => localStorage.setItem("ec.pending.old-db", JSON.stringify({path: "/api/reviews", payload: {card_id: 1, rating: 3, submission_id: "old"}})));
+  await page.addInitScript(() => {
+    localStorage.setItem("ec.pending.old-db", JSON.stringify({path: "/api/reviews", payload: {card_id: 1, rating: 3, submission_id: "old"}}));
+    localStorage.setItem("ec.contact.lookup:scene-feedback:old:item", JSON.stringify({awaiting_targets: true, source: "scene", text: "An apple."}));
+  });
   await ui.mount(page, "/src/App.jsx");
   await expect(page.getByRole("button", {name: "继续确认保存", exact: true})).toBeVisible();
+  await expect(page.getByRole("button", {name: "继续确认反馈接触", exact: true})).toBeVisible();
   await page.getByRole("button", {name: "设置", exact: true}).click();
   await page.getByRole("button", {name: "备份与恢复", exact: true}).click();
   await page.getByLabel("选择备份文件").setInputFiles({name: "backup.json", mimeType: "application/json", buffer: Buffer.from("{}")});
@@ -40,6 +44,8 @@ test("restoring through the app clears old pending records and their recovery ac
   await expect(page.getByTestId("release-journey")).toBeVisible();
   await expect(page.getByRole("button", {name: "继续确认保存", exact: true})).toHaveCount(0);
   expect(await page.evaluate(() => localStorage.getItem("ec.pending.old-db"))).toBeNull();
+  expect(await page.evaluate(() => localStorage.getItem("ec.contact.lookup:scene-feedback:old:item"))).toBeNull();
+  await expect(page.getByRole("button", {name: "继续确认反馈接触", exact: true})).toHaveCount(0);
 });
 
 test("word list displays ampersands and angle brackets as plain text", async ({page}) => {
@@ -139,4 +145,34 @@ test("listening prompt renders ordinary punctuation as text", async ({page}) => 
   await page.route("**/api/tts/**", route => route.fulfill({status: 503, body: "unavailable"}));
   await ui.mount(page, "/src/views/ListeningPage.jsx");
   await expect(page.locator(".listening-meaning")).toHaveText("A & B < C");
+});
+
+test("partially confirmed feedback keeps its target identities after a reload", async ({page}) => {
+  await page.addInitScript(() => {
+    const key = "ec.contact.lookup:partial-reload";
+    if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify({awaiting_targets: true, source: "scene", text: "apple pear"}));
+    const nativeSet = Storage.prototype.setItem;
+    Storage.prototype.setItem = function(key, value) {
+      if (key === "ec.contact.scene:answer_visible:2") throw new DOMException("quota", "QuotaExceededError");
+      return nativeSet.call(this, key, value);
+    };
+  });
+  const posts = [];
+  let failedPear = false;
+  await page.route("**/api/**", route => {
+    if (new URL(route.request().url()).pathname === "/api/cards") return route.fulfill({json: {cards: [1, 2].map(id => ({id, kind: "word", word: id === 1 ? "apple" : "pear", content_revision: {identity: `target-${id}`, version: 1}}))}});
+    const body = route.request().postDataJSON(); posts.push(body);
+    if (body.card_id === 2 && !failedPear) {failedPear = true; return route.fulfill({status: 503, json: {detail: "offline"}});}
+    return route.fulfill({json: {committed: true}});
+  });
+  await ui.mount(page, "/src/components/ContactRecovery.jsx");
+  await page.getByRole("button", {name: "继续确认反馈接触", exact: true}).click();
+  await expect(page.getByRole("alert")).toContainText("浏览器未能保存");
+  await page.reload();
+  await page.getByRole("button", {name: "继续确认反馈接触", exact: true}).click();
+  await expect(page.getByRole("button", {name: "继续确认反馈接触", exact: true})).toHaveCount(0);
+  expect(posts.filter(row => row.card_id === 1)).toHaveLength(1);
+  const pear = posts.filter(row => row.card_id === 2);
+  expect(pear).toHaveLength(2);
+  expect(pear[0].submission_id).toBe(pear[1].submission_id);
 });

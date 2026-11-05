@@ -125,3 +125,15 @@ test("a non-JSON success response stays unconfirmed with a readable error", asyn
     });
   } finally {globalThis.fetch = originalFetch;}
 });
+
+test("a cleared pending request is not reloaded when storage removal is denied", () => {
+  const rows = new Map();
+  globalThis.localStorage = {
+    getItem(key) {return rows.get(key) ?? null;},
+    setItem(key, value) {rows.set(key, value);},
+    removeItem() {throw new Error("denied");},
+  };
+  savePending("retired", makePending("/api/reviews", {card_id: 1, rating: 3}));
+  clearPending("retired");
+  assert.equal(loadPending("retired"), null);
+});

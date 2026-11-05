@@ -194,15 +194,32 @@ function speakLocal(word, done, onStarted) {
     done("canceled");
   };
   cancelLocalSpeech = cancel;
-  // 无音频设备时浏览器可能既不触发 onend 也不触发 onerror。
-  const timer = setTimeout(() => finish("none"), Math.max(word.length * 150, 1500));
+  const fail = () => {
+    finish("none");
+    speechSynthesis.cancel();
+  };
+  // Some voices report boundaries sparsely. Allow the whole text at the
+  // selected rate between progress events; an advancing voice renews the lease.
+  const stallMs = Math.max(15000, word.length * 400 / _ttsRate);
+  let timer = setTimeout(fail, Math.max(word.length * 150, 1500));
+  const watchProgress = () => {
+    clearTimeout(timer);
+    timer = setTimeout(fail, stallMs);
+  };
+  let lastBoundary = -1;
   u.lang = "en-US";
   u.rate = _ttsRate;
   if (ttsVoice) u.voice = ttsVoice;
   u.onstart = () => {
     if (!finished) {
-      clearTimeout(timer);
+      watchProgress();
       notifyStarted(onStarted);
+    }
+  };
+  u.onboundary = (event) => {
+    if (!finished && event.charIndex > lastBoundary) {
+      lastBoundary = event.charIndex;
+      watchProgress();
     }
   };
   u.onend = () => finish("local");

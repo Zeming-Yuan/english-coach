@@ -1,7 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {api} from '../lib/api.js';
 import {clearPending, loadPending, savePending} from '../lib/learning.js';
-import {beginVisibleContactLookup, recordVisibleCards} from '../lib/contacts.js';
+import {beginVisibleContactLookup, retryVisibleContactLookup} from '../lib/contacts.js';
 
 const PREFIX = 'ec.feedback.';
 
@@ -47,14 +47,10 @@ function ItemFeedback({session, item}) {
     const confirm = async () => {
       if (!live || !visible || document.visibilityState !== 'visible' || started) return;
       started = true;
-      const completeLookup = beginVisibleContactLookup(`scene-feedback:${scope}`, {source: 'scene', text: data.text});
+      const lookupScope = beginVisibleContactLookup(`scene-feedback:${scope}`, {source: 'scene', text: data.text, confirmed: [...confirmed.current]});
       try {
-        const {cards} = await api('/api/cards');
-        // The words were actually shown; leaving must not cancel their contact.
-        const words = new Set(data.text.toLowerCase().match(/[a-z]+(?:'[a-z]+)?/g) || []);
-        const targets = cards.filter(card => card.kind === 'word' && words.has(card.word.toLowerCase()) && !confirmed.current.has(card.content_revision.identity));
-        const result = await recordVisibleCards(targets, 'scene');
-        completeLookup(result.failed); // Clear only after unresolved cards own durable pending requests.
+        const result = await retryVisibleContactLookup(lookupScope);
+        const {targets} = result;
         targets.filter(card => !result.failed.includes(card)).forEach(card => confirmed.current.add(card.content_revision.identity));
         if (live) setContactError(result.failed.length ? '反馈接触依据尚未确认，可继续确认接触。' : '');
       } catch (e) {if (live) setContactError('反馈接触依据尚未确认：' + e.message);}

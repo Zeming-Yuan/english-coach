@@ -77,3 +77,64 @@ test("stalled online audio still settles instead of hanging the learning UI", as
     assert.equal(await speaking, "none");
   } finally {delete globalThis.Audio; delete globalThis.window;}
 });
+
+test("started local speech with no progress or completion eventually releases the reader", async (t) => {
+  t.mock.timers.enable({apis: ["setTimeout"]});
+  const speech = {speaking: true, getVoices: () => [{lang: "en-US", localService: true}], cancel() {this.speaking = false;}, speak(value) {value.onstart();}};
+  globalThis.window = {speechSynthesis: speech};
+  globalThis.speechSynthesis = speech;
+  globalThis.SpeechSynthesisUtterance = class {};
+  globalThis.Audio = class {
+    constructor() {this.currentTime = 0;}
+    play() {return Promise.reject(new Error("offline"));}
+    pause() {}
+    removeAttribute() {}
+    load() {}
+  };
+  try {
+    const {speak} = await import("./tts.js?local-no-progress");
+    let result;
+    const speaking = speak("hello").then(value => {result = value; return value;});
+    await Promise.resolve(); await Promise.resolve();
+    t.mock.timers.tick(120000);
+    await Promise.resolve();
+    assert.equal(result, "none");
+    assert.equal(await speaking, "none");
+  } finally {
+    delete globalThis.Audio; delete globalThis.window;
+    delete globalThis.speechSynthesis; delete globalThis.SpeechSynthesisUtterance;
+  }
+});
+
+test("local boundary progress renews the watchdog across a long reading", async (t) => {
+  t.mock.timers.enable({apis: ["setTimeout"]});
+  let utterance;
+  const speech = {getVoices: () => [{lang: "en-US", localService: true}], cancel() {}, speak(value) {utterance = value; value.onstart();}};
+  globalThis.window = {speechSynthesis: speech};
+  globalThis.speechSynthesis = speech;
+  globalThis.SpeechSynthesisUtterance = class {};
+  globalThis.Audio = class {
+    constructor() {this.currentTime = 0;}
+    play() {return Promise.reject(new Error("offline"));}
+    pause() {}
+    removeAttribute() {}
+    load() {}
+  };
+  try {
+    const {speak} = await import("./tts.js?local-progress");
+    let result;
+    const speaking = speak("hello").then(value => {result = value; return value;});
+    await Promise.resolve(); await Promise.resolve();
+    for (let charIndex = 0; charIndex < 5; charIndex++) {
+      t.mock.timers.tick(10000);
+      utterance.onboundary({charIndex});
+      await Promise.resolve();
+      assert.equal(result, undefined);
+    }
+    utterance.onend();
+    assert.equal(await speaking, "local");
+  } finally {
+    delete globalThis.Audio; delete globalThis.window;
+    delete globalThis.speechSynthesis; delete globalThis.SpeechSynthesisUtterance;
+  }
+});

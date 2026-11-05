@@ -75,11 +75,15 @@ export function loadPending(scope, prefix = DEFAULT_PREFIX) {
 }
 
 export function clearPending(scope, prefix = DEFAULT_PREFIX) {
-  memoryPending.delete(pendingKey(scope, prefix));
+  const key = pendingKey(scope, prefix);
+  memoryPending.delete(key);
   try {
-    localStorage.removeItem(pendingKey(scope, prefix));
+    localStorage.removeItem(key);
+    return true;
   } catch {
-    // storage 不可用时只清理内存
+    // Keep a tombstone so readable-but-not-removable storage cannot revive it.
+    memoryPending.set(key, null);
+    return false;
   }
 }
 
