@@ -4,7 +4,7 @@ import { storageGet, storageSet } from "./lib/utils.js";
 import {recordRoundOutcome, resetRoundOutcomes, roundBudgetCap, roundObservationGeneration, subscribeRoundAdvice} from "./lib/roundOutcomes.js";
 import { setTtsRate } from "./lib/tts.js";
 import { refreshPendingContacts } from "./lib/contacts.js";
-import { loadPending, sendPending, clearPending, savePending } from "./lib/learning.js";
+import { loadPending, sendPending, clearPending, clearAllPending, savePending } from "./lib/learning.js";
 import DurationRecovery from "./components/DurationRecovery.jsx";
 import ScenePage from "./views/ScenePage.jsx";
 import StudyPage from "./views/StudyPage.jsx";
@@ -271,7 +271,7 @@ export default function App() {
       <ErrorBoundary>
       <main className="stage">
         <DurationRecovery />
-        {view !== "study" && view !== "scene" && <PendingRecovery onConfirmed={(result, pending) => {
+        {!restoringBackup && view !== "study" && view !== "scene" && <PendingRecovery onConfirmed={(result, pending) => {
           confirmDailyCard(pending.payload, result);
           setQueueVersion((v) => v + 1);
         }} />}
@@ -287,7 +287,7 @@ export default function App() {
         {view === "delayed" && <DelayedCheckPage key={delayedWindow} window={delayedWindow} onExit={() => setView("stats")} onNormal={() => setView("spelling")} />}
         {view === "settings" && <SettingsPage darkMode={darkMode} setDarkMode={setDarkMode} onOpenBackup={() => setView("backup")} />}
         {view === "backup" && <BackupPage restoring={restoringBackup} onRestoringChange={setRestoringBackup} onBack={() => setView("settings")} onRestored={async () => {
-          await resetRoundOutcomes();
+          const pendingCleared = clearAllPending();
           setAdviceRequest(null);
           try { localStorage.removeItem("ec.advice.request"); } catch {}
           setIsDailyStudy(false);
@@ -295,6 +295,8 @@ export default function App() {
           setStudyQueue([]);
           setSingleCard(null);
           setQueueVersion((v) => v + 1);
+          await resetRoundOutcomes();
+          if (!pendingCleared) throw new Error("浏览器未能清理旧的待确认记录，请清理本站浏览器数据后继续学习");
         }} />}
         {view === "lessons" && <LessonsPage onExit={() => setView("queue")} />}
         {view === "study" && (isDailyStudy ? <DailySessionPage session={dailySession} onRoundObserved={recordRoundOutcome} onSessionChange={(details) => updateDailyDetails(dailySession.id, details)} onFinish={() => { updateDaily({...dailySession, finished: true}); setView("queue"); }} onPauseExit={() => setView("queue")} recoveryVersion={queueVersion} onAbort={() => { setIsDailyStudy(false); updateDaily(null); setStudyQueue([]); setView("queue"); }} onProgress={confirmDailyCard} queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} /> : <StudyPage recoveryVersion={queueVersion} session={isDailyStudy ? dailySession : null} onAbort={() => { setIsDailyStudy(false); updateDaily(null); setStudyQueue([]); setView("queue"); }} onProgress={confirmDailyCard} queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} />)}

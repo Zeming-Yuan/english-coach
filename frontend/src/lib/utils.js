@@ -19,12 +19,12 @@ export function escapeHtml(str) {
  */
 export function highlightWord(text, word) {
   if (!text || !word) return escapeHtml(text);
-  const escaped = escapeHtml(text);
-  const wordEsc = escapeHtml(word);
   // 转义正则特殊字符（can't, e-mail 等）
-  const escapedForRegex = wordEsc.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const escapedForRegex = String(word).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const regex = new RegExp(`(${escapedForRegex})`, "gi");
-  return escaped.replace(regex, `<mark>$1</mark>`);
+  return String(text).split(regex).map((part, index) =>
+    index % 2 ? `<mark>${escapeHtml(part)}</mark>` : escapeHtml(part)
+  ).join("");
 }
 
 /**

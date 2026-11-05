@@ -145,12 +145,18 @@ function speakOnline(word, done, fallback, onStarted) {
     audio.load();
     fallback();
   };
-  // A timeout is not evidence that audio played. Only a real ended state
-  // may confirm online completion; stalled/failed streams use the fallback.
-  const safetyTimeout = setTimeout(() => {
+  // The watchdog measures lack of progress, not the total speaking duration.
+  // Slow speech and long sentences can legitimately outlive one interval.
+  const timeoutMs = Math.max(word.length * 150, 3000);
+  let lastPosition = 0;
+  const checkProgress = () => {
     if (audio.ended) finish();
-    else failed();
-  }, Math.max(word.length * 150, 3000));
+    else if (audio.currentTime > lastPosition) {
+      lastPosition = audio.currentTime;
+      safetyTimeout = setTimeout(checkProgress, timeoutMs);
+    } else failed();
+  };
+  let safetyTimeout = setTimeout(checkProgress, timeoutMs);
   audio.onended = finish;
   audio.onerror = failed;
   audio.currentTime = 0;
@@ -194,7 +200,10 @@ function speakLocal(word, done, onStarted) {
   u.rate = _ttsRate;
   if (ttsVoice) u.voice = ttsVoice;
   u.onstart = () => {
-    if (!finished) notifyStarted(onStarted);
+    if (!finished) {
+      clearTimeout(timer);
+      notifyStarted(onStarted);
+    }
   };
   u.onend = () => finish("local");
   u.onerror = () => finish("none");

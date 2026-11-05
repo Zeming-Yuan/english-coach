@@ -24,16 +24,24 @@ function playTone(freq, duration, startTime, type = "sine") {
 }
 
 export function sfxSuccess() {
-  const ctx = getAudioCtx();
-  const now = ctx.currentTime;
-  playTone(523, 0.12, now); // C5
-  playTone(659, 0.15, now + 0.1); // E5
-  playTone(784, 0.2, now + 0.18); // G5
+  try {
+    const ctx = getAudioCtx();
+    const now = ctx.currentTime;
+    playTone(523, 0.12, now); // C5
+    playTone(659, 0.15, now + 0.1); // E5
+    playTone(784, 0.2, now + 0.18); // G5
+  } catch {
+    // Optional feedback must never interrupt a saved answer.
+  }
 }
 
 export function sfxFail() {
-  const ctx = getAudioCtx();
-  const now = ctx.currentTime;
-  playTone(330, 0.15, now, "triangle"); // E4
-  playTone(262, 0.25, now + 0.12, "triangle"); // C4
+  try {
+    const ctx = getAudioCtx();
+    const now = ctx.currentTime;
+    playTone(330, 0.15, now, "triangle"); // E4
+    playTone(262, 0.25, now + 0.12, "triangle"); // C4
+  } catch {
+    // Audio devices and browser permissions are outside the learning flow.
+  }
 }

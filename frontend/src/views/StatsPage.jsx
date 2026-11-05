@@ -41,15 +41,20 @@ export default function StatsPage({ onBack, onDelayed, onAdvice }) {
   }, []);
 
   // 导出
-  const downloadExport = (path, filename) => {
-    fetch(path).then((r) => r.blob()).then((blob) => {
+  const downloadExport = async (path, filename) => {
+    try {
+      const response = await fetch(path);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const blob = await response.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
       a.download = filename;
       a.click();
       URL.revokeObjectURL(url);
-    });
+    } catch (error) {
+      showToast("导出失败：" + error.message);
+    }
   };
 
   // 导入

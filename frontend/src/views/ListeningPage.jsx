@@ -3,7 +3,6 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../lib/api.js";
 import { makePending, sendPending } from "../lib/learning.js";
 import { speak } from "../lib/tts.js";
-import { escapeHtml } from "../lib/utils.js";
 import { recordPracticeContact } from "../lib/practiceContacts.js";
 
 /**
@@ -254,7 +253,7 @@ export default function ListeningPage({ onExit }) {
             title="播放发音"
             onClick={() => play(true)}
            aria-label="播放发音"><UiIcon name="speaker" /></button>
-          <div className="listening-meaning">{escapeHtml(q.meaning)}</div>
+          <div className="listening-meaning">{q.meaning}</div>
           <div className="listening-hint">{audioHint || "点喇叭听发音"}</div>
         </div>
         <div className="listening-options">

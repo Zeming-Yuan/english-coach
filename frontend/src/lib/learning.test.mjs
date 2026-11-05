@@ -93,3 +93,35 @@ test("sendPending returns the saved result", async () => {
     globalThis.fetch = originalFetch;
   }
 });
+
+test("restoring data retires pending learning from memory and storage", async () => {
+  const {clearAllPending} = await import("./learning.js");
+  const rows = new Map();
+  globalThis.localStorage = {
+    get length() {return rows.size;},
+    key(index) {return [...rows.keys()][index];},
+    getItem(key) {return rows.get(key) ?? null;},
+    setItem(key, value) {rows.set(key, value);},
+    removeItem(key) {rows.delete(key);},
+  };
+  const pending = makePending("/api/reviews", {card_id: 1, rating: 3});
+  savePending("old-study", pending);
+  rows.set("ec.pending.other-tab", JSON.stringify(pending));
+  rows.set("ttsRate", "0.9");
+  clearAllPending();
+  assert.equal(loadPending("old-study"), null);
+  assert.equal(loadPending("other-tab"), null);
+  assert.equal(rows.get("ttsRate"), "0.9");
+});
+
+test("a non-JSON success response stays unconfirmed with a readable error", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({ok: true, status: 200, json: async () => {throw new SyntaxError("Unexpected token '<'");}});
+  try {
+    await assert.rejects(sendPending(makePending("/api/reviews", {card_id: 1, rating: 3})), error => {
+      assert.equal(error instanceof SyntaxError, false);
+      assert.match(error.message, /尚未确认保存/);
+      return true;
+    });
+  } finally {globalThis.fetch = originalFetch;}
+});
