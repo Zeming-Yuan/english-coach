@@ -112,6 +112,13 @@ def list_stories(request: Request, db: Session = Depends(get_db)):
             select(StoryVersion).where(StoryVersion.story_id.in_(story_ids))
         )
     }
+    versions = {
+        story_id: version
+        for story_id, version in versions.items()
+        if story_id is not None
+        and story_revisions[story_id]
+        == {"identity": version.story_identity, "version": version.story_revision}
+    }
     check_sessions = {
         row.version_id: row.session_id
         for row in db.scalars(
@@ -141,14 +148,7 @@ def list_stories(request: Request, db: Session = Depends(get_db)):
         "stories": [
             {
                 "id": s.id,
-                "mode": versions[s.id].mode
-                if s.id in versions
-                and story_revisions[s.id]
-                == {
-                    "identity": versions[s.id].story_identity,
-                    "version": versions[s.id].story_revision,
-                }
-                else "legacy",
+                "mode": versions[s.id].mode if s.id in versions else "legacy",
                 "check_session_id": check_sessions.get(versions[s.id].version_id)
                 if s.id in versions
                 else None,
@@ -227,10 +227,19 @@ def _translate_story(story: Story, db: Session) -> None:
         )
     except LLMNotConfigured:
         return
-    if not data:
+    if not isinstance(data, dict) or not data:
         return  # 翻译失败不影响阅读
     title_cn = data.get("title_cn")
     sentences = data.get("sentences", [])
+    if (
+        not isinstance(sentences, list)
+        or any(
+            not isinstance(row, dict) or not isinstance(row.get("cn"), str)
+            for row in sentences
+        )
+        or (title_cn is not None and not isinstance(title_cn, str))
+    ):
+        return
     content_cn = "\n".join(s.get("cn", "") for s in sentences) if sentences else None
     if title_cn is None and content_cn is None:
         return

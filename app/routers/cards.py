@@ -67,21 +67,19 @@ class UpdateCardIn(BaseModel):
 @router.post("/cards/{card_id}/hard")
 def toggle_hard(card_id: int, db: Session = Depends(get_db)):
     """切换困难词标记（自主增强：优先重现）。"""
-    card = db.get(Card, card_id)
-    if card is None:
-        raise HTTPException(status_code=404, detail="Card not found")
-    row = (
-        db.execute(select(HardCard).where(HardCard.card_id == card_id))
-        .scalars()
-        .first()
-    )
-    if row:
-        db.delete(row)
-        db.commit()
-        return {"card_id": card_id, "is_hard": False}
-    db.add(HardCard(card_id=card_id))
-    db.commit()
-    return {"card_id": card_id, "is_hard": True}
+
+    def operation(session: Session) -> dict:
+        card = session.get(Card, card_id)
+        if card is None:
+            raise HTTPException(status_code=404, detail="Card not found")
+        row = session.scalar(select(HardCard).where(HardCard.card_id == card_id))
+        if row is not None:
+            session.delete(row)
+        else:
+            session.add(HardCard(card_id=card_id))
+        return {"card_id": card_id, "is_hard": row is None}
+
+    return run_write(db, operation)
 
 
 @router.put("/cards/{card_id}")

@@ -1,7 +1,7 @@
 """查词路由：故事阅读时点击任意英文单词查释义。"""
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -20,25 +20,29 @@ def lookup_word(word: str, db: Session = Depends(get_db)):
     """查词：先查本地词库，没有则调 AI 查。"""
     word_lower = word.lower().strip()
     if not word_lower:
-        return {"word": word, "phonetic": None, "meaning": None, "found": False}
-
-    # 缓存命中
-    if word_lower in _cache:
-        return {**_cache[word_lower], "word": word, "found": True}
+        return {
+            "word": word,
+            "phonetic": None,
+            "meaning": None,
+            "found": False,
+            "card_id": None,
+        }
 
     # 查本地词库（不区分大小写）
     card = (
         db.execute(
-            select(Card).where(Card.word == word_lower, Card.kind == "word")
+            select(Card).where(func.lower(Card.word) == word_lower, Card.kind == "word")
         )
         .scalars()
         .first()
     )
     if card:
         result = {"phonetic": card.phonetic, "meaning": card.meaning}
-        if len(_cache) < _CACHE_MAX:
-            _cache[word_lower] = result
         return {**result, "word": word, "found": True, "card_id": card.id}
+
+    # 只缓存外部词典结果；本地卡片优先，避免缓存隐藏新卡片或过期 ID。
+    if word_lower in _cache:
+        return {**_cache[word_lower], "word": word, "found": True, "card_id": None}
 
     # 本地没有 → 调 AI 查词（普通生成失败返回 None；未配置时抛
     # LLMNotConfigured，由应用映射为 503）
@@ -51,6 +55,12 @@ def lookup_word(word: str, db: Session = Depends(get_db)):
         result = {"phonetic": data.get("phonetic"), "meaning": data.get("meaning")}
         if len(_cache) < _CACHE_MAX:
             _cache[word_lower] = result
-        return {**result, "word": word, "found": True}
+        return {**result, "word": word, "found": True, "card_id": None}
 
-    return {"word": word, "phonetic": None, "meaning": None, "found": False}
+    return {
+        "word": word,
+        "phonetic": None,
+        "meaning": None,
+        "found": False,
+        "card_id": None,
+    }

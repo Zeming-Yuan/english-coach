@@ -1,9 +1,9 @@
 from datetime import UTC, datetime, timedelta
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BeforeValidator
-from sqlalchemy import func, select
+from sqlalchemy import func, literal_column, select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -244,6 +244,7 @@ def _event_rows(db: Session) -> list[dict]:
     rows = db.execute(
         select(
             ReviewEvent.id,
+            literal_column("review_events.rowid").label("saved_order"),
             ReviewEvent.card_id,
             ReviewEvent.learning_day,
             ReviewEvent.skipped,
@@ -255,11 +256,12 @@ def _event_rows(db: Session) -> list[dict]:
             ReviewEvent.correct,
             ReviewEvent.fsrs_rating,
             ReviewEvent.self_rating,
-        )
+        ).order_by(ReviewEvent.occurred_at, literal_column("review_events.rowid"))
     ).all()
     return [
         {
             "event_id": row.id,
+            "saved_order": row.saved_order,
             "card_id": row.card_id,
             "learning_day": row.learning_day,
             "skipped": row.skipped,
@@ -324,7 +326,7 @@ def get_stats(
 
 @router.get("/stats/history")
 def get_stats_history(
-    days: int = 90,
+    days: int = Query(default=90, ge=1, le=366),
     db: Session = Depends(get_db),
     runtime: Runtime = Depends(get_runtime),
 ):

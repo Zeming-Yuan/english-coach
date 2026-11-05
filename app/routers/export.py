@@ -104,7 +104,9 @@ def export_backup_endpoint(
 
 
 @router.get("/export/cards")
-def export_cards(db: Session = Depends(get_db)):
+def export_cards(
+    db: Session = Depends(get_db), runtime: Runtime = Depends(get_runtime)
+):
     """旧导出格式：词卡 + 复习记录 + 记忆法 + 错词（兼容保留，非完整备份）。"""
     cards = db.execute(select(Card).order_by(Card.id)).scalars().all()
     reviews = db.execute(select(Review).order_by(Review.card_id)).scalars().all()
@@ -115,7 +117,7 @@ def export_cards(db: Session = Depends(get_db)):
         return v.isoformat() if v else None
 
     payload = {
-        "exported_at": None,  # 占位
+        "exported_at": runtime.clock.now().isoformat(),
         "cards": [backup_payload(c) for c in cards],
         "reviews": [
             {

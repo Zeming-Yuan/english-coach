@@ -65,7 +65,7 @@ def get_listening(
     # 合并去重，取最多 limit 个
     seen = set()
     pool = []
-    for c in list(new_cards) + list(due_cards):
+    for c in list(due_cards) + list(new_cards):
         if c.id not in seen:
             seen.add(c.id)
             pool.append(c)
