@@ -607,8 +607,8 @@ def set_assistance(
         assert item.card_id is not None
         try:
             current = get_content_revision(session, "card", item.card_id)
-        except LookupError:
-            raise PracticeNotFoundError("目标词卡不存在或已删除")
+        except LookupError as error:
+            raise PracticeNotFoundError("目标词卡不存在或已删除") from error
         if (
             current["identity"] != item.card_identity
             or current["version"] != item.card_revision
@@ -620,8 +620,8 @@ def set_assistance(
             return _session_payload(session, practice, runtime)
         try:
             item.assistance = merge_assistance(item.assistance or [], [kind])
-        except ValueError:
-            raise PracticeUnavailableError("未知提示类型")
+        except ValueError as error:
+            raise PracticeUnavailableError("未知提示类型") from error
         session.flush()
         return _session_payload(session, practice, runtime)
 
@@ -787,8 +787,8 @@ def submit_practice(
         assert item.card_id is not None
         try:
             current = get_content_revision(session, "card", item.card_id)
-        except LookupError:
-            raise PracticeNotFoundError("目标词卡不存在或已删除")
+        except LookupError as error:
+            raise PracticeNotFoundError("目标词卡不存在或已删除") from error
         if (
             current["identity"] != item.card_identity
             or current["version"] != item.card_revision

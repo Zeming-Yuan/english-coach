@@ -488,7 +488,9 @@ def test_el08_practice_starts_post_commit_upgrade(ec, monkeypatch):
         db.add(lesson)
         db.commit()
         lesson_id = lesson.id
-    monkeypatch.setattr(learning, "upgrade_sentence_card", lambda _cid: done.set())
+    monkeypatch.setattr(
+        learning, "upgrade_sentence_card", lambda _cid, *, session_factory: done.set()
+    )
     run = _create(ec, lesson_id).json()
     saved = _attempt(ec, run, answer="apple")
     assert saved.status_code == 200, saved.text

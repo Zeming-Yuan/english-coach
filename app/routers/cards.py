@@ -206,7 +206,7 @@ def generate(req: GenerateCardsIn, db: Session = Depends(get_db)):
     try:
         cards = generate_cards(req.words, db)
     except ValueError as e:
-        raise HTTPException(status_code=502, detail=str(e))
+        raise HTTPException(status_code=502, detail=str(e)) from e
     return {
         "generated": len(cards),
         "skipped": len(req.words) - len(cards),
@@ -246,7 +246,7 @@ def regenerate_card_example(card_id: int, db: Session = Depends(get_db)):
     try:
         example, example_cn, explanation = regenerate_example(card.word)
     except (ValueError, TypeError) as e:
-        raise HTTPException(status_code=502, detail=str(e))
+        raise HTTPException(status_code=502, detail=str(e)) from e
     if not example:
         return card_to_dict(card, db)
 
@@ -259,8 +259,8 @@ def regenerate_card_example(card_id: int, db: Session = Depends(get_db)):
             raise HTTPException(status_code=404, detail="Card not found")
         try:
             current_revision = get_content_revision(session, "card", card_id)
-        except LookupError:
-            raise HTTPException(status_code=404, detail="Card not found")
+        except LookupError as error:
+            raise HTTPException(status_code=404, detail="Card not found") from error
         # 晚到生成不覆盖编辑或恢复后的内容；响应必须反映当前内容。
         if current_revision != before:
             return card_to_dict(current, session)

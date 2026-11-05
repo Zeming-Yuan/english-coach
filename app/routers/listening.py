@@ -147,19 +147,19 @@ def score_listening(
         raise HTTPException(status_code=422, detail="缺少题目上下文，请重新加载题目")
     try:
         result = submit_attempt(db, payload, runtime)
-    except CardNotFoundError:
-        raise HTTPException(status_code=404, detail="Card not found")
+    except CardNotFoundError as error:
+        raise HTTPException(status_code=404, detail="Card not found") from error
     except (QuestionTokenExpired, QuestionTokenStale) as error:
-        raise HTTPException(status_code=409, detail=str(error))
+        raise HTTPException(status_code=409, detail=str(error)) from error
     except InvalidQuestionToken as error:
-        raise HTTPException(status_code=422, detail=str(error))
-    except SubmissionConflictError:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except SubmissionConflictError as error:
         raise HTTPException(
             status_code=409, detail="该提交标识已用于不同内容，请重新加载题目"
-        )
-    except Exception:
+        ) from error
+    except Exception as error:
         logger.exception("listening submission failed")
-        raise HTTPException(status_code=500, detail="保存失败，请重试")
+        raise HTTPException(status_code=500, detail="保存失败，请重试") from error
 
     card = db.get(Card, result.card_id)
     return {
