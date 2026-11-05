@@ -163,9 +163,7 @@ def test_tampered_question_token_is_rejected(ec):
 
     response = ec.client.post(
         "/api/listening/score",
-        json=_listening_payload(
-            question, question["word"], question_token=tampered
-        ),
+        json=_listening_payload(question, question["word"], question_token=tampered),
     )
     assert response.status_code == 422
     detail = ec.client.get(f"/api/cards/{question['card_id']}").json()
@@ -478,3 +476,19 @@ def test_batch_unknown_card_writes_nothing(ec):
     assert response.status_code == 404
     detail = ec.client.get(f"/api/cards/{question['card_id']}").json()
     assert detail["learning_events"] == []
+
+
+@pytest.mark.parametrize("invalid", ["broken", "expired"])
+def test_reviews_returns_question_context_errors_without_saving(ec, invalid):
+    _seed_words(ec)
+    question = _listening_question(ec)
+    payload = _listening_payload(question, question["word"])
+    if invalid == "broken":
+        payload["question_token"] = "broken"
+    else:
+        ec.set_time("2026-10-31T13:00:00+00:00")
+    response = ec.client.post("/api/reviews", json=payload)
+    assert response.status_code == (422 if invalid == "broken" else 409)
+    detail = ec.client.get(f"/api/cards/{question['card_id']}").json()
+    assert detail["learning_events"] == []
+    assert detail["memory_state"] is None

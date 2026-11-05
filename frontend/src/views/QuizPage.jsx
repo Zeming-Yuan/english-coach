@@ -3,7 +3,6 @@ import React, { useEffect, useRef, useState } from "react";
 import { api } from "../lib/api.js";
 import { makePending, sendPending } from "../lib/learning.js";
 import { speak } from "../lib/tts.js";
-import { escapeHtml } from "../lib/utils.js";
 import { usePracticeSession } from "../lib/practiceSession.js";
 import { recordPracticeContact } from "../lib/practiceContacts.js";
 import SpellingBoard from "../components/SpellingBoard.jsx";
@@ -214,8 +213,8 @@ export default function QuizPage({ onExit }) {
                 <div className="quiz-wrong-title">❌ 错题回顾</div>
                 {stats.wrongList.map((w, i) => (
                   <div key={i} className="quiz-wrong-item" style={{ cursor: "pointer" }}>
-                    <span className="quiz-wrong-meaning">{escapeHtml(w.item?.q?.prompt || "")}</span>
-                    <span className="quiz-wrong-expected">{escapeHtml(w.expected)} ›</span>
+                    <span className="quiz-wrong-meaning">{w.item?.q?.prompt || ""}</span>
+                    <span className="quiz-wrong-expected">{w.expected} ›</span>
                   </div>
                 ))}
               </div>
@@ -343,8 +342,8 @@ export default function QuizPage({ onExit }) {
               ) : (
                 <>
                   {feedback.skipped && "已跳过 · "}
-                  {feedback.userInput && <>❌ 你的答案：<b>{escapeHtml(feedback.userInput || "（空）")}</b><br /></>}
-                  正确答案：<b className="right">{escapeHtml(feedback.expected || "")}</b>
+                  {feedback.userInput && <>❌ 你的答案：<b>{feedback.userInput || "（空）"}</b><br /></>}
+                  正确答案：<b className="right">{feedback.expected || ""}</b>
                 </>
               )}
             </div>

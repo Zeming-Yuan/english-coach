@@ -34,7 +34,15 @@ export async function sendPending(pending) {
     error.detail = detail;
     throw error;
   }
-  const result = await response.json();
+  let result;
+  try {
+    result = await response.json();
+  } catch {
+    throw new Error("尚未确认保存：服务器响应不是有效的 JSON，请继续确认同一提交");
+  }
+  if (!result || typeof result !== "object" || Array.isArray(result)) {
+    throw new Error("尚未确认保存：服务器响应无效，请继续确认同一提交");
+  }
   if (result.committed === true && pending.duration) void saveDuration(pending.duration);
   return result;
 }
@@ -67,10 +75,34 @@ export function loadPending(scope, prefix = DEFAULT_PREFIX) {
 }
 
 export function clearPending(scope, prefix = DEFAULT_PREFIX) {
-  memoryPending.delete(pendingKey(scope, prefix));
+  const key = pendingKey(scope, prefix);
+  memoryPending.delete(key);
   try {
-    localStorage.removeItem(pendingKey(scope, prefix));
+    localStorage.removeItem(key);
+    return true;
   } catch {
-    // storage 不可用时只清理内存
+    // Keep a tombstone so readable-but-not-removable storage cannot revive it.
+    memoryPending.set(key, null);
+    return false;
   }
+}
+
+/** A restored database cannot accept submissions prepared for the previous one. */
+export function clearAllPending() {
+  for (const key of memoryPending.keys()) {
+    if (key.startsWith(DEFAULT_PREFIX)) memoryPending.set(key, null);
+  }
+  let durable = true;
+  try {
+    const keys = [];
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (key?.startsWith(DEFAULT_PREFIX)) keys.push(key);
+    }
+    for (const key of keys) {
+      memoryPending.set(key, null);
+      try { localStorage.removeItem(key); } catch { durable = false; }
+    }
+  } catch { durable = false; }
+  return durable;
 }

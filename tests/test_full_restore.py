@@ -302,7 +302,9 @@ def test_full_roundtrip_all_entities_repeat_and_usable_safety_backup(ec, ec_fact
         after = other.client.get("/api/export/backup").json()
         assert _semantic(after) == _semantic(backup)
         preview = other.client.post("/api/import/preview", json=backup)
-    safety = json.loads(Path(result.json()["safety_backup_path"]).read_text(encoding="utf-8"))
+    safety = json.loads(
+        Path(result.json()["safety_backup_path"]).read_text(encoding="utf-8")
+    )
     third = ec_factory()
     assert _confirmed_restore(third, safety).status_code == 200
     assert _semantic(third.client.get("/api/export/backup").json()) == _semantic(backup)
@@ -967,3 +969,29 @@ def test_full_restore_canonicalizes_outer_session_for_reading_and_replay(
     repeated_preview = target.client.post("/api/import/preview", json=backup)
     assert repeated_preview.status_code == 200, repeated_preview.text
     assert repeated_preview.json()["payload_digest"] == preview.json()["payload_digest"]
+
+
+def test_restore_preserves_contact_instant_from_offset_timestamp(ec, ec_factory):
+    card_id = ec.seed_card()
+    detail = ec.client.get(f"/api/cards/{card_id}").json()
+    contact = ec.client.post(
+        "/api/learning/contacts",
+        json={
+            "submission_id": str(uuid4()),
+            "card_id": card_id,
+            "revision": detail["content_revision"],
+            "source": "card_detail",
+            "kind": "answer_visible",
+        },
+    )
+    assert contact.status_code == 200, contact.text
+    backup = ec.client.get("/api/export/backup").json()
+    backup["extensions"]["learning_contacts"][0]["occurred_at"] = (
+        "2026-10-30T20:00:00+08:00"
+    )
+    target = ec_factory()
+    restored = _confirmed_restore(target, backup)
+    assert restored.status_code == 200, restored.text
+    mapped = target.client.get("/api/cards").json()["cards"][0]["id"]
+    restored_contact = target.client.get(f"/api/cards/{mapped}").json()["last_contact"]
+    assert restored_contact["occurred_at"] == "2026-10-30T12:00:00+00:00"

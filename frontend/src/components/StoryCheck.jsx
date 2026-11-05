@@ -35,7 +35,7 @@ export default function StoryCheck({story, onCreated, children}) {
       const run = await api(`/api/practice-sessions/${sessionId}`);
       for (const item of run.items.filter(i => ['pending', 'stale'].includes(i.status))) {
         // Stale/deleted contexts permit returning to the text but cannot accept new answers.
-        if (!item.stale) await api(`/api/practice-sessions/${sessionId}/items/${item.id}/assistance`, {method: 'POST', body: JSON.stringify({kind: 'answer_visible'})});
+        if (item.status === 'pending' && !item.stale) await api(`/api/practice-sessions/${sessionId}/items/${item.id}/assistance`, {method: 'POST', body: JSON.stringify({kind: 'answer_visible'})});
       }
       setChecking(false);
     } catch (e) {setError('回看帮助尚未确认保存：' + e.message);}

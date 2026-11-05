@@ -110,10 +110,14 @@ export default function BackupPage({ onBack, onRestored, restoring, onRestoringC
         throw new Error("恢复响应无效");
       }
       setRestoreResult(result);
-      await onRestored?.();
       setCandidate(null);
       setDone(false);
       if (inputRef.current) inputRef.current.value = "";
+      try {
+        await onRestored?.();
+      } catch (refreshError) {
+        setError("恢复已完成，但页面更新失败，请刷新页面：" + (refreshError?.message || String(refreshError)));
+      }
     } catch (e) {
       if (e.status === 409 || !e.status) {
         try {

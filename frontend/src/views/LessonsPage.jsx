@@ -167,13 +167,13 @@ export default function LessonsPage({ onExit }) {
 
   const nextLesson = async () => {
     if (generating) return;
-    if (isDone || nextLevel > 20) {
+    let pending = loadPending(NEXT_SCOPE, NEXT_PREFIX);
+    if (!pending && (isDone || nextLevel > 20)) {
       setActiveLesson(null);
       return;
     }
     setGenerating(true);
     // 生成前保存稳定 operation_id；响应丢失后重试不会跳级或重复生成。
-    let pending = loadPending(NEXT_SCOPE, NEXT_PREFIX);
     if (!pending) {
       pending = {
         path: "/api/lessons/next",
@@ -515,7 +515,7 @@ function LessonDetail({ lesson, onBack, onNext, onViewed, onStartPractice, gener
           const isRevealed = revealed.has(w.word);
           const isMastered = mastered.has(w.word);
           return (
-            <div key={i} className={`word-item lesson-word ${isMastered ? "word-mastered" : ""}`}>
+            <div key={i} data-contact-ids={w.id ? String(w.id) : ""} className={`word-item lesson-word ${isMastered ? "word-mastered" : ""}`}>
               <div className="word-main" style={{ flex: 1 }}>
                 <div className="word-item-word">{escapeHtml(w.word)}</div>
                 <div className="word-item-phonetic">{escapeHtml(w.phonetic || "")}</div>
@@ -547,6 +547,7 @@ function LessonDetail({ lesson, onBack, onNext, onViewed, onStartPractice, gener
               <button type="button" className="speak-mini" title="朗读" onClick={(e) => { e.stopPropagation(); contactAudio(w.word, [w.id]); }} aria-label="朗读"><UiIcon name="speaker" /></button>
               {isRevealed && (
                 <LessonMastery
+                  mastered={isMastered}
                   cardId={L.card_ids?.[w.word]}
                   onMastered={() => setMastered((s) => new Set(s).add(w.word))}
                 />
@@ -620,7 +621,7 @@ function LessonDetail({ lesson, onBack, onNext, onViewed, onStartPractice, gener
 }
 
 /* 课程内显式评分：保存确认后才标记已掌握，失败可继续确认同一提交。 */
-function LessonMastery({ cardId, onMastered }) {
+function LessonMastery({ cardId, onMastered, mastered }) {
   const attempt = useLearningAttempt("lesson:" + cardId);
 
   if (!cardId) return null;
@@ -632,7 +633,7 @@ function LessonMastery({ cardId, onMastered }) {
   };
 
   const submit = async () => {
-    if (attempt.phase === "saving" || attempt.phase === "failed") return;
+    if (mastered || attempt.phase === "saving" || attempt.phase === "failed") return;
     try {
       finish(await attempt.submit("/api/reviews", {
         card_id: cardId,
@@ -656,7 +657,7 @@ function LessonMastery({ cardId, onMastered }) {
         className="lesson-master-btn"
         title="记住了"
         data-testid="rate-good"
-        disabled={attempt.phase === "saving" || attempt.phase === "failed"}
+        disabled={mastered || attempt.phase === "saving" || attempt.phase === "failed"}
         onClick={(e) => { e.stopPropagation(); submit(); }}
       >✓</button>
       {attempt.phase === "failed" && (

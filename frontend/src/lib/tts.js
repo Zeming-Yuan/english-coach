@@ -145,12 +145,18 @@ function speakOnline(word, done, fallback, onStarted) {
     audio.load();
     fallback();
   };
-  // A timeout is not evidence that audio played. Only a real ended state
-  // may confirm online completion; stalled/failed streams use the fallback.
-  const safetyTimeout = setTimeout(() => {
+  // The watchdog measures lack of progress, not the total speaking duration.
+  // Slow speech and long sentences can legitimately outlive one interval.
+  const timeoutMs = Math.max(word.length * 150, 3000);
+  let lastPosition = 0;
+  const checkProgress = () => {
     if (audio.ended) finish();
-    else failed();
-  }, Math.max(word.length * 150, 3000));
+    else if (audio.currentTime > lastPosition) {
+      lastPosition = audio.currentTime;
+      safetyTimeout = setTimeout(checkProgress, timeoutMs);
+    } else failed();
+  };
+  let safetyTimeout = setTimeout(checkProgress, timeoutMs);
   audio.onended = finish;
   audio.onerror = failed;
   audio.currentTime = 0;
@@ -188,13 +194,33 @@ function speakLocal(word, done, onStarted) {
     done("canceled");
   };
   cancelLocalSpeech = cancel;
-  // 无音频设备时浏览器可能既不触发 onend 也不触发 onerror。
-  const timer = setTimeout(() => finish("none"), Math.max(word.length * 150, 1500));
+  const fail = () => {
+    finish("none");
+    speechSynthesis.cancel();
+  };
+  // Some voices report boundaries sparsely. Allow the whole text at the
+  // selected rate between progress events; an advancing voice renews the lease.
+  const stallMs = Math.max(15000, word.length * 400 / _ttsRate);
+  let timer = setTimeout(fail, Math.max(word.length * 150, 1500));
+  const watchProgress = () => {
+    clearTimeout(timer);
+    timer = setTimeout(fail, stallMs);
+  };
+  let lastBoundary = -1;
   u.lang = "en-US";
   u.rate = _ttsRate;
   if (ttsVoice) u.voice = ttsVoice;
   u.onstart = () => {
-    if (!finished) notifyStarted(onStarted);
+    if (!finished) {
+      watchProgress();
+      notifyStarted(onStarted);
+    }
+  };
+  u.onboundary = (event) => {
+    if (!finished && event.charIndex > lastBoundary) {
+      lastBoundary = event.charIndex;
+      watchProgress();
+    }
   };
   u.onend = () => finish("local");
   u.onerror = () => finish("none");

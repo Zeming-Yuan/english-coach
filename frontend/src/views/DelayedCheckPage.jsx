@@ -16,13 +16,19 @@ export default function DelayedCheckPage({window, onExit, onNormal}) {
     if (!request) {
       api(`/api/practice-sessions?purpose=delayed_check&window=${window}`)
         .then(data => {
-          if (!cancelled) setRequest({id: data.sessions[0]?.id || crypto.randomUUID(), purpose: "delayed_check", window, pending_contact_ids: data.sessions.length ? [] : pendingContactIds()});
+          if (cancelled) return;
+          if (data.sessions[0]) setSessionId(data.sessions[0].id);
+          else setRequest({id: crypto.randomUUID(), purpose: "delayed_check", window, pending_contact_ids: pendingContactIds()});
         })
         .catch(cause => { if (!cancelled) setError(cause.message || "回测加载失败"); });
       return () => { cancelled = true; };
     }
     storageSet(key, request);
-    api("/api/practice-sessions", {method: "POST", body: JSON.stringify(request)})
+    api(`/api/practice-sessions/${request.id}`)
+      .catch(cause => {
+        if (cause.status !== 404) throw cause;
+        return api("/api/practice-sessions", {method: "POST", body: JSON.stringify(request)});
+      })
       .then(data => { if (!cancelled) setSessionId(data.id); })
       .catch(cause => { if (!cancelled) setError(cause.message || "回测创建失败"); });
     return () => { cancelled = true; };

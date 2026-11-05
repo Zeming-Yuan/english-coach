@@ -79,6 +79,8 @@ def test_el09_independent_week_success_counts_and_schedules_once(ec):
     assert first.status_code == 200, first.text
     replay = _attempt(ec, run, submission_id=submission_id)
     assert replay.json()["event_id"] == first.json()["event_id"]
+    second = _attempt(ec, run)
+    assert second.status_code == 409, second.text
     stats = ec.client.get("/api/stats").json()["retention"]["week"]
     assert (stats["successes"], stats["count"], stats["covered"]) == (1, 1, 1)
     assert stats["gap_seconds"] == [604800]
@@ -153,7 +155,7 @@ def test_el09_disqualified_or_assisted_first_result_stays_frozen(ec, mode):
         extra = {"skipped": True, "answer": None}
     first = _attempt(ec, run, **extra)
     assert first.status_code == 200, first.text
-    assert _attempt(ec, run).status_code == 200
+    assert _attempt(ec, run).status_code == 409
     stats = ec.client.get("/api/stats").json()["retention"]
     assert stats["week"]["count"] == 0
     assert (

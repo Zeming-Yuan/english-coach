@@ -245,3 +245,53 @@ def test_connection_failure_returns_reason(ec, monkeypatch):
     )
 
     assert resp.json() == {"ok": False, "error": "401 Invalid API Key"}
+
+
+@pytest.mark.parametrize("saved", ['{"api_key": "sk-preserve",', '["invalid"]'])
+def test_put_unreadable_existing_config_preserves_file_and_runtime(ec, saved):
+    path = ec.root / "llm_config.json"
+    path.write_text(saved, encoding="utf-8")
+    before = ec.settings.model_copy()
+
+    resp = ec.client.put(
+        "/api/ai-config",
+        json={"base_url": before.llm_base_url, "model": "new", "api_key": ""},
+    )
+
+    assert resp.status_code == 503
+    assert resp.json()["detail"]
+    assert "sk-preserve" not in resp.text
+    assert path.read_text(encoding="utf-8") == saved
+    assert ec.settings.llm_model == before.llm_model
+    assert ec.settings.llm_api_key == before.llm_api_key
+
+
+def test_put_existing_config_read_error_preserves_key(ec, monkeypatch):
+    from pathlib import Path
+
+    ec.client.put(
+        "/api/ai-config",
+        json={
+            "base_url": "https://example.com/v1",
+            "model": "old",
+            "api_key": "sk-kept",
+        },
+    )
+    path = ec.root / "llm_config.json"
+    saved = path.read_bytes()
+    read_text = Path.read_text
+
+    def denied(target, *args, **kwargs):
+        if target == path:
+            raise PermissionError("cannot read saved configuration")
+        return read_text(target, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", denied)
+    response = ec.client.put(
+        "/api/ai-config",
+        json={"base_url": "https://example.com/v1", "model": "new", "api_key": ""},
+    )
+    assert response.status_code == 503
+    assert path.read_bytes() == saved
+    assert ec.settings.llm_api_key == "sk-kept"
+    assert ec.settings.llm_model == "old"

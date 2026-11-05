@@ -602,7 +602,7 @@ def submit_attempt(
         if verified is not None:
             verified = business_context(verified)
         if existing.fingerprint != canonical_attempt(cmd, verified_question=verified):
-            raise
+            raise SubmissionConflictError(str(cmd.submission_id))
         result = AttemptResult.model_validate(existing.response)
 
     start_pending_upgrade(db, upgrade)

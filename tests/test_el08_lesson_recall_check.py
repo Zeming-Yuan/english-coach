@@ -21,9 +21,7 @@ def _seed_lesson(ec, words, *, level=1):
             level=level,
             title="水果",
             content={
-                "words": [
-                    {"word": word, "meaning": f"{word}的意思"} for word in words
-                ],
+                "words": [{"word": word, "meaning": f"{word}的意思"} for word in words],
                 "dialogue": [],
                 "tips": [],
             },
@@ -168,15 +166,14 @@ def test_el08_wrong_then_retry_keeps_first_result(ec):
     assert session["status"] == "weak"
     assert session["items"][0]["correct"] is False
     retry = _attempt(ec, run, answer="apple")
-    assert retry.status_code == 200, retry.text
-    retried = retry.json()["session"]
+    assert retry.status_code == 409, retry.text
+    retried = ec.client.get(f"/api/practice-sessions/{run['id']}").json()
     assert retried["status"] == "weak"
     assert retried["items"][0]["correct"] is False
     events = ec.client.get(f"/api/cards/{ids['apple']}").json()["learning_events"]
-    assert len(events) == 2
+    assert len(events) == 1
     assert (
-        ec.client.get("/api/lessons/1").json()["learning_progress"]["passed_count"]
-        == 0
+        ec.client.get("/api/lessons/1").json()["learning_progress"]["passed_count"] == 0
     )
 
 
@@ -208,7 +205,9 @@ def test_el08_same_submission_replays_once_and_rejects_different_content(ec):
     assert replay.json()["event_id"] == first.json()["event_id"]
     conflict = _attempt(ec, run, answer="wrong", submission_id=submission_id)
     assert conflict.status_code == 409
-    assert len(ec.client.get(f"/api/cards/{ids['apple']}").json()["learning_events"]) == 1
+    assert (
+        len(ec.client.get(f"/api/cards/{ids['apple']}").json()["learning_events"]) == 1
+    )
 
 
 def test_el08_assistance_and_revision_conflict(ec):
@@ -330,9 +329,9 @@ def test_el08_delete_last_item_clears_lesson_counts(ec):
     lesson_id, ids = _seed_lesson(ec, ["apple"])
     run = _create(ec, lesson_id).json()
     assert _attempt(ec, run, answer="apple").status_code == 200
-    assert ec.client.get("/api/lessons/1").json()["learning_progress"][
-        "passed_count"
-    ] == 1
+    assert (
+        ec.client.get("/api/lessons/1").json()["learning_progress"]["passed_count"] == 1
+    )
     assert ec.client.delete(f"/api/cards/{ids['apple']}").status_code == 200
     detail = ec.client.get("/api/lessons/1").json()
     assert detail["learning_progress"]["checked_count"] == 0
@@ -351,9 +350,10 @@ def test_el08_delete_after_complete_updates_lesson_counts(ec):
         saved = _attempt(ec, run, answer=word, index=item["position"] - 1)
         assert saved.status_code == 200
         run = saved.json()["session"]
-    assert ec.client.get("/api/lessons/1").json()["learning_progress"][
-        "checked_count"
-    ] == 2
+    assert (
+        ec.client.get("/api/lessons/1").json()["learning_progress"]["checked_count"]
+        == 2
+    )
     assert ec.client.delete(f"/api/cards/{ids['apple']}").status_code == 200
     detail = ec.client.get("/api/lessons/1").json()
     assert detail["learning_progress"]["checked_count"] == 1
@@ -389,7 +389,9 @@ def test_el08_attempt_commit_failure_and_retry(ec):
     replay = _attempt(ec, run, answer="apple", submission_id=submission_id)
     assert replay.status_code == 200
     assert replay.json()["event_id"] == saved.json()["event_id"]
-    assert len(ec.client.get(f"/api/cards/{ids['apple']}").json()["learning_events"]) == 1
+    assert (
+        len(ec.client.get(f"/api/cards/{ids['apple']}").json()["learning_events"]) == 1
+    )
 
 
 def test_el08_weak_only_selects_failed_cards(ec):
@@ -400,12 +402,8 @@ def test_el08_weak_only_selects_failed_cards(ec):
     first_session = saved.json()["session"]
     for item in first_session["items"]:
         if item["status"] == "pending":
-            target = next(
-                word for word, cid in ids.items() if cid == item["card_id"]
-            )
-            _attempt(
-                ec, first_session, answer=target, index=item["position"] - 1
-            )
+            target = next(word for word, cid in ids.items() if cid == item["card_id"])
+            _attempt(ec, first_session, answer=target, index=item["position"] - 1)
     weak = _create(ec, lesson_id, weak_only=True)
     assert weak.status_code == 200, weak.text
     items = weak.json()["items"]
@@ -427,14 +425,13 @@ def test_el08_submission_id_cannot_cross_context(ec):
         },
     )
     assert typing.status_code == 200, typing.text
-    assert _attempt(
-        ec, run, answer="apple", submission_id=submission_id
-    ).status_code == 409
+    assert (
+        _attempt(ec, run, answer="apple", submission_id=submission_id).status_code
+        == 409
+    )
 
     practice_submission = str(uuid4())
-    first = _attempt(
-        ec, run, answer="apple", submission_id=practice_submission
-    )
+    first = _attempt(ec, run, answer="apple", submission_id=practice_submission)
     assert first.status_code == 200
     event = next(
         event
@@ -445,12 +442,15 @@ def test_el08_submission_id_cannot_cross_context(ec):
     )
     assert event["session_id"] == run["id"]
     other = _create(ec, lesson_id).json()
-    assert _attempt(
-        ec,
-        other,
-        answer="apple",
-        submission_id=practice_submission,
-    ).status_code == 409
+    assert (
+        _attempt(
+            ec,
+            other,
+            answer="apple",
+            submission_id=practice_submission,
+        ).status_code
+        == 409
+    )
 
 
 def test_el08_practice_starts_post_commit_upgrade(ec, monkeypatch):
@@ -503,9 +503,7 @@ def test_el08_create_commit_failure_and_retry(ec):
     failed = _create(ec, lesson_id, session_id=session_id)
     assert failed.status_code == 500
     assert ec.snapshot() == before
-    assert (
-        ec.client.get(f"/api/practice-sessions/{session_id}").status_code == 404
-    )
+    assert ec.client.get(f"/api/practice-sessions/{session_id}").status_code == 404
     saved = _create(ec, lesson_id, session_id=session_id)
     assert saved.status_code == 200
     after = ec.snapshot()
@@ -583,9 +581,7 @@ def test_el08_old_v3_without_practice_stays_readable(ec, ec_factory):
         == 200
     )
     assert target.client.get("/api/lessons/1").status_code == 200
-    assert (
-        target.client.get(f"/api/practice-sessions/{uuid4()}").status_code == 404
-    )
+    assert target.client.get(f"/api/practice-sessions/{uuid4()}").status_code == 404
 
 
 @pytest.mark.parametrize(
@@ -604,9 +600,7 @@ def test_el08_old_v3_without_practice_stays_readable(ec, ec_factory):
 def test_el08_v3_rejects_broken_practice_graph(ec, ec_factory, mutation):
     lesson_id, ids = _seed_lesson(ec, ["apple", "book"])
     run = _create(ec, lesson_id).json()
-    word = next(
-        word for word, cid in ids.items() if cid == run["items"][0]["card_id"]
-    )
+    word = next(word for word, cid in ids.items() if cid == run["items"][0]["card_id"])
     assert _attempt(ec, run, answer=word, index=0).status_code == 200
     backup = ec.client.get("/api/export/backup").json()
     sessions = backup["extensions"]["practice_sessions"]

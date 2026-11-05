@@ -20,9 +20,12 @@ export default function SettingsPage({ darkMode, setDarkMode, onOpenBackup }) {
   const [aiKey, setAiKey] = useState("");
   const [aiBusy, setAiBusy] = useState("");
   const [aiTest, setAiTest] = useState(null);
+  const [aiLoadError, setAiLoadError] = useState("");
+  const [aiLoadRetry, setAiLoadRetry] = useState(0);
 
   useEffect(() => {
     let alive = true;
+    setAiLoadError("");
     api("/api/ai-config")
       .then((r) => {
         if (!alive) return;
@@ -30,11 +33,13 @@ export default function SettingsPage({ darkMode, setDarkMode, onOpenBackup }) {
         setAiBaseUrl(r.base_url);
         setAiModel(r.model);
       })
-      .catch(() => {});
+      .catch((error) => {
+        if (alive) setAiLoadError("AI 配置加载失败：" + error.message);
+      });
     return () => {
       alive = false;
     };
-  }, []);
+  }, [aiLoadRetry]);
 
   const aiPayload = () => ({ base_url: aiBaseUrl, model: aiModel, api_key: aiKey });
 
@@ -115,6 +120,7 @@ export default function SettingsPage({ darkMode, setDarkMode, onOpenBackup }) {
           </div>
         </div>
         <h2 className="settings-section-title">AI 服务</h2>
+        {aiLoadError && <p role="alert">{aiLoadError} <button className="btn btn-ghost btn-small" onClick={() => setAiLoadRetry(n => n + 1)}>重试加载配置</button></p>}
         <div className="settings-row" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
           <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
             用于生成词卡、故事与查词。保存后立即生效；配置只存在本机 data/llm_config.json，不进入备份。
@@ -126,9 +132,9 @@ export default function SettingsPage({ darkMode, setDarkMode, onOpenBackup }) {
           <label className="settings-label" htmlFor="ai-key">API Key</label>
           <input id="ai-key" className="word-search-input" type="password" value={aiKey} onChange={(e) => setAiKey(e.target.value)} placeholder={aiConfig?.has_key ? "已保存，留空则不修改" : "sk-..."} autoComplete="new-password" />
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <button className="btn btn-primary btn-small" disabled={!!aiBusy} onClick={saveAiConfig}>{aiBusy === "save" ? "保存中…" : "保存配置"}</button>
-            <button className="btn btn-ghost btn-small" disabled={!!aiBusy} onClick={testAiConfig}>{aiBusy === "test" ? "测试中…" : "测试连接"}</button>
-            <span style={{ fontSize: 12, color: "var(--muted)" }}>{aiConfig?.has_key ? "密钥已配置" : "密钥未配置"}</span>
+            <button className="btn btn-primary btn-small" disabled={!!aiBusy || !aiConfig} onClick={saveAiConfig}>{aiBusy === "save" ? "保存中…" : "保存配置"}</button>
+            <button className="btn btn-ghost btn-small" disabled={!!aiBusy || !aiConfig} onClick={testAiConfig}>{aiBusy === "test" ? "测试中…" : "测试连接"}</button>
+            <span style={{ fontSize: 12, color: "var(--muted)" }}>{!aiConfig ? "配置尚未读取" : aiConfig.has_key ? "密钥已配置" : "密钥未配置"}</span>
           </div>
           {aiTest && (
             <p role="status" style={{ fontSize: 12, margin: 0, color: aiTest.ok ? "var(--success)" : "var(--coral)" }}>

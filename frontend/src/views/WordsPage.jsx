@@ -3,7 +3,6 @@ import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { api } from "../lib/api.js";
 import { recordContact, recordVisibleCards } from "../lib/contacts.js";
 import { speak, prewarmTts } from "../lib/tts.js";
-import { escapeHtml } from "../lib/utils.js";
 import { useLearningAttempt } from "../hooks/useLearningAttempt.js";
 import { showToast } from "../App.jsx";
 import ChunkChips from "../components/ChunkChips.jsx";
@@ -51,14 +50,15 @@ export default function WordsPage({ onBack }) {
 
   // 搜索：按字段相关性加权排序
   // 权重：word完全匹配(0) < word前缀(1) < word包含(2) < meaning匹配(3) < 例句翻译匹配(4)
-  const filtered = query
+  const searchQuery = query.toLowerCase();
+  const filtered = searchQuery
     ? tabCards
         .filter((c) =>
-          (c.word || "").toLowerCase().includes(query) ||
-          (c.meaning || "").toLowerCase().includes(query) ||
-          (c.example_cn || "").toLowerCase().includes(query)
+          (c.word || "").toLowerCase().includes(searchQuery) ||
+          (c.meaning || "").toLowerCase().includes(searchQuery) ||
+          (c.example_cn || "").toLowerCase().includes(searchQuery)
         )
-        .sort((a, b) => searchRank(a, query) - searchRank(b, query))
+        .sort((a, b) => searchRank(a, searchQuery) - searchRank(b, searchQuery))
     : tabCards;
 
   // 按首字母分组
@@ -190,19 +190,19 @@ export default function WordsPage({ onBack }) {
                   {c.kind === "sentence" ? (
                     <>
                       <div className="word-item-word">
-                        {escapeHtml(c.example || c.word)}
+                        {c.example || c.word}
                         {badges.map((b, j) => <span key={j} className={`badge ${b === "句子" ? "badge-sentence" : b === "已解锁" ? "badge-graduated" : b.startsWith("错词") ? "badge-error" : "badge-word"}`}>{b}</span>)}
                       </div>
-                      <div className="word-item-meaning">{escapeHtml(c.example_cn || "")} · 复习 {c.review_count} 次</div>
+                      <div className="word-item-meaning">{c.example_cn || ""} · 复习 {c.review_count} 次</div>
                     </>
                   ) : (
                     <>
                       <div className="word-item-word">
-                        {escapeHtml(c.word)}
+                        {c.word}
                         {badges.map((b, j) => <span key={j} className={`badge ${b === "句子" ? "badge-sentence" : b === "已解锁" ? "badge-graduated" : b.startsWith("错词") ? "badge-error" : "badge-word"}`}>{b}</span>)}
                       </div>
-                      {c.phonetic && <div className="word-item-phonetic">{escapeHtml(c.phonetic)}</div>}
-                      <div className="word-item-meaning">{escapeHtml(c.meaning || "")} · {c.progress_label || "独立证据不足"}</div>
+                      {c.phonetic && <div className="word-item-phonetic">{c.phonetic}</div>}
+                      <div className="word-item-meaning">{c.meaning || ""} · {c.progress_label || "独立证据不足"}</div>
                     </>
                   )}
                 </div>

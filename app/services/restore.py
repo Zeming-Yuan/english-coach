@@ -456,7 +456,9 @@ def _apply_full_restore(session: Session, validated: ValidatedBackup) -> dict:
     for name, rows in validated.extensions.items():
         spec = specs[name]
         for source in rows:
-            row = spec.remap(source, mapping)
+            row = {
+                key: _naive(value) for key, value in spec.remap(source, mapping).items()
+            }
             row.pop("id", None)
             row["id"] = next_ids[name]
             next_ids[name] += 1

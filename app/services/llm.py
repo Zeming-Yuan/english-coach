@@ -61,12 +61,12 @@ def _complete(system: str, user: str | None, task: Task) -> str | None:
             messages=messages,
             response_format={"type": "json_object"},
         )
+        content = resp.choices[0].message.content
+        return content if isinstance(content, str) and content.strip() else None
     except LLMNotConfigured:
         raise
     except Exception:  # noqa: BLE001 — 其余 AI 故障统一走 None 契约，不暴露
         return None
-    content = resp.choices[0].message.content
-    return content or None
 
 
 def generate_json(
