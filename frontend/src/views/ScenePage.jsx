@@ -158,7 +158,7 @@ function SceneRun({initial, creationEnabled, onRestart, onExit}) {
       <p>首答：{saved.answer || '显式跳过'}</p>
       <SceneFeedback session={run} item={saved} />
     </details>)}
-    {!run.can_continue && creationEnabled && <button className="btn btn-primary" disabled={blocked} onClick={onRestart}>新开一轮</button>}
+    {index !== 3 && !run.can_continue && creationEnabled && <button className="btn btn-primary scene-restart" disabled={blocked} onClick={onRestart}>新开一轮</button>}
   </section>;
 }
 

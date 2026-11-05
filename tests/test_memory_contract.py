@@ -367,3 +367,39 @@ def test_contract_preflight_preserves_valid_zero_and_unknown_fields(
     assert len(backup["review_baselines"]) == 3
     preview = ec.client.post("/api/import/preview", json=backup)
     assert preview.status_code == 200, preview.text
+
+
+def test_contract_rejects_untyped_last_review_before_writing(ec):
+    """A malformed legacy column must fail before selecting/deleting duplicates."""
+    from pathlib import Path
+
+    from alembic.config import Config
+    from sqlalchemy import text
+
+    from alembic import command
+
+    cid = ec.seed_card()
+    ec.rebuild_legacy_database("ec12_card_identity")
+    cfg = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
+    cfg.set_main_option("sqlalchemy.url", ec.database_url)
+    with ec.engine.begin() as conn:
+        conn.execute(text("DROP INDEX ix_reviews_last_review"))
+        conn.execute(text("ALTER TABLE reviews DROP COLUMN last_review"))
+        conn.execute(text("ALTER TABLE reviews ADD COLUMN last_review TEXT"))
+        for date in ("not-a-date", "2026-10-29"):
+            conn.execute(
+                text(
+                    "INSERT INTO reviews (card_id, state, due, stability, difficulty, elapsed_days, review_count, last_review) "
+                    "VALUES (:cid, 1, '2026-10-29', 1, 5, 0, 1, :date)"
+                ),
+                {"cid": cid, "date": date},
+            )
+    with pytest.raises(RuntimeError, match="reviews.*last_review.*repair"):
+        command.upgrade(cfg, "b1c2d3e4f503")
+    with ec.engine.connect() as conn:
+        assert conn.scalar(text("SELECT COUNT(*) FROM reviews")) == 2
+        assert conn.scalar(text("SELECT COUNT(*) FROM review_baselines")) == 0
+        assert (
+            conn.scalar(text("SELECT version_num FROM alembic_version"))
+            == "ec12_card_identity"
+        )

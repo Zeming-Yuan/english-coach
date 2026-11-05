@@ -6,7 +6,10 @@ const BASE = "http://127.0.0.1:8001";
   const page = await browser.newPage({ viewport: { width: 420, height: 800 } });
   const errors = [];
   page.on("pageerror", (err) => errors.push("pageerror: " + err.message));
-  const step = (name, ok) => console.log((ok ? "✅" : "❌") + " " + name);
+  const step = (name, ok) => {
+    if (!ok) process.exitCode = 1;
+    console.log((ok ? "✅" : "❌") + " " + name);
+  };
 
   try {
     await page.goto(BASE, { waitUntil: "domcontentloaded" });
@@ -50,10 +53,12 @@ const BASE = "http://127.0.0.1:8001";
     const level = await page.locator("#lesson-level").textContent();
     step(`学完进入下一课（现在 ${level}）`, level.includes("2"));
   } catch (e) {
+    process.exitCode = 1;
     console.log("❌ 中断:", e.message);
     await page.screenshot({ path: "e2e_lesson_failure.png", fullPage: true });
   }
   console.log("\n--- 页面错误 ---");
   console.log(errors.length ? errors.join("\n") : "（无）");
+  if (errors.length) process.exitCode = 1;
   await browser.close();
 })();

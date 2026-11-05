@@ -118,5 +118,4 @@
 @media (prefers-reduced-motion: reduce) {
   .product-app .qwerty-typing-line[data-feedback],
   .product-app .qwerty-typing-line:has(.is-incorrect) { animation: none; }
-  .product-app .qwerty-spelling .spelling-input { caret-color: auto; }
 }

@@ -18,7 +18,10 @@ const BASE = "http://127.0.0.1:8001";
     if (r.status() === 400 && r.url().includes("/api/stories/generate")) expectGenerate400 = true;
   });
   let expectGenerate400 = false;
-  const step = (name, ok) => console.log((ok ? "✅" : "❌") + " " + name);
+  const step = (name, ok) => {
+    if (!ok) process.exitCode = 1;
+    console.log((ok ? "✅" : "❌") + " " + name);
+  };
 
   try {
     await page.goto(BASE, { waitUntil: "domcontentloaded" });
@@ -102,11 +105,13 @@ const BASE = "http://127.0.0.1:8001";
 
     await page.screenshot({ path: "e2e_story.png" });
   } catch (e) {
+    process.exitCode = 1;
     console.log("❌ 中断:", e.message);
     await page.screenshot({ path: "e2e_story_failure.png", fullPage: true });
   }
 
   console.log("\n--- 控制台错误 ---");
   console.log(errors.length ? errors.join("\n") : "（无）");
+  if (errors.length) process.exitCode = 1;
   await browser.close();
 })();
