@@ -341,8 +341,10 @@ export function usePracticeSession({
 
   /** 失败后重试原 pending，不换 submission_id。 */
   const retry = useCallback(async () => {
+    if (submittedRef.current) return null;
     const record = pendingRef.current;
     if (!record) return null;
+    submittedRef.current = true;
     setSaving(true);
     setSaveError("");
     try {
@@ -360,17 +362,20 @@ export function usePracticeSession({
       setSaveError("请检查网络后重试");
       return null;
     } finally {
+      submittedRef.current = false;
       setSaving(false);
     }
   }, [applySaved]);
 
   /** 刷新后继续确认上次未获得响应的提交。 */
   const resumePending = useCallback(async () => {
+    if (submittedRef.current) return null;
     const saved = loadPending(TYPED_PENDING_SCOPE);
     if (!saved) {
       setPendingResume(null);
       return null;
     }
+    submittedRef.current = true;
     setSaving(true);
     setSaveError("");
     try {
@@ -382,6 +387,7 @@ export function usePracticeSession({
       setSaveError("请检查网络后重试");
       return null;
     } finally {
+      submittedRef.current = false;
       setSaving(false);
     }
   }, []);

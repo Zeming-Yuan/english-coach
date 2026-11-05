@@ -229,3 +229,81 @@ test('delayed creation still posts the frozen request when no run exists',async(
   await expect(page.getByRole('button',{name:'重新查找候选'})).toBeVisible();
   expect(requests).toEqual([pending]);
 });
+
+test('feedback lookup can be explicitly recovered after leaving and reloading',async({page})=>{
+  let lookup=0;
+  await page.route('**/api/**',async route=>{
+    const path=new URL(route.request().url()).pathname;
+    if(path==='/api/cards')return ++lookup===1?json(route,{detail:'offline'},503):json(route,{cards:[{id:1,kind:'word',word:'apple',content_revision:revision}]});
+    if(path==='/api/learning/contacts')return json(route,{detail:'offline'},503);
+    return json(route,{});
+  });
+  await harness(page,'SceneFeedback',{session:scene,item:{id:'one',attempt_id:'attempt-one',feedback:feedback('one','An apple.')}});
+  await expect(page.getByRole('button',{name:'继续确认接触',exact:true})).toBeVisible();
+  await page.evaluate(()=>window.mount('Attempt'));
+  await page.reload();await page.waitForFunction(()=>Boolean(window.mount));
+  await page.evaluate(()=>window.mount('ContactRecovery'));
+  await page.getByRole('button',{name:'继续确认反馈接触',exact:true}).click({timeout:2000});
+  await expect.poll(()=>page.evaluate(()=>localStorage.getItem('ec.contact.lookup:scene-feedback:scene:one'))).toBeNull();
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('ec.contact.scene:answer_visible:1')))).toMatchObject({path:'/api/learning/contacts',payload:{card_id:1}});
+});
+
+test('feedback lookup memory recovery retains uncertainty until a target can persist',async({page})=>{
+  await page.addInitScript(()=>{const nativeSet=Storage.prototype.setItem;window.restoreStorage=()=>Storage.prototype.setItem=nativeSet;Storage.prototype.setItem=()=>{throw new DOMException('blocked','QuotaExceededError');};});
+  let lookup=0;
+  await page.route('**/api/**',async route=>{
+    const path=new URL(route.request().url()).pathname;
+    if(path==='/api/cards')return ++lookup===1?json(route,{detail:'offline'},503):json(route,{cards:[{id:1,kind:'word',word:'apple',content_revision:revision}]});
+    if(path==='/api/learning/contacts')return json(route,{detail:'offline'},503);
+    return json(route,{});
+  });
+  await harness(page,'SceneFeedback',{session:scene,item:{id:'one',attempt_id:'attempt-one',feedback:feedback('one','An apple.')}});
+  await expect(page.getByRole('button',{name:'继续确认接触',exact:true})).toBeVisible();
+  await page.evaluate(()=>window.mount('ContactRecovery'));
+  const retry=page.getByRole('button',{name:'继续确认反馈接触',exact:true});await retry.click();
+  await expect(page.getByRole('alert')).toContainText('浏览器未能保存');
+  await expect(retry).toBeEnabled();
+  await page.evaluate(()=>window.restoreStorage());await retry.click();
+  await expect(retry).toHaveCount(0,{timeout:2000});
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('ec.contact.scene:answer_visible:1')))).toMatchObject({path:'/api/learning/contacts',payload:{card_id:1}});
+});
+
+test('legacy feedback lookup without saved text stays honestly incomplete',async({page})=>{
+  await page.addInitScript(()=>localStorage.setItem('ec.contact.lookup:scene-feedback:old:item',JSON.stringify({awaiting_targets:true})));
+  await harness(page,'ContactRecovery');
+  await expect(page.getByText('旧接触记录缺少反馈内容，接触依据仍不完整，请回到原反馈继续确认。')).toBeVisible();
+  await expect(page.getByRole('button',{name:'继续确认反馈接触',exact:true})).toHaveCount(0);
+  expect(await page.evaluate(()=>localStorage.getItem('ec.contact.lookup:scene-feedback:old:item'))).not.toBeNull();
+});
+
+test('practice retry preserves its pending answer against an in-flight skip',async({page})=>{
+  let release;const barrier=new Promise(resolve=>release=resolve);const payloads=[];
+  await page.route('**/api/typing/check',async route=>{
+    payloads.push(route.request().postDataJSON());
+    if(payloads.length===1)return json(route,{detail:'offline'},503);
+    await barrier;await json(route,{committed:true,correct:true,expected:'apple'});
+  });
+  await harness(page,'Practice');await expect(page.getByText('ready',{exact:true})).toBeVisible();
+  await page.evaluate(()=>window.practice.submit('apple').catch(()=>{}));
+  await page.evaluate(()=>{window.retrying=window.practice.retry();});
+  await expect.poll(()=>payloads.length).toBe(2);
+  await page.evaluate(()=>{window.skipping=window.practice.skip();});
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('ec.pending.typed-attempt')).payload.skipped)).toBe(false);
+  release();await page.evaluate(()=>Promise.all([window.retrying,window.skipping]));
+  expect(payloads).toHaveLength(2);
+  expect(payloads[1]).toEqual(payloads[0]);
+});
+
+test('practice resumed confirmation preserves its answer against an in-flight skip',async({page})=>{
+  const pending={path:'/api/typing/check',payload:{card_id:1,user_input:'apple',source:'spelling',kind:'typed',assistance:[],skipped:false,submission_id:'cf7b23bb-7e3d-4b74-b51f-6853b583fba4'}};
+  await page.addInitScript(p=>localStorage.setItem('ec.pending.typed-attempt',JSON.stringify(p)),pending);
+  let release;const barrier=new Promise(resolve=>release=resolve);const payloads=[];
+  await page.route('**/api/typing/check',async route=>{payloads.push(route.request().postDataJSON());await barrier;await json(route,{committed:true,correct:true,expected:'apple'});});
+  await harness(page,'Practice');await expect(page.getByText('ready',{exact:true})).toBeVisible();
+  await page.evaluate(()=>{window.resuming=window.practice.resumePending();});
+  await expect.poll(()=>payloads.length).toBe(1);
+  await page.evaluate(()=>{window.skipping=window.practice.skip();});
+  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('ec.pending.typed-attempt')).payload.submission_id)).toBe(pending.payload.submission_id);
+  release();await page.evaluate(()=>Promise.all([window.resuming,window.skipping]));
+  expect(payloads).toEqual([pending.payload]);
+});
