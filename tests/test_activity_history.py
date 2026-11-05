@@ -11,7 +11,7 @@ from app.services.statistics import learning_day
 
 def _dt(*args) -> datetime:
     """旧 reviews/review_baselines 表使用 naive UTC。"""
-    return datetime(*args)  # noqa: DTZ001
+    return datetime(*args)
 
 
 @pytest.mark.parametrize(
@@ -144,3 +144,22 @@ def test_timezone_change_does_not_repartition_stored_events(ec):
     assert detail["learning_events"][0]["learning_day"] == "2026-10-30"
     assert detail["learning_events"][0]["learning_timezone"] == "Asia/Shanghai"
     assert ec.client.get("/api/stats").json()["reviewed_today"] == 0
+
+
+def test_history_does_not_count_old_cards_as_new_in_short_window(ec):
+    old_card = ec.seed_card(word="apple")
+    ec.set_time("2026-10-01T01:00:00+00:00")
+    assert _review(ec, old_card, 3).status_code == 200
+    ec.set_time("2026-10-30T01:00:00+00:00")
+    new_card = ec.seed_card(word="book")
+    assert _review(ec, old_card, 3).status_code == 200
+    assert _review(ec, new_card, 3).status_code == 200
+
+    days = ec.client.get("/api/stats/history?days=1").json()["days"]
+    assert days[-1] == {
+        "date": "2026-10-30",
+        "reviews": 2,
+        "reviewed_words": 2,
+        "skipped": 0,
+        "new_cards": 1,
+    }

@@ -588,3 +588,37 @@ def test_downgrade_keeps_events_and_upgrade_is_idempotent(ec, tmp_path):
             == response.json()["event_id"]
         )
     engine.dispose()
+
+
+def test_review_unique_conflict_with_different_body_returns_conflict(ec):
+    """A database uniqueness failure must still resolve to the saved command."""
+    from sqlalchemy import event
+
+    card_id = ec.seed_card()
+    payload = _review_payload(card_id)
+    assert ec.client.post("/api/reviews", json=payload).status_code == 200
+    before = ec.client.get(f"/api/cards/{card_id}").json()
+    injected = False
+
+    def collide(_conn, cursor, statement, _parameters, _context, _many):
+        nonlocal injected
+        if statement == "BEGIN IMMEDIATE" and not injected:
+            injected = True
+            # Exercise the real DBAPI uniqueness-error path without replacing
+            # the transaction owner, idempotence lookup or submission service.
+            cursor.execute(
+                "INSERT INTO review_events SELECT * FROM review_events "
+                "WHERE submission_id = ?",
+                (payload["submission_id"],),
+            )
+
+    event.listen(ec.engine, "before_cursor_execute", collide)
+    try:
+        response = ec.client.post("/api/reviews", json={**payload, "rating": 1})
+    finally:
+        event.remove(ec.engine, "before_cursor_execute", collide)
+    assert injected
+    assert response.status_code == 409, response.text
+    after = ec.client.get(f"/api/cards/{card_id}").json()
+    assert after["learning_events"] == before["learning_events"]
+    assert after["memory_state"] == before["memory_state"]

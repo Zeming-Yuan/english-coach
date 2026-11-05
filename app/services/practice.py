@@ -769,7 +769,7 @@ def submit_practice(
                 "skipped": payload.skipped,
                 "session": _session_payload(session, practice, runtime),
             }
-        if practice.purpose == "story_check" and item.first_event_id is not None:
+        if item.first_event_id is not None:
             raise PracticeConflictError("本题首答已保存，请继续下一题或新开一轮")
         if practice.status == "unavailable":
             raise PracticeUnavailableError("本轮没有可测试的词")

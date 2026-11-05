@@ -101,6 +101,15 @@ def test_el10_explicit_targeted_practice_binds_revision_and_replays(ec):
     )
     assert result.status_code == 200, result.text
     assert result.json()["committed"] is True
+    before = ec.client.get(f"/api/cards/{card_id}").json()
+    duplicate = ec.client.post(
+        f"/api/practice-sessions/{run['id']}/items/{run['items'][0]['id']}/attempts",
+        json={"submission_id": str(uuid4()), "answer": "apple"},
+    )
+    assert duplicate.status_code == 409, duplicate.text
+    after = ec.client.get(f"/api/cards/{card_id}").json()
+    assert after["learning_events"] == before["learning_events"]
+    assert after["memory_state"] == before["memory_state"]
 
 
 def _contact(ec, card_id):

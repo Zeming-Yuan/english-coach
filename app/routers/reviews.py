@@ -9,7 +9,11 @@ from app.db import get_db
 from app.runtime import Runtime, get_runtime
 from app.schemas.learning import AttemptCommand
 from app.services.learning import CardNotFoundError, SubmissionConflictError
-from app.services.questions import QuestionTokenStale
+from app.services.questions import (
+    InvalidQuestionToken,
+    QuestionTokenExpired,
+    QuestionTokenStale,
+)
 from app.services.review_submission import submit_command
 
 router = APIRouter()
@@ -25,8 +29,10 @@ def post_review(
     """提交一次学习：判分、事件、FSRS 与错词同一事务保存。"""
     try:
         result = submit_command(db, req, runtime)
-    except QuestionTokenStale as error:
+    except (QuestionTokenStale, QuestionTokenExpired) as error:
         raise HTTPException(status_code=409, detail=str(error))
+    except InvalidQuestionToken as error:
+        raise HTTPException(status_code=422, detail=str(error))
     except CardNotFoundError:
         raise HTTPException(status_code=404, detail="Card not found")
     except SubmissionConflictError:

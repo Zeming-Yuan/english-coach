@@ -331,10 +331,7 @@ def get_stats_history(
     """学习统计历史：按事件学习日聚合，缺失日期零填充。"""
     today = learning_day(runtime.clock.now(), runtime.learning_timezone)
     start = (datetime.fromisoformat(today).date() - timedelta(days=days)).isoformat()
-    events = [
-        event for event in _event_rows(db) if start <= event["learning_day"] <= today
-    ]
-    return {"days": history_days(events, start, today)}
+    return {"days": history_days(_event_rows(db), start, today)}
 
 
 @router.get("/recommended")
