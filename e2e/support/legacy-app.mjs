@@ -29,11 +29,16 @@ export async function startLegacy({gitRef, databasePath}, {pythonBin, readPort, 
     let closed = false;
     return {baseURL, request: api, gitRef: ref.stdout.trim(), close: async () => {
       if (closed) return; closed = true;
-      await api.dispose(); await stopChild(child); fs.rmSync(workDir, {recursive: true, force: true});
+      try {await api.dispose();}
+      finally {
+        try {await stopChild(child);}
+        finally {fs.rmSync(workDir, {recursive: true, force: true});}
+      }
     }};
   } catch (error) {
-    if (child) await stopChild(child);
-    fs.rmSync(workDir, {recursive: true, force: true}); throw error;
+    try {if (child) await stopChild(child);}
+    finally {fs.rmSync(workDir, {recursive: true, force: true});}
+    throw error;
   }
 }
 async function expectHealthy(api, child, stderr) {

@@ -12,7 +12,7 @@ import hashlib
 import json
 import uuid
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import sqlalchemy as sa
 
@@ -50,19 +50,31 @@ def _capture_legacy_baselines() -> None:
     for row in rows:
         grouped.setdefault(row["card_id"], []).append(row)
 
-    captured_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    captured_at = datetime.now(UTC).replace(tzinfo=None)
+    existing_table = sa.Table("review_baselines", sa.MetaData(), autoload_with=bind)
+    existing = set(
+        bind.execute(sa.select(existing_table.c.source_fingerprint)).scalars()
+    )
+    events = sa.Table("review_events", sa.MetaData(), autoload_with=bind)
+    event_cards = set(bind.execute(sa.select(events.c.card_id).distinct()).scalars())
     baselines = []
     for card_id, group in grouped.items():
+        # Re-upgrading a retained modern DB must not invent legacy history.
+        if card_id in event_cards:
+            continue
         selected = max(
             group,
             key=lambda row: (
                 row["last_review"] is not None,
-                row["last_review"] or datetime.min,  # noqa: DTZ901 — 与数据库内无时区时间比较
+                row["last_review"] or datetime.min,
                 row["id"],
             ),
         )
         for row in group:
             raw = _jsonable(row)
+            fingerprint = _fingerprint(raw)
+            if fingerprint in existing:
+                continue
             baselines.append(
                 {
                     "id": str(uuid.uuid4()),
@@ -74,7 +86,7 @@ def _capture_legacy_baselines() -> None:
                     "captured_at": captured_at,
                     "last_activity": row["last_review"],
                     "cumulative_count": max(0, int(row["review_count"] or 0)),
-                    "source_fingerprint": _fingerprint(raw),
+                    "source_fingerprint": fingerprint,
                 }
             )
 
@@ -91,7 +103,8 @@ def _capture_legacy_baselines() -> None:
         sa.column("cumulative_count", sa.Integer()),
         sa.column("source_fingerprint", sa.String(64)),
     )
-    op.bulk_insert(baselines_table, baselines)
+    if baselines:
+        op.bulk_insert(baselines_table, baselines)
 
 
 _EVENT_INDEXES = (
@@ -124,11 +137,10 @@ def upgrade() -> None:
     existing = set(sa.inspect(op.get_bind()).get_table_names())
     if {"review_events", "review_baselines"} <= existing:
         _ensure_indexes()
+        _capture_legacy_baselines()
         return
     if ("review_events" in existing) != ("review_baselines" in existing):
-        missing = (
-            "review_baselines" if "review_events" in existing else "review_events"
-        )
+        missing = "review_baselines" if "review_events" in existing else "review_events"
         raise RuntimeError(
             f"数据库迁移处于半完成状态：缺少 {missing}。"
             "请从升级前备份恢复后重新升级，不要手工补表。"
@@ -152,9 +164,7 @@ def upgrade() -> None:
         sa.Column("answer", sa.Text(), nullable=True),
         sa.Column("correct", sa.Boolean(), nullable=True),
         sa.Column("skipped", sa.Boolean(), nullable=False, server_default=sa.false()),
-        sa.Column(
-            "scheduled", sa.Boolean(), nullable=False, server_default=sa.false()
-        ),
+        sa.Column("scheduled", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.Column("assistance", sa.JSON(), nullable=False),
         sa.Column("self_rating", sa.Integer(), nullable=True),
         sa.Column("fsrs_rating", sa.Integer(), nullable=True),
@@ -184,9 +194,7 @@ def upgrade() -> None:
         sa.Column("source_review_id", sa.Integer(), nullable=True),
         sa.Column("source_kind", sa.String(length=20), nullable=False),
         sa.Column("raw", sa.JSON(), nullable=False),
-        sa.Column(
-            "selected", sa.Boolean(), nullable=False, server_default=sa.false()
-        ),
+        sa.Column("selected", sa.Boolean(), nullable=False, server_default=sa.false()),
         sa.Column("captured_at", sa.DateTime(), nullable=False),
         sa.Column("last_activity", sa.DateTime(), nullable=True),
         sa.Column("cumulative_count", sa.Integer(), nullable=False),
@@ -211,4 +219,4 @@ def downgrade() -> None:
     规格要求“不得降级时删除新事件”；保留表与数据，前版应用可继续读取
     兼容的 Review 当前状态。再次 upgrade 时上面的 existing 检查会跳过 DDL。
     """
-    return None
+    return

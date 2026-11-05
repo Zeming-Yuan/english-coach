@@ -6,6 +6,8 @@
    阅读例句（对话体/意群切分/难度标记），失败则保留例句卡。
 """
 
+from collections.abc import Callable
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -77,7 +79,7 @@ _AI_SENTENCE_PROMPT = (
     "你是零基础英语老师。为目标单词生成一个用于阅读练习的句子。\n"
     "【要求】\n"
     "- 优先用对话体（A/B 两人简短来往，有应答、有场景），如：\n"
-    '  A: Look at that cloud! B: It looks like a giant rabbit.\n'
+    "  A: Look at that cloud! B: It looks like a giant rabbit.\n"
     "- 若无对话体则用叙述句，15-25 词，有画面感和故事性\n"
     "- 目标词必须出现在句中\n"
     "- 用词可以比零基础稍难一点（有 1-2 个生词没关系）\n"
@@ -93,20 +95,24 @@ def _generate_ai_sentence(word: str) -> dict | None:
     return generate_json(_AI_SENTENCE_PROMPT, word)
 
 
-def upgrade_sentence_card(card_id: int) -> None:
+def upgrade_sentence_card(
+    card_id: int, *, session_factory: Callable[[], Session] | None = None
+) -> None:
     """后台线程入口：为刚毕业的词卡生成 AI 复杂句卡（自建数据库会话）。
 
     幂等：已有 AI 句卡（带意群切分）则跳过。AI 失败时回退例句兜底。
     """
     from app.db import SessionLocal
 
-    db = SessionLocal()
+    db = (session_factory or SessionLocal)()
     try:
         card = db.get(Card, card_id)
         if card is None or card.kind != "word":
             return
         existing = find_sentence_card(db, card.word)
-        if existing is not None and (existing.chunks or existing.difficulty == "reading"):
+        if existing is not None and (
+            existing.chunks or existing.difficulty == "reading"
+        ):
             return  # 已有 AI 句卡，无需升级
 
         revision = get_content_revision(db, "card", card.id)

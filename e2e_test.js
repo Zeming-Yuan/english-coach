@@ -14,7 +14,10 @@ const BASE = "http://127.0.0.1:8001";
     if (msg.type() === "error") errors.push("console: " + msg.text());
   });
 
-  const step = (name, ok) => console.log((ok ? "✅" : "❌") + " " + name);
+  const step = (name, ok) => {
+    if (!ok) process.exitCode = 1;
+    console.log((ok ? "✅" : "❌") + " " + name);
+  };
 
   // 底部导航按文本点击
   const gotoTab = async (label) => {
@@ -153,11 +156,13 @@ const BASE = "http://127.0.0.1:8001";
 
     await page.screenshot({ path: "e2e_final.png", fullPage: false });
   } catch (e) {
+    process.exitCode = 1;
     console.log("❌ 流程中断:", e.message);
     await page.screenshot({ path: "e2e_failure.png" });
   }
 
   console.log("\n--- 控制台错误 ---");
   console.log(errors.length ? errors.join("\n") : "（无）");
+  if (errors.length) process.exitCode = 1;
   await browser.close();
 })();

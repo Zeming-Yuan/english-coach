@@ -1,6 +1,7 @@
 """EC-01 隔离环境（ECEnv）与逐票 E2E 入口的自检。"""
 
 import subprocess
+from datetime import UTC
 from pathlib import Path
 
 import pytest
@@ -139,7 +140,7 @@ def test_copied_context_carries_llm_binding_into_threads():
 def test_graduation_thread_uses_request_llm_binding(ec, monkeypatch):
     """毕业后台线程必须继承当前请求所属实例的 LLM 客户端。"""
     import threading
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     from app.models.review import Review
     from app.services import llm, review_submission
@@ -156,7 +157,7 @@ def test_graduation_thread_uses_request_llm_binding(ec, monkeypatch):
                 card_id=card_id,
                 state=1,
                 step=0,
-                due=datetime(2026, 10, 30, tzinfo=timezone.utc),
+                due=datetime(2026, 10, 30, tzinfo=UTC),
                 stability=2.5,
                 difficulty=5.0,
                 elapsed_days=0,
@@ -244,7 +245,14 @@ def test_seed_script_reports_card_ids(tmp_path):
         capture_output=True,
     )
     result = subprocess.run(
-        [sys.executable, str(script), "--database", str(db), "--cards-file", str(cards_file)],
+        [
+            sys.executable,
+            str(script),
+            "--database",
+            str(db),
+            "--cards-file",
+            str(cards_file),
+        ],
         cwd=ROOT,
         env=env,
         check=True,
@@ -272,3 +280,43 @@ def test_e2e_runner_unknown_ticket_has_no_matches():
     result = _run_e2e_runner("--ticket", "EC-99")
     assert result.returncode != 0
     assert "No tests found" in result.stdout + result.stderr
+
+
+def test_graduation_background_writes_only_to_its_application_database(ec, ec_factory):
+    """Observe the real asynchronous upgrade through each application's card API."""
+    import time
+
+    from tests.support.llm_queue import QueuedLLM
+
+    first = ec.seed_card("apple", example="I eat an apple.", example_cn="我吃苹果。")
+    other = ec_factory()
+    other.seed_card("banana", example="A banana.", example_cn="香蕉。")
+    ec.app.state.llm_client = QueuedLLM(
+        [
+            {
+                "example": "A: Can I have an apple? B: Yes, the apple is on the table.",
+                "example_cn": "苹果在桌上。",
+                "chunks": [{"text": "Can I have an apple?", "role": "predicate"}],
+            }
+        ]
+    )
+    # Third actual review triggers graduation; no background implementation is mocked.
+    for _ in range(3):
+        response = ec.client.post("/api/reviews", json={"card_id": first, "rating": 1})
+        assert response.status_code == 200, response.text
+    upgraded = []
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        cards = ec.client.get("/api/cards").json()["cards"]
+        upgraded = [
+            c
+            for c in cards
+            if c["kind"] == "sentence" and c.get("difficulty") == "reading"
+        ]
+        if upgraded:
+            break
+        time.sleep(0.05)
+    assert [c["word"] for c in upgraded] == ["apple"]
+    assert {c["word"] for c in other.client.get("/api/cards").json()["cards"]} == {
+        "banana"
+    }

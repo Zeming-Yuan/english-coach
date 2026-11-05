@@ -30,5 +30,11 @@
     "EL-09 another tab seeing the answer reclassifies the result"
   ],
   "interrupted": true,
-  "sourceStayedFrozen": true
+  "sourceStayedFrozen": true,
+  "summary_validation": {
+    "status": "inconsistent_historical_evidence",
+    "listed_titles": 22,
+    "reported_failed": 16,
+    "note": "The original list contains 22 titles while counts.failed reports 16. Individual statuses are unavailable in this summary; do not use it as acceptance evidence or infer corrected counts."
+  }
 }
