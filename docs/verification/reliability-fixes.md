@@ -157,3 +157,53 @@ The two implementer worktrees were submitted for native archival after integrati
 the delivery worktree and branch remain available. Original dev HEAD remains
 `243f0c3358c220d9f9cf5169af1796cd4981782b` with its initial README/docs changes.
 Final `git diff --check` on the delivered diff and verification notes passed.
+
+## PR integration — user-authorized submission and merge
+
+The follow-up request authorizes publishing a PR and merging it when conflict-free.
+Fresh `origin/dev` is `fd994d613e57e7727af1d53047e5c3adc1c1bb41` (PR #88).
+It was merged without conflicts in `7f2132e`; integration source head is
+`509f14cc1dae51f4935f495a5d78f7c6b6cc2095`.
+
+PR #88 adds exception-chain lint, originating-database background session factories,
+legacy migration recovery and a source-browser dependency allowlist. Shared graduation
+logic retains this round's null-translation protection and the new session factory.
+New Ruff B904 diagnostics in three touched files were fixed by explicit causes;
+HTTP status/detail are unchanged. One existing EL-08 callback fixture needed the
+new explicit keyword parameter; its original `done.wait(5)` assertion remains.
+
+Fresh merge verification (Python 3.12.3 / Node v24.21.0 / installed Chrome):
+
+- `.venv/bin/python -m pytest tests/test_reliability_routers.py tests/test_reliability_services.py tests/test_graduation.py -q`
+  — 61 passed on `7f2132e`. Covers this task's backend acceptance, migration/V3 and
+  the combined graduation path. No backend business behavior changed afterward.
+- The 34-case Node command documented above was rerun on `7f2132e`: 34 passed.
+- `EC_CHROMIUM_EXECUTABLE=/usr/bin/google-chrome EC_OUTPUT_DIR=/tmp/ec-reliability-pr-ui EC_REPORT_PATH=/tmp/ec-reliability-pr-ui.json node frontend/node_modules/@playwright/test/cli.js test -c e2e/playwright.config.mjs 'reliability-frontend.spec.mjs$' --grep 'committed attempt|recovered answers keep|failed lesson progress refresh|failed word-list refresh|adding a lookup word'`
+  — 10 passed, both viewports, on `7f2132e`; frontend source unchanged afterward.
+- Additional exception/migration/shared-background verification:
+
+  ```sh
+  .venv/bin/python -m pytest tests/test_learning_events.py::test_baseline_upgrade_recovers_after_ddl_and_partial_capture tests/test_memory_contract.py::test_contract_preflight_rejects_invalid_fsrs_without_changes tests/test_el08_lesson_recall_check.py::test_el08_practice_starts_post_commit_upgrade tests/test_el08_lesson_recall_check.py::test_el08_assistance_and_revision_conflict tests/test_cards_api.py::test_regenerate_incomplete_output_preserves_content_and_revision tests/test_cards_api.py::test_generate_non_array_cards_returns_upstream_failure tests/test_recognition_attempts.py::test_tampered_question_token_is_rejected tests/test_recognition_attempts.py::test_expired_question_token_is_rejected_before_first_save tests/test_recognition_attempts.py::test_same_submission_id_with_different_answer_conflicts -q
+  ```
+
+  Initial 28 passed / 1 failed: the old EL-08 fixture lambda rejected the new
+  `session_factory` keyword. Updated only that fixture signature, then reran
+  `tests/test_el08_lesson_recall_check.py::test_el08_practice_starts_post_commit_upgrade`:
+  1 passed. No passing tests were relabeled as a rerun of the entire group.
+- `.venv/bin/python scripts/agent_check.py --base dev --lint`
+  — passed on `509f14c`, latest base `fd994d6`, 33 changed Python files formatted.
+- `pyright --pythonpath .venv/bin/python app/routers/cards.py app/routers/listening.py app/services/practice.py tests/test_el08_lesson_recall_check.py`
+  — 5 existing listening diagnostics, no new diagnostics; these are a subset of
+  the previously reproduced baseline findings. Not a passing type-check claim.
+- `git diff --check origin/dev...HEAD`: passed.
+
+Independent integration review at fixed source `509f14c`:
+
+- Standards: 0 remaining actionable findings; independently ran 3 exact null
+  translation / old schema / post-commit upgrade tests, all passed.
+- Spec: 0 remaining actionable findings; independently ran 7 affected tests,
+  including real background database isolation and LLM context, all passed.
+  Prior review conclusions for unchanged code and all stated limitations remain.
+
+Only affected verification was run; no full test suite, full release gate or
+production frontend build. Original checkout and its unrelated changes remain intact.
