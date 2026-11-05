@@ -6,7 +6,7 @@ Fetched implementation/review baseline: `685fb3f16840a553f10f42e22f42e7d87b08fda
 (`origin/dev`, includes PR #87). Re-check reported defects against this version;
 already fixed behaviors are historical evidence, not new changes in this diff.
 Original checkout has unrelated README/docs edits; preserved there, excluded here.
-No remote tracker writes, pushes, PRs, merges or deployments authorized by this task.
+No remote tracker writes, pushes, PRs, remote merges or deployments authorized by this task.
 
 Confirmed test seams: HTTP APIs, service public functions, frontend exported lib
 functions, observable hook state and page behavior. One failing behavior test,
@@ -15,7 +15,8 @@ minimal fix, same test green, then next behavior. Only affected checks; no full 
 ## Task graph and acceptance
 
 Independent implementation slices start at the pinned baseline in separate worktrees.
-Integrate in order R, S, F; review integrated fixed diff along Standards and Spec axes.
+Integrate the independently verified slices serially; review the integrated fixed diff
+along Standards and Spec axes.
 
 - R (routers, user #7–11): bound history days; reject malformed story sentences;
   invalidate check session after revision; atomic difficult-word toggle; case-insensitive

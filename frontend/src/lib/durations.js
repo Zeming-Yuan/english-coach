@@ -1,8 +1,10 @@
 /** Separate recoverable observations: an error here never resubmits an answer. */
 const prefix = "ec.duration.";
 const memory = new Map();
-const busy = new Set();
-const notify = () => window.dispatchEvent(new Event("durations-changed"));
+const busy = new Map();
+const notify = () => {
+  try { window.dispatchEvent(new Event("durations-changed")); } catch {}
+};
 
 export function pendingDurations() {
   const rows = new Map(memory);
@@ -10,8 +12,10 @@ export function pendingDurations() {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key?.startsWith(prefix)) {
-        const row = JSON.parse(localStorage.getItem(key));
-        if (row?.sample_id) rows.set(row.sample_id, row);
+        try {
+          const row = JSON.parse(localStorage.getItem(key));
+          if (row?.sample_id) rows.set(row.sample_id, row);
+        } catch { /* One damaged sample must not hide the remaining observations. */ }
       }
     }
   } catch {}
@@ -21,23 +25,31 @@ export function pendingDurations() {
 export async function saveDuration(payload) {
   const id = payload.sample_id;
   if (busy.has(id)) return;
-  busy.add(id); memory.set(id, payload);
+  const controller = new AbortController();
+  busy.set(id, controller); memory.set(id, payload);
   try { localStorage.setItem(prefix + id, JSON.stringify(payload)); } catch {}
   notify();
   try {
     const response = await fetch("/api/learning/durations", {
+      signal: controller.signal,
       method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload),
     });
     const result = await response.json();
     if (!response.ok || result.committed !== true) throw new Error("时长尚未确认");
+    if (busy.get(id) !== controller) return;
     memory.delete(id);
     try { localStorage.removeItem(prefix + id); } catch {}
   } catch {
     // Keep the exact sample; the global recovery UI offers explicit confirmation.
-  } finally { busy.delete(id); notify(); }
+  } finally {
+    if (busy.get(id) === controller) busy.delete(id);
+    notify();
+  }
 }
 
 export function discardDuration(id) {
+  busy.get(id)?.abort();
+  busy.delete(id);
   memory.delete(id);
   try { localStorage.removeItem(prefix + id); } catch {}
   notify();

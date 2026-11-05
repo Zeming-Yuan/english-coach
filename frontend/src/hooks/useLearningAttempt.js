@@ -49,6 +49,8 @@ export function useLearningAttempt(scope, preparePending) {
       try {
         const result = await sendPending(target);
         if (result.committed !== true) throw new Error("尚未确认保存");
+        if (loadPending(scope)?.payload?.submission_id === target.payload.submission_id) clearPending(scope);
+        pending.current = null;
         if (mounted.current) setState({ phase: "saved", result, error: null });
         return result;
       } catch (error) {
@@ -77,8 +79,7 @@ export function useLearningAttempt(scope, preparePending) {
           new Error("请先继续确认或明确放弃待确认提交"),
         );
       }
-      pending.current = makePending(path, payload);
-      return run(pending.current);
+      return run(makePending(path, payload));
     },
     [run],
   );

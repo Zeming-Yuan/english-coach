@@ -15,6 +15,8 @@ import {
 
 const PREFIX = "ec.contact.";
 const FINAL_STATUS = new Set([404, 409, 422]);
+const matchesRevision = (pending, revision) => pending?.payload?.revision?.identity === revision?.identity &&
+  pending?.payload?.revision?.version === revision?.version;
 // 本页会话内被拒绝的存储范围；重试失败时仍要保留“依据不完整”的提示。
 const deniedScopes = new Set();
 
@@ -101,7 +103,8 @@ async function resolveVisibleContactLookup(scope) {
     const words = new Set(record.text.toLowerCase().match(/[a-z]+(?:'[a-z]+)?/g) || []);
     record.targets = cards.filter(card => card.kind === "word" && words.has(card.word.toLowerCase())).map(card => {
       const targetScope = scopeFor({source: "scene", kind: "answer_visible", cardId: card.id});
-      return {card, pending: loadPending(targetScope, PREFIX) || makePending("/api/learning/contacts", {
+      const existing = loadPending(targetScope, PREFIX);
+      return {card, pending: matchesRevision(existing, card.content_revision) ? existing : makePending("/api/learning/contacts", {
         card_id: card.id, revision: card.content_revision, source: "scene", kind: "answer_visible",
       })};
     });
@@ -163,10 +166,10 @@ export function pendingContactIds() {
     localStorage.removeItem("ec.contact.probe");
     for (let i = 0; i < localStorage.length; i += 1) {
       const key = localStorage.key(i);
-      if (key?.startsWith(PREFIX)) ids.push(key);
+      if (key?.startsWith(PREFIX)) ids.push(key.slice(PREFIX.length));
     }
   } catch { ids.push("storage-unavailable"); }
-  return ids.slice(0, 1000);
+  return [...new Set(ids)].slice(0, 1000);
 }
 
 export function refreshPendingContacts(pending) {
@@ -182,12 +185,18 @@ async function send(scope, pending) {
   try {
     const result = await sendPending(pending);
     if (result.committed !== true) throw new Error("尚未确认保存接触记录");
-    clearPending(scope, PREFIX);
+    if (loadPending(scope, PREFIX)?.payload?.submission_id === pending.payload.submission_id) {
+      clearPending(scope, PREFIX);
+      deniedScopes.delete(scope);
+    }
     return result;
   } catch (error) {
     // 删除/修订/非法组合不可能靠重试通过；网络与服务器故障保留同一提交。
     error.retryable = !FINAL_STATUS.has(error?.status);
-    if (!error.retryable) clearPending(scope, PREFIX);
+    if (!error.retryable && loadPending(scope, PREFIX)?.payload?.submission_id === pending.payload.submission_id) {
+      clearPending(scope, PREFIX);
+      deniedScopes.delete(scope);
+    }
     throw error;
   }
 }
@@ -205,7 +214,7 @@ export function recordContact({cardId, revision, source, kind}) {
   }
   const scope = scopeFor({source, kind, cardId});
   const existing = loadPending(scope, PREFIX);
-  if (existing) {
+  if (matchesRevision(existing, revision)) {
     return send(scope, existing).catch((error) => {
       if (deniedScopes.has(scope)) error.durable = false;
       throw error;

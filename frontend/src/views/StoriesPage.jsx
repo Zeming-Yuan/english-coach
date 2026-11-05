@@ -33,6 +33,7 @@ export default function StoriesPage({onNavigate}) {
   const [stories, setStories] = useState([]);
   const [activeStory, setActiveStory] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [starter, setStarter] = useState(null);
   const [generated, setGenerated] = useState(null);
   const [simplificationEnabled, setSimplificationEnabled] = useState(true);
@@ -41,9 +42,16 @@ export default function StoriesPage({onNavigate}) {
   const openingStory = useRef(null);
   useEffect(() => () => { selection.current += 1; }, []);
 
-  useEffect(() => {
-    api("/api/stories").then((d) => { setStories(d.stories); setSimplificationEnabled(d.simplification_enabled !== false); setGenerationEnabled(d.generation_enabled !== false); setLoading(false); }).catch(() => setLoading(false));
+  const loadStories = useCallback(() => {
+    setLoading(true);
+    setLoadError("");
+    return api("/api/stories").then((d) => {
+      setStories(d.stories);
+      setSimplificationEnabled(d.simplification_enabled !== false);
+      setGenerationEnabled(d.generation_enabled !== false);
+    }).catch(error => setLoadError(error.message)).finally(() => setLoading(false));
   }, []);
+  useEffect(() => {loadStories();}, [loadStories]);
 
   const deleteStory = async (id, title) => {
     if (!window.confirm(`删除故事「${title}」？（词卡不会删）`)) return;
@@ -68,6 +76,8 @@ export default function StoriesPage({onNavigate}) {
   };
 
   if (loading) return <StoryLayout onNavigate={onNavigate}><div className="story-empty">加载中…</div></StoryLayout>;
+
+  if (loadError) return <StoryLayout onNavigate={onNavigate}><div role="alert">加载失败：{loadError}<button className="btn btn-ghost" onClick={loadStories}>重试加载</button></div></StoryLayout>;
 
   // 阅读视图
   if (activeStory) {
@@ -119,6 +129,7 @@ export default function StoriesPage({onNavigate}) {
 }
 
 function StoryRead({ story, onBack }) {
+  const [learnedWords, setLearnedWords] = useState(() => [...story.words]);
   const [mode, setMode] = useState("bilingual"); // en | bilingual | cn
   const [addingWord, setAddingWord] = useState(false);
   const [fontSize, setFontSize] = useState(30);
@@ -132,7 +143,7 @@ function StoryRead({ story, onBack }) {
   const [narrow, setNarrow] = useState(() => window.matchMedia("(max-width: 1023px)").matches);
   // 点词查义共享流程（清洗/已学判断/查词接口）
   const { word: activeWord, result: lookupResult, open: handleWordClick, close: closePanel, markLearned } =
-    useWordLookup({ learnedWords: story.words });
+    useWordLookup({ learnedWords: learnedWords });
 
   const dismissWord = useCallback(() => {
     closePanel();
@@ -198,7 +209,7 @@ function StoryRead({ story, onBack }) {
       if (fresh.length === 0) return;
       fresh.forEach((id) => seenContacts.current.add(id));
       const targets = fresh
-        .map((id) => story.words.find((word) => word.id === id))
+        .map((id) => learnedWords.find((word) => word.id === id))
         .filter((word) => word?.content_revision);
       recordVisibleCards(targets, "story").then(({ failed, retryable }) => {
         if (failed.length === 0) return;
@@ -246,7 +257,7 @@ function StoryRead({ story, onBack }) {
         const result = await speak(segment, null, () => {
           started = true;
           for (const id of ids || []) {
-            const target = story.words.find(word => word.id === id);
+            const target = learnedWords.find(word => word.id === id);
             // Match the server's visible_card_ids ASCII letter boundaries, including phrases.
             const word = normalizeStoryAudio(target?.word);
             const escaped = word?.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -271,7 +282,7 @@ function StoryRead({ story, onBack }) {
   // 点词弹层真正显示释义后才算接触；暂无释义不记录。
   useEffect(() => {
     if (!activeWord?.meaning || lookupResult.status !== "found") return;
-    const target = story.words.find(
+    const target = learnedWords.find(
       (word) => word.word.toLowerCase() === activeWord.word.toLowerCase(),
     );
     if (target?.content_revision) {
@@ -295,8 +306,8 @@ function StoryRead({ story, onBack }) {
       });
       if (r.generated > 0) {
         showToast(`✅ 「${word}」已加入词库`);
-        // 更新 story.words 让按钮消失
-        story.words = [...story.words, { id: r.cards[0].id, word: word, phonetic: r.cards[0].phonetic, meaning: r.cards[0].meaning }];
+        // Library additions belong to this reader; never mutate parent story props.
+        setLearnedWords(words => [...words, r.cards[0]]);
         markLearned({ id: r.cards[0].id, word: word, phonetic: r.cards[0].phonetic, meaning: r.cards[0].meaning });
       } else {
         showToast(`「${word}」已在词库中`);
@@ -315,7 +326,7 @@ function StoryRead({ story, onBack }) {
       offset += tok.length;
       if (/^\s+$/.test(tok)) return tok;
       const clean = cleanToken(tok);
-      const isLearned = story.words.some((w) => w.word.toLowerCase() === clean);
+      const isLearned = learnedWords.some((w) => w.word.toLowerCase() === clean);
       if (clean.length > 1) {
         return (
           <button type="button" key={i} aria-label={`查词 ${clean}`} aria-pressed={activeWord?.word.toLowerCase() === clean}
@@ -337,7 +348,7 @@ function StoryRead({ story, onBack }) {
     });
   };
 
-  const isLearnedWord = activeWord && (lookupResult.isLearned || story.words.some((w) => w.word === activeWord.word));
+  const isLearnedWord = activeWord && (lookupResult.isLearned || learnedWords.some((w) => w.word === activeWord.word));
 
   return (
     <section data-story-version={story.version_id || ""} className="view story-reader" style={{"--reader-font-size": `${fontSize}px`}}>
@@ -394,9 +405,9 @@ function StoryRead({ story, onBack }) {
       {/* 词表 */}
       <footer className="reader-footer">
         <button className="reader-back" onClick={onBack}><ArrowLeftIcon aria-hidden="true" />返回故事列表</button>
-        <details className="reader-targets"><summary>本故事目标词 · {story.words.length}</summary>
+        <details className="reader-targets"><summary>本故事目标词 · {learnedWords.length}</summary>
         <div data-testid="content-contact-status" className="story-tap-tip">应用内接触：本故事正文包含 {story.visible_card_ids?.length || 0} 个目标词</div>
-        {story.words.map((w) => (
+        {learnedWords.map((w) => (
           <div key={w.id} className="story-word-row">
             <b>{escapeHtml(w.word)}</b> <span>{escapeHtml(w.phonetic || "")}</span> <span>{escapeHtml(w.meaning || "")}</span>
           </div>
@@ -417,7 +428,7 @@ function StoryRead({ story, onBack }) {
             <h2 className="story-word-panel-word" lang="en">{activeWord.word}</h2>
             <div className="reader-pronunciation">{activeWord.phonetic && <span className="story-word-panel-phonetic">{activeWord.phonetic}</span>}<button className="reader-tool" aria-label={`朗读 ${activeWord.word}`} onClick={() => contactAudio(activeWord.word, null)}><SpeakerHighIcon aria-hidden="true" /></button></div>
             <div className="story-word-panel-meaning" aria-live="polite">
-              {activeWord.meaning || (lookupResult.status === "missing" ? "暂无释义" : "查询中…")}
+              {activeWord.meaning || (lookupResult.status === "error" ? `查询失败：${lookupResult.error}，请点词重试` : lookupResult.status === "missing" ? "暂无释义" : "查询中…")}
             </div>
             {selectedContext && <div className="reader-context"><h3>文中用法</h3><blockquote lang="en">{selectedContext}</blockquote></div>}
             {/* 已学过的词：显示评分 */}
@@ -440,7 +451,7 @@ function StoryRead({ story, onBack }) {
               </div>
             )}
             {/* 未学过的词：显示添加按钮 */}
-            {!isLearnedWord && lookupResult.status !== "missing" && (
+            {!isLearnedWord && lookupResult.status === "found" && (
               <button className="reader-add-word" disabled={addingWord || lookupResult.status === "loading"} onClick={() => addToLibrary(activeWord.word)}>
                 <PlusCircleIcon weight="fill" aria-hidden="true" />{addingWord ? "添加中…" : "加入单词本"}
               </button>

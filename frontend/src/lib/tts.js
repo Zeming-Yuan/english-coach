@@ -1,3 +1,4 @@
+import {randomUUID} from "./utils.js";
 /**
  * TTS 朗读（本地语音优先，在线兜底 + 设置页速度）。
  * 复用原 app.js TTS 逻辑。
@@ -101,7 +102,7 @@ function speakOnline(word, done, fallback, onStarted) {
   if (!audio) {
     // Browsers can retain a failed 200/empty media resource beyond the Audio
     // object. A retry gets a fresh resource URL; the server word cache remains.
-    const retry = failedAudio.has(word) ? `?retry=${crypto.randomUUID()}` : "";
+    const retry = failedAudio.has(word) ? `?retry=${randomUUID()}` : "";
     audio = new Audio(`/api/tts/audio/${encodeURIComponent(word)}${retry}`);
     audioCache.set(word, audio);
   }

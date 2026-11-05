@@ -2,6 +2,7 @@
 export function normalizeStoryAudio(text) {
   return (text || "").normalize("NFKD")
     .replace(/\p{M}/gu, "")
+    .replace(/ß/g, "ss").replace(/ẞ/g, "SS").replace(/ø/g, "o").replace(/Ø/g, "O")
     .replace(/[‘’]/g, "'").replace(/[—–]/g, "-").replace(/…/g, "...")
     .replace(/[“”"]/g, " ").replace(/[^A-Za-z0-9' ,.!?\-:\s]/g, " ")
     .replace(/\s+/g, " ").trim();

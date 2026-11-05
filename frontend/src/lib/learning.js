@@ -1,3 +1,4 @@
+import {randomUUID} from "./utils.js";
 /**
  * 浏览器学习提交基础工具（EC-03）。
  * 只保存单个待确认请求；不提供离线队列或后台自动重放。
@@ -10,7 +11,7 @@ export function makePending(path, payload) {
     path,
     payload: {
       ...payload,
-      submission_id: payload.submission_id ?? crypto.randomUUID(),
+      submission_id: payload.submission_id ?? randomUUID(),
     },
   };
 }
@@ -43,7 +44,7 @@ export async function sendPending(pending) {
   if (!result || typeof result !== "object" || Array.isArray(result)) {
     throw new Error("尚未确认保存：服务器响应无效，请继续确认同一提交");
   }
-  if (result.committed === true && pending.duration) void saveDuration(pending.duration);
+  if (result.committed === true && pending.duration) void saveDuration(pending.duration).catch(() => {});
   return result;
 }
 
