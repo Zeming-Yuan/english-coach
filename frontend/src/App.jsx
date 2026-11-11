@@ -1,3 +1,4 @@
+import { accountStorage } from "./lib/accountSession.js";
 import React, { useState, useEffect, useRef, useCallback, Component } from "react";
 import { api } from "./lib/api.js";
 import { storageGet, storageSet } from "./lib/utils.js";
@@ -72,8 +73,8 @@ const PENDING_PREFIX = "ec.pending.";
 function pendingScopes() {
   try {
     const scopes = [];
-    for (let i = 0; i < localStorage.length; i += 1) {
-      const key = localStorage.key(i);
+    for (let i = 0; i < accountStorage.length; i += 1) {
+      const key = accountStorage.key(i);
       if (key && key.startsWith(PENDING_PREFIX)) {
         scopes.push(key.slice(PENDING_PREFIX.length));
       }
@@ -176,7 +177,7 @@ class ErrorBoundary extends Component {
 }
 
 /* ============ 主应用 ============ */
-export default function App() {
+export default function App({account = null, onLogout, logoutBusy = false, logoutError = ""}) {
   const [adviceRequest, setAdviceRequest] = useState(null);
   const startAdvice = request => {setAdviceRequest(request); setView("advice");};
   const [delayedWindow, setDelayedWindow] = useState("week");
@@ -261,6 +262,8 @@ export default function App() {
         </div>
         <span className="workspace-location">{view === "queue" ? "今日学习工作台" : VIEW_LABELS[view]}</span>
         <div className="workspace-header-actions">
+          {account && <div className="session-account"><span aria-label="当前账号">{account}</span><button type="button" onClick={onLogout} disabled={logoutBusy || restoringBackup}>{logoutBusy ? "正在退出…" : "退出登录"}</button></div>}
+          {logoutError && <p role="alert" className="session-account-error">{logoutError}</p>}
           {view === "queue" && <time className="home-date" dateTime={new Date().toLocaleDateString("en-CA")}>{new Intl.DateTimeFormat("zh-CN", {month: "long", day: "numeric", weekday: "short"}).format(new Date())}</time>}
           <button className="workspace-header-link" aria-label="打开课程" disabled={restoringBackup} onClick={() => setView("lessons")}><UiIcon name="book" /><span>课程</span></button>
           <button className="workspace-header-link" aria-label="学习记录" disabled={restoringBackup} onClick={() => setView("stats")}><UiIcon name="stats" /></button>
@@ -292,7 +295,7 @@ export default function App() {
           const pendingCleared = clearAllPending();
           const contactsCleared = clearVisibleContactLookups();
           setAdviceRequest(null);
-          try { localStorage.removeItem("ec.advice.request"); } catch {}
+          try { accountStorage.removeItem("ec.advice.request"); } catch {}
           setIsDailyStudy(false);
           updateDaily(null);
           setStudyQueue([]);

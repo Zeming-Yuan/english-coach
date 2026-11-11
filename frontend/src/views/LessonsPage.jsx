@@ -1,3 +1,4 @@
+import { accountStorage } from "../lib/accountSession.js";
 import UiIcon from "../components/UiIcon.jsx";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { api } from "../lib/api.js";
@@ -39,8 +40,8 @@ const VIEW_PREFIX = "ec.lessonview.";
 function pendingViewLevels() {
   try {
     const levels = [];
-    for (let index = 0; index < localStorage.length; index += 1) {
-      const key = localStorage.key(index);
+    for (let index = 0; index < accountStorage.length; index += 1) {
+      const key = accountStorage.key(index);
       if (key?.startsWith(VIEW_PREFIX)) {
         levels.push(key.slice(VIEW_PREFIX.length));
       }
@@ -75,7 +76,7 @@ export default function LessonsPage({ onExit }) {
   const [viewPending, setViewPending] = useState(pendingViewLevels);
   const [practiceSessionId, setPracticeSessionId] = useState(() => {
     try {
-      return localStorage.getItem("ec.practice.active");
+      return accountStorage.getItem("ec.practice.active");
     } catch {
       return null;
     }
@@ -116,7 +117,7 @@ export default function LessonsPage({ onExit }) {
       if (!forceNew && !weakOnly) {
         let stored = null;
         try {
-          stored = localStorage.getItem("ec.practice.active");
+          stored = accountStorage.getItem("ec.practice.active");
         } catch {}
         if (stored) {
           try {
@@ -130,7 +131,7 @@ export default function LessonsPage({ onExit }) {
         const recovered = await api(`/api/practice-sessions?purpose=lesson_check&lesson_id=${lessonId}`);
         const latest = recovered.sessions[0];
         if (latest) {
-          try { localStorage.setItem("ec.practice.active", latest.id); } catch {}
+          try { accountStorage.setItem("ec.practice.active", latest.id); } catch {}
           setPracticeSessionId(latest.id);
           return;
         }
@@ -144,7 +145,7 @@ export default function LessonsPage({ onExit }) {
           weak_only: weakOnly,
         }),
       });
-      localStorage.setItem("ec.practice.active", created.id);
+      accountStorage.setItem("ec.practice.active", created.id);
       setPracticeSessionId(created.id);
     } catch (error) {
       showToast("短测创建失败：" + (error?.message || error));

@@ -1,3 +1,4 @@
+import { accountFetch } from "./accountSession.js";
 /**
  * API 请求封装（复用原 app.js 逻辑）。
  */
@@ -5,7 +6,7 @@
 export async function api(path, opts = {}) {
   let resp;
   try {
-    resp = await fetch(path, {
+    resp = await accountFetch(path, {
       headers: { "Content-Type": "application/json" },
       ...opts,
     });

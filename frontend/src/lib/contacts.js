@@ -1,3 +1,4 @@
+import { accountStorage } from "./accountSession.js";
 /**
  * 应用内接触记录（EL-04）。
  *
@@ -61,8 +62,8 @@ export function beginVisibleContactLookup(identity, feedback = null) {
 export function pendingVisibleContactLookups() {
   const scopes = new Set(visibleLookups.keys());
   try {
-    for (let index = 0; index < localStorage.length; index += 1) {
-      const key = localStorage.key(index);
+    for (let index = 0; index < accountStorage.length; index += 1) {
+      const key = accountStorage.key(index);
       if (key?.startsWith(PREFIX + "lookup:")) scopes.add(key.slice(PREFIX.length));
     }
   } catch {}
@@ -162,10 +163,10 @@ function transferVisibleLookup(scope, failed) {
 export function pendingContactIds() {
   const ids = [...deniedScopes];
   try {
-    localStorage.setItem("ec.contact.probe", "1");
-    localStorage.removeItem("ec.contact.probe");
-    for (let i = 0; i < localStorage.length; i += 1) {
-      const key = localStorage.key(i);
+    accountStorage.setItem("ec.contact.probe", "1");
+    accountStorage.removeItem("ec.contact.probe");
+    for (let i = 0; i < accountStorage.length; i += 1) {
+      const key = accountStorage.key(i);
       if (key?.startsWith(PREFIX)) ids.push(key.slice(PREFIX.length));
     }
   } catch { ids.push("storage-unavailable"); }
