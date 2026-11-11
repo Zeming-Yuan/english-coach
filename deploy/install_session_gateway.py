@@ -47,7 +47,7 @@ def main():
     if args.action == "rollback":
         if not rollback.is_file():
             raise RuntimeError("No saved proxy configuration")
-        shutil.copy2(rollback, config / "Caddyfile")
+        private_file(config / "Caddyfile", rollback.read_text(), "ec-proxy")
         run("systemctl", "restart", "english-coach-proxy")
         return
     release = args.release.resolve(strict=True)
@@ -196,7 +196,11 @@ WantedBy=multi-user.target
     run("systemctl", "start", "english-coach-backup.service")
     if not rollback.exists():
         shutil.copy2(config / "Caddyfile", rollback)
-    shutil.copy2(config / "Caddyfile.session-pending", config / "Caddyfile")
+    private_file(
+        config / "Caddyfile",
+        (config / "Caddyfile.session-pending").read_text(),
+        "ec-proxy",
+    )
     run("systemctl", "restart", "english-coach-proxy")
     print(
         "SESSION_GATEWAY_ACTIVATED: existing users/passwords preserved; rollback config saved"
