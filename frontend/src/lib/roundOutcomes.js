@@ -110,7 +110,7 @@ export function roundBudgetCap() {
 
 export function subscribeRoundAdvice(listener) {
   const update = () => listener(roundBudgetCap());
-  const external = event => { if (event.key === key || event.key === null) update(); };
+  const external = event => { if (accountStorage.matchesEvent(event, key)) update(); };
   window.addEventListener(changed, update);
   window.addEventListener("storage", external);
   return () => {

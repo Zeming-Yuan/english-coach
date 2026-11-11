@@ -30,3 +30,24 @@ test('browser requests carry their mounted account even after cookies switch', a
   assert.equal(headers.get('Content-Type'),'application/json');
   assert.throws(()=>source.configureAccount('friend1'));
 });
+
+test('another tab of the same account refreshes workload advice without reacting to another account', async () => {
+  assert.ok(source);
+  source.configureAccount('owner');
+  globalThis.window=new EventTarget();
+  const rows=new Map();
+  globalThis.localStorage={getItem:k=>rows.get(k)??null,setItem:(k,v)=>rows.set(k,String(v))};
+  const {subscribeRoundAdvice}=await import('./roundOutcomes.js');
+  const caps=[];
+  const unsubscribe=subscribeRoundAdvice(cap=>caps.push(cap));
+  rows.set('ec.account.owner:ec.round-outcomes.v1',JSON.stringify({generation:'initial',rounds:[
+    {id:'one',startedAt:1,interrupted:true,completed:false},
+    {id:'two',startedAt:2,interrupted:true,completed:false},
+  ]}));
+  const eventFor=key=>{const event=new Event('storage');Object.defineProperty(event,'key',{value:key});return event;};
+  window.dispatchEvent(eventFor('ec.account.friend1:ec.round-outcomes.v1'));
+  assert.deepEqual(caps,[]);
+  window.dispatchEvent(eventFor('ec.account.owner:ec.round-outcomes.v1'));
+  assert.deepEqual(caps,[3]);
+  unsubscribe();
+});

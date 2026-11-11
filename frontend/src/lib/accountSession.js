@@ -13,6 +13,7 @@ export function createAccountStorage(username, getStorage = () => globalThis.loc
     return found;
   };
   return {
+    matchesEvent(event, key) { return event.key === null || event.key === prefix + key; },
     get length() { return keys().length; },
     key(index) { return keys()[index] ?? null; },
     getItem(key) { return getStorage().getItem(prefix + key); },
@@ -29,6 +30,7 @@ export function configureAccount(username) {
 }
 
 export const accountStorage = {
+  matchesEvent: (event, key) => scoped.matchesEvent(event, key),
   get length() { return scoped.length; },
   key: index => scoped.key(index),
   getItem: key => scoped.getItem(key),
