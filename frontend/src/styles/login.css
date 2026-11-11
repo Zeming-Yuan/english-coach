@@ -1,0 +1,62 @@
+/* Extension of the existing warm paper / reading workspace vocabulary. */
+.login-page, .session-loading { font-family: var(--font); color: var(--ink); background: var(--paper); }
+.login-page { min-height: 100dvh; display: grid; grid-template-columns: 1fr 1fr; text-wrap: pretty; }
+.login-intro { display: flex; flex-direction: column; padding: clamp(30px, 5vw, 76px); background: var(--nav-paper); border-right: 1px solid var(--line); }
+.login-brand { display: flex; align-items: center; gap: 12px; font-family: var(--font); font-size: 22px; font-weight: 600; letter-spacing: -.6px; }
+.login-brand img { flex-shrink: 0; }
+.login-editorial { margin: auto 0; padding: 70px 0; }
+.login-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 2px; color: var(--mint); }
+.login-headline { font-size: clamp(32px, 3.4vw, 54px); line-height: 1.45; letter-spacing: -1.8px; font-weight: 500; margin: 24px 0; }
+.login-intro-copy { font-size: 15px; line-height: 2; color: var(--muted); margin: 0; }
+.login-intro-note { color: var(--muted); font-size: 12px; margin: 0; }
+.login-form-section { display: flex; align-items: center; justify-content: center; padding: 52px clamp(24px, 5vw, 76px); }
+.login-form-wrap { width: 100%; max-width: 370px; }
+.login-form-wrap > .login-eyebrow { margin: 0 0 15px; }
+.login-form-wrap h1 { font-size: 32px; line-height: 1.4; font-weight: 500; letter-spacing: -1px; margin: 0 0 10px; }
+.login-description { font-size: 14px; color: var(--muted); margin: 0 0 36px; }
+.login-form { display: flex; flex-direction: column; gap: 24px; }
+.login-field { display: flex; flex-direction: column; gap: 9px; }
+.login-field label { font-size: 13px; font-weight: 500; }
+.login-field input { box-sizing: border-box; width: 100%; min-width: 0; min-height: 49px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--paper); color: var(--ink); font-size: 16px; padding: 12px 14px; transition: border-color .15s; }
+.login-field input::placeholder { color: var(--muted); opacity: .75; }
+.login-field input:hover { border-color: var(--muted); }
+.login-field input:disabled { opacity: .65; cursor: wait; }
+.login-password-wrap { position: relative; }
+.login-password-wrap input { padding-right: 64px; }
+.login-reveal { position: absolute; right: 5px; top: 4px; min-height: 41px; min-width: 52px; border: 0; background: transparent; color: var(--muted); font-size: 12px; cursor: pointer; border-radius: var(--radius); }
+.login-reveal:hover { color: var(--ink); background: var(--nav-paper); }
+.login-submit { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 50px; padding: 12px 18px; margin-top: 3px; border: 1px solid var(--mint); border-radius: var(--radius); background: var(--mint); color: var(--paper); font-size: 14px; font-weight: 500; cursor: pointer; transition: opacity .15s, transform .15s; }
+.login-submit:hover { opacity: .9; }
+.login-submit:active { transform: translateY(1px); }
+.login-submit:disabled { opacity: .6; cursor: wait; }
+.login-submit span { font-size: 20px; font-weight: 400; line-height: 1; }
+.login-error, .login-notice { font-size: 13px; line-height: 1.7; margin: -5px 0 0; color: var(--coral); }
+.login-notice { margin-bottom: 24px; }
+.login-invitation { color: var(--muted); font-size: 12px; margin: 20px 0 38px; }
+.login-privacy { display: flex; align-items: center; gap: 9px; border-top: 1px solid var(--line); padding-top: 22px; color: var(--muted); font-size: 12px; }
+.login-privacy p { margin: 0; }
+.login-privacy-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--success); flex-shrink: 0; }
+.session-loading { min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; padding: 24px; text-align: center; }
+.session-loading p { color: var(--muted); font-size: 14px; }
+.session-loading button { padding: 10px 20px; border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: var(--radius); cursor: pointer; }
+.session-account { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--muted); }
+.session-account button { background: transparent; border: 1px solid var(--line); border-radius: var(--radius); color: var(--muted); padding: 7px 10px; min-height: 36px; cursor: pointer; white-space: nowrap; }
+.session-account button:hover { color: var(--ink); background: var(--nav-paper); }
+.session-account-error { color: var(--coral); font-size: 12px; }
+.session-leaving { position: fixed; inset: 0; z-index: 9999; background: var(--paper); display: grid; place-items: center; color: var(--muted); font-family: var(--font); }
+@media (max-width: 760px) {
+  .login-page { display: flex; flex-direction: column; }
+  .login-intro { padding: 28px 26px; border-right: 0; border-bottom: 1px solid var(--line); background: var(--paper); }
+  .login-brand { font-size: 20px; }
+  .login-editorial, .login-intro-note { display: none; }
+  .login-form-section { padding: 48px 26px; flex: 1; align-items: flex-start; }
+  .login-form-wrap h1 { font-size: 30px; }
+  .session-account { gap: 7px; }
+  .product-app:has(.session-account) .home-date { display: none; }
+  .product-app .topbar:has(.session-account) { gap: 8px; padding-right: 16px; padding-left: 16px; }
+  .product-app .workspace-header-actions:has(.session-account) { gap: 8px; }
+  .session-account-error { position: fixed; top: 80px; left: 16px; right: 16px; padding: 10px; background: var(--card); z-index: 60; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .login-field input, .login-submit { transition: none; }
+}

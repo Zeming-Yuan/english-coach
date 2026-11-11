@@ -1,3 +1,4 @@
+import { accountStorage } from "../lib/accountSession.js";
 import React, {useEffect, useRef, useState} from "react";
 import {api} from "../lib/api.js";
 
@@ -6,7 +7,7 @@ export default function StoryVersions({story, enabled, onSelect, onSaved, childr
   const root = story.parent_version_id || story.version_id;
   const key = `ec.story-simplification.${root}`;
   const [pending, setPending] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(key)); } catch { return null; }
+    try { return JSON.parse(accountStorage.getItem(key)); } catch { return null; }
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -17,7 +18,7 @@ export default function StoryVersions({story, enabled, onSelect, onSaved, childr
   useEffect(() => {alive.current = true; return () => {alive.current = false; selection.current += 1;};}, []);
   const remember = value => {
     setPending(value);
-    try {value ? localStorage.setItem(key, JSON.stringify(value)) : localStorage.removeItem(key);}
+    try {value ? accountStorage.setItem(key, JSON.stringify(value)) : accountStorage.removeItem(key);}
     catch {setNote("待确认操作仅保存在内存，刷新后请核对故事列表。");}
   };
   const choose = id => {selection.current += 1; onSelect(id);};

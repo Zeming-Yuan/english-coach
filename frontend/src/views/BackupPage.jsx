@@ -1,3 +1,4 @@
+import { accountFetch } from "../lib/accountSession.js";
 import React, { useRef, useState } from "react";
 import "./backup-page.css";
 
@@ -28,7 +29,7 @@ function formatDetail(detail, fallback) {
 }
 
 async function postJson(path, payload) {
-  const response = await fetch(path, {
+  const response = await accountFetch(path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -62,7 +63,7 @@ export default function BackupPage({ onBack, onRestored, restoring, onRestoringC
     setError("");
     setDone(false);
     try {
-      const response = await fetch("/api/export/backup");
+      const response = await accountFetch("/api/export/backup");
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const url = URL.createObjectURL(await response.blob());
       const link = document.createElement("a");

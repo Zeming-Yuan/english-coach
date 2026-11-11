@@ -1,3 +1,4 @@
+import { accountStorage } from "./accountSession.js";
 import {storageGet} from "./utils.js";
 
 // Workload observations only; never a second source of learning progress.
@@ -51,7 +52,7 @@ function stored() {
 }
 
 function persist(value) {
-  localStorage.setItem(key, JSON.stringify(value));
+  accountStorage.setItem(key, JSON.stringify(value));
   window.dispatchEvent(new Event(changed));
 }
 

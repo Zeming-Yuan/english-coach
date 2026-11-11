@@ -1,3 +1,4 @@
+import { accountStorage } from "../lib/accountSession.js";
 import UiIcon from "../components/UiIcon.jsx";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../lib/api.js";
@@ -37,7 +38,7 @@ function validMixedPending(record) {
 }
 function loadMixedPending() {
   try {
-    const record = memoryPending || JSON.parse(localStorage.getItem(PENDING_KEY) || "null");
+    const record = memoryPending || JSON.parse(accountStorage.getItem(PENDING_KEY) || "null");
     return validMixedPending(record) ? record : null;
   } catch {
     return null;
@@ -46,7 +47,7 @@ function loadMixedPending() {
 function saveMixedPending(record) {
   memoryPending = record;
   try {
-    localStorage.setItem(PENDING_KEY, JSON.stringify(record));
+    accountStorage.setItem(PENDING_KEY, JSON.stringify(record));
     return true;
   } catch {
     return false;
@@ -61,7 +62,7 @@ function clearMixedPending(expected) {
     return false;
   memoryPending = null;
   try {
-    localStorage.removeItem(PENDING_KEY);
+    accountStorage.removeItem(PENDING_KEY);
   } catch {}
   return true;
 }
