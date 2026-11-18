@@ -20,6 +20,7 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": "http://localhost:8001",
+      "/auth": "http://localhost:8001",
       // Keep backend assets; Vite owns its index, source, internal modules and deps.
       "^/static/(?!$|\\?|index\\.html(?:$|\\?)|src/|@|node_modules/)": "http://localhost:8001",
     },

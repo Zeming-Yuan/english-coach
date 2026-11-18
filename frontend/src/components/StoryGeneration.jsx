@@ -1,10 +1,11 @@
+import { accountStorage } from "../lib/accountSession.js";
 import React, {useEffect, useRef, useState} from "react";
 import {api} from "../lib/api.js";
 
 const KEY = "ec.story-generation";
 function pendingRequest() {
   try {
-    const data = JSON.parse(localStorage.getItem(KEY));
+    const data = JSON.parse(accountStorage.getItem(KEY));
     return data?.operation_id && typeof data.include_new_target === "boolean" ? data : null;
   } catch { return null; }
 }
@@ -33,7 +34,7 @@ export default function StoryGeneration({onSaved, onStarter}) {
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   const remember = (value) => {
     setPending(value);
-    try { value ? localStorage.setItem(KEY, JSON.stringify(value)) : localStorage.removeItem(KEY); }
+    try { value ? accountStorage.setItem(KEY, JSON.stringify(value)) : accountStorage.removeItem(KEY); }
     catch { setStorageNote("待确认操作仅保存在内存，刷新后请核对故事列表。"); }
   };
   const generate = async () => {

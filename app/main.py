@@ -76,6 +76,11 @@ def create_app(
         """AI 未配置是可解释状态，不是服务器故障。"""
         return JSONResponse(status_code=503, content={"detail": str(exc)})
 
+    @app.get("/auth/session", include_in_schema=False)
+    def local_session():
+        """The local single-user application needs no deployment login."""
+        return {"enabled": False, "username": None}
+
     # 注册路由
     app.include_router(health.router, prefix="/api", tags=["health"])
     app.include_router(ai_config.router, prefix="/api", tags=["ai-config"])

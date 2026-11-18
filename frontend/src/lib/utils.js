@@ -1,3 +1,4 @@
+import { accountStorage } from "./accountSession.js";
 /**
  * 通用工具函数（复用原 app.js）。
  */
@@ -49,11 +50,11 @@ export function todayStr() {
 }
 
 /**
- * localStorage 读写封装。
+ * accountStorage 读写封装。
  */
 export function storageGet(key, fallback) {
   try {
-    const v = localStorage.getItem(key);
+    const v = accountStorage.getItem(key);
     return v !== null ? JSON.parse(v) : fallback;
   } catch {
     return fallback;
@@ -62,7 +63,7 @@ export function storageGet(key, fallback) {
 
 export function storageSet(key, value) {
   try {
-    localStorage.setItem(key, JSON.stringify(value));
+    accountStorage.setItem(key, JSON.stringify(value));
   } catch {}
 }
 

@@ -1,3 +1,4 @@
+import { accountStorage } from "../lib/accountSession.js";
 import {randomUUID} from "../lib/utils.js";
 import {useCallback, useEffect, useRef} from "react";
 import {activeTimer} from "../lib/activeTime.js";
@@ -11,8 +12,8 @@ export function useActiveTime(identity, kind, enabled = true) {
     // alongside the browser round so pause/refresh never turns a partial sample reliable.
     const key = `ec.active-time.${identity}`;
     try {
-      if (localStorage.getItem(key)) { timer.current = null; return; }
-      localStorage.setItem(key, "started");
+      if (accountStorage.getItem(key)) { timer.current = null; return; }
+      accountStorage.setItem(key, "started");
     } catch { timer.current = null; return; }
     const current = activeTimer();
     timer.current = current;

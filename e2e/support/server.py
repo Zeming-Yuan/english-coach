@@ -41,6 +41,9 @@ def main() -> None:
 
     # 必须在导入 app.main 之前固定隔离配置
     os.environ["DATABASE_URL"] = f"sqlite:///{Path(args.database).as_posix()}"
+    os.environ["LLM_CONFIG_PATH"] = str(
+        Path(args.database).with_name("llm_config.json")
+    )
     os.environ["LLM_API_KEY"] = str(settings_payload.get("llm_api_key", ""))
     os.environ["LLM_BASE_URL"] = str(
         settings_payload.get("llm_base_url", "http://127.0.0.1:9/v1")

@@ -1,6 +1,6 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import App from "./App.jsx";
+import SessionRoot from "./components/SessionRoot.jsx";
 import "@fontsource-variable/noto-sans-sc";
 import "./styles/product-theme.css";
 import "./styles/qwerty-spelling.css";
@@ -13,4 +13,4 @@ document.documentElement.setAttribute("translate", "no");
 document.documentElement.classList.add("notranslate");
 document.body.classList.add("notranslate");
 
-createRoot(document.getElementById("root")).render(<App />);
+createRoot(document.getElementById("root")).render(<SessionRoot />);

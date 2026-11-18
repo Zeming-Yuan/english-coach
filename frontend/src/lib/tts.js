@@ -1,3 +1,4 @@
+import { accountFetch } from "./accountSession.js";
 import {randomUUID} from "./utils.js";
 /**
  * TTS 朗读（本地语音优先，在线兜底 + 设置页速度）。
@@ -240,7 +241,7 @@ function drainPrewarm() {
   while (prewarming < 2 && prewarmQueue.length) {
     const word = prewarmQueue.shift();
     prewarming += 1;
-    fetch(`/api/tts/audio/${encodeURIComponent(word)}/preload`)
+    accountFetch(`/api/tts/audio/${encodeURIComponent(word)}/preload`)
       .catch(() => {})
       .finally(() => {
         warmingWords.delete(word);

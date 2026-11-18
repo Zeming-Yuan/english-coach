@@ -1,3 +1,4 @@
+import { accountStorage, accountFetch } from "./accountSession.js";
 import {randomUUID} from "./utils.js";
 /**
  * 浏览器学习提交基础工具（EC-03）。
@@ -17,7 +18,7 @@ export function makePending(path, payload) {
 }
 
 export async function sendPending(pending) {
-  const response = await fetch(pending.path, {
+  const response = await accountFetch(pending.path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(pending.payload),
@@ -56,7 +57,7 @@ const pendingKey = (scope, prefix) => prefix + scope;
 export function savePending(scope, pending, prefix = DEFAULT_PREFIX) {
   memoryPending.set(pendingKey(scope, prefix), pending);
   try {
-    localStorage.setItem(pendingKey(scope, prefix), JSON.stringify(pending));
+    accountStorage.setItem(pendingKey(scope, prefix), JSON.stringify(pending));
     return true;
   } catch {
     // storage 不可写：内存中的待确认请求仍然保留，不换提交标识
@@ -68,7 +69,7 @@ export function loadPending(scope, prefix = DEFAULT_PREFIX) {
   const key = pendingKey(scope, prefix);
   if (memoryPending.has(key)) return memoryPending.get(key);
   try {
-    const saved = localStorage.getItem(key);
+    const saved = accountStorage.getItem(key);
     return saved ? JSON.parse(saved) : null;
   } catch {
     return null;
@@ -79,7 +80,7 @@ export function clearPending(scope, prefix = DEFAULT_PREFIX) {
   const key = pendingKey(scope, prefix);
   memoryPending.delete(key);
   try {
-    localStorage.removeItem(key);
+    accountStorage.removeItem(key);
     return true;
   } catch {
     // Keep a tombstone so readable-but-not-removable storage cannot revive it.
@@ -96,13 +97,13 @@ export function clearAllPending() {
   let durable = true;
   try {
     const keys = [];
-    for (let i = 0; i < localStorage.length; i += 1) {
-      const key = localStorage.key(i);
+    for (let i = 0; i < accountStorage.length; i += 1) {
+      const key = accountStorage.key(i);
       if (key?.startsWith(DEFAULT_PREFIX)) keys.push(key);
     }
     for (const key of keys) {
       memoryPending.set(key, null);
-      try { localStorage.removeItem(key); } catch { durable = false; }
+      try { accountStorage.removeItem(key); } catch { durable = false; }
     }
   } catch { durable = false; }
   return durable;

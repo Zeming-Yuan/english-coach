@@ -1,3 +1,4 @@
+import { accountStorage } from "./accountSession.js";
 /**
  * 练习提示状态（EL-05）。
  *
@@ -21,17 +22,17 @@ export function assistanceFor(scope, itemId) {
   const key = keyFor(scope, itemId);
   if (memory.has(key)) return [...memory.get(key)];
   try {
-    const saved = JSON.parse(localStorage.getItem(key) || "[]");
+    const saved = JSON.parse(accountStorage.getItem(key) || "[]");
     const clean = Array.isArray(saved) ? [...new Set(saved.filter(kind => ALLOWED.has(kind)))].sort() : [];
     if (JSON.stringify(saved) !== JSON.stringify(clean)) {
       try {
-        if (clean.length) localStorage.setItem(key, JSON.stringify(clean));
-        else localStorage.removeItem(key);
+        if (clean.length) accountStorage.setItem(key, JSON.stringify(clean));
+        else accountStorage.removeItem(key);
       } catch {}
     }
     return clean;
   } catch {
-    try { localStorage.removeItem(key); } catch {}
+    try { accountStorage.removeItem(key); } catch {}
     return [];
   }
 }
@@ -44,7 +45,7 @@ export function markAssistance(scope, itemId, kind) {
   const key = keyFor(scope, itemId);
   memory.set(key, next);
   try {
-    localStorage.setItem(key, JSON.stringify(next));
+    accountStorage.setItem(key, JSON.stringify(next));
   } catch {
     // 存储不可用时保留内存状态；本次提交仍按辅助记录。
   }
@@ -56,7 +57,7 @@ export function clearAssistance(scope, itemId) {
   const key = keyFor(scope, itemId);
   memory.delete(key);
   try {
-    localStorage.removeItem(key);
+    accountStorage.removeItem(key);
   } catch {
     // 仅清理内存
   }

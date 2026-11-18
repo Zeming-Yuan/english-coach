@@ -1,3 +1,4 @@
+import { accountStorage } from "../lib/accountSession.js";
 import React, {useEffect, useRef, useState} from "react";
 import {api} from "../lib/api.js";
 import {pendingContactIds, recordContact} from "../lib/contacts.js";
@@ -80,7 +81,7 @@ export default function LearningAdvice({onStart}) {
     return () => {cancelled = true;};
   }, [refresh]);
   const discard = () => {
-    try {localStorage.removeItem("ec.advice.request");} catch {}
+    try {accountStorage.removeItem("ec.advice.request");} catch {}
     setSaved(null);
     setRecoveryError("");
   };
