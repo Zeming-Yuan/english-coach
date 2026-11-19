@@ -34,7 +34,7 @@ export default function StoryVersions({story, enabled, onSelect, onSaved, childr
       if (!alive.current) return;
       remember(null);
       onSaved(result);
-      if (selection.current === request) onSelect(result.id);
+      if (selection.current === request) onSelect(result.id, result);
     } catch (e) {
       if (alive.current) setError(`简化尚未确认：${e.message}。已有版本保留。`);
     } finally {

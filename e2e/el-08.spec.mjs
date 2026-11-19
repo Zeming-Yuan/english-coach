@@ -100,8 +100,6 @@ test("EL-08 refresh continues the same session", async ({appFactory, page}) => {
   const app = await appFactory({fixture: "ec04-lesson.json"});
   await openPractice(page, app);
   await page.reload();
-  if (await page.getByText("专项练习", {exact: true}).locator("..").getAttribute("open") === null) await page.getByText("专项练习", {exact: true}).click();
-  await page.getByTestId("open-lessons").click();
   await expect(page.getByTestId("practice-session")).toContainText("本课短测");
   await expect(page.locator('input[name="practice-answer"]')).toBeVisible();
 });

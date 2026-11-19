@@ -12,10 +12,18 @@ import RatingButtons from "../components/RatingButtons.jsx";
 /**
  * 单词本视图：搜索/A-Z/快速查阅/详情/编辑/删除/记忆法/换例句/困难词。
  */
-export default function WordsPage({ onBack }) {
+export default function WordsPage({ onBack, detailId = null, onDetailChange }) {
   const [allCards, setAllCards] = useState([]);
   const [query, setQuery] = useState("");
-  const [detail, setDetail] = useState(null);
+  const [internalDetail, setInternalDetail] = useState(null);
+  const detail = onDetailChange ? detailId : internalDetail;
+  const setDetail = useCallback(
+    (nextId, options) => {
+      if (onDetailChange) onDetailChange(nextId, options);
+      else setInternalDetail(nextId);
+    },
+    [onDetailChange],
+  );
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [quickPeek, setQuickPeek] = useState(null);
@@ -152,7 +160,15 @@ export default function WordsPage({ onBack }) {
   if (detail) {
     return <>
       {loadError && <div role="alert">词表刷新失败：{loadError}<button className="btn btn-ghost" onClick={loadCards}>重试刷新</button></div>}
-      <WordDetail key={detail} cardId={detail} onBack={() => setDetail(null)} allCards={filtered} setDetail={setDetail} onCardChanged={loadCards} />
+      <WordDetail
+        key={detail}
+        cardId={detail}
+        onBack={() => setDetail(null, { popIfFromParent: true, replace: true })}
+        onDismissDeleted={() => setDetail(null, { popIfFromParent: true, replace: true })}
+        allCards={filtered}
+        setDetail={(nextId) => setDetail(nextId, { replace: true })}
+        onCardChanged={loadCards}
+      />
     </>;
   }
 
@@ -327,7 +343,7 @@ function LearningEventRow({ event }) {
 }
 
 /* ============ 单词详情子组件 ============ */
-function WordDetail({ cardId, onBack, allCards, setDetail, onCardChanged }) {
+function WordDetail({ cardId, onBack, onDismissDeleted, allCards, setDetail, onCardChanged }) {
   const [c, setCard] = useState(null);
   const [loadError, setLoadError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -338,12 +354,28 @@ function WordDetail({ cardId, onBack, allCards, setDetail, onCardChanged }) {
   const prevCard = allCards && currentIndex > 0 ? allCards[currentIndex - 1] : null;
   const nextCard = allCards && currentIndex < allCards.length - 1 ? allCards[currentIndex + 1] : null;
 
+  const onDismissDeletedRef = useRef(onDismissDeleted);
+  onDismissDeletedRef.current = onDismissDeleted;
+
   const loadDetail = useCallback(() => {
     setLoading(true);
     setLoadError("");
-    return api(`/api/cards/${cardId}`).then(setCard)
-      .catch(error => {setCard(null); setLoadError(error.message);})
-      .finally(() => setLoading(false));
+    return api(`/api/cards/${cardId}`)
+      .then((card) => {
+        if (mountedRef.current) setCard(card);
+      })
+      .catch(error => {
+        if (!mountedRef.current) return;
+        setCard(null);
+        if (error?.status === 404 && onDismissDeletedRef.current) {
+          onDismissDeletedRef.current();
+          return;
+        }
+        setLoadError(error.message);
+      })
+      .finally(() => {
+        if (mountedRef.current) setLoading(false);
+      });
   }, [cardId]);
   useEffect(() => {loadDetail();}, [loadDetail]);
 
@@ -387,7 +419,8 @@ function WordDetail({ cardId, onBack, allCards, setDetail, onCardChanged }) {
     if (!window.confirm(`删除「${c.word}」？复习记录/记忆法/错词都会一并删除。`)) return;
     try {
       await api(`/api/cards/${c.id}`, { method: "DELETE" });
-      onBack();
+      onCardChanged?.();
+      (onDismissDeleted || onBack)();
     } catch (error) {showToast("删除失败：" + error.message);}
   };
 
@@ -575,7 +608,6 @@ function WordDetail({ cardId, onBack, allCards, setDetail, onCardChanged }) {
         <button className="btn btn-primary" onClick={() => {
           // 跳转到拼写练习，只测这一个词
           window.dispatchEvent(new CustomEvent("quiz-single-word", { detail: { card: c } }));
-          onBack();
         }}><UiIcon name="words" />测这个词</button>
       )}
 

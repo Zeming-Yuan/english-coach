@@ -49,8 +49,6 @@ for (const failure of ['commit', 'response-loss']) {
     await page.getByRole('button', {name: '提交答案', exact: true}).click();
     await expect(page.getByTestId('practice-session').getByRole('button', {name: '继续确认保存', exact: true})).toBeVisible();
     await page.reload();
-    await page.getByRole('button', {name: '故事', exact: true}).click();
-    await page.locator('.story-item-main').click();
     const check = page.getByTestId('practice-session');
     await expect(check.getByRole('textbox', {name: '你的答案', exact: true})).toHaveValue('apple');
     await check.getByRole('button', {name: '继续确认保存', exact: true}).click();
@@ -300,7 +298,8 @@ test('EL-13 simpler version checks stay separate when switching versions', async
   await page.getByRole('button', {name: '查看简化版', exact: true}).click();
   await expect(page.getByTestId('practice-session')).toContainText('阅读识别 1 · 词汇独立 1 · 辅助 0');
   await page.reload();
-  await page.getByRole('button', {name: '故事', exact: true}).click();
+  await page.getByRole('button', {name: '← 回看原文', exact: true}).click();
+  await page.getByRole('button', {name: '返回故事列表', exact: true}).first().click();
   await expect(page.locator('.story-item-main').filter({hasText: '简化版 · 已有检查记录'})).toHaveCount(1);
   await expect(page.locator('.story-item-main').filter({hasText: '原版 · 未检查'})).toHaveCount(1);
 });

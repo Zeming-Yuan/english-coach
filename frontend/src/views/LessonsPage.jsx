@@ -13,6 +13,7 @@ import {
   clearPending,
 } from "../lib/learning.js";
 import { useLearningAttempt } from "../hooks/useLearningAttempt.js";
+import { useRouteDetail } from "../hooks/useRouteDetail.js";
 import { showToast } from "../App.jsx";
 import PracticePage from "./PracticePage.jsx";
 
@@ -54,7 +55,12 @@ function pendingViewLevels() {
 /**
  * 课程学习视图：AI 20 级递进（音标启蒙→高频词→简单句→场景对话）。
  */
-export default function LessonsPage({ onExit }) {
+export default function LessonsPage({
+  onExit,
+  lessonLevel = null,
+  lessonSubView = null,
+  onLessonChange,
+}) {
   const [lessons, setLessons] = useState([]);
   const [nextLevel, setNextLevel] = useState(1);
   const [isDone, setIsDone] = useState(false);
@@ -65,7 +71,6 @@ export default function LessonsPage({ onExit }) {
     browsed: 0,
     unrecorded: 0,
   });
-  const [activeLesson, setActiveLesson] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [generating, setGenerating] = useState(false);
@@ -73,7 +78,9 @@ export default function LessonsPage({ onExit }) {
     Boolean(loadPending(NEXT_SCOPE, NEXT_PREFIX)),
   );
   const [viewPending, setViewPending] = useState(pendingViewLevels);
+  const isCheckRoute = onLessonChange ? lessonSubView === "check" : true;
   const [practiceSessionId, setPracticeSessionId] = useState(() => {
+    if (!isCheckRoute) return null;
     try {
       return accountStorage.getItem("ec.practice.active");
     } catch {
@@ -81,8 +88,28 @@ export default function LessonsPage({ onExit }) {
     }
   });
   const [startingPractice, setStartingPractice] = useState(false);
-  const selection = useRef(0);
-  useEffect(() => () => { selection.current += 1; }, []);
+
+  const syncLessonDetail = useCallback(
+    (level, options) => onLessonChange?.(level, null, options),
+    [onLessonChange],
+  );
+  const {
+    activeItem: activeLesson,
+    routeOpening,
+    invalidate: invalidateLessonSelection,
+    openItem: openLesson,
+    adoptItem: adoptLesson,
+    closeItem: closeLesson,
+  } = useRouteDetail({
+    detailId: lessonLevel,
+    onDetailChange: onLessonChange ? syncLessonDetail : undefined,
+    fetchItem: (level) => api(`/api/lessons/${level}`),
+    getItemId: (lesson) => lesson.level,
+    onLoadError: (error, retryOpen) => {
+      showToast("课程加载失败：" + error.message, "重试", retryOpen);
+    },
+  });
+
   useEffect(() => {
     if (!activeLesson) setViewPending(pendingViewLevels());
   }, [activeLesson]);
@@ -113,8 +140,20 @@ export default function LessonsPage({ onExit }) {
     forceNew = false,
   ) => {
     if (startingPractice) return;
-    selection.current += 1;
+    invalidateLessonSelection();
     setStartingPractice(true);
+    const targetLevel =
+      activeLesson?.id === lessonId
+        ? activeLesson.level
+        : lessons.find((item) => item.id === lessonId)?.level ?? lessonLevel;
+    const activateSession = (id) => {
+      setPracticeSessionId(id);
+      if (targetLevel != null) {
+        onLessonChange?.(targetLevel, "check", {
+          replace: lessonSubView === "check",
+        });
+      }
+    };
     try {
       if (!forceNew && !weakOnly) {
         let stored = null;
@@ -125,7 +164,7 @@ export default function LessonsPage({ onExit }) {
           try {
             const existing = await api(`/api/practice-sessions/${stored}`);
             if (existing.lesson_id === lessonId) {
-              setPracticeSessionId(stored);
+              activateSession(stored);
               return;
             }
           } catch {}
@@ -134,7 +173,7 @@ export default function LessonsPage({ onExit }) {
         const latest = recovered.sessions[0];
         if (latest) {
           try { accountStorage.setItem("ec.practice.active", latest.id); } catch {}
-          setPracticeSessionId(latest.id);
+          activateSession(latest.id);
           return;
         }
       }
@@ -147,8 +186,8 @@ export default function LessonsPage({ onExit }) {
           weak_only: weakOnly,
         }),
       });
-      accountStorage.setItem("ec.practice.active", created.id);
-      setPracticeSessionId(created.id);
+      try { accountStorage.setItem("ec.practice.active", created.id); } catch {}
+      activateSession(created.id);
     } catch (error) {
       showToast("短测创建失败：" + (error?.message || error));
     } finally {
@@ -156,32 +195,52 @@ export default function LessonsPage({ onExit }) {
     }
   };
 
+  useEffect(() => {
+    if (!onLessonChange) return;
+    if (lessonSubView !== "check") {
+      if (practiceSessionId) {
+        setPracticeSessionId(null);
+        loadLessons().catch(() => {});
+      }
+      return;
+    }
+    if (practiceSessionId || !activeLesson?.id || startingPractice) return;
+    let cancelled = false;
+    api(`/api/practice-sessions?purpose=lesson_check&lesson_id=${activeLesson.id}`)
+      .then((recovered) => {
+        if (cancelled) return;
+        const latest = recovered.sessions[0];
+        if (latest) {
+          try { accountStorage.setItem("ec.practice.active", latest.id); } catch {}
+          setPracticeSessionId(latest.id);
+        } else {
+          onLessonChange(activeLesson.level, null, { replace: true });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) onLessonChange(activeLesson.level, null, { replace: true });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [lessonSubView, practiceSessionId, activeLesson?.id, activeLesson?.level, startingPractice, onLessonChange, loadLessons]);
+
   const exitPractice = () => {
     // 保留 ec.practice.active：回看课程后再次进入同一课可继续本题辅助。
     setPracticeSessionId(null);
-    loadLessons().catch(() => {});
-  };
-
-  const openLesson = async (level) => {
-    const request = ++selection.current;
-    try {
-      const lesson = await api(`/api/lessons/${level}`);
-      if (request === selection.current) setActiveLesson(lesson);
-    } catch (e) {
-      if (request === selection.current) {
-        showToast("课程加载失败：" + e.message, "重试", () => {
-          if (request === selection.current) openLesson(level);
-        });
-      }
+    const targetLevel = activeLesson?.level ?? lessonLevel;
+    if (onLessonChange && targetLevel != null) {
+      onLessonChange(targetLevel, null, { popIfFromParent: true, replace: true });
     }
+    loadLessons().catch(() => {});
   };
 
   const nextLesson = async () => {
     if (generating) return;
-    selection.current += 1;
+    invalidateLessonSelection();
     let pending = loadPending(NEXT_SCOPE, NEXT_PREFIX);
     if (!pending && (isDone || nextLevel > 20)) {
-      setActiveLesson(null);
+      closeLesson();
       return;
     }
     setGenerating(true);
@@ -198,7 +257,7 @@ export default function LessonsPage({ onExit }) {
       const lesson = await sendPending(pending);
       clearPending(NEXT_SCOPE, NEXT_PREFIX);
       setHasNextPending(false);
-      setActiveLesson(lesson);
+      adoptLesson(lesson);
       await loadLessons().catch(() => {});
     } catch (error) {
       setHasNextPending(true);
@@ -224,7 +283,9 @@ export default function LessonsPage({ onExit }) {
     );
   }
 
-  if (loading) return <div className="story-empty">加载中…</div>;
+  if (loading || routeOpening || (lessonSubView === "check" && !practiceSessionId)) {
+    return <div className="story-empty">加载中…</div>;
+  }
   if (loadError && !activeLesson) return <div role="alert">加载失败：{loadError}<button className="btn btn-ghost" onClick={() => {setLoading(true); loadLessons().catch(() => {});}}>重试加载</button></div>;
 
   // 课程学习页
@@ -235,10 +296,7 @@ export default function LessonsPage({ onExit }) {
       <LessonDetail
         key={activeLesson.id}
         lesson={activeLesson}
-        onBack={() => {
-          selection.current += 1;
-          setActiveLesson(null);
-        }}
+        onBack={() => closeLesson({ popIfFromParent: true, replace: true })}
         onNext={nextLesson}
         onViewed={loadLessons}
         onStartPractice={startPractice}

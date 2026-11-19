@@ -99,8 +99,6 @@ test("EC-07 choice-unknown-refresh-retry-once", async ({ app, page }) => {
     (await events(app, ids)).filter((e) => e.kind === "choice" && !e.skipped),
   ).toHaveLength(1);
   await page.reload();
-  await openSpecialistPractice(page);
-  await page.getByRole("button", { name: /混合练习/ }).click();
   await expect(page.getByRole("alert")).toContainText("上次提交尚未确认保存");
   await expect(page.locator(".study-count")).toHaveText(before);
   page.on("request", (r) => {
@@ -374,8 +372,6 @@ for (const delayedAttempt of [1, 2]) {
     await expect(page.locator(".study-count")).toHaveText(position);
     await expect(page.getByRole("status")).toHaveCount(0);
     await page.reload();
-    await openSpecialistPractice(page);
-    await page.getByRole("button", { name: /混合练习/ }).click();
     await expect(page.getByRole("alert")).toContainText("上次提交尚未确认保存");
     await expect(page.locator(".study-count")).toHaveText(position);
     await page.getByRole("button", { name: /重试保存/ }).click();
