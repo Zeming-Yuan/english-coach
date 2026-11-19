@@ -9,6 +9,7 @@ import {
 import { fetchSpellPool, usePracticeSession } from "../lib/practiceSession.js";
 import { recordPracticeContact } from "../lib/practiceContacts.js";
 import SpellingBoard from "../components/SpellingBoard.jsx";
+import PracticeEmptyState from "../components/PracticeEmptyState.jsx";
 
 /**
  * 拼写练习视图（Qwerty 风格 + 渐褪提示三档）。
@@ -24,7 +25,7 @@ const ASSISTANCE_BY_DIFFICULTY = {
 const difficultyAssistance = (difficulty) =>
   ASSISTANCE_BY_DIFFICULTY[difficulty] || [];
 
-export default function SpellingPage({ onExit, singleCard }) {
+export default function SpellingPage({ onExit, onAddWords, singleCard }) {
   // 默认独立回忆：只有用户主动选择提示才降级为辅助练习。
   const [difficulty, setDifficulty] = useState(() => storageGet("spellingDiff", 3));
   const [assistance, setAssistance] = useState(() =>
@@ -102,7 +103,9 @@ export default function SpellingPage({ onExit, singleCard }) {
   }, [feedback, q?.card_id]);
 
   if (phase === "loading") return <div className="story-empty">加载中…</div>;
-  if (phase === "empty") return <div className="story-empty">还没有单词，先去加词吧</div>;
+  if (phase === "empty") {
+    return <PracticeEmptyState message="还没有单词，先去加词吧" onAddWords={onAddWords} onExit={onExit} />;
+  }
   if (phase === "done") {
     return (
       <section className="view view-center">

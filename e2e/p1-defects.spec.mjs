@@ -407,3 +407,100 @@ test("stats page routes backup to V3 BackupPage and exports non-overlapping them
   await page.getByRole("button", {name: "确认替换学习数据", exact: true}).click();
   await expect(page.getByTestId("release-journey")).toBeVisible();
 });
+
+test("practice modes provide exit and empty-state actions and quiz wrong items are honest static rows", async ({page}) => {
+  let quizEmpty = true;
+  let heldScore = null;
+  await page.route("**/api/**", route => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === "/api/today") {
+      return route.fulfill({
+        json: {
+          queue: [],
+          target: 0,
+          new_cards: quizEmpty ? [] : [{id: 1, kind: "word", word: "apple", meaning: "苹果"}],
+          due_cards: [],
+          error_cards: [],
+        },
+      });
+    }
+    if (path === "/api/cards") {
+      return route.fulfill({json: {cards: quizEmpty ? [] : [{id: 1, kind: "word", word: "apple", meaning: "苹果"}]}});
+    }
+    if (path === "/api/stats") return route.fulfill({json: {total_cards: 1}});
+    if (path === "/api/recommended") return route.fulfill({json: {recommended: []}});
+    if (path === "/api/lessons") return route.fulfill({json: {lessons: [], next_level: 1, is_done: false, counts: {generated: 0}}});
+    if (path === "/api/stories") return route.fulfill({json: {stories: []}});
+    if (path === "/api/listening") return route.fulfill({json: {questions: []}});
+    if (path === "/api/quiz") {
+      return route.fulfill({
+        json: {
+          questions: quizEmpty
+            ? []
+            : [{id: 1, card_id: 1, type: "choice", prompt: "苹果", question_token: "tok-1", options: ["apple", "pear"]}],
+        },
+      });
+    }
+    if (path === "/api/quiz/score") {
+      heldScore = route;
+      return;
+    }
+    if (path.startsWith("/api/tts/")) return route.fulfill({status: 503, body: "unavailable"});
+    return route.fulfill({status: 503, json: {detail: "unavailable fixture"}});
+  });
+
+  await ui.mount(page, "/src/App.jsx");
+  await expect(page.locator(".topbar .logo")).toBeDisabled();
+
+  // 1. Empty SpellingPage: exercises both "去加词" and "返回"
+  await page.getByRole("button", {name: "拼写练习"}).click();
+  await expect(page.getByText("还没有单词，先去加词吧")).toBeVisible();
+  await page.getByRole("button", {name: "去加词", exact: true}).click({timeout: 2000});
+  await expect(page.locator(".workspace-location")).toHaveText("添加单词");
+  await page.locator(".topbar .logo").click();
+  await expect(page.getByRole("heading", {name: "今天的学习"})).toBeVisible();
+  await page.getByRole("button", {name: "拼写练习"}).click();
+  await page.getByRole("button", {name: "返回", exact: true}).click();
+  await expect(page.getByRole("heading", {name: "今天的学习"})).toBeVisible();
+
+  // 2. Empty ListeningPage: exercises both "去加词" and "返回", plus topbar Logo exit
+  await page.getByRole("button", {name: "听写练习"}).click();
+  await expect(page.getByText("今天没有需要听写的词")).toBeVisible();
+  await page.getByRole("button", {name: "返回", exact: true}).click();
+  await expect(page.getByRole("heading", {name: "今天的学习"})).toBeVisible();
+  await page.getByRole("button", {name: "听写练习"}).click();
+  await page.getByRole("button", {name: "去加词", exact: true}).click();
+  await expect(page.locator(".workspace-location")).toHaveText("添加单词");
+  await page.locator(".topbar .logo").click();
+  await expect(page.getByRole("heading", {name: "今天的学习"})).toBeVisible();
+
+  // 3. Empty QuizPage: exercises both "去加词" and "返回"
+  await page.getByRole("button", {name: "直接做测验"}).click();
+  await expect(page.getByText("题库是空的")).toBeVisible();
+  await page.getByRole("button", {name: "去加词", exact: true}).click();
+  await expect(page.locator(".workspace-location")).toHaveText("添加单词");
+  await page.locator(".topbar .logo").click();
+  await page.getByRole("button", {name: "直接做测验"}).click();
+  await page.getByRole("button", {name: "返回", exact: true}).click();
+  await expect(page.getByRole("heading", {name: "今天的学习"})).toBeVisible();
+
+  // 4. Active QuizPage: "← 返回" works, locks during in-flight save, and wrong list has no fake pointer/chevron
+  quizEmpty = false;
+  await page.getByRole("button", {name: "直接做测验"}).click();
+  await expect(page.locator(".quiz-prompt")).toContainText("苹果");
+  await page.getByRole("button", {name: "← 返回", exact: true}).click();
+  await expect(page.getByRole("heading", {name: "今天的学习"})).toBeVisible();
+
+  await page.getByRole("button", {name: "直接做测验"}).click();
+  await page.locator(".quiz-option", {hasText: "pear"}).click();
+  await page.getByRole("button", {name: "确认", exact: true}).click();
+  await expect(page.getByRole("button", {name: "← 返回", exact: true})).toBeDisabled();
+  await expect.poll(() => Boolean(heldScore)).toBe(true);
+  await heldScore.fulfill({json: {committed: true, details: [{correct: false, expected: "apple"}]}});
+  await expect(page.getByRole("button", {name: "← 返回", exact: true})).toBeEnabled();
+  await page.getByRole("button", {name: "查看结果", exact: true}).click();
+  const wrongItem = page.locator(".quiz-wrong-item");
+  await expect(wrongItem).toBeVisible();
+  await expect(wrongItem).not.toHaveCSS("cursor", "pointer");
+  await expect(page.locator(".quiz-wrong-expected")).toHaveText("apple");
+});
