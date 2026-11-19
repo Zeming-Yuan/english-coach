@@ -2,21 +2,125 @@ import { accountFetch } from "../lib/accountSession.js";
 import LearningAdvice from "../components/LearningAdvice.jsx";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "../lib/api.js";
-import { storageGet } from "../lib/utils.js";
 import { showToast } from "../App.jsx";
+
+const URL_REVOKE_DELAY_MS = 1000;
+const REPORT_THEME = {
+  paper: "#fcfaf6",
+  accent: "#a26243",
+  headerSub: "rgba(252, 250, 246, 0.88)",
+  ink: "#302e2b",
+  muted: "#736c63",
+  line: "#e5dfd5",
+};
+const EVIDENCE_DEFAULTS = [
+  ["verified", "独立回忆已有证据"],
+  ["weak", "仍需巩固"],
+  ["stale", "历史证据，待复测"],
+  ["history_incomplete", "历史依据不完整"],
+  ["insufficient", "独立证据不足"],
+];
+
+function triggerBlobDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), URL_REVOKE_DELAY_MS);
+}
+
+function formatEvidenceItems(fresh) {
+  const counts = fresh.evidence_counts || {};
+  const labels = fresh.evidence_labels || {};
+  return Object.fromEntries(
+    EVIDENCE_DEFAULTS.map(([key, fallback]) => [
+      key,
+      `${labels[key] || fallback} ${counts[key] || 0}`,
+    ]),
+  );
+}
+
+function drawReportCanvas(canvas, fresh, items) {
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return false;
+  const latest = fresh.evidence_latest_at
+    ? new Date(fresh.evidence_latest_at).toLocaleDateString()
+    : "暂无";
+
+  ctx.fillStyle = REPORT_THEME.paper;
+  ctx.fillRect(0, 0, 340, 460);
+  ctx.fillStyle = REPORT_THEME.accent;
+  ctx.fillRect(0, 0, 340, 86);
+  ctx.fillStyle = REPORT_THEME.paper;
+  ctx.font = "700 22px sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("EnglishCoach 学习报告", 170, 42);
+  ctx.font = "500 12px sans-serif";
+  ctx.fillStyle = REPORT_THEME.headerSub;
+  ctx.fillText("零基础英语 · AI 个性化学习", 170, 64);
+
+  const drawStatRow = (value, label, y) => {
+    const numText = String(value ?? 0);
+    ctx.textAlign = "left";
+    ctx.fillStyle = REPORT_THEME.ink;
+    ctx.font = "700 30px sans-serif";
+    ctx.fillText(numText, 40, y);
+    const numWidth = ctx.measureText(numText).width;
+    ctx.font = "600 13px sans-serif";
+    ctx.fillStyle = REPORT_THEME.muted;
+    ctx.fillText(label, Math.max(104, 40 + numWidth + 14), y - 6);
+  };
+  drawStatRow(fresh.total_cards, "累计词汇", 138);
+  drawStatRow(fresh.graduated, "句子练习已解锁", 208);
+  drawStatRow(fresh.streak, "连续天数", 278);
+
+  ctx.strokeStyle = REPORT_THEME.line;
+  ctx.beginPath();
+  for (const lineY of [162, 232, 302, 402]) {
+    ctx.moveTo(30, lineY);
+    ctx.lineTo(310, lineY);
+  }
+  ctx.stroke();
+
+  ctx.textAlign = "center";
+  ctx.font = "600 11px sans-serif";
+  ctx.fillStyle = REPORT_THEME.muted;
+  ctx.fillText(`${items.verified} · ${items.weak}`, 170, 334);
+  ctx.fillText(`${items.stale} · ${items.insufficient}`, 170, 354);
+  ctx.fillText(
+    `${items.history_incomplete} · 样本 ${fresh.evidence_samples || 0} · 最近 ${latest}`,
+    170,
+    374,
+  );
+  ctx.fillText("坚持每天 20 分钟，英语不再是零基础", 170, 430);
+  return true;
+}
 
 /**
  * 学习统计视图：数字卡片/周正确率/热力图/导出。
  */
-export default function StatsPage({ onBack, onDelayed, onAdvice }) {
+export default function StatsPage({ onBack, onDelayed, onAdvice, onOpenBackup }) {
   const [stats, setStats] = useState(null);
   const [history, setHistory] = useState(null);
   const [weekly, setWeekly] = useState(null);
   const [today, setToday] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [exportingAnki, setExportingAnki] = useState(false);
+  const [exportingReport, setExportingReport] = useState(false);
   const canvasRef = useRef(null);
+  const mountedRef = useRef(true);
+  const ankiBusyRef = useRef(false);
+  const reportBusyRef = useRef(false);
   const [tooltip, setTooltip] = useState(null);
   const [exportSummary, setExportSummary] = useState(null);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const showTooltip = useCallback((e, date, reviews) => {
     setTooltip({ x: e.clientX + 12, y: e.clientY + 14, text: `${date} · ${reviews} 次作答` });
@@ -43,119 +147,65 @@ export default function StatsPage({ onBack, onDelayed, onAdvice }) {
 
   // 导出
   const downloadExport = async (path, filename) => {
+    if (ankiBusyRef.current) return;
+    ankiBusyRef.current = true;
+    setExportingAnki(true);
     try {
       const response = await accountFetch(path);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      a.click();
-      URL.revokeObjectURL(url);
+      if (!mountedRef.current) return;
+      triggerBlobDownload(blob, filename);
     } catch (error) {
-      showToast("导出失败：" + error.message);
+      if (mountedRef.current) showToast("导出失败：" + error.message);
+    } finally {
+      ankiBusyRef.current = false;
+      if (mountedRef.current) setExportingAnki(false);
     }
-  };
-
-  // 导入
-  const importRef = useRef(null);
-  const handleImport = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (!window.confirm("导入会覆盖当前的复习记录/记忆法/错词（词卡按单词去重合并）。确认恢复？")) { e.target.value = ""; return; }
-    try {
-      const text = await file.text();
-      const data = JSON.parse(text);
-      const resp = await api("/api/import/cards", { method: "POST", body: JSON.stringify(data) });
-      showToast(`✅ 恢复完成：导入 ${resp.imported_words} 个新词`);
-    } catch (err) {
-      showToast("恢复失败：" + err.message);
-    }
-    e.target.value = "";
   };
 
   // 成绩单：重新读取导出时统计，不画按次数换算的掌握百分比
   const openReport = async () => {
-    if (!stats) return;
+    if (!stats || reportBusyRef.current) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
-    let fresh = stats;
+    reportBusyRef.current = true;
+    setExportingReport(true);
     try {
-      fresh = await api("/api/stats");
-      setStats(fresh);
-    } catch {}
-    const counts = fresh.evidence_counts || {};
-    const labels = fresh.evidence_labels || {};
-    const summary = [
-      `${labels.verified || "独立回忆已有证据"} ${counts.verified || 0}`,
-      `${labels.weak || "仍需巩固"} ${counts.weak || 0}`,
-      `${labels.stale || "历史证据，待复测"} ${counts.stale || 0}`,
-      `${labels.history_incomplete || "历史依据不完整"} ${counts.history_incomplete || 0}`,
-      `${labels.insufficient || "独立证据不足"} ${counts.insufficient || 0}`,
-    ].join(" · ");
-    setExportSummary(summary);
+      let fresh = stats;
+      try {
+        fresh = await api("/api/stats");
+        if (!mountedRef.current) return;
+        setStats(fresh);
+      } catch {
+        if (!mountedRef.current) return;
+      }
+      const items = formatEvidenceItems(fresh);
+      setExportSummary(EVIDENCE_DEFAULTS.map(([key]) => items[key]).join(" · "));
+      if (!drawReportCanvas(canvas, fresh, items)) {
+        showToast("成绩单导出失败");
+        return;
+      }
 
-    const latest = fresh.evidence_latest_at
-      ? new Date(fresh.evidence_latest_at).toLocaleDateString()
-      : "暂无";
-    const ctx = canvas.getContext("2d");
-    ctx.fillStyle = "#F7FBFA";
-    ctx.fillRect(0, 0, 340, 420);
-    ctx.fillStyle = "#2DBE9E";
-    ctx.fillRect(0, 0, 340, 86);
-    ctx.fillStyle = "#fff";
-    ctx.font = "900 22px Nunito, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText("EnglishCoach 学习报告", 170, 42);
-    ctx.font = "600 12px sans-serif";
-    ctx.fillStyle = "rgba(255,255,255,0.85)";
-    ctx.fillText("零基础英语 · AI 个性化学习", 170, 64);
-    ctx.textAlign = "left";
-    ctx.fillStyle = "#1E2A32";
-    ctx.font = "900 30px sans-serif";
-    ctx.fillText(String(fresh.total_cards), 46, 150);
-    ctx.fillText(String(fresh.graduated), 46, 280);
-    ctx.fillText(String(fresh.streak), 46, 410);
-    ctx.font = "700 13px sans-serif";
-    ctx.fillStyle = "#7A8B94";
-    ctx.fillText("累计词汇", 96, 144);
-    ctx.fillText("句子练习已解锁", 96, 274);
-    ctx.fillText("连续天数", 96, 404);
-    ctx.textAlign = "center";
-    ctx.font = "700 11px sans-serif";
-    ctx.fillStyle = "#7A8B94";
-    ctx.fillText(
-      `${labels.verified || "独立回忆已有证据"} ${counts.verified || 0} · ${labels.weak || "仍需巩固"} ${counts.weak || 0}`,
-      170,
-      344,
-    );
-    ctx.fillText(
-      `${labels.stale || "历史证据，待复测"} ${counts.stale || 0} · ${labels.insufficient || "独立证据不足"} ${counts.insufficient || 0}`,
-      170,
-      360,
-    );
-    ctx.fillText(
-      `${labels.history_incomplete || "历史依据不完整"} ${counts.history_incomplete || 0} · 样本 ${fresh.evidence_samples || 0} · 最近 ${latest}`,
-      170,
-      376,
-    );
-    ctx.strokeStyle = "#D9E2E6";
-    ctx.beginPath();
-    ctx.moveTo(30, 190); ctx.lineTo(310, 190);
-    ctx.moveTo(30, 320); ctx.lineTo(310, 320);
-    ctx.stroke();
-    ctx.textAlign = "center";
-    ctx.font = "700 11px sans-serif";
-    ctx.fillStyle = "#7A8B94";
-    ctx.fillText("坚持每天 20 分钟，英语不再是零基础", 170, 400);
-    canvas.toBlob((blob) => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "englishcoach_report.png";
-      a.click();
-    });
+      await new Promise((resolve) => {
+        canvas.toBlob((blob) => {
+          if (!mountedRef.current) {
+            resolve();
+            return;
+          }
+          if (!blob) {
+            showToast("成绩单导出失败");
+            resolve();
+            return;
+          }
+          triggerBlobDownload(blob, "englishcoach_report.png");
+          resolve();
+        });
+      });
+    } finally {
+      reportBusyRef.current = false;
+      if (mountedRef.current) setExportingReport(false);
+    }
   };
 
   if (loading) return <div className="story-empty">加载中…</div>;
@@ -332,11 +382,11 @@ export default function StatsPage({ onBack, onDelayed, onAdvice }) {
 
       {/* 导出 */}
       <div className="export-row">
-        <button className="btn btn-ghost btn-small" onClick={() => downloadExport("/api/export/cards", "englishcoach_backup.json")}>备份词库</button>
-        <button className="btn btn-ghost btn-small" onClick={() => downloadExport("/api/export/anki", "englishcoach_anki.csv")}>导出 Anki</button>
-        <button className="btn btn-ghost btn-small" onClick={openReport}>成绩单</button>
-        <button className="btn btn-ghost btn-small" onClick={() => importRef.current?.click()}>恢复词库</button>
-        <input ref={importRef} type="file" accept=".json" hidden onChange={handleImport} />
+        <button className="btn btn-ghost btn-small" disabled={exportingAnki} onClick={() => downloadExport("/api/export/anki", "englishcoach_anki.csv")}>导出 Anki</button>
+        <button className="btn btn-ghost btn-small" disabled={exportingReport} onClick={openReport}>成绩单</button>
+        {onOpenBackup && (
+          <button className="btn btn-ghost btn-small" onClick={onOpenBackup}>备份与恢复</button>
+        )}
       </div>
       {exportSummary && (
         <p role="status" data-testid="export-summary" style={{ fontSize: 12, color: "var(--muted)" }}>
@@ -347,7 +397,7 @@ export default function StatsPage({ onBack, onDelayed, onAdvice }) {
       <h3 className="lesson-section">最近 1 年</h3>
       {renderHeatmap()}
 
-      <canvas ref={canvasRef} width={340} height={420} style={{ display: "none" }} />
+      <canvas ref={canvasRef} width={340} height={460} style={{ display: "none" }} />
 
       {/* 热力图 tooltip */}
       {tooltip && (

@@ -59,6 +59,8 @@ def regenerate_example(word: str) -> tuple[str, str, str]:
         or not explanation.strip()
     ):
         raise ValueError("LLM 返回的例句、翻译或讲解不完整")
+    if max(len(example), len(example_cn), len(explanation)) > 500:
+        raise ValueError("LLM 返回的例句、翻译或讲解超过长度上限")
     return example, example_cn, explanation
 
 

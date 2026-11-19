@@ -3,7 +3,6 @@ import UiIcon from "../components/UiIcon.jsx";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { api } from "../lib/api.js";
 import { speak } from "../lib/tts.js";
-import { escapeHtml } from "../lib/utils.js";
 import { recordVisibleCards } from "../lib/contacts.js";
 import { recordPracticeContact } from "../lib/practiceContacts.js";
 import {
@@ -82,6 +81,8 @@ export default function LessonsPage({ onExit }) {
     }
   });
   const [startingPractice, setStartingPractice] = useState(false);
+  const selection = useRef(0);
+  useEffect(() => () => { selection.current += 1; }, []);
   useEffect(() => {
     if (!activeLesson) setViewPending(pendingViewLevels());
   }, [activeLesson]);
@@ -112,6 +113,7 @@ export default function LessonsPage({ onExit }) {
     forceNew = false,
   ) => {
     if (startingPractice) return;
+    selection.current += 1;
     setStartingPractice(true);
     try {
       if (!forceNew && !weakOnly) {
@@ -161,16 +163,22 @@ export default function LessonsPage({ onExit }) {
   };
 
   const openLesson = async (level) => {
+    const request = ++selection.current;
     try {
       const lesson = await api(`/api/lessons/${level}`);
-      setActiveLesson(lesson);
+      if (request === selection.current) setActiveLesson(lesson);
     } catch (e) {
-      showToast("课程加载失败：" + e.message, "重试");
+      if (request === selection.current) {
+        showToast("课程加载失败：" + e.message, "重试", () => {
+          if (request === selection.current) openLesson(level);
+        });
+      }
     }
   };
 
   const nextLesson = async () => {
     if (generating) return;
+    selection.current += 1;
     let pending = loadPending(NEXT_SCOPE, NEXT_PREFIX);
     if (!pending && (isDone || nextLevel > 20)) {
       setActiveLesson(null);
@@ -227,7 +235,10 @@ export default function LessonsPage({ onExit }) {
       <LessonDetail
         key={activeLesson.id}
         lesson={activeLesson}
-        onBack={() => setActiveLesson(null)}
+        onBack={() => {
+          selection.current += 1;
+          setActiveLesson(null);
+        }}
         onNext={nextLesson}
         onViewed={loadLessons}
         onStartPractice={startPractice}
@@ -309,7 +320,7 @@ export default function LessonsPage({ onExit }) {
           {[...lessons].reverse().map((l) => (
             <div key={l.id} className="lesson-list-item" onClick={() => openLesson(l.level)}>
               <div className="lesson-list-item-main">
-                <div className="lesson-list-item-title">第 {l.level} 课 · {escapeHtml(l.title)}</div>
+                <div className="lesson-list-item-title">第 {l.level} 课 · {l.title}</div>
                 <div className="lesson-list-item-sub">
                   {(l.content.dialogue || []).length} 句对话 ·{" "}
                   短测：{l.learning_progress?.checked_count ? `通过 ${l.learning_progress.passed_count}/${l.learning_progress.checked_count} 题` : "尚无（待检查）"} · {lessonProgressLabel(l.learning_progress)}
@@ -497,7 +508,7 @@ function LessonDetail({ lesson, onBack, onNext, onViewed, onStartPractice, gener
         <button className="btn btn-ghost btn-small" onClick={onBack}>← 返回</button>
       </div>
       <p className="eyebrow">第 {L.level} 课</p>
-      <h2 className="page-title">{escapeHtml(L.title)}</h2>
+      <h2 className="page-title">{L.title}</h2>
       <p className="lesson-goal" data-testid="lesson-goal">
         本课目标：{goal}
       </p>
@@ -525,8 +536,8 @@ function LessonDetail({ lesson, onBack, onNext, onViewed, onStartPractice, gener
           return (
             <div key={i} data-contact-ids={w.id ? String(w.id) : ""} className={`word-item lesson-word ${isMastered ? "word-mastered" : ""}`}>
               <div className="word-main" style={{ flex: 1 }}>
-                <div className="word-item-word">{escapeHtml(w.word)}</div>
-                <div className="word-item-phonetic">{escapeHtml(w.phonetic || "")}</div>
+                <div className="word-item-word">{w.word}</div>
+                <div className="word-item-phonetic">{w.phonetic || ""}</div>
                 {!isRevealed ? (
                   /* 预测试：先猜 */
                   <div className="pretest-row">
@@ -545,9 +556,9 @@ function LessonDetail({ lesson, onBack, onNext, onViewed, onStartPractice, gener
                 ) : (
                   /* 揭晓后 */
                   <>
-                    <div className="word-item-meaning">{escapeHtml(w.meaning || "")}</div>
+                    <div className="word-item-meaning">{w.meaning || ""}</div>
                     {guesses[w.word] && guesses[w.word] !== w.meaning && (
-                      <div className="pretest-guess">你的猜测：{escapeHtml(guesses[w.word])}</div>
+                      <div className="pretest-guess">你的猜测：{guesses[w.word]}</div>
                     )}
                   </>
                 )}
@@ -578,9 +589,9 @@ function LessonDetail({ lesson, onBack, onNext, onViewed, onStartPractice, gener
             className={`bubble ${i % 2 === 0 ? "bubble-a" : "bubble-b"} lesson-dialogue-row`}
             onClick={() => contactAudio(line.en, line.visible_card_ids)}
           >
-            <span className="spk">{escapeHtml(line.speaker)}</span>
-            <div className="bubble-en">{escapeHtml(line.en)}</div>
-            <div className="bubble-cn">{escapeHtml(line.cn)}</div>
+            <span className="spk">{line.speaker}</span>
+            <div className="bubble-en">{line.en}</div>
+            <div className="bubble-cn">{line.cn}</div>
           </div>
         ))}
       </div>

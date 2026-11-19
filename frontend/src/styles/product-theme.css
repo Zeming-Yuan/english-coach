@@ -48,7 +48,9 @@ button:disabled { cursor: not-allowed; }
   min-height: 79px; padding: 16px 38px; border-bottom: 1px solid var(--line);
   gap: 20px; background: var(--paper);
 }
-.product-app .topbar .logo { display: none; }
+.product-app .topbar .logo { display: none; border: 0; padding: 0; background: transparent; }
+.product-app .topbar .logo:enabled { cursor: pointer; }
+.product-app .topbar .logo[aria-current="page"]:disabled { cursor: default; }
 .workspace-location { font-size: 16px; color: var(--muted); }
 .workspace-header-actions { display: flex; align-items: center; gap: 14px; margin-left: auto; }
 .workspace-header-link, .product-app .settings-btn {

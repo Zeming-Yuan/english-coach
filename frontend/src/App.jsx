@@ -86,14 +86,20 @@ function pendingScopes() {
   }
 }
 
-function PendingRecovery({ onConfirmed }) {
-  const [entries, setEntries] = useState(() =>
-    pendingScopes()
-      .map((scope) => ({ scope, pending: loadPending(scope) }))
-      .filter((entry) => entry.pending),
-  );
+function loadPendingEntries() {
+  return pendingScopes()
+    .map((scope) => ({ scope, pending: loadPending(scope) }))
+    .filter((entry) => entry.pending);
+}
+
+function PendingRecovery({ view, onConfirmed }) {
+  const [entries, setEntries] = useState(loadPendingEntries);
   const [busyScope, setBusyScope] = useState(null);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    setEntries(loadPendingEntries());
+  }, [view]);
 
   if (entries.length === 0) return null;
 
@@ -223,6 +229,19 @@ export default function App({account = null, onLogout, logoutBusy = false, logou
   }, [view, isDailyStudy, dailySession]);
   const [singleCard, setSingleCard] = useState(null);
   const [restoringBackup, setRestoringBackup] = useState(false);
+  const [backupOrigin, setBackupOrigin] = useState("settings");
+  const navigateView = useCallback((nextView, origin = "settings") => {
+    if (nextView === "backup") setBackupOrigin(origin);
+    setView(nextView);
+  }, []);
+  const goHome = useCallback(() => {
+    setSingleCard(null);
+    navigateView("queue");
+  }, [navigateView]);
+  const goAddWords = useCallback(() => {
+    setSingleCard(null);
+    navigateView("add");
+  }, [navigateView]);
   const [queueVersion, setQueueVersion] = useState(0);
   const [darkMode, setDarkMode] = useState(() => storageGet("darkMode", false));
 
@@ -253,13 +272,19 @@ export default function App({account = null, onLogout, logoutBusy = false, logou
 
   return (
     <div className={`app product-app view-${view} ${!isNavView ? "practice-mode" : ""} ${view === "stories" ? "story-workspace" : ""}`}>
-      <AppNavigation view={view} onNavigate={setView} disabled={restoringBackup} />
+      <AppNavigation view={view} onNavigate={navigateView} disabled={restoringBackup} />
       {/* 顶栏 */}
       <header className="topbar">
-        <div className="logo">
+        <button
+          type="button"
+          className="logo"
+          aria-current={view === "queue" ? "page" : undefined}
+          disabled={restoringBackup || view === "queue"}
+          onClick={goHome}
+        >
           <UiIcon name="book" size={28} weight="fill" />
           <span className="logo-text">EnglishCoach</span>
-        </div>
+        </button>
         <span className="workspace-location">{view === "queue" ? "今日学习工作台" : VIEW_LABELS[view]}</span>
         <div className="workspace-header-actions">
           {account && <div className="session-account"><span aria-label="当前账号">{account}</span><button type="button" onClick={onLogout} disabled={logoutBusy || restoringBackup}>{logoutBusy ? "正在退出…" : "退出登录"}</button></div>}
@@ -276,22 +301,22 @@ export default function App({account = null, onLogout, logoutBusy = false, logou
       <main className="stage">
         <DurationRecovery />
         {!restoringBackup && <ContactRecovery />}
-        {!restoringBackup && view !== "study" && view !== "scene" && <PendingRecovery onConfirmed={(result, pending) => {
+        {!restoringBackup && view !== "study" && view !== "scene" && <PendingRecovery view={view} onConfirmed={(result, pending) => {
           confirmDailyCard(pending.payload, result);
           setQueueVersion((v) => v + 1);
         }} />}
-        {view === "queue" && <QueueView onAdvice={startAdvice} key={queueVersion} setView={setView} onDelayed={startDelayed} setStudyQueue={(cards) => { setIsDailyStudy(false); setStudyQueue(cards); }} dailySession={dailySession} onStartDaily={startDaily} onResumeDaily={() => {
+        {view === "queue" && <QueueView onAdvice={startAdvice} key={queueVersion} setView={navigateView} onDelayed={startDelayed} setStudyQueue={(cards) => { setIsDailyStudy(false); setStudyQueue(cards); }} dailySession={dailySession} onStartDaily={startDaily} onResumeDaily={() => {
           setIsDailyStudy(true); setStudyQueue(dailySession.queue); setView("study");
         }} onAddStarter={addStarterCards} />}
         {view === "scene" && <ScenePage onExit={() => setView("queue")} />}
         {view === "words" && <WordsPage />}
-        {view === "stories" && <StoriesPage onNavigate={setView} />}
+        {view === "stories" && <StoriesPage onNavigate={navigateView} />}
         {view === "add" && <AddPage onAddStarter={addStarterCards} onGoWords={() => setView("words")} onStartStudy={(cards) => { setIsDailyStudy(false); setStudyQueue(cards); setView("study"); }} />}
-        {view === "stats" && <StatsPage onAdvice={startAdvice} onBack={() => setView("queue")} onDelayed={startDelayed} />}
+        {view === "stats" && <StatsPage onAdvice={startAdvice} onBack={() => setView("queue")} onDelayed={startDelayed} onOpenBackup={() => navigateView("backup", "stats")} />}
         {view === "advice" && <AdvicePracticePage request={adviceRequest} onExit={() => setView("stats")} onNormal={() => setView("spelling")} />}
         {view === "delayed" && <DelayedCheckPage key={delayedWindow} window={delayedWindow} onExit={() => setView("stats")} onNormal={() => setView("spelling")} />}
-        {view === "settings" && <SettingsPage darkMode={darkMode} setDarkMode={setDarkMode} onOpenBackup={() => setView("backup")} />}
-        {view === "backup" && <BackupPage restoring={restoringBackup} onRestoringChange={setRestoringBackup} onBack={() => setView("settings")} onRestored={async () => {
+        {view === "settings" && <SettingsPage darkMode={darkMode} setDarkMode={setDarkMode} onOpenBackup={() => navigateView("backup", "settings")} />}
+        {view === "backup" && <BackupPage restoring={restoringBackup} onRestoringChange={setRestoringBackup} onBack={() => navigateView(backupOrigin)} onRestored={async () => {
           const pendingCleared = clearAllPending();
           const contactsCleared = clearVisibleContactLookups();
           setAdviceRequest(null);
@@ -306,10 +331,10 @@ export default function App({account = null, onLogout, logoutBusy = false, logou
         }} />}
         {view === "lessons" && <LessonsPage onExit={() => setView("queue")} />}
         {view === "study" && (isDailyStudy ? <DailySessionPage session={dailySession} onRoundObserved={recordRoundOutcome} onSessionChange={(details) => updateDailyDetails(dailySession.id, details)} onFinish={() => { updateDaily({...dailySession, finished: true}); setView("queue"); }} onPauseExit={() => setView("queue")} recoveryVersion={queueVersion} onAbort={() => { setIsDailyStudy(false); updateDaily(null); setStudyQueue([]); setView("queue"); }} onProgress={confirmDailyCard} queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} /> : <StudyPage recoveryVersion={queueVersion} session={isDailyStudy ? dailySession : null} onAbort={() => { setIsDailyStudy(false); updateDaily(null); setStudyQueue([]); setView("queue"); }} onProgress={confirmDailyCard} queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} />)}
-        {view === "quiz" && <QuizPage onExit={() => setView("queue")} />}
-        {view === "spelling" && <SpellingPage onExit={() => { setView("queue"); setSingleCard(null); }} singleCard={singleCard} />}
-        {view === "listening" && <ListeningPage onExit={() => setView("queue")} />}
-        {view === "mixed" && <MixedPage onExit={() => setView("queue")} />}
+        {view === "quiz" && <QuizPage onExit={goHome} onAddWords={goAddWords} />}
+        {view === "spelling" && <SpellingPage onExit={goHome} onAddWords={goAddWords} singleCard={singleCard} />}
+        {view === "listening" && <ListeningPage onExit={goHome} onAddWords={goAddWords} />}
+        {view === "mixed" && <MixedPage onExit={goHome} />}
       </main>
       </ErrorBoundary>
 

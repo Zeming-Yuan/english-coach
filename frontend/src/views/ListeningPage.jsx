@@ -4,13 +4,14 @@ import { api } from "../lib/api.js";
 import { makePending, sendPending } from "../lib/learning.js";
 import { speak } from "../lib/tts.js";
 import { recordPracticeContact } from "../lib/practiceContacts.js";
+import PracticeEmptyState from "../components/PracticeEmptyState.jsx";
 
 /**
  * 听写练习视图：播发音 → 4 选 1。
  * 服务端按签名题目上下文判分；保存确认后才反馈，失败保留选择与提交标识。
  * 识别题只记事件与错词，不更新 FSRS 排期。
  */
-export default function ListeningPage({ onExit }) {
+export default function ListeningPage({ onExit, onAddWords }) {
   const [questions, setQuestions] = useState([]);
   const [index, setIndex] = useState(0);
   const [phase, setPhase] = useState("loading"); // loading | error | empty | ready | done
@@ -23,6 +24,13 @@ export default function ListeningPage({ onExit }) {
   const pendingRef = useRef(null);
   const skipPendingRef = useRef(null);
   const contactedRef = useRef(new Set());
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const load = useCallback(async () => {
     contactedRef.current = new Set();
@@ -125,6 +133,7 @@ export default function ListeningPage({ onExit }) {
     });
     try {
       const result = await sendPending(pendingRef.current);
+      if (!mountedRef.current) return;
       setFeedback({
         correct: result.correct,
         correctWord: result.correct_word,
@@ -137,9 +146,9 @@ export default function ListeningPage({ onExit }) {
           : { ...s, wrong: s.wrong + 1 }
       );
     } catch (cause) {
-      handleFailure(cause, "answer");
+      if (mountedRef.current) handleFailure(cause, "answer");
     } finally {
-      setSaving(false);
+      if (mountedRef.current) setSaving(false);
     }
   };
 
@@ -162,6 +171,7 @@ export default function ListeningPage({ onExit }) {
     });
     try {
       await sendPending(skipPendingRef.current);
+      if (!mountedRef.current) return;
       setFeedback({
         correct: null,
         correctWord: q.word,
@@ -170,9 +180,9 @@ export default function ListeningPage({ onExit }) {
       });
       setStats((s) => ({ ...s, skipped: s.skipped + 1 }));
     } catch (cause) {
-      handleFailure(cause, "skip");
+      if (mountedRef.current) handleFailure(cause, "skip");
     } finally {
-      setSaving(false);
+      if (mountedRef.current) setSaving(false);
     }
   };
 
@@ -209,7 +219,7 @@ export default function ListeningPage({ onExit }) {
   }
 
   if (phase === "empty") {
-    return <div className="story-empty">今天没有需要听写的词</div>;
+    return <PracticeEmptyState message="今天没有需要听写的词" onAddWords={onAddWords} onExit={onExit} />;
   }
 
   if (phase === "done") {

@@ -97,3 +97,8 @@ V2 协议，新增记录会先被允许丢失，再等最终集成票补救。
 已交付的 19 个业务模型均有核心或扩展登记；未知/重复声明及漏集合在写前拒绝。早期 V3 缺失的修订重新建立，已包含的修订身份不会因其他集合缺失而重建；同时间接触按源 ID 保存顺序恢复。
 
 最终 owner/现存调用者、回退与实际验证范围见 [EL-20 契约核对](../verification/el20-contract-evidence-consumers.md)。
+
+## 补充：词卡详情换例句先预览后确认
+
+- 词卡详情交互式「换一个例句」调用 `POST /api/cards/{id}/regenerate?preview=true`，仅返回候选例句/翻译/讲解而不落库、不递增 `content_revision.version`（无参 `POST /api/cards/{id}/regenerate` 保留既有直接更新契约）；LLM 调用前释放只读事务快照，预览返回前重读当前修订，若期间发生并发编辑则标记 `preview=false, stale=true` 供界面刷新。
+- 用户点击「保留旧的」仅丢弃本地预览候选，零写事务副作用，原修订的回忆证据保持不变；点击「用新的」通过带 `expected_revision` 的 `PUT /api/cards/{id}` 在同一 `BEGIN IMMEDIATE` 事务中核对当前修订并保存更新，并发修订变化返回 409。

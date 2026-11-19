@@ -52,6 +52,13 @@ class GenerateCardsIn(BaseModel):
     words: list[str] = Field(min_length=1, max_length=20)
 
 
+class ExpectedRevisionIn(BaseModel):
+    """并发保护：确认采用预览内容时核对词卡当前修订身份与版本。"""
+
+    identity: str = Field(min_length=1, max_length=64)
+    version: int = Field(ge=1)
+
+
 class UpdateCardIn(BaseModel):
     """词卡编辑请求体：字段可部分更新。"""
 
@@ -62,6 +69,7 @@ class UpdateCardIn(BaseModel):
     example_cn: str | None = Field(default=None, max_length=500)
     explanation: str | None = Field(default=None, max_length=500)
     contexts: list | None = None
+    expected_revision: ExpectedRevisionIn | None = None
 
 
 @router.post("/cards/{card_id}/hard")
@@ -84,13 +92,23 @@ def toggle_hard(card_id: int, db: Session = Depends(get_db)):
 
 @router.put("/cards/{card_id}")
 def update_card(card_id: int, payload: UpdateCardIn, db: Session = Depends(get_db)):
-    """编辑词卡（用户纠正 AI 生成错误）；内容与修订同一事务提交。"""
-    data = payload.model_dump(exclude_none=True)
+    """编辑词卡（用户纠正 AI 生成错误或确认采用预览例句）；内容与修订同一事务提交。"""
+    data = payload.model_dump(exclude_none=True, exclude={"expected_revision"})
+    expected = (
+        payload.expected_revision.model_dump()
+        if payload.expected_revision is not None
+        else None
+    )
 
     def operation(session: Session) -> dict:
         card = session.get(Card, card_id)
         if card is None:
             raise HTTPException(status_code=404, detail="Card not found")
+        if (
+            expected is not None
+            and get_content_revision(session, "card", card_id) != expected
+        ):
+            raise HTTPException(status_code=409, detail="Card content changed")
         # 必须在赋值前读取旧内容，才能判断这次编辑是否实质变化。
         advance_content_revision(session, "card", card_id, data)
         for field, value in data.items():
@@ -236,31 +254,64 @@ def add_starter_cards(db: Session = Depends(get_db)):
     }
 
 
+def _load_current_card_and_revision(
+    session: Session, card_id: int
+) -> tuple[Card, dict]:
+    """重新读取当前词卡与修订；仅当卡片已被并发删除时转为 404，保留缺失修订异常。"""
+    try:
+        current = session.get(Card, card_id, populate_existing=True)
+    except ObjectDeletedError:
+        current = None
+    if current is None:
+        raise HTTPException(status_code=404, detail="Card not found")
+    try:
+        current_revision = get_content_revision(session, "card", card_id)
+    except LookupError as error:
+        if session.get(Card, card_id, populate_existing=True) is None:
+            raise HTTPException(status_code=404, detail="Card not found") from error
+        raise
+    return current, current_revision
+
+
 @router.post("/cards/{card_id}/regenerate")
-def regenerate_card_example(card_id: int, db: Session = Depends(get_db)):
-    """换一个例句：重新生成例句/翻译/讲解并更新卡。"""
+def regenerate_card_example(
+    card_id: int,
+    preview: bool = False,
+    db: Session = Depends(get_db),
+):
+    """换一个例句：preview=true 仅返回候选预览不落库；默认更新卡并推进修订。"""
     card = db.get(Card, card_id)
     if card is None:
         raise HTTPException(status_code=404, detail="Card not found")
+    word = card.word
     before = get_content_revision(db, "card", card_id)
+    # 释放只读事务快照与锁，避免慢速 LLM 调用期间阻塞写事务或读到旧 WAL 快照。
+    db.rollback()
     try:
-        example, example_cn, explanation = regenerate_example(card.word)
+        example, example_cn, explanation = regenerate_example(word)
     except (ValueError, TypeError) as e:
         raise HTTPException(status_code=502, detail=str(e)) from e
+    if preview:
+        current, current_revision = _load_current_card_and_revision(db, card_id)
+        base = card_to_dict(current, db)
+        if current_revision != before:
+            return {**base, "preview": False, "stale": True}
+        if not example:
+            return {**base, "preview": False, "stale": False}
+        return {
+            **base,
+            "example": example,
+            "example_cn": example_cn,
+            "explanation": explanation,
+            "preview": True,
+            "stale": False,
+        }
     if not example:
-        return card_to_dict(card, db)
+        current, _ = _load_current_card_and_revision(db, card_id)
+        return card_to_dict(current, db)
 
     def operation(session: Session) -> dict:
-        try:
-            current = session.get(Card, card_id, populate_existing=True)
-        except ObjectDeletedError:
-            current = None
-        if current is None:
-            raise HTTPException(status_code=404, detail="Card not found")
-        try:
-            current_revision = get_content_revision(session, "card", card_id)
-        except LookupError as error:
-            raise HTTPException(status_code=404, detail="Card not found") from error
+        current, current_revision = _load_current_card_and_revision(session, card_id)
         # 晚到生成不覆盖编辑或恢复后的内容；响应必须反映当前内容。
         if current_revision != before:
             return card_to_dict(current, session)

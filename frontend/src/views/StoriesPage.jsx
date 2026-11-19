@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { api } from "../lib/api.js";
 import { speak } from "../lib/tts.js";
 import {normalizeStoryAudio, storyAudioSegments} from "../lib/storyAudio.js";
-import { cleanToken, escapeHtml } from "../lib/utils.js";
+import { cleanToken } from "../lib/utils.js";
 import { recordVisibleCards } from "../lib/contacts.js";
 import { recordPracticeContact } from "../lib/practiceContacts.js";
 import { useWordLookup } from "../lib/wordLookup.js";
@@ -115,9 +115,9 @@ export default function StoriesPage({onNavigate}) {
           <div key={s.id} className="story-item">
             <div className="story-item-main" onClick={() => openStory(s.id)}>
               {["normal", "short"].includes(s.mode) && <div>{s.mode === "short" ? "简化版" : "原版"} · {s.check_session_id ? "已有检查记录" : "未检查"}</div>}
-              <div className="story-item-title">{escapeHtml(s.title)}</div>
-              {s.title_cn && <div className="story-item-title-cn">{escapeHtml(s.title_cn)}</div>}
-              <div className="story-item-meta">{s.words.length} 个词 · {escapeHtml(s.content.slice(0, 40))}…</div>
+              <div className="story-item-title">{s.title}</div>
+              {s.title_cn && <div className="story-item-title-cn">{s.title_cn}</div>}
+              <div className="story-item-meta">{s.words.length} 个词 · {s.content.slice(0, 40)}…</div>
             </div>
             <button className="story-delete" title="删除" aria-label={`删除故事 ${s.title}`} onClick={() => deleteStory(s.id, s.title)}><TrashIcon aria-hidden="true" size={20} /></button>
           </div>
@@ -409,7 +409,7 @@ function StoryRead({ story, onBack }) {
         <div data-testid="content-contact-status" className="story-tap-tip">应用内接触：本故事正文包含 {story.visible_card_ids?.length || 0} 个目标词</div>
         {learnedWords.map((w) => (
           <div key={w.id} className="story-word-row">
-            <b>{escapeHtml(w.word)}</b> <span>{escapeHtml(w.phonetic || "")}</span> <span>{escapeHtml(w.meaning || "")}</span>
+            <b>{w.word}</b> <span>{w.phonetic || ""}</span> <span>{w.meaning || ""}</span>
           </div>
         ))}
         </details>

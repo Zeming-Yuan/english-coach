@@ -6,6 +6,7 @@ import { speak } from "../lib/tts.js";
 import { usePracticeSession } from "../lib/practiceSession.js";
 import { recordPracticeContact } from "../lib/practiceContacts.js";
 import SpellingBoard from "../components/SpellingBoard.jsx";
+import PracticeEmptyState from "../components/PracticeEmptyState.jsx";
 
 /** 选择题：一次提交保存并返回服务端判分；重试沿用同一 submission_id。 */
 function attachChoiceSubmission(item, q) {
@@ -60,7 +61,14 @@ function attachChoiceSubmission(item, q) {
  * 选择题与相关词题由服务端判分并保存确认后才反馈；输入题仍走既有流程。
  * 会话状态机在 usePracticeSession（判分/反馈/统计），这里只渲染题型 UI。
  */
-export default function QuizPage({ onExit }) {
+export default function QuizPage({ onExit, onAddWords }) {
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
   const s = usePracticeSession({
     buildItems: async () => {
       const questions = (await api("/api/quiz?limit=5")).questions;
@@ -74,13 +82,15 @@ export default function QuizPage({ onExit }) {
     },
     speakOnAnswer: true,
     autoAdvanceMs: null,
-    onAnswerAudio: (item) =>
-      recordPracticeContact({
+    onAnswerAudio: (item) => {
+      if (!mountedRef.current) return;
+      return recordPracticeContact({
         cardId: item.q.card_id,
         revision: item.q.content_revision,
         source: "quiz",
         kind: "answer_audio",
-      }),
+      });
+    },
     // EC-05 只迁移输入题（cn2en/fill）；choice/related 留给 EC-06。
     typedAttempt: (item) =>
       item.type === "cn2en" || item.type === "fill"
@@ -158,9 +168,9 @@ export default function QuizPage({ onExit }) {
     try {
       await submit(selected);
     } catch (error) {
-      setChoiceError(saveFailure(error, "answer"));
+      if (mountedRef.current) setChoiceError(saveFailure(error, "answer"));
     } finally {
-      setSubmitting(false);
+      if (mountedRef.current) setSubmitting(false);
     }
   };
 
@@ -171,9 +181,9 @@ export default function QuizPage({ onExit }) {
     try {
       await skip();
     } catch (error) {
-      setChoiceError(saveFailure(error, "skip"));
+      if (mountedRef.current) setChoiceError(saveFailure(error, "skip"));
     } finally {
-      setSubmitting(false);
+      if (mountedRef.current) setSubmitting(false);
     }
   };
 
@@ -212,9 +222,9 @@ export default function QuizPage({ onExit }) {
               <div className="quiz-wrong-list">
                 <div className="quiz-wrong-title">❌ 错题回顾</div>
                 {stats.wrongList.map((w, i) => (
-                  <div key={i} className="quiz-wrong-item" style={{ cursor: "pointer" }}>
+                  <div key={i} className="quiz-wrong-item">
                     <span className="quiz-wrong-meaning">{w.item?.q?.prompt || ""}</span>
-                    <span className="quiz-wrong-expected">{w.expected} ›</span>
+                    <span className="quiz-wrong-expected">{w.expected}</span>
                   </div>
                 ))}
               </div>
@@ -240,12 +250,22 @@ export default function QuizPage({ onExit }) {
       </section>
     );
   }
-  if (phase === "empty") return <div className="story-empty">题库是空的</div>;
+  if (phase === "empty") {
+    return <PracticeEmptyState message="题库是空的" onAddWords={onAddWords} onExit={onExit} />;
+  }
   if (!q) return null;
 
   return (
     <section className="view view-practice">
       <div className="study-head">
+        <button
+          type="button"
+          className="btn btn-ghost btn-small"
+          disabled={saving || submitting}
+          onClick={onExit}
+        >
+          ← 返回
+        </button>
         <span className="study-count">第 {idx + 1} / {total} 题</span>
       </div>
       <div className="progress-track">
