@@ -5,9 +5,10 @@
   "license": "SEE LICENSE IN ../LICENSE",
   "scripts": {
     "dev": "vite",
-    "clean": "node -e \"const fs=require('fs'),p='../app/static/assets/';(fs.existsSync(p)?fs.readdirSync(p):[]).filter(f=>f.startsWith('index-')&&f.endsWith('.js')).forEach(f=>fs.unlinkSync(p+f))\"",
+    "clean": "node scripts/clean-assets.mjs",
     "build": "npm run clean && vite build",
     "preview": "vite preview",
+    "test": "node --test src/lib/*.test.mjs scripts/*.test.mjs",
     "test:e2e": "node ../e2e/run.mjs"
   },
   "dependencies": {
