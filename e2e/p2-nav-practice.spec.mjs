@@ -192,3 +192,149 @@ test("P2 Slice 1: missing secondary detail hashes fall back cleanly, delete pops
   releaseImport();
   await expect(page.getByText(/恢复成功/)).toBeVisible();
 });
+
+test("P2 Slice 2: advice and delayed check return to their entry origin (home vs stats) including after reload", async ({
+  appFactory,
+  page,
+}) => {
+  const app = await appFactory();
+  const [cardId] = await app.seedCards([{ word: "apple", meaning: "苹果" }]);
+  expect(
+    (
+      await app.request.post("/api/typing/check", {
+        data: {
+          card_id: cardId,
+          user_input: "wrong",
+          source: "spelling",
+          submission_id: crypto.randomUUID(),
+        },
+      })
+    ).ok(),
+  ).toBe(true);
+
+  await page.goto(app.baseURL);
+
+  // 1. 从首页进入「一周回测」-> 刷新后点返回 -> 回到首页 (#/) 而非 stats
+  await page.getByRole("button", { name: "一周回测", exact: true }).click();
+  await expect.poll(() => new URL(page.url()).hash).toBe("#/delayed/week");
+  await expect(page.getByTestId("practice-session")).toBeVisible();
+  await page.reload();
+  await expect(page.getByTestId("practice-session")).toBeVisible();
+  await page.getByRole("button", { name: "← 返回首页", exact: true }).click();
+  await expect.poll(() => new URL(page.url()).hash).toMatch(/^(#\/)?$/);
+  await expect(
+    page.getByRole("heading", { name: "今天的学习", exact: true }),
+  ).toBeVisible();
+
+  // 2. 从首页进入「建议练习」-> 点返回 -> 回到首页 (#/)
+  await page
+    .getByTestId("learning-advice")
+    .getByRole("button", { name: "开始建议练习", exact: true })
+    .first()
+    .click();
+  await expect.poll(() => new URL(page.url()).hash).toBe("#/advice");
+  await expect(page.getByTestId("practice-session")).toBeVisible();
+  await page.getByRole("button", { name: "← 返回建议", exact: true }).click();
+  await expect.poll(() => new URL(page.url()).hash).toMatch(/^(#\/)?$/);
+  await expect(
+    page.getByRole("heading", { name: "今天的学习", exact: true }),
+  ).toBeVisible();
+
+  // 3. 从学习记录页 (#/stats) 进入「一周回测」与「建议练习」-> 点返回仍回 #/stats
+  await page.locator(".today-stats").click();
+  await expect.poll(() => new URL(page.url()).hash).toBe("#/stats");
+
+  await page.getByRole("button", { name: "一周回测", exact: true }).click();
+  await expect.poll(() => new URL(page.url()).hash).toBe("#/delayed/week");
+  await page.reload();
+  await expect(page.getByTestId("practice-session")).toBeVisible();
+  await page.getByRole("button", { name: "← 返回统计", exact: true }).click();
+  await expect.poll(() => new URL(page.url()).hash).toBe("#/stats");
+
+  await page
+    .getByTestId("learning-advice")
+    .getByRole("button", { name: "继续建议练习", exact: true })
+    .click();
+  await expect.poll(() => new URL(page.url()).hash).toBe("#/advice");
+  await page.reload();
+  await expect(page.getByTestId("practice-session")).toBeVisible();
+  await page.getByRole("button", { name: "← 返回建议", exact: true }).click();
+  await expect.poll(() => new URL(page.url()).hash).toBe("#/stats");
+});
+
+test("P2 Slice 2: unified navigation labels/icons, mobile story topbar entries, scene title, and no root back buttons", async ({
+  appFactory,
+  page,
+}, testInfo) => {
+  const app = await appFactory({ fixture: "full-design.json" });
+  await page.goto(app.baseURL);
+
+  if (testInfo.project.name === "mobile") {
+    // 移动底栏统一命名为「今天」，不存在「队列」
+    await expect(
+      page.locator(".bottom-nav").getByRole("button", { name: "今天", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.locator(".bottom-nav").getByRole("button", { name: "队列", exact: true }),
+    ).toHaveCount(0);
+
+    // 移动端故事列表页与阅读详情页均保留 .topbar（课程 / 学习记录 / 设置入口可达）
+    await page
+      .locator(".bottom-nav")
+      .getByRole("button", { name: "故事", exact: true })
+      .click();
+    await expect(page.locator(".story-library")).toBeVisible();
+    await expect(page.locator(".topbar")).toBeVisible();
+    await expect(
+      page.locator(".topbar").getByRole("button", { name: "打开课程", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.locator(".topbar").getByRole("button", { name: "学习记录", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.locator(".topbar").getByRole("button", { name: "设置", exact: true }),
+    ).toBeVisible();
+
+    await page.locator(".story-item-main").first().click();
+    await expect(page.locator(".story-reader")).toBeVisible();
+    await expect(page.locator(".topbar")).toBeVisible();
+    await expect(
+      page.locator(".topbar").getByRole("button", { name: "设置", exact: true }),
+    ).toBeVisible();
+  } else {
+    // 桌面侧栏「课程」与「故事」使用不同图标
+    const nav = page.getByRole("navigation", { name: "主导航", exact: true });
+    const lessonsSvg = await nav
+      .getByRole("button", { name: "课程", exact: true })
+      .locator("svg")
+      .innerHTML();
+    const storiesSvg = await nav
+      .getByRole("button", { name: "故事", exact: true })
+      .locator("svg")
+      .innerHTML();
+    expect(lessonsSvg).not.toBe(storiesSvg);
+  }
+
+  // 场景练习顶栏标题配置为「场景练习」（非空白）
+  await page.goto(`${app.baseURL}/#/scene`);
+  await expect(page.locator(".workspace-location")).toHaveText("场景练习");
+
+  // 一级页「课程」根列表与「学习记录」根视图不渲染多余的「← 返回」，但课程二级详情保留「← 返回」
+  await page.goto(`${app.baseURL}/#/lessons`);
+  await expect(page.locator(".lesson-list-item").first()).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "← 返回", exact: true }),
+  ).toHaveCount(0);
+
+  await page.locator(".lesson-list-item").first().click();
+  await expect(
+    page.getByRole("button", { name: "← 返回", exact: true }),
+  ).toBeVisible();
+
+  await page.goto(`${app.baseURL}/#/stats`);
+  await expect(page.locator(".stats-grid")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "← 返回", exact: true }),
+  ).toHaveCount(0);
+});
+

@@ -39,7 +39,6 @@ test("EL-09 reopened results record contact before another delayed answer", asyn
   await expect(challenge.getByRole("textbox", {name: "英文答案"})).toBeVisible();
   const before = (await (await app.request.get("/api/export/backup")).json()).extensions.learning_contacts.length;
   await page.reload();
-  await page.getByRole("button", {name: "一周回测", exact: true}).click();
   await expect(page.locator(".practice-results")).toContainText("apple");
   await expect.poll(async () => (await (await app.request.get("/api/export/backup")).json()).extensions.learning_contacts.length).toBeGreaterThan(before);
   await answer(challenge);
@@ -94,7 +93,8 @@ test("EL-09 week check hides answers and displays real retention", async ({appFa
   await answer(page);
   await expect(page.getByText("✅ 正确！")).toBeVisible();
   await page.getByRole("button", {name: "查看结果", exact: true}).click();
-  await page.getByRole("button", {name: "返回统计", exact: true}).click();
+  await page.getByRole("button", {name: "返回首页", exact: true}).click();
+  await page.locator(".today-stats").click();
   const overview = page.getByTestId("retention-overview");
   await expect(overview).toContainText("独立成功/样本 1/1");
   await expect(overview).toContainText("样本较少");
@@ -125,7 +125,6 @@ test("EL-09 assisted first result survives refresh and retry", async ({appFactor
   await page.getByRole("button", {name: "提示首字母", exact: true}).click();
   await expect(page.getByTestId("practice-session")).toContainText("首字母：a");
   await page.reload();
-  await page.getByRole("button", {name: "一周回测", exact: true}).click();
   await expect(page.getByTestId("practice-session")).toContainText("首字母：a");
   await answer(page);
   await expect(page.getByText("✅ 正确！")).toBeVisible();
@@ -174,7 +173,6 @@ test("EL-09 commit failure retains answer across refresh", async ({appFactory, p
   await answer(page);
   await expect(page.locator(".practice-item").getByRole("alert")).toBeVisible();
   await page.reload();
-  await page.getByRole("button", {name: "一周回测", exact: true}).click();
   await expect(page.getByRole("textbox", {name: "英文答案"})).toHaveValue("apple");
   await page.locator(".practice-item").getByRole("button", {name: "继续确认保存", exact: true}).click();
   await expect(page.getByText("✅ 正确！")).toBeVisible();

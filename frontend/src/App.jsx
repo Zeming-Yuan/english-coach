@@ -33,8 +33,8 @@ import {CaretRightIcon} from "@phosphor-icons/react/dist/csr/CaretRight";
 import {StackIcon} from "@phosphor-icons/react/dist/csr/Stack";
 
 /* ============ 视图路由 ============ */
-const NAV_TABS = { queue: "队列", words: "单词本", stories: "故事", add: "加词" };
-const VIEW_LABELS = {queue: "每日学习", lessons: "课程", words: "单词本", stories: "故事", add: "添加单词", stats: "学习记录", settings: "偏好设置", backup: "备份与恢复", study: "词卡学习", spelling: "拼写练习", listening: "听写练习", quiz: "测验", mixed: "混合练习", advice: "建议练习", delayed: "延迟回测"};
+const NAV_TABS = { queue: "今天", words: "单词本", stories: "故事", add: "加词" };
+const VIEW_LABELS = {queue: "每日学习", lessons: "课程", words: "单词本", stories: "故事", add: "添加单词", stats: "学习记录", settings: "偏好设置", backup: "备份与恢复", study: "词卡学习", spelling: "拼写练习", listening: "听写练习", quiz: "测验", mixed: "混合练习", advice: "建议练习", delayed: "延迟回测", scene: "场景练习"};
 
 /* ============ Toast 系统 ============ */
 let _toastTimeout = null;
@@ -193,9 +193,19 @@ export default function App({account = null, onLogout, logoutBusy = false, logou
     [navigate],
   );
   const [adviceRequest, setAdviceRequest] = useState(() => storageGet("ec.advice.request", null));
-  const startAdvice = request => {setAdviceRequest(request); navigate({ view: "advice" });};
+  const practiceOrigin = route.origin === "stats" ? "stats" : "queue";
+  const exitToPracticeOrigin = useCallback(
+    () => navigate({ view: practiceOrigin }, { popIfFromParent: true, replace: true }),
+    [navigate, practiceOrigin],
+  );
+  const startAdvice = useCallback((request, origin) => {
+    setAdviceRequest(request);
+    navigate({ view: "advice", origin });
+  }, [navigate]);
   const delayedWindow = route.window;
-  const startDelayed = (win) => { navigate({ view: "delayed", window: win }); };
+  const startDelayed = useCallback((win, origin) => {
+    navigate({ view: "delayed", window: win, origin });
+  }, [navigate]);
   const [dailySession, setDailySession] = useState(() => storageGet("activeDailySession", null));
   const [isDailyStudy, setIsDailyStudy] = useState(
     () => route.view === "study" && Boolean(dailySession && !dailySession.finished),
@@ -262,8 +272,8 @@ export default function App({account = null, onLogout, logoutBusy = false, logou
       setAdviceRequest(saved);
       return;
     }
-    navigate({ view: "queue" }, { replace: true });
-  }, [view, adviceRequest, navigate]);
+    navigate({ view: practiceOrigin }, { replace: true });
+  }, [view, adviceRequest, practiceOrigin, navigate]);
   const lastDailyStudy = useRef(null);
   useEffect(() => {
     const previous = lastDailyStudy.current;
@@ -365,7 +375,7 @@ export default function App({account = null, onLogout, logoutBusy = false, logou
           {account && <div className="session-account"><span aria-label="当前账号">{account}</span><button type="button" onClick={onLogout} disabled={logoutBusy || restoringBackup}>{logoutBusy ? "正在退出…" : "退出登录"}</button></div>}
           {logoutError && <p role="alert" className="session-account-error">{logoutError}</p>}
           {view === "queue" && <time className="home-date" dateTime={new Date().toLocaleDateString("en-CA")}>{new Intl.DateTimeFormat("zh-CN", {month: "long", day: "numeric", weekday: "short"}).format(new Date())}</time>}
-          <button className="workspace-header-link" aria-label="打开课程" disabled={restoringBackup} onClick={() => setView("lessons")}><UiIcon name="book" /><span>课程</span></button>
+          <button className="workspace-header-link" aria-label="打开课程" disabled={restoringBackup} onClick={() => setView("lessons")}><UiIcon name="lessons" /><span>课程</span></button>
           <button className="workspace-header-link" aria-label="学习记录" disabled={restoringBackup} onClick={() => setView("stats")}><UiIcon name="stats" /></button>
           <button className="settings-btn" title="设置" aria-label="设置" disabled={restoringBackup} onClick={() => setView(view === "settings" ? "queue" : "settings")}><UiIcon name="settings" /></button>
         </div>
@@ -380,16 +390,16 @@ export default function App({account = null, onLogout, logoutBusy = false, logou
           confirmDailyCard(pending.payload, result);
           setQueueVersion((v) => v + 1);
         }} />}
-        {view === "queue" && <QueueView onAdvice={startAdvice} key={queueVersion} setView={navigateView} onDelayed={startDelayed} setStudyQueue={(cards) => { setIsDailyStudy(false); setStudyQueue(cards); }} dailySession={dailySession} onStartDaily={startDaily} onResumeDaily={() => {
+        {view === "queue" && <QueueView onAdvice={(req) => startAdvice(req, "queue")} key={queueVersion} setView={navigateView} onDelayed={(win) => startDelayed(win, "queue")} setStudyQueue={(cards) => { setIsDailyStudy(false); setStudyQueue(cards); }} dailySession={dailySession} onStartDaily={startDaily} onResumeDaily={() => {
           setIsDailyStudy(true); setStudyQueue(dailySession.queue); setView("study");
         }} onAddStarter={addStarterCards} />}
         {view === "scene" && <ScenePage onExit={() => setView("queue")} />}
         {view === "words" && <WordsPage detailId={route.detailId} onDetailChange={updateWordsDetail} />}
         {view === "stories" && <StoriesPage storyId={route.detailId} storySubView={route.subView} onStoryChange={updateStoriesRoute} onNavigate={navigateView} />}
         {view === "add" && <AddPage onAddStarter={addStarterCards} onGoWords={() => setView("words")} onStartStudy={(cards) => { setIsDailyStudy(false); setStudyQueue(cards); setView("study"); }} />}
-        {view === "stats" && <StatsPage onAdvice={startAdvice} onBack={() => setView("queue")} onDelayed={startDelayed} onOpenBackup={() => navigateView("backup", "stats")} />}
-        {view === "advice" && adviceRequest && <AdvicePracticePage request={adviceRequest} onExit={() => setView("stats")} onNormal={() => setView("spelling")} />}
-        {view === "delayed" && <DelayedCheckPage key={delayedWindow} window={delayedWindow} onExit={() => setView("stats")} onNormal={() => setView("spelling")} />}
+        {view === "stats" && <StatsPage onAdvice={(req) => startAdvice(req, "stats")} onDelayed={(win) => startDelayed(win, "stats")} onOpenBackup={() => navigateView("backup", "stats")} />}
+        {view === "advice" && adviceRequest && <AdvicePracticePage request={adviceRequest} onExit={exitToPracticeOrigin} onNormal={() => setView("spelling")} />}
+        {view === "delayed" && <DelayedCheckPage key={delayedWindow} window={delayedWindow} backLabel={practiceOrigin === "stats" ? "返回统计" : "返回首页"} onExit={exitToPracticeOrigin} onNormal={() => setView("spelling")} />}
         {view === "settings" && <SettingsPage darkMode={darkMode} setDarkMode={setDarkMode} onOpenBackup={() => navigateView("backup", "settings")} />}
         {view === "backup" && <BackupPage restoring={restoringBackup} onRestoringChange={setRestoringBackup} onBack={() => navigateView(backupOrigin)} onRestored={async () => {
           const pendingCleared = clearAllPending();
@@ -407,7 +417,7 @@ export default function App({account = null, onLogout, logoutBusy = false, logou
           await resetRoundOutcomes();
           if (!pendingCleared || !contactsCleared) throw new Error("浏览器未能清理旧的待确认记录，请清理本站浏览器数据后继续学习");
         }} />}
-        {view === "lessons" && <LessonsPage lessonLevel={route.detailId} lessonSubView={route.subView} onLessonChange={updateLessonsRoute} onExit={() => setView("queue")} />}
+        {view === "lessons" && <LessonsPage lessonLevel={route.detailId} lessonSubView={route.subView} onLessonChange={updateLessonsRoute} />}
         {view === "study" && (isDailyStudy ? <DailySessionPage session={dailySession} onRoundObserved={recordRoundOutcome} onSessionChange={(details) => updateDailyDetails(dailySession.id, details)} onFinish={() => { setIsDailyStudy(false); setStudyQueue([]); updateDaily({...dailySession, finished: true}); setView("queue"); }} onPauseExit={() => setView("queue")} recoveryVersion={queueVersion} onAbort={() => { setIsDailyStudy(false); updateDaily(null); setStudyQueue([]); setView("queue"); }} onProgress={confirmDailyCard} queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} /> : <StudyPage recoveryVersion={queueVersion} session={isDailyStudy ? dailySession : null} onAbort={() => { setIsDailyStudy(false); updateDaily(null); setStudyQueue([]); setView("queue"); }} onProgress={confirmDailyCard} queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} />)}
         {view === "quiz" && <QuizPage onExit={goHome} onAddWords={goAddWords} />}
         {view === "spelling" && <SpellingPage key={route.detailId || "pool"} onExit={goHome} onAddWords={goAddWords} singleCard={route.detailId ? singleCard : null} singleCardId={route.detailId} />}
@@ -417,11 +427,12 @@ export default function App({account = null, onLogout, logoutBusy = false, logou
       </ErrorBoundary>
 
       {/* 底部导航（练习视图时滑出屏幕） */}
-      <nav className={`bottom-nav ${!isNavView ? "nav-hidden" : ""}`}>
+      <nav aria-label="底部导航" className={`bottom-nav ${!isNavView ? "nav-hidden" : ""}`}>
         {Object.entries(NAV_TABS).map(([key, label]) => (
           <button
             key={key}
             className={`nav-item ${view === key ? "nav-active" : ""}`}
+            aria-current={view === key ? "page" : undefined}
             disabled={restoringBackup}
             onClick={() => { if (!restoringBackup && isNavView) setView(key); }}
           >

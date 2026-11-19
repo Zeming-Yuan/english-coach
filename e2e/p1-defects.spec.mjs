@@ -123,7 +123,7 @@ test("lesson detail load failure shows a working retry action that respects curr
   await page.getByRole("button", {name: "← 返回", exact: true}).click();
   await page.locator(".lesson-list-item", {hasText: "第 1 课"}).click();
   await expect(page.locator(".toast-action", {hasText: "重试"})).toBeVisible({timeout: 2000});
-  await page.getByRole("button", {name: "← 返回", exact: true}).click();
+  await page.getByRole("navigation").getByRole("button", {name: "今天", exact: true}).first().click();
   await page.locator(".toast-action", {hasText: "重试"}).click();
   expect(lesson1Calls).toBe(2);
 

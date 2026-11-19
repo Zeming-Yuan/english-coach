@@ -56,7 +56,6 @@ function pendingViewLevels() {
  * 课程学习视图：AI 20 级递进（音标启蒙→高频词→简单句→场景对话）。
  */
 export default function LessonsPage({
-  onExit,
   lessonLevel = null,
   lessonSubView = null,
   onLessonChange,
@@ -310,7 +309,6 @@ export default function LessonsPage({
   return (
     <section className="view">
       <div className="page-head">
-        <button className="btn btn-ghost btn-small" onClick={onExit}>← 返回</button>
         <h2 className="page-title">课程</h2>
       </div>
 
