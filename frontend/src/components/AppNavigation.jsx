@@ -1,7 +1,7 @@
 import React from "react";
 import UiIcon from "./UiIcon.jsx";
 
-const destinations = [["queue", "今天", "home"], ["lessons", "课程", "book"], ["words", "单词本", "words"], ["stories", "故事", "book"], ["stats", "学习记录", "stats"]];
+const destinations = [["queue", "今天", "home"], ["lessons", "课程", "lessons"], ["words", "单词本", "words"], ["stories", "故事", "book"], ["stats", "学习记录", "stats"]];
 
 export default function AppNavigation({view, onNavigate, disabled}) {
   return <aside className="workspace-sidebar">

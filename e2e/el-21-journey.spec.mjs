@@ -23,7 +23,7 @@ async function lessonAnswer(page) {
 async function scene(page, app, title) {
   await page.goto(app.baseURL);
   await button(page, "场景练习").click();
-  await button(page, title).click();
+  await page.getByRole("article", {name: title, exact: true}).getByRole("button", {name: /^(开始|继续)$/}).click();
 }
 async function sceneAnswer(page, text) {
   const result = page.getByTestId("scene-session");
@@ -80,7 +80,7 @@ for (const legacy of [false, true]) {
     // A second real UI answer after 25 hours establishes recall and retention.
     // Navigate inside React so visible-contact requests can finish before moving time.
     await button(page, "← 返回").click();
-    await button(page, "← 返回").click();
+    await page.getByRole("navigation").getByRole("button", {name: "今天", exact: true}).click();
     await expect.poll(() => page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith("ec.contact.")).length)).toBe(0);
     await app.setTime("2026-10-02T02:00:00Z");
     await page.reload();
@@ -88,7 +88,8 @@ for (const legacy of [false, true]) {
     await expect(page.getByTestId("practice-session")).toContainText("25 小时");
     await lessonAnswer(page);
     await button(page, "查看结果").click();
-    await button(page, "返回统计").click();
+    await button(page, "返回首页").click();
+    await page.locator(".today-stats").click();
     await expect(page.getByTestId("retention-overview")).toContainText("独立成功/样本 1/1");
     const book = (await backup(app)).cards.find(row => row.word === "hello");
     const detail = await (await app.request.get(`/api/cards/${book.id}`)).json();
@@ -98,7 +99,6 @@ for (const legacy of [false, true]) {
     const [teaId] = await app.seedCards([{word: "tea", meaning: "茶"}]);
     expect((await app.request.post("/api/typing/check", {data: {card_id: teaId, user_input: "wrong", source: "spelling", submission_id: crypto.randomUUID()}})).ok()).toBe(true);
     await page.reload();
-    await page.locator(".today-stats").click();
     await expect(page.getByTestId("learning-advice")).toContainText("独立首答未答对");
     await page.getByTestId("learning-advice").getByRole("button", {name: "开始建议练习", exact: true}).first().click();
     await page.getByRole("textbox", {name: "英文答案"}).fill("tea");

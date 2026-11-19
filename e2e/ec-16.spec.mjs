@@ -77,7 +77,7 @@ test("EC-16 complete install learn restore journey", async ({appFactory, page}, 
   await expect(page.getByTestId("streak")).toHaveText("2");
   await expect(page.locator('[data-date="2026-10-30"]')).toHaveAttribute("data-count", "11");
   await expect(page.locator('[data-date="2026-10-31"]')).toHaveAttribute("data-count", "1");
-  await page.getByRole("button", {name: "← 返回", exact: true}).click();
+  await keyboardActivate(page, page.getByRole("navigation").getByRole("button", {name: "今天", exact: true}));
   await backupUI(page);
   const downloaded = page.waitForEvent("download");
   await keyboardActivate(page, page.getByRole("button", {name: "下载完整备份", exact: true}));

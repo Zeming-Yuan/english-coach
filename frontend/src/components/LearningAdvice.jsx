@@ -19,7 +19,7 @@ function RevealedAnswer({card, onRecorded}) {
     if (ref.current) observer.observe(ref.current);
     return () => observer.disconnect();
   }, [card.id]);
-  return <p ref={ref}>{card.word}{error && <span role="alert">{error}<button onClick={confirm}>继续确认接触</button></span>}</p>;
+  return <p ref={ref}>{card.word}{error && <span role="alert">{error}<button className="btn btn-ghost btn-small" onClick={confirm}>继续确认接触</button></span>}</p>;
 }
 
 function Suggestion({advice, onStart, onRefresh}) {
@@ -93,10 +93,10 @@ export default function LearningAdvice({onStart}) {
   if (data?.enabled === false) return null;
   return <section className="stats-section" data-testid="learning-advice">
     <h3>建议练习</h3>
-    {error && <p role="alert">建议读取失败：{error}<button onClick={() => setRefresh(v => v + 1)}>重新读取建议</button></p>}
+    {error && <p role="alert">建议读取失败：{error}<button className="btn btn-ghost btn-small" onClick={() => setRefresh(v => v + 1)}>重新读取建议</button></p>}
     {!data && !error && <p role="status">正在读取学习依据…</p>}
     {data?.message && <p role="status">{data.message}</p>}
-    {recoveryError && <p role="alert">{recoveryError}<button onClick={() => setRefresh(v => v + 1)}>重新查找轮次</button></p>}
+    {recoveryError && <p role="alert">{recoveryError}<button className="btn btn-ghost btn-small" onClick={() => setRefresh(v => v + 1)}>重新查找轮次</button></p>}
     {saved && <div className="save-state-actions">
       <button className="btn btn-ghost btn-small" onClick={() => onStart(saved)}>继续建议练习</button>
       <button className="btn btn-ghost btn-small" onClick={discard}>放弃原请求入口</button>

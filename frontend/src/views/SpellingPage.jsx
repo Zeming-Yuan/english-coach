@@ -1,5 +1,6 @@
 import UiIcon from "../components/UiIcon.jsx";
 import React, { useEffect, useRef, useState } from "react";
+import { api } from "../lib/api.js";
 import { storageGet, storageSet } from "../lib/utils.js";
 import {
   assistanceFor as storedAssistance,
@@ -25,7 +26,7 @@ const ASSISTANCE_BY_DIFFICULTY = {
 const difficultyAssistance = (difficulty) =>
   ASSISTANCE_BY_DIFFICULTY[difficulty] || [];
 
-export default function SpellingPage({ onExit, onAddWords, singleCard }) {
+export default function SpellingPage({ onExit, onAddWords, singleCard, singleCardId = null }) {
   // 默认独立回忆：只有用户主动选择提示才降级为辅助练习。
   const [difficulty, setDifficulty] = useState(() => storageGet("spellingDiff", 3));
   const [assistance, setAssistance] = useState(() =>
@@ -46,8 +47,18 @@ export default function SpellingPage({ onExit, onAddWords, singleCard }) {
       }),
     typedAttempt: () => ({ source: "spelling", assistance }),
     buildItems: async () => {
-      if (singleCard) {
+      if (singleCard && (!singleCardId || singleCard.id === singleCardId)) {
         return [{ type: "spell", q: { ...singleCard, card_id: singleCard.id } }];
+      }
+      if (singleCardId) {
+        try {
+          const card = await api(`/api/cards/${singleCardId}`);
+          if (!card || card.kind === "sentence") return [];
+          return [{ type: "spell", q: { ...card, card_id: card.id } }];
+        } catch (err) {
+          if (err?.status === 404) return [];
+          throw err;
+        }
       }
       const pool = await fetchSpellPool();
       return pool.map((c) => ({

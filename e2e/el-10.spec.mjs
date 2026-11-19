@@ -135,6 +135,7 @@ for (const mode of ["lost-response", "commit-failure"]) {
     if (mode === "commit-failure") await app.failCommitOnce();
     await submit(page);
     await expect(page.locator(".practice-item").getByRole("alert")).toBeVisible();
+    await page.goto(`${app.baseURL}/#/stats`);
     await page.reload();
     await page.getByTestId("learning-advice").getByRole("button", {name: "继续建议练习", exact: true}).click();
     if (mode === "commit-failure") {
@@ -145,7 +146,6 @@ for (const mode of ["lost-response", "commit-failure"]) {
       await expect(page.getByTestId("practice-session")).toContainText("通过 1");
       // 已保存但丢失的响应仍能使用原 pending 身份确认。
       await page.getByRole("button", {name: "← 返回建议", exact: true}).click();
-      await page.getByRole("button", {name: "← 返回", exact: true}).click();
       await page.locator(".pending-recovery").getByRole("button", {name: "继续确认保存", exact: true}).click();
       await expect(page.locator(".pending-recovery")).toHaveCount(0);
     }
@@ -167,6 +167,7 @@ test("EL-10 lost creation response continues the same frozen round", async ({app
   }, {times: 1});
   await page.getByTestId("learning-advice").getByRole("button", {name: "开始建议练习", exact: true}).click();
   await expect(page.getByRole("alert")).toBeVisible();
+  await page.goto(`${app.baseURL}/#/stats`);
   await page.reload();
   await page.getByTestId("learning-advice").getByRole("button", {name: "继续建议练习", exact: true}).click();
   await expect(page.getByRole("textbox", {name: "英文答案"})).toBeVisible();
@@ -200,6 +201,7 @@ test("EL-10 deleted frozen pool offers a return without a fake pass", async ({ap
   await stats(page, app);
   await start(page);
   expect((await app.request.delete(`/api/cards/${id}`)).ok()).toBeTruthy();
+  await page.goto(`${app.baseURL}/#/stats`);
   await page.reload();
   await page.getByTestId("learning-advice").getByRole("button", {name: "继续建议练习", exact: true}).click();
   await expect(page.getByTestId("practice-session")).toContainText("原目标已不可用");
@@ -303,6 +305,7 @@ test("EL-10 partial deletion invalidates the frozen multiword round", async ({ap
   await stats(page, app);
   await start(page);
   expect((await app.request.delete(`/api/cards/${ids[1]}`)).ok()).toBeTruthy();
+  await page.goto(`${app.baseURL}/#/stats`);
   await page.reload();
   await page.getByTestId("learning-advice").getByRole("button", {name: "继续建议练习", exact: true}).click();
   await expect(page.getByTestId("practice-session")).toContainText("原目标已删除");

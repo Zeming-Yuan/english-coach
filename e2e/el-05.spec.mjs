@@ -193,7 +193,8 @@ test("EL-05 mixed practice records answer contact", async ({appFactory, page}) =
     })
     .toBe(1);
 
-  // 成功保存后重新抽取同一张卡：新题从独立开始。
+  // 成功保存后手动进入结算并重新抽取同一张卡：新题从独立开始。
+  await page.getByRole("button", {name: "下一题 →", exact: true}).click();
   await page.getByRole("button", {name: "再来一轮"}).click();
   await expect(page.locator(".spelling-input")).toBeVisible();
   await expect(page.locator(".spelling-word-display")).toHaveCount(0);

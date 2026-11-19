@@ -422,7 +422,9 @@ body.dark .product-app .btn-primary:hover { background: #d8cec0; border-color: #
 /* Reader stays faithful; only its former local navigation moves to the shared shell. */
 .product-app.view-stories .stage { max-width: none; padding: 0; }
 .product-app .story-layout { padding-left: 0; }
-.product-app.view-stories > .topbar { display: none; }
+@media (min-width: 1024px) {
+  .product-app.view-stories > .topbar { display: none; }
+}
 .product-app.view-stories .reader-navigation, .product-app.view-stories .reader-mobile-tabs { display: none; }
 .product-app .story-library { max-width: 1100px; }
 .product-app .story-library .page-title { font-family: var(--font); font-size: 28px; font-weight: 500; }

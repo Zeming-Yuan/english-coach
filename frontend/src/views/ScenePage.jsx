@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {api} from '../lib/api.js';
 import {loadPending, savePending, clearPending} from '../lib/learning.js';
 import {recordContact, recordVisibleCards} from '../lib/contacts.js';
@@ -21,7 +21,7 @@ function Preparation({preparation}) {
   </div>;
 }
 
-function Standard({text}) {
+function Standard({text, loadCards, invalidateCards}) {
   const [error, setError] = useState('');
   const [speech, setSpeech] = useState('');
   const [retry, setRetry] = useState(0);
@@ -32,24 +32,26 @@ function Standard({text}) {
   };
   const confirmAudio = async targets => {
     const results = await Promise.allSettled(targets.map(card => recordContact({cardId: card.id, revision: card.content_revision, source: 'scene', kind: 'answer_audio'})));
+    if (results.some(r => r.status === 'rejected' && r.reason?.retryable === false)) invalidateCards?.();
     pendingAudio.current = targets.filter((_, index) => results[index].status === 'rejected');
     return pendingAudio.current.length;
   };
   useEffect(() => {
     let live = true;
-    api('/api/cards').then(async ({cards}) => {
+    loadCards().then(async ({cards}) => {
       const targets = matchingCards(cards);
       const result = await recordVisibleCards(targets, 'scene');
+      if (result.failed.length > result.retryable.length) invalidateCards?.();
       const failedAudio = await confirmAudio(pendingAudio.current);
       if (live) setError(result.failed.length || failedAudio ? '接触依据尚未确认，可继续确认接触' : '');
     }).catch(e => {if (live) setError('接触依据尚未确认：' + e.message);});
     return () => {live = false;};
-  }, [text, retry]);
+  }, [text, retry, loadCards, invalidateCards]);
   return <div className="quiz-feedback scene-standard">
     <p>标准表达（本轮按辅助记录）：{text}</p>
     <button className="btn btn-ghost btn-small" onClick={async () => {
       try {
-        const {cards} = await api('/api/cards');
+        const {cards} = await loadCards();
         const targets = matchingCards(cards);
         const mode = await speak(text, null, () => {
           pendingAudio.current = targets;
@@ -67,6 +69,19 @@ function Standard({text}) {
 function SceneRun({initial, creationEnabled, onRestart, onExit}) {
   const scope = `scene:${initial.id}`;
   const restored = useRef(loadPending(scope));
+  const cardsPromiseRef = useRef(null);
+  const invalidateSceneCards = useCallback(() => {
+    cardsPromiseRef.current = null;
+  }, []);
+  const loadSceneCards = useCallback(() => {
+    if (!cardsPromiseRef.current) {
+      cardsPromiseRef.current = api('/api/cards').catch(err => {
+        cardsPromiseRef.current = null;
+        throw err;
+      });
+    }
+    return cardsPromiseRef.current;
+  }, []);
   const [run, setRun] = useState(initial);
   const [index, setIndex] = useState(() => {
     const pendingItem = initial.items.findIndex(i => restored.current?.path.includes(i.id));
@@ -75,6 +90,7 @@ function SceneRun({initial, creationEnabled, onRestart, onExit}) {
     return next < 0 ? 3 : next;
   });
   const [answer, setAnswer] = useState(restored.current?.payload.answer || '');
+  const [composing, setComposing] = useState(false);
   const [feedback, setFeedback] = useState(null);
   const [error, setError] = useState('');
   const [helpBusy, setHelpBusy] = useState(false);
@@ -125,16 +141,35 @@ function SceneRun({initial, creationEnabled, onRestart, onExit}) {
       <p className="lesson-progress scene-role">{run.speaker || '店员'}：{item.role}</p>
       {!!item.assistance.length && <p className="scene-assistance" role="status">本轮已使用帮助，持续按辅助记录。</p>}
       {item.hint && <p className="scene-hint" role="status">提示：{item.hint}</p>}
-      {item.standard && <Standard text={item.standard} />}
+      {item.standard && <Standard text={item.standard} loadCards={loadSceneCards} invalidateCards={invalidateSceneCards} />}
       {feedback ? <div className="quiz-feedback scene-feedback" data-verdict={feedback.verdict} role="status">
         <p>已保存 · {verdictLabel(feedback)}{feedback.first_response === false ? ' · 再练结果，首答不变' : ''}</p>
         <p>你的答案：{answer || '显式跳过'}</p>
         <div className="save-state-actions">
-          <button className="btn btn-primary" onClick={() => {setIndex(index + 1); setAnswer(''); setFeedback(null);}}>{index === 2 ? '查看结果' : '下一轮'}</button>
-          {run.can_continue && <button className="btn btn-ghost" onClick={() => setFeedback(null)}>再练本轮</button>}
+          <button className="btn btn-primary" onClick={() => {setIndex(index + 1); setAnswer(''); setComposing(false); setFeedback(null);}}>{index === 2 ? '查看结果' : '下一轮'}</button>
+          {run.can_continue && <button className="btn btn-ghost" onClick={() => {setComposing(false); setFeedback(null);}}>再练本轮</button>}
         </div>
       </div> : <>
-        <label className="scene-answer-field">你的答案<input className="spelling-input" aria-label="你的答案" value={answer} maxLength={2000} disabled={blocked || !run.can_continue} onChange={e => setAnswer(e.target.value)} /></label>
+        <label className="scene-answer-field">你的答案<input
+          className="spelling-input"
+          aria-label="你的答案"
+          value={answer}
+          maxLength={2000}
+          disabled={blocked || !run.can_continue}
+          onChange={e => setAnswer(e.target.value)}
+          onCompositionStart={() => setComposing(true)}
+          onCompositionEnd={() => setComposing(false)}
+          onKeyDown={e => {
+            if (e.nativeEvent?.isComposing || e.keyCode === 229 || composing) {
+              if (e.key === 'Enter') e.preventDefault();
+              return;
+            }
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              submit(false);
+            }
+          }}
+        /></label>
         <div className="save-state-actions">
           <button className="btn btn-primary" disabled={blocked || !run.can_continue} onClick={() => submit(false)}>提交答案</button>
           <button className="btn btn-ghost" disabled={blocked || !run.can_continue} onClick={() => submit(true)}>跳过本轮</button>
@@ -149,7 +184,7 @@ function SceneRun({initial, creationEnabled, onRestart, onExit}) {
         <button className="btn btn-primary" onClick={async () => {try {apply(await attempt.retry());} catch {}}}>继续确认保存</button>
         <button className="btn btn-ghost" onClick={async () => {
           attempt.clear(); restored.current = null;
-          try {const saved = await api(`/api/practice-sessions/${run.id}`); setRun(saved); const next = saved.items.findIndex(i => !i.processed); setIndex(next < 0 ? 3 : next); setAnswer(''); setFeedback(null);} catch (e) {setError(e.message);}
+          try {const saved = await api(`/api/practice-sessions/${run.id}`); setRun(saved); const next = saved.items.findIndex(i => !i.processed); setIndex(next < 0 ? 3 : next); setAnswer(''); setComposing(false); setFeedback(null);} catch (e) {setError(e.message);}
         }}>放弃这条待确认</button>
       </div>}
     </>}
@@ -200,12 +235,12 @@ export default function ScenePage({onExit}) {
     {error && <p role="alert">{error}</p>}
     {note && <p role="note">{note}</p>}
     {busy && <p role="status">正在确认保存…</p>}
-    {catalog?.scenes.map(scene => <article key={scene.id} className="lesson-progress scene-card">
-      <h3>{scene.title} · 约三轮 · 文字输入</h3>
+    {catalog?.scenes.map(scene => <article key={scene.id} aria-label={scene.title} className="lesson-progress scene-card">
+      <h3 id={`scene-title-${scene.id}`}>{scene.title} · 约三轮 · 文字输入</h3>
       <p className="scene-card-context">{scene.situation}</p>
       {scene.task_goal.map(goal => <p className="scene-card-goal" key={goal}>{goal}</p>)}
       <Preparation preparation={scene.preparation} />
-      {(scene.enabled || scene.session_id) && <button className="btn btn-primary" disabled={busy || !!pending.current} onClick={() => start(scene.id)}>{scene.title}</button>}
+      {(scene.enabled || scene.session_id) && <button className="btn btn-primary" aria-describedby={`scene-title-${scene.id}`} disabled={busy || !!pending.current} onClick={() => start(scene.id)}>{scene.session_id ? '继续' : '开始'}</button>}
     </article>)}
     {pending.current && <div className="save-state-actions">
       <button className="btn btn-primary" disabled={busy} onClick={() => start(pending.current.scene_id)}>继续确认保存</button>

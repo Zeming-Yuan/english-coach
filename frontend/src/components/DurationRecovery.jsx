@@ -14,13 +14,15 @@ export default function DurationRecovery() {
     };
   }, []);
   if (!rows.length) return null;
-  return <aside role="alert" data-testid="duration-recovery">
+  return <aside role="alert" data-testid="duration-recovery" className="pending-recovery">
     <p>答案保存流程不受影响；{rows.length} 条主动时长尚未确认；仅服务端已保存时长用于估算。可继续确认或放弃时长；浏览器存储不可用时刷新可能丢失。</p>
-    <button disabled={busy} onClick={async () => {
-      setBusy(true);
-      try { for (const row of rows) await saveDuration(row); }
-      finally { setBusy(false); }
-    }}>继续确认时长</button>
-    <button disabled={busy} onClick={() => rows.forEach(row => discardDuration(row.sample_id))}>放弃时长记录</button>
+    <div className="save-state-actions">
+      <button className="btn btn-primary btn-small" disabled={busy} onClick={async () => {
+        setBusy(true);
+        try { for (const row of rows) await saveDuration(row); }
+        finally { setBusy(false); }
+      }}>继续确认时长</button>
+      <button className="btn btn-ghost btn-small" disabled={busy} onClick={() => rows.forEach(row => discardDuration(row.sample_id))}>放弃时长记录</button>
+    </div>
   </aside>;
 }

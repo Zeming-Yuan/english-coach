@@ -92,7 +92,6 @@ test("EC-14 failed reinforcement retains pending UUID across refresh", async ({a
   const pending = await page.evaluate(() => JSON.parse(localStorage.getItem("ec.pending.reinforcement")));
   expect((await (await app.request.get(`/api/cards/${id}`)).json()).learning_events).toHaveLength(1);
   await page.reload();
-  await page.getByRole("button", {name: "继续本轮学习", exact: true}).click();
   await page.getByRole("button", {name: "继续确认保存", exact: true}).click();
   await continueAfterSaved(page);
   await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toBeVisible();
@@ -189,7 +188,7 @@ test("EC-14 three question lifetime cap survives refresh without refilling", asy
     if (i < 2) await expect(page.locator(".spelling-meaning")).toHaveText(`释义${i + 1}`);
     else await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toBeVisible();
     await page.reload();
-    await page.getByRole("button", {name: "继续本轮学习", exact: true}).click();
+    if (i < 2) await expect(page.locator(".spelling-meaning")).toHaveText(`释义${i + 1}`);
   }
   await expect(page.getByRole("heading", {name: "本轮学习结果", exact: true})).toBeVisible();
   await expect(page.locator(".spelling-input")).toHaveCount(0);
@@ -216,7 +215,6 @@ test("EC-14 deleting an answered slot cannot introduce a fourth question after r
   await expect(page.locator(".spelling-meaning")).toHaveText("释义1");
   expect((await app.request.delete(`/api/cards/${ids[0]}`)).ok()).toBe(true);
   await page.reload();
-  await page.getByRole("button", {name: "继续本轮学习", exact: true}).click();
   for (let i = 1; i < 3; i += 1) {
     await expect(page.locator(".spelling-meaning")).toHaveText(`释义${i}`);
     await page.locator(".spelling-input").fill("wrong");
@@ -326,7 +324,6 @@ test("EC-14 lost response retry feedback still offers the remaining question", a
   await expect(page.getByRole("alert")).toContainText("保存");
   const pending = await page.evaluate(() => JSON.parse(localStorage.getItem("ec.pending.reinforcement")));
   await page.reload();
-  await page.getByRole("button", {name: "继续本轮学习", exact: true}).click();
   await page.getByRole("button", {name: "继续确认保存", exact: true}).click();
   await expect(page.getByRole("status")).toContainText("已保存：答错，正确拼写：apple");
   await expect(page.getByRole("button", {name: "下一题 →", exact: true})).toBeVisible({timeout: 5000});

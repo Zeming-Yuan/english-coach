@@ -3,8 +3,9 @@ import {test, expect} from './support/test.mjs';
 async function openScene(app, page) {
   await page.goto(app.baseURL);
   await page.getByRole('button', {name: '场景练习', exact: true}).click();
-  await expect(page.getByRole('button', {name: '买饮品', exact: true})).toBeVisible();
-  await page.getByRole('button', {name: '买饮品', exact: true}).click();
+  const card = page.getByRole('article', {name: '买饮品', exact: true});
+  await expect(card.getByRole('button', {name: /^(开始|继续)$/})).toBeVisible();
+  await card.getByRole('button', {name: /^(开始|继续)$/}).click();
 }
 async function submit(page, text) {
   const scene = page.getByTestId('scene-session');
@@ -59,13 +60,13 @@ for (const failure of ['commit', 'response-loss']) {
     const app = await appFactory();
     await page.goto(app.baseURL);
     await page.getByRole('button', {name: '场景练习', exact: true}).click();
-    await expect(page.getByRole('button', {name: '买饮品', exact: true})).toBeVisible();
+    const drinksBtn = page.getByRole('article', {name: '买饮品', exact: true}).getByRole('button', {name: '开始', exact: true});
+    await expect(drinksBtn).toBeVisible();
     if (failure === 'commit') await app.failCommitOnce();
     else await page.route('**/api/practice-sessions', async route => {await route.fetch(); await route.abort('failed');}, {times: 1});
-    await page.getByRole('button', {name: '买饮品', exact: true}).click();
+    await drinksBtn.click();
     await expect(page.getByRole('alert')).toContainText('场景尚未确认保存');
     await page.reload();
-    await page.getByRole('button', {name: '场景练习', exact: true}).click();
     await page.getByRole('button', {name: '继续确认保存', exact: true}).click();
     await expect(page.getByTestId('scene-session')).toContainText('第 1/3 轮');
     const backup = await (await app.request.get('/api/export/backup')).json();

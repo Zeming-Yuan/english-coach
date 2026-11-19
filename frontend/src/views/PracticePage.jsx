@@ -159,7 +159,7 @@ function PracticeItemForm({ session, item, onSession, onFeedback }) {
   );
 }
 
-export default function PracticePage({ sessionId, onExit, onRestart, onNormal, advice = false, browserStored = true, storyCheck = false }) {
+export default function PracticePage({ sessionId, onExit, onRestart, onNormal, advice = false, browserStored = true, storyCheck = false, backLabel = null }) {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -211,7 +211,7 @@ export default function PracticePage({ sessionId, onExit, onRestart, onNormal, a
 
   const delayed = session?.purpose === "delayed_check";
   const title = storyCheck ? "读后检查" : delayed ? (session.window === "week" ? "一周回测" : "隔日回测") : session?.purpose === "targeted" ? "专项练习" : "本课短测";
-  const back = storyCheck ? "回看原文" : advice ? "返回建议" : delayed ? "返回统计" : "返回课程";
+  const back = backLabel || (storyCheck ? "回看原文" : advice ? "返回建议" : delayed ? "返回统计" : "返回课程");
   const feedbackItem = session?.items.find(item => item.id === feedback?.itemId);
   const feedbackContactRef = usePracticeAnswerContact(feedbackItem, Boolean(feedback?.expected) && feedback?.correct !== true, session?.purpose === "story_check" ? "story" : session?.purpose === "lesson_check" ? "lesson" : "spelling");
 

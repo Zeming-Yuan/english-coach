@@ -1,6 +1,7 @@
 import React from "react";
 import {BookOpenIcon} from "@phosphor-icons/react/dist/csr/BookOpen";
 import {BookBookmarkIcon} from "@phosphor-icons/react/dist/csr/BookBookmark";
+import {GraduationCapIcon} from "@phosphor-icons/react/dist/csr/GraduationCap";
 import {HouseIcon} from "@phosphor-icons/react/dist/csr/House";
 import {ChartBarIcon} from "@phosphor-icons/react/dist/csr/ChartBar";
 import {GearSixIcon} from "@phosphor-icons/react/dist/csr/GearSix";
@@ -19,7 +20,7 @@ import {SmileyIcon} from "@phosphor-icons/react/dist/csr/Smiley";
 import {ArrowLeftIcon} from "@phosphor-icons/react/dist/csr/ArrowLeft";
 import {DotsThreeVerticalIcon} from "@phosphor-icons/react/dist/csr/DotsThreeVertical";
 
-const icons = {book: BookOpenIcon, words: BookBookmarkIcon, home: HouseIcon, stats: ChartBarIcon, settings: GearSixIcon, plus: PlusIcon, speaker: SpeakerHighIcon, trash: TrashIcon, close: XIcon, done: CheckCircleIcon, headphones: HeadphonesIcon, refresh: ArrowClockwiseIcon, edit: PencilSimpleIcon, trophy: TrophyIcon, star: StarIcon, thumb: ThumbsUpIcon, smile: SmileyIcon};
+const icons = {book: BookOpenIcon, lessons: GraduationCapIcon, words: BookBookmarkIcon, home: HouseIcon, stats: ChartBarIcon, settings: GearSixIcon, plus: PlusIcon, speaker: SpeakerHighIcon, trash: TrashIcon, close: XIcon, done: CheckCircleIcon, headphones: HeadphonesIcon, refresh: ArrowClockwiseIcon, edit: PencilSimpleIcon, trophy: TrophyIcon, star: StarIcon, thumb: ThumbsUpIcon, smile: SmileyIcon};
 
 export default function UiIcon({name, size = 20, weight = "regular", ...props}) {
   const Icon = name === "back" ? ArrowLeftIcon : name === "more" ? DotsThreeVerticalIcon : icons[name] || BookOpenIcon;

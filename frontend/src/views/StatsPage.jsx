@@ -100,7 +100,7 @@ function drawReportCanvas(canvas, fresh, items) {
 /**
  * 学习统计视图：数字卡片/周正确率/热力图/导出。
  */
-export default function StatsPage({ onBack, onDelayed, onAdvice, onOpenBackup }) {
+export default function StatsPage({ onDelayed, onAdvice, onOpenBackup }) {
   const [stats, setStats] = useState(null);
   const [history, setHistory] = useState(null);
   const [weekly, setWeekly] = useState(null);
@@ -281,7 +281,6 @@ export default function StatsPage({ onBack, onDelayed, onAdvice, onOpenBackup })
   return (
     <section className="view">
       <div className="page-head">
-        <button className="btn btn-ghost btn-small" onClick={onBack}>← 返回</button>
         <h2 className="page-title">学习记录</h2>
       </div>
 
