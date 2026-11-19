@@ -135,3 +135,143 @@ test("lesson detail load failure shows a working retry action that respects curr
   await expect(page.locator("h2.page-title")).toHaveText("Lesson One", {timeout: 2000});
   expect(lesson1Calls).toBe(4);
 });
+
+test("word detail example regeneration previews before saving so keeping old preserves revision and evidence", async ({page}) => {
+  let storedCard = {
+    id: 1,
+    kind: "word",
+    word: "apple",
+    phonetic: "/ˈæpəl/",
+    meaning: "苹果",
+    example: "Old example.",
+    example_cn: "旧例句。",
+    explanation: "旧用法|旧搭配",
+    contexts: [],
+    review_count: 2,
+    progress_label: "独立回忆已有证据",
+    content_revision: {identity: "rev-apple-1234", version: 1},
+    learning_evidence: {
+      recall: {status: "verified", label: "独立回忆已有证据", count: 2},
+      retention: {status: "insufficient", label: "尚无回测"},
+      application: {status: "insufficient", label: "尚无场景依据"},
+    },
+  };
+  const requests = [];
+  let failFirstPut = true;
+  let conflictPut = false;
+
+  await page.route("**/api/**", async route => {
+    const url = new URL(route.request().url());
+    const method = route.request().method();
+    requests.push(`${method} ${url.pathname}${url.search}`);
+    if (url.pathname === "/api/cards" && method === "GET") {
+      return route.fulfill({json: {cards: [storedCard]}});
+    }
+    if (url.pathname === "/api/cards/1" && method === "GET") {
+      return route.fulfill({json: storedCard});
+    }
+    if (url.pathname === "/api/cards/1/regenerate" && method === "POST") {
+      if (url.searchParams.get("preview") === "true") {
+        return route.fulfill({
+          json: {
+            ...storedCard,
+            example: "New preview example.",
+            example_cn: "新预览例句。",
+            explanation: "新用法|新搭配",
+            preview: true,
+          },
+        });
+      }
+      // Unpreviewed legacy behavior mutates immediately (simulates old bug if ?preview=true is not used)
+      storedCard = {
+        ...storedCard,
+        example: "New preview example.",
+        example_cn: "新预览例句。",
+        explanation: "新用法|新搭配",
+        progress_label: "独立证据不足",
+        content_revision: {...storedCard.content_revision, version: storedCard.content_revision.version + 1},
+        learning_evidence: {
+          ...storedCard.learning_evidence,
+          recall: {status: "insufficient", label: "独立证据不足", count: 0},
+        },
+      };
+      return route.fulfill({json: storedCard});
+    }
+    if (url.pathname === "/api/cards/1" && method === "PUT") {
+      if (conflictPut) {
+        conflictPut = false;
+        storedCard = {
+          ...storedCard,
+          meaning: "并发更新的苹果",
+          content_revision: {...storedCard.content_revision, version: 3},
+        };
+        return route.fulfill({status: 409, json: {detail: "Card content changed"}});
+      }
+      if (failFirstPut) {
+        failFirstPut = false;
+        return route.fulfill({status: 503, json: {detail: "save offline"}});
+      }
+      const body = route.request().postDataJSON();
+      expect(body.expected_revision).toEqual({identity: "rev-apple-1234", version: 1});
+      storedCard = {
+        ...storedCard,
+        example: body.example,
+        example_cn: body.example_cn,
+        explanation: body.explanation,
+        progress_label: "独立证据不足",
+        content_revision: {...storedCard.content_revision, version: 2},
+        learning_evidence: {
+          ...storedCard.learning_evidence,
+          recall: {status: "insufficient", label: "独立证据不足", count: 0},
+        },
+      };
+      return route.fulfill({json: storedCard});
+    }
+    if (url.pathname === "/api/learning-observations/contacts") {
+      return route.fulfill({json: {committed: true}});
+    }
+    if (url.pathname.startsWith("/api/tts/")) {
+      return route.fulfill({body: ""});
+    }
+    return route.fulfill({status: 503, json: {detail: "unavailable fixture"}});
+  });
+
+  await ui.mount(page, "/src/views/WordsPage.jsx");
+  await page.locator(".word-item").click();
+  await expect(page.locator(".word-detail-example")).toContainText("Old example.");
+  await expect(page.getByTestId("revision-panel")).toContainText("第 1 版");
+  await expect(page.locator(".word-detail-evidence")).toContainText("独立回忆已有证据");
+
+  // Preview + Keep Old: must NOT persist new example, bump revision, or invalidate recall evidence
+  await page.getByRole("button", {name: "换一个例句", exact: true}).click();
+  await expect(page.locator(".example-compare-new")).toHaveText("New preview example.");
+  await page.getByRole("button", {name: "保留旧的", exact: true}).click();
+  await page.getByRole("button", {name: /单词本/}).click();
+  await page.locator(".word-item").click();
+  await expect(page.locator(".word-detail-example")).toContainText("Old example.", {timeout: 2000});
+  await expect(page.getByTestId("revision-panel")).toContainText("第 1 版");
+  await expect(page.locator(".word-detail-evidence")).toContainText("独立回忆已有证据");
+  expect(requests).toContain("POST /api/cards/1/regenerate?preview=true");
+
+  // Preview + Use New: failed save retains candidate; retry saves via PUT, advances v2, and updates evidence
+  await page.getByRole("button", {name: "换一个例句", exact: true}).click();
+  await expect(page.locator(".example-compare-new")).toHaveText("New preview example.");
+  await page.getByRole("button", {name: "用新的", exact: true}).click();
+  await expect(page.locator(".example-compare-new")).toHaveText("New preview example.");
+  await page.getByRole("button", {name: "用新的", exact: true}).click();
+  await expect(page.locator(".word-detail-example")).toContainText("New preview example.", {timeout: 2000});
+  await expect(page.getByTestId("revision-panel")).toContainText("第 2 版");
+  await expect(page.locator(".word-detail-evidence")).toContainText("独立证据不足");
+
+  // 409 conflict on Use New clears stale candidate and refreshes detail to latest server content
+  storedCard = {...storedCard, example: "Base v2 example."};
+  await page.getByRole("button", {name: /单词本/}).click();
+  await page.locator(".word-item").click();
+  await page.getByRole("button", {name: "换一个例句", exact: true}).click();
+  await expect(page.locator(".example-compare-new")).toHaveText("New preview example.");
+  conflictPut = true;
+  await page.getByRole("button", {name: "用新的", exact: true}).click();
+  await expect(page.locator(".example-compare-new")).toHaveCount(0);
+  await expect(page.locator(".word-detail-meaning")).toHaveText("并发更新的苹果");
+  await expect(page.getByTestId("revision-panel")).toContainText("第 3 版");
+});

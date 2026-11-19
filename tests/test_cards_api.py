@@ -302,3 +302,140 @@ def test_generated_cards_skip_malformed_items_without_losing_valid_card(ec):
     assert response.status_code == 200
     assert response.json()["generated"] == 1
     assert response.json()["cards"][0]["word"] == "apple"
+
+
+def test_regenerate_preview_keeps_stored_example_revision_and_evidence(ec):
+    """预览换例句不落库、不递增内容修订，也不使既有独立回忆证据失效。"""
+    from datetime import datetime
+    from uuid import uuid4
+
+    from tests.support.llm_queue import QueuedLLM
+
+    card_id = ec.seed_card(
+        word="apple",
+        meaning="苹果",
+        example="Old example.",
+        example_cn="旧例句。",
+        explanation="旧讲解",
+    )
+    for iso in ("2026-10-01T01:00:00Z", "2026-10-02T02:00:00Z"):
+        ec.clock.set(datetime.fromisoformat(iso))
+        check = ec.client.post(
+            "/api/typing/check",
+            json={
+                "card_id": card_id,
+                "user_input": "apple",
+                "source": "spelling",
+                "submission_id": str(uuid4()),
+                "assistance": [],
+            },
+        )
+        assert check.status_code == 200
+
+    before = ec.client.get(f"/api/cards/{card_id}").json()
+    assert before["learning_evidence"]["recall"]["status"] == "verified"
+
+    ec.app.state.llm_client = QueuedLLM(
+        [
+            {
+                "example": "A fresh preview example.",
+                "example_cn": "新的预览例句。",
+                "explanation": "新讲解",
+            }
+        ]
+    )
+    resp = ec.client.post(f"/api/cards/{card_id}/regenerate?preview=true")
+    assert resp.status_code == 200
+    preview = resp.json()
+    assert preview["preview"] is True
+    assert preview["example"] == "A fresh preview example."
+    assert preview["example_cn"] == "新的预览例句。"
+    assert preview["explanation"] == "新讲解"
+    assert preview["content_revision"] == before["content_revision"]
+
+    after = ec.client.get(f"/api/cards/{card_id}").json()
+    assert after["example"] == "Old example."
+    assert after["example_cn"] == "旧例句。"
+    assert after["explanation"] == "旧讲解"
+    assert after["content_revision"] == before["content_revision"]
+    assert after["learning_evidence"]["recall"]["status"] == "verified"
+
+    # 确认采用预览例句：PUT 校验匹配的 expected_revision，原子落库并推进修订、使旧回忆证据失效
+    applied = ec.client.put(
+        f"/api/cards/{card_id}",
+        json={
+            "example": preview["example"],
+            "example_cn": preview["example_cn"],
+            "explanation": preview["explanation"],
+            "expected_revision": preview["content_revision"],
+        },
+    )
+    assert applied.status_code == 200
+    saved = ec.client.get(f"/api/cards/{card_id}").json()
+    assert saved["example"] == "A fresh preview example."
+    assert saved["content_revision"] == {
+        "identity": before["content_revision"]["identity"],
+        "version": before["content_revision"]["version"] + 1,
+    }
+    assert saved["learning_evidence"]["recall"]["status"] == "insufficient"
+
+
+def test_regenerate_preview_detects_concurrent_commit_and_overlength_output(
+    ec, monkeypatch
+):
+    """预览期间并发提交更新时返回 preview=False, stale=True；超长 LLM 输出返回 502。"""
+    from app.models.card import Card as CardModel
+    from app.routers import cards as cards_router
+    from app.services.content_revisions import advance_content_revision
+    from tests.support.llm_queue import QueuedLLM
+
+    card_id = ec.seed_card(word="apple", meaning="苹果", example="Old example.")
+
+    def concurrent_edit(_word):
+        with ec.SessionLocal() as other_db:
+            other = other_db.get(CardModel, card_id)
+            assert other is not None
+            advance_content_revision(other_db, "card", card_id, {"meaning": "脆苹果"})
+            other.meaning = "脆苹果"
+            other_db.commit()
+        return ("Late preview example.", "晚到预览。", "用法|搭配|易错")
+
+    monkeypatch.setattr(cards_router, "regenerate_example", concurrent_edit)
+    stale_resp = ec.client.post(f"/api/cards/{card_id}/regenerate?preview=true")
+    assert stale_resp.status_code == 200
+    body = stale_resp.json()
+    assert body["preview"] is False
+    assert body["stale"] is True
+    assert body["meaning"] == "脆苹果"
+    assert body["example"] == "Old example."
+
+    monkeypatch.undo()
+    ec.app.state.llm_client = QueuedLLM(
+        [{"example": "x" * 501, "example_cn": "翻译", "explanation": "用法|搭配|易错"}]
+    )
+    overlong = ec.client.post(f"/api/cards/{card_id}/regenerate?preview=true")
+    assert overlong.status_code == 502
+
+
+def test_update_card_rejects_stale_expected_revision(ec):
+    """确认采用预览例句时校验 expected_revision，并发修改返回 409。"""
+    card_id = ec.seed_card(word="apple", meaning="苹果", example="Old example.")
+    before = ec.client.get(f"/api/cards/{card_id}").json()["content_revision"]
+
+    # 模拟并发编辑推进了修订版本
+    moved = ec.client.put(f"/api/cards/{card_id}", json={"meaning": "红苹果"})
+    assert moved.status_code == 200
+
+    stale = ec.client.put(
+        f"/api/cards/{card_id}",
+        json={
+            "example": "New example.",
+            "example_cn": "新例句。",
+            "explanation": "新讲解",
+            "expected_revision": before,
+        },
+    )
+    assert stale.status_code == 409
+    current = ec.client.get(f"/api/cards/{card_id}").json()
+    assert current["meaning"] == "红苹果"
+    assert current["example"] == "Old example."

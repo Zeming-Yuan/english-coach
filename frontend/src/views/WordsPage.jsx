@@ -1,5 +1,5 @@
 import UiIcon from "../components/UiIcon.jsx";
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { api } from "../lib/api.js";
 import { recordContact, recordVisibleCards } from "../lib/contacts.js";
 import { speak, prewarmTts } from "../lib/tts.js";
@@ -392,10 +392,21 @@ function WordDetail({ cardId, onBack, allCards, setDetail, onCardChanged }) {
   };
 
   const [pendingExample, setPendingExample] = useState(null);
+  const [regenerating, setRegenerating] = useState(false);
+  const [savingExample, setSavingExample] = useState(false);
+  const mountedRef = useRef(true);
+  const regenerateRef = useRef(null);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const refreshDetail = async () => {
     try {
-      setCard(await api(`/api/cards/${c.id}`));
+      const fresh = await api(`/api/cards/${c.id}`);
+      if (mountedRef.current) setCard(fresh);
     } catch {}
   };
 
@@ -444,21 +455,77 @@ function WordDetail({ cardId, onBack, allCards, setDetail, onCardChanged }) {
   const speakPlain = (text) => speak(text);
 
   const regenerate = async () => {
+    if (!mountedRef.current || !c || regenerating || savingExample) return;
+    setRegenerating(true);
     try {
-      // 保存旧例句用于对比
       const oldExample = c.example;
       const oldExampleCn = c.example_cn;
       const oldExplanation = c.explanation;
-      const updated = await api(`/api/cards/${c.id}/regenerate`, { method: "POST" });
-      onCardChanged?.();
-      // 如果新例句和旧的不同，显示对比让用户选择
-      if (updated.example && updated.example !== oldExample) {
-        setPendingExample({ old: { example: oldExample, example_cn: oldExampleCn, explanation: oldExplanation }, new: updated });
+      const previewed = await api(`/api/cards/${c.id}/regenerate?preview=true`, { method: "POST" });
+      if (!mountedRef.current) return;
+      if (previewed.preview === false) {
+        await refreshDetail();
+        if (previewed.stale) {
+          onCardChanged?.();
+          showToast("词卡内容已变化，已刷新最新内容");
+        }
+        return;
+      }
+      if (previewed.example && previewed.example !== oldExample) {
+        setPendingExample({
+          old: { example: oldExample, example_cn: oldExampleCn, explanation: oldExplanation },
+          new: {
+            example: previewed.example,
+            example_cn: previewed.example_cn,
+            explanation: previewed.explanation,
+          },
+          expectedRevision: previewed.content_revision || c.content_revision,
+        });
       } else {
         await refreshDetail();
       }
     } catch (e) {
-      showToast("换例句失败：" + e.message, "重试", regenerate);
+      if (mountedRef.current) {
+        showToast("换例句失败：" + e.message, "重试", () => {
+          regenerateRef.current?.();
+        });
+      }
+    } finally {
+      if (mountedRef.current) setRegenerating(false);
+    }
+  };
+  regenerateRef.current = regenerate;
+
+  const applyPendingExample = async () => {
+    if (!c || !pendingExample || savingExample) return;
+    setSavingExample(true);
+    try {
+      await api(`/api/cards/${c.id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          example: pendingExample.new.example,
+          example_cn: pendingExample.new.example_cn,
+          explanation: pendingExample.new.explanation,
+          expected_revision: pendingExample.expectedRevision,
+        }),
+      });
+      if (!mountedRef.current) return;
+      setPendingExample(null);
+      await refreshDetail();
+      onCardChanged?.();
+      showToast("✅ 已换新例句");
+    } catch (e) {
+      if (!mountedRef.current) return;
+      if (e?.status === 409) {
+        setPendingExample(null);
+        await refreshDetail();
+        onCardChanged?.();
+        showToast("词卡内容已变化，请重新查看后再换例句");
+      } else {
+        showToast("保存新例句失败：" + e.message);
+      }
+    } finally {
+      if (mountedRef.current) setSavingExample(false);
     }
   };
 
@@ -467,6 +534,8 @@ function WordDetail({ cardId, onBack, allCards, setDetail, onCardChanged }) {
     if (v === null) return;
     try {
       await api(`/api/cards/${c.id}`, { method: "PUT", body: JSON.stringify({ meaning: v.trim() }) });
+      if (!mountedRef.current) return;
+      setPendingExample(null);
       await refreshDetail();
       onCardChanged?.();
     } catch {}
@@ -572,17 +641,12 @@ function WordDetail({ cardId, onBack, allCards, setDetail, onCardChanged }) {
               </div>
             )}
             <div className="example-compare-actions">
-              <button className="btn btn-ghost btn-small" onClick={() => {
-                // 保留旧的：把新例句写回去（但用户选旧的，所以不更新）
+              <button className="btn btn-ghost btn-small" disabled={savingExample} onClick={() => {
                 setPendingExample(null);
               }}>保留旧的</button>
-              <button className="btn btn-primary btn-small" onClick={async () => {
-                // 用新的：例句已在后端保存，重新读取证据/修订
-                setPendingExample(null);
-                await refreshDetail();
-                onCardChanged?.();
-                showToast("✅ 已换新例句");
-              }}>用新的</button>
+              <button className="btn btn-primary btn-small" disabled={savingExample} onClick={applyPendingExample}>
+                {savingExample ? "保存中…" : "用新的"}
+              </button>
             </div>
           </div>
         ) : (
@@ -594,7 +658,7 @@ function WordDetail({ cardId, onBack, allCards, setDetail, onCardChanged }) {
               <div className="word-detail-example">
                 <span>{c.example}</span>
                 <button className="speak-mini" title="朗读例句" onClick={() => speakPlain(c.example)} aria-label="朗读"><UiIcon name="speaker" /></button>
-                <button className="memo-edit-btn" title="换一个例句" onClick={regenerate} aria-label="换一个例句"><UiIcon name="refresh" /></button>
+                <button className="memo-edit-btn" title="换一个例句" disabled={regenerating} onClick={regenerate} aria-label="换一个例句"><UiIcon name="refresh" /></button>
               </div>
               </>
             )}
