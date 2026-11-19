@@ -217,6 +217,8 @@ body.dark .product-app .btn-primary:hover { background: #d8cec0; border-color: #
 .product-app .word-mastered .lesson-master-btn { background: var(--success); border-color: var(--success); }
 .product-app .lesson-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
 .product-app .lesson-actions .btn-wide { width: auto; flex: 1 1 200px; }
+.product-app .lesson-status-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; }
+.product-app .lesson-viewed-done { border-color: var(--success); background: var(--success-soft); color: var(--success); }
 
 /* The selected dictionary screen: content stays on the paper, evidence is an annotation. */
 .word-detail-toolbar { align-items: center; }
@@ -350,6 +352,10 @@ body.dark .product-app .btn-primary:hover { background: #d8cec0; border-color: #
 .product-app .cal-l1 { background: #dcc8b6; }
 .product-app .cal-l2 { background: #be9376; }
 .product-app .cal-l3 { background: #92583e; }
+body.dark .product-app .cal-l0 { background: #302b27; }
+body.dark .product-app .cal-l1 { background: #543b2c; }
+body.dark .product-app .cal-l2 { background: #8c5c40; }
+body.dark .product-app .cal-l3 { background: #cf946d; }
 .product-app .cal-tooltip { background: var(--ink); color: var(--paper); border-radius: 6px; font-weight: 400; }
 .product-app .export-row { gap: 10px; flex-wrap: wrap; margin-block: 8px; }
 

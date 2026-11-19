@@ -490,11 +490,13 @@ export default function MixedPage({ onExit }) {
             </div>
             <SpellingBoard
               key={idx}
+              variant="qwerty"
               formId="mixed-spelling-form"
               mode={assistance.length ? "assisted" : "independent"}
               target={assistance.length ? q.word : null}
               showFirstHint={assistance.includes("first_letter")}
               disabled={locked}
+              placeholder="点击这里，直接输入"
               onSubmit={answer}
             />
           </>

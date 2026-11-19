@@ -1,11 +1,21 @@
 import React, {useEffect, useState} from "react";
 import App from "../App.jsx";
+import UiIcon from "./UiIcon.jsx";
 import {configureAccount} from "../lib/accountSession.js";
 import "../styles/login.css";
 
 const AUTH_CHANGE = "ec.auth.change";
 function announceChange() {
   try { localStorage.setItem(AUTH_CHANGE, crypto.randomUUID()); } catch {}
+}
+function readPreAuthDarkMode() {
+  for (const key of ["ec.ui.dark", "darkMode"]) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw !== null) return JSON.parse(raw) === true;
+    } catch {}
+  }
+  return false;
 }
 async function sessionRequest(path, options = {}) {
   const response = await fetch(path, {cache: "no-store", credentials: "same-origin", ...options});
@@ -16,7 +26,7 @@ async function sessionRequest(path, options = {}) {
 }
 
 function Brand() {
-  return <div className="login-brand"><img src="/static/favicon.svg" alt="" width="30" height="30" /><span>EnglishCoach</span></div>;
+  return <div className="login-brand"><UiIcon name="book" weight="fill" size={30} /><span>EnglishCoach</span></div>;
 }
 
 function LoginPage({notice}) {
@@ -82,6 +92,10 @@ export default function SessionRoot() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [leaving, setLeaving] = useState(false);
+  const preAuth = !session || (session.enabled && !session.username);
+  useEffect(() => {
+    if (preAuth) document.body.classList.toggle("dark", readPreAuthDarkMode());
+  }, [preAuth]);
   const load = async () => {
     const current = await sessionRequest("/auth/session");
     if (typeof current.enabled !== "boolean" || (current.username !== null && typeof current.username !== "string")) throw new Error("登录状态无效，请刷新重试");

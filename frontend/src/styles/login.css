@@ -2,8 +2,9 @@
 .login-page, .session-loading { font-family: var(--font); color: var(--ink); background: var(--paper); }
 .login-page { min-height: 100dvh; display: grid; grid-template-columns: 1fr 1fr; text-wrap: pretty; }
 .login-intro { display: flex; flex-direction: column; padding: clamp(30px, 5vw, 76px); background: var(--nav-paper); border-right: 1px solid var(--line); }
-.login-brand { display: flex; align-items: center; gap: 12px; font-family: var(--font); font-size: 22px; font-weight: 600; letter-spacing: -.6px; }
-.login-brand img { flex-shrink: 0; }
+.login-brand { display: flex; align-items: center; gap: 12px; }
+.login-brand svg { flex-shrink: 0; color: var(--mint); }
+.login-brand span { font-family: var(--font-reading); font-size: 24px; font-weight: 700; letter-spacing: -.5px; }
 .login-editorial { margin: auto 0; padding: 70px 0; }
 .login-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 2px; color: var(--mint); }
 .login-headline { font-size: clamp(32px, 3.4vw, 54px); line-height: 1.45; letter-spacing: -1.8px; font-weight: 500; margin: 24px 0; }
@@ -47,7 +48,7 @@
 @media (max-width: 760px) {
   .login-page { display: flex; flex-direction: column; }
   .login-intro { padding: 28px 26px; border-right: 0; border-bottom: 1px solid var(--line); background: var(--paper); }
-  .login-brand { font-size: 20px; }
+  .login-brand span { font-size: 21px; }
   .login-editorial, .login-intro-note { display: none; }
   .login-form-section { padding: 48px 26px; flex: 1; align-items: flex-start; }
   .login-form-wrap h1 { font-size: 30px; }

@@ -334,6 +334,7 @@ export default function App({account = null, onLogout, logoutBusy = false, logou
     const rate = storageGet("ttsRate", 0.9);
     setTtsRate(rate);
     document.body.classList.toggle("dark", darkMode);
+    try { localStorage.setItem("ec.ui.dark", JSON.stringify(Boolean(darkMode))); } catch {}
   }, [darkMode]);
 
   // 监听"测这个词"事件（从单词详情页跳转）

@@ -218,7 +218,7 @@ export default function DailySessionPage({ session, onSessionChange, onFinish, o
           </button>
           <span className="spelling-hint">{assisted ? "带提示练习，不更新排期" : "独立回忆：提交前不显示答案、长度或逐字正误"}</span>
         </div>
-        <SpellingBoard key={questions[0].card_id} formId="reinforcement-spelling-form" mode={assisted ? "assisted" : "independent"} target={assisted ? questions[0].word : null} showFirstHint={assisted} onSubmit={submit} disabled={attempt.phase !== "idle" || loading} />
+        <SpellingBoard key={questions[0].card_id} variant="qwerty" formId="reinforcement-spelling-form" mode={assisted ? "assisted" : "independent"} target={assisted ? questions[0].word : null} showFirstHint={assisted} onSubmit={submit} disabled={attempt.phase !== "idle" || loading} placeholder="点击这里，直接输入" />
       </>}
       {attempt.phase === "saved" && (
         <p role="status">{attempt.result.correct === true ? "已保存：答对" : attempt.result.correct === false ? `已保存：答错，正确拼写：${attempt.result.expected}` : "已保存：已跳过"}</p>

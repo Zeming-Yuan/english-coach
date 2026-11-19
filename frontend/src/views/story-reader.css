@@ -123,6 +123,11 @@
 .story-reader .btn-rating .rating-label { color: var(--reader-muted); }
 
 .story-library { max-width: 1000px; padding: 64px 54px; margin: 0 auto; }
+.story-generation { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; font-size: 14px; color: var(--reader-muted); }
+.story-generation-consent { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; color: var(--reader-ink); }
+.story-generation-consent input { margin: 0; accent-color: var(--reader-accent); }
+.story-generation-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.story-generation-pending, .story-generation > :is([role="status"], [role="note"], [role="alert"]) { flex-basis: 100%; margin: 0; }
 .story-library .page-title { font-family: var(--reader-serif); font-weight: 500; font-size: 34px; }
 .story-library .btn-primary { background: var(--reader-ink); color: var(--reader-paper); border: 0; border-radius: 6px; box-shadow: none; }
 .story-library .story-list { gap: 0; margin-top: 28px; }
