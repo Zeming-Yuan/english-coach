@@ -399,3 +399,254 @@ test("P2 Slice 3: DailySession reinforcement, Quiz typed items, and Mixed spell 
     expect.arrayContaining(["reinforcement", "quiz", "mixed"]),
   );
 });
+
+test("P2 Slice 4: DailySession reinforcement groups header and actions without 100%-width stacked buttons", async ({
+  appFactory,
+  page,
+}) => {
+  const app = await appFactory();
+  await app.seedCards([
+    { word: "apple", meaning: "苹果" },
+    { word: "book", meaning: "书" },
+  ]);
+
+  await page.goto(app.baseURL);
+  await page.getByRole("button", { name: "开始今天的学习", exact: true }).click();
+  for (let i = 0; i < 2; i += 1) {
+    await page.locator(".flip-hint").first().click();
+    await page.locator(".rating-1").click();
+  }
+  await expect(
+    page.getByRole("heading", { name: "本轮巩固", exact: true }),
+  ).toBeVisible();
+
+  const exitBtn = page
+    .locator(".page-head")
+    .getByRole("button", { name: "← 退出", exact: true });
+  const pauseBtn = page
+    .locator(".page-head")
+    .getByRole("button", { name: "先到这里", exact: true });
+  const hintBtn = page
+    .locator(".spelling-difficulty")
+    .getByRole("button", { name: "提示首字母", exact: true });
+  const submitBtn = page
+    .locator(".practice-actions")
+    .getByRole("button", { name: "提交答案", exact: true });
+  const skipBtn = page
+    .locator(".practice-actions")
+    .getByRole("button", { name: "跳过本轮巩固", exact: true });
+
+  await expect(exitBtn).toBeVisible();
+  await expect(pauseBtn).toBeVisible();
+  await expect(hintBtn).toBeVisible();
+  await expect(submitBtn).toBeVisible();
+  await expect(skipBtn).toBeVisible();
+
+  const containerBox = await page.locator(".view-practice").boundingBox();
+  for (const btn of [exitBtn, pauseBtn, hintBtn]) {
+    const box = await btn.boundingBox();
+    expect(box.width).toBeLessThan(containerBox.width * 0.6);
+  }
+});
+
+test("P2 Slice 4: MixedPage pauses on wrong/skipped answers, keeps 900ms auto-advance on correct, and styles recovery/error buttons with .btn", async ({
+  appFactory,
+  page,
+}) => {
+  const app = await appFactory();
+
+  // 1. DurationRecovery 与 LearningAdvice 错误态按钮均带 .btn 类名
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem("durationSeeded")) return;
+    sessionStorage.setItem("durationSeeded", "1");
+    const sampleId = "00000000-0000-4000-8000-000000000001";
+    localStorage.setItem(
+      `ec.duration.${sampleId}`,
+      JSON.stringify({
+        sample_id: sampleId,
+        kind: "review",
+        duration_ms: 4000,
+        recorded_at: "2026-10-30T12:00:00Z",
+      }),
+    );
+  });
+  await page.route(
+    "**/api/learning/recommendations",
+    (route) =>
+      route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: '{"detail":"advice-boom"}',
+      }),
+    { times: 1 },
+  );
+  await page.route(
+    "**/api/practice-sessions?purpose=targeted",
+    (route) =>
+      route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: '{"detail":"session-boom"}',
+      }),
+    { times: 1 },
+  );
+
+  await page.goto(app.baseURL);
+  const durationBanner = page.getByTestId("duration-recovery");
+  await expect(
+    durationBanner.getByRole("button", { name: "继续确认时长", exact: true }),
+  ).toHaveClass(/\bbtn\b/);
+  await expect(
+    durationBanner.getByRole("button", { name: "放弃时长记录", exact: true }),
+  ).toHaveClass(/\bbtn\b/);
+  await durationBanner
+    .getByRole("button", { name: "放弃时长记录", exact: true })
+    .click();
+
+  const adviceSection = page.getByTestId("learning-advice");
+  await expect(
+    adviceSection.getByRole("button", { name: "重新读取建议", exact: true }),
+  ).toHaveClass(/\bbtn\b/);
+  await expect(
+    adviceSection.getByRole("button", { name: "重新查找轮次", exact: true }),
+  ).toHaveClass(/\bbtn\b/);
+
+  // 2. MixedPage 空态与加载错误态按钮均带 .btn 类名
+  await page.goto(`${app.baseURL}/#/mixed`);
+  await expect(page.getByText("没有可练习的题目，先去加词吧")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "返回", exact: true }),
+  ).toHaveClass(/\bbtn\b/);
+
+  await app.seedCards([{ word: "apple", meaning: "苹果" }]);
+  await page.route(
+    "**/api/quiz/choice?limit=4",
+    (route) =>
+      route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: '{"detail":"mixed-boom"}',
+      }),
+    { times: 1 },
+  );
+  await page.reload();
+  await expect(page.getByRole("alert")).toContainText("题目加载失败");
+  await expect(
+    page.getByRole("button", { name: "重新加载", exact: true }),
+  ).toHaveClass(/\bbtn\b/);
+  await expect(
+    page.getByRole("button", { name: "返回", exact: true }),
+  ).toHaveClass(/\bbtn\b/);
+
+  // 3. MixedPage 保存失败重试按钮带 .btn；答错与跳过不自动跳题，答对 900ms 自动下一题
+  await page.clock.install();
+  await page.getByRole("button", { name: "重新加载", exact: true }).click();
+  await expect(page.locator(".study-count")).toContainText("1 / 1 · 拼写");
+
+  await page.route("**/api/typing/check", (route) => route.abort("failed"), {
+    times: 1,
+  });
+  await page.locator(".spelling-input").fill("wrong");
+  await page.locator(".spelling-input").press("Enter");
+  const retryBtn = page.getByRole("button", { name: /重试保存/ });
+  await expect(retryBtn).toHaveClass(/\bbtn\b/);
+  await retryBtn.click();
+  await expect(page.getByRole("status")).toContainText("正确答案：apple");
+
+  // 答错后经过 2000ms 仍停留在当前题，直到手动点击「下一题 →」
+  await page.clock.runFor(2000);
+  await expect(page.getByText("混合练习完成！")).toHaveCount(0);
+  await expect(page.getByRole("status")).toContainText("正确答案：apple");
+  await page.getByRole("button", { name: "下一题 →", exact: true }).click();
+  await expect(page.getByText("混合练习完成！")).toBeVisible();
+
+  // 跳过后经过 2000ms 仍停留在当前题，按 Enter 进入完成页
+  await page.getByRole("button", { name: "再来一轮", exact: true }).click();
+  await expect(page.locator(".study-count")).toContainText("1 / 1 · 拼写");
+  await page.getByRole("button", { name: "跳过这题 →", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText("已跳过");
+  await page.clock.runFor(2000);
+  await expect(page.getByText("混合练习完成！")).toHaveCount(0);
+  await page.keyboard.press("Enter");
+  await expect(page.getByText("混合练习完成！")).toBeVisible();
+
+  // 答对保留 900ms 自动跳题
+  await page.getByRole("button", { name: "再来一轮", exact: true }).click();
+  await expect(page.locator(".study-count")).toContainText("1 / 1 · 拼写");
+  await page.locator(".spelling-input").fill("apple");
+  await page.locator(".spelling-input").press("Enter");
+  await expect(page.getByRole("status")).toContainText("正确");
+  await page.clock.runFor(1000);
+  await expect(page.getByText("混合练习完成！")).toBeVisible();
+});
+
+test("P2 Slice 4: ScenePage supports Enter submit, renders 开始/继续 card buttons, and deduplicates Standard /api/cards fetches", async ({
+  appFactory,
+  page,
+}) => {
+  await page.addInitScript(() => {
+    delete window.speechSynthesis;
+  });
+  const app = await appFactory({ fixture: "ec16-tts-error.json" });
+  await app.seedCards([{ word: "water", meaning: "水" }]);
+
+  let cardsRequests = 0;
+  page.on("request", (req) => {
+    if (req.method() === "GET" && new URL(req.url()).pathname === "/api/cards") {
+      cardsRequests += 1;
+    }
+  });
+
+  await page.goto(`${app.baseURL}/#/scene`);
+  const drinksCard = page.getByRole("article", { name: "买饮品", exact: true });
+  const introCard = page.getByRole("article", { name: "自我介绍", exact: true });
+  await expect(
+    drinksCard.getByRole("button", { name: "开始", exact: true }),
+  ).toBeVisible();
+  await expect(
+    introCard.getByRole("button", { name: "开始", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "买饮品", exact: true }),
+  ).toHaveCount(0);
+
+  await drinksCard.getByRole("button", { name: "开始", exact: true }).click();
+  const scene = page.getByTestId("scene-session");
+  await expect(scene).toContainText("第 1/3 轮");
+
+  cardsRequests = 0;
+  await scene.getByRole("button", { name: "查看标准表达", exact: true }).click();
+  await expect(scene).toContainText("Can I have water, please?");
+  await scene.getByRole("button", { name: "朗读标准表达", exact: true }).click();
+  await expect(scene).toContainText("语音暂不可用");
+  await scene.getByRole("button", { name: "朗读标准表达", exact: true }).click();
+  expect(cardsRequests).toBe(1);
+
+  // 输入法组词态 Enter 不误提交；普通 Enter 直接提交本轮答案
+  const input = scene.getByRole("textbox", { name: "你的答案", exact: true });
+  await input.fill("Can I have water, please?");
+  await input.dispatchEvent("keydown", {
+    key: "Enter",
+    code: "Enter",
+    isComposing: true,
+  });
+  await expect(scene).not.toContainText("已保存 ·");
+  await input.press("Enter");
+  await expect(scene).toContainText("已保存 · 规则认可");
+
+  // 进入第 2 轮再次展示与朗读标准表达，仍复用同一次 /api/cards 结果
+  await scene.getByRole("button", { name: "下一轮", exact: true }).click();
+  await scene.getByRole("button", { name: "查看标准表达", exact: true }).click();
+  await expect(scene).toContainText("One cup, please.");
+  await scene.getByRole("button", { name: "朗读标准表达", exact: true }).click();
+  expect(cardsRequests).toBe(1);
+
+  // 返回场景列表后，已开启的场景显示「继续」，未开启的仍显示「开始」
+  await scene.getByRole("button", { name: "返回场景列表", exact: true }).click();
+  await expect(
+    drinksCard.getByRole("button", { name: "继续", exact: true }),
+  ).toBeVisible();
+  await expect(
+    introCard.getByRole("button", { name: "开始", exact: true }),
+  ).toBeVisible();
+});

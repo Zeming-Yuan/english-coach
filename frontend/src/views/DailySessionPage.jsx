@@ -182,24 +182,60 @@ export default function DailySessionPage({ session, onSessionChange, onFinish, o
   if (!session.complete) return <><BudgetNotice session={session} /><StudyPage {...studyProps} session={session} onPause={() => finish(true)} /></>;
   return <section className="view view-practice">
     <BudgetNotice session={session} />
-    <h2>本轮巩固</h2>
-    {loading && <p role="status">正在读取已保存结果…</p>}
-    {error && <div role="alert">{error}<button className="btn btn-primary" onClick={load}>重试加载</button></div>}
-    {questions?.length > 0 && attempt.phase !== "saved" && <>
-      <p>本轮最多三题，可直接结束。</p>
-      <div className="spelling-meaning">{questions[0].meaning}</div>
-      <button className="btn btn-ghost" disabled={attempt.phase !== "idle" || loading} onClick={markHint}>提示首字母</button>
-      <p>{assisted ? "带提示练习，不更新排期" : "独立回忆：提交前不显示答案、长度或逐字正误"}</p>
-      <SpellingBoard key={questions[0].card_id} formId="reinforcement-spelling-form" mode={assisted ? "assisted" : "independent"} target={assisted ? questions[0].word : null} showFirstHint={assisted} onSubmit={submit} disabled={attempt.phase !== "idle" || loading} />
-    </>}
-    {attempt.phase === "saved" && <>
-      <p role="status">{attempt.result.correct === true ? "已保存：答对" : attempt.result.correct === false ? `已保存：答错，正确拼写：${attempt.result.expected}` : "已保存：已跳过"}</p>
-      <button className="btn btn-primary" onClick={next}>{questions?.some(q => q.card_id !== attempt.result.card_id) ? "下一题 →" : "查看本轮结果"}</button>
-    </>}
-    {attempt.phase === "saving" && <p role="status">正在确认保存…</p>}
-    {attempt.phase === "failed" && <div role="alert">{attempt.error}<button className="btn btn-primary" onClick={retry}>继续确认保存</button><button className="btn btn-ghost" onClick={() => { attempt.clear(); studyProps.onAbort(); }}>退出本轮并重新加载</button></div>}
-    {questions?.length > 0 && attempt.phase !== "saved" && (
-      <div className="practice-actions">
+    <div className="page-head">
+      <button type="button" className="btn btn-ghost btn-small" onClick={studyProps.onExit}>← 退出</button>
+      <h2 className="page-title">本轮巩固</h2>
+      <button
+        type="button"
+        className="btn btn-ghost btn-small"
+        disabled={loading || attempt.phase === "saving" || attempt.phase === "failed"}
+        onClick={() => finish(true)}
+      >
+        先到这里
+      </button>
+    </div>
+    <div className="spelling-body">
+      {loading && <p role="status">正在读取已保存结果…</p>}
+      {error && (
+        <div role="alert">
+          {error}
+          <div className="save-state-actions" style={{ justifyContent: "center" }}>
+            <button className="btn btn-primary btn-small" onClick={load}>重试加载</button>
+          </div>
+        </div>
+      )}
+      {questions?.length > 0 && attempt.phase !== "saved" && <>
+        <p className="spelling-hint">本轮最多三题，可直接结束。</p>
+        <div className="spelling-meaning">{questions[0].meaning}</div>
+        <div className="spelling-difficulty" style={{ alignItems: "center", flexWrap: "wrap" }}>
+          <button
+            type="button"
+            className={`diff-btn ${assisted ? "diff-active" : ""}`}
+            disabled={attempt.phase !== "idle" || loading}
+            onClick={markHint}
+          >
+            提示首字母
+          </button>
+          <span className="spelling-hint">{assisted ? "带提示练习，不更新排期" : "独立回忆：提交前不显示答案、长度或逐字正误"}</span>
+        </div>
+        <SpellingBoard key={questions[0].card_id} formId="reinforcement-spelling-form" mode={assisted ? "assisted" : "independent"} target={assisted ? questions[0].word : null} showFirstHint={assisted} onSubmit={submit} disabled={attempt.phase !== "idle" || loading} />
+      </>}
+      {attempt.phase === "saved" && (
+        <p role="status">{attempt.result.correct === true ? "已保存：答对" : attempt.result.correct === false ? `已保存：答错，正确拼写：${attempt.result.expected}` : "已保存：已跳过"}</p>
+      )}
+      {attempt.phase === "saving" && <p role="status">正在确认保存…</p>}
+      {attempt.phase === "failed" && (
+        <div role="alert">
+          {attempt.error}
+          <div className="save-state-actions" style={{ justifyContent: "center" }}>
+            <button className="btn btn-primary btn-small" onClick={retry}>继续确认保存</button>
+            <button className="btn btn-ghost btn-small" onClick={() => { attempt.clear(); studyProps.onAbort(); }}>退出本轮并重新加载</button>
+          </div>
+        </div>
+      )}
+    </div>
+    <div className="practice-actions">
+      {questions?.length > 0 && attempt.phase !== "saved" && (
         <button
           type="submit"
           form="reinforcement-spelling-form"
@@ -209,10 +245,20 @@ export default function DailySessionPage({ session, onSessionChange, onFinish, o
           {attempt.phase === "saving" ? "正在确认…" : "提交答案"}
           {attempt.phase !== "saving" && <kbd aria-hidden="true">Enter</kbd>}
         </button>
-      </div>
-    )}
-    <button className="btn btn-ghost" disabled={loading || attempt.phase === "saving" || attempt.phase === "failed"} onClick={() => finish(true)}>先到这里</button>
-    <button className="btn btn-ghost" disabled={loading || attempt.phase !== "idle"} onClick={() => finish()}>跳过本轮巩固</button>
-    <button className="btn btn-ghost" onClick={studyProps.onExit}>← 退出</button>
+      )}
+      {attempt.phase === "saved" && (
+        <button className="btn btn-primary btn-wide" onClick={next}>
+          {questions?.some(q => q.card_id !== attempt.result.card_id) ? "下一题 →" : "查看本轮结果"}
+        </button>
+      )}
+      <button
+        type="button"
+        className="btn btn-ghost btn-small spelling-skip"
+        disabled={loading || attempt.phase !== "idle"}
+        onClick={() => finish()}
+      >
+        跳过本轮巩固
+      </button>
+    </div>
   </section>;
 }

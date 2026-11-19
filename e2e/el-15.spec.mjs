@@ -4,10 +4,12 @@ const cases = [
   {id: 'introduction', title: '自我介绍', word: 'tea', answers: ['My name is 李', 'I am from 北京', 'I like tea.']},
   {id: 'directions', title: '问路', word: 'station', answers: ['Excuse me, where is the station?', 'Should I turn left?', 'Yes, thank you.']},
 ];
+const sceneButton = (page, title) =>
+  page.getByRole('article', {name: title, exact: true}).getByRole('button', {name: /^(开始|继续)$/});
 async function openScene(app, page, title) {
   await page.goto(app.baseURL);
   await page.getByRole('button', {name: '场景练习', exact: true}).click();
-  await page.getByRole('button', {name: title, exact: true}).click();
+  await sceneButton(page, title).click();
 }
 async function submit(page, text) {
   const scene = page.getByTestId('scene-session');
@@ -69,9 +71,9 @@ test('EL-15 expansion rollback keeps drinks and original history available', asy
   const target = await appFactory({fixture: 'el15-disabled.json'});
   await page.goto(target.baseURL);
   await page.getByRole('button', {name: '场景练习', exact: true}).click();
-  await expect(page.getByRole('button', {name: '买饮品', exact: true})).toBeVisible();
-  await expect(page.getByRole('button', {name: '自我介绍', exact: true})).toHaveCount(0);
-  await expect(page.getByRole('button', {name: '问路', exact: true})).toHaveCount(0);
+  await expect(sceneButton(page, '买饮品')).toBeVisible();
+  await expect(sceneButton(page, '自我介绍')).toHaveCount(0);
+  await expect(sceneButton(page, '问路')).toHaveCount(0);
   const preview = await target.request.post('/api/import/preview', {data: backup});
   expect(preview.ok()).toBeTruthy();
   expect((await target.request.post('/api/import/cards', {data: {backup, expected_revision: (await preview.json()).expected_revision}})).ok()).toBeTruthy();
@@ -96,13 +98,12 @@ for (const item of cases) {
       };
       await page.goto(app.baseURL);
       await page.getByRole('button', {name: '场景练习', exact: true}).click();
-      await expect(page.getByRole('button', {name: item.title, exact: true})).toBeVisible();
+      await expect(sceneButton(page, item.title)).toBeVisible();
       await failOnce('**/api/practice-sessions');
-      await page.getByRole('button', {name: item.title, exact: true}).click();
+      await sceneButton(page, item.title).click();
       await expect(page.getByRole('alert')).toContainText('场景尚未确认保存');
       const creation = await page.evaluate(() => JSON.parse(localStorage.getItem('ec.context.scene:create')));
       await page.reload();
-      await page.getByRole('button', {name: '场景练习', exact: true}).click();
       await page.getByRole('button', {name: '继续确认保存', exact: true}).click();
       const scene = page.getByTestId('scene-session');
       await expect(scene).toContainText(item.title);
@@ -206,10 +207,10 @@ test('EL-15 switching scenes resumes each saved task without crossing contexts',
   await openScene(app, page, '自我介绍');
   await submit(page, 'My name is 李');
   await page.getByRole('button', {name: '返回场景列表', exact: true}).click();
-  await page.getByRole('button', {name: '问路', exact: true}).click();
+  await sceneButton(page, '问路').click();
   await expect(page.getByTestId('scene-session')).toContainText('第 1/3 轮');
   await page.getByRole('button', {name: '返回场景列表', exact: true}).click();
-  await page.getByRole('button', {name: '自我介绍', exact: true}).click();
+  await sceneButton(page, '自我介绍').click();
   await expect(page.getByTestId('scene-session')).toContainText('第 2/3 轮');
   await expect(page.getByRole('button', {name: '新开一轮', exact: true})).toHaveCount(0);
   const backup = await (await app.request.get('/api/export/backup')).json();
@@ -222,7 +223,7 @@ test('EL-15 preparation hides English answers separately for all three scenes', 
   await page.goto(app.baseURL);
   await page.getByRole('button', {name: '场景练习', exact: true}).click();
   for (const title of ['买饮品', '自我介绍', '问路']) {
-    const section = page.locator('article').filter({has: page.getByRole('button', {name: title, exact: true})});
+    const section = page.getByRole('article', {name: title, exact: true});
     await expect(section.getByLabel('词汇准备状态')).toBeVisible();
     await expect(section).not.toContainText(/I like tea|Should I turn left|Can I have water/);
     await expect(section.getByLabel('词汇准备状态')).not.toContainText(/tea|left|water/);

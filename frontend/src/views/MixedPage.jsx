@@ -248,7 +248,7 @@ export default function MixedPage({ onExit }) {
   }, [feedback, idx, items.length]);
   useEffect(() => {
     if (!feedback) return;
-    const timer = setTimeout(next, feedback.correct ? 900 : 1500);
+    const timer = feedback.correct ? setTimeout(next, 900) : null;
     const enter = (e) => {
       if (e.key === "Enter") {
         e.preventDefault();
@@ -257,7 +257,7 @@ export default function MixedPage({ onExit }) {
     };
     document.addEventListener("keydown", enter);
     return () => {
-      clearTimeout(timer);
+      if (timer) clearTimeout(timer);
       document.removeEventListener("keydown", enter);
     };
   }, [feedback, next]);
@@ -386,14 +386,25 @@ export default function MixedPage({ onExit }) {
     return (
       <div className="story-empty">
         <div role="alert">题目加载失败，请重试。</div>
-        <button onClick={load}>重新加载</button>
-        <button onClick={onExit}>返回</button>
+        <div className="save-state-actions" style={{ justifyContent: "center" }}>
+          <button className="btn btn-primary" onClick={load}>
+            重新加载
+          </button>
+          <button className="btn btn-ghost" onClick={onExit}>
+            返回
+          </button>
+        </div>
       </div>
     );
   if (phase === "empty")
     return (
       <div className="story-empty">
-        没有可练习的题目，先去加词吧<button onClick={onExit}>返回</button>
+        <div>没有可练习的题目，先去加词吧</div>
+        <div className="save-state-actions" style={{ justifyContent: "center" }}>
+          <button className="btn btn-ghost" onClick={onExit}>
+            返回
+          </button>
+        </div>
       </div>
     );
   if (phase === "done")
@@ -536,18 +547,23 @@ export default function MixedPage({ onExit }) {
         {saving && <div>保存中…</div>}
         {storageWarning && <div role="alert">{storageWarning}</div>}
         {error && (
-          <div role="alert">
-            {error.message}
-            {error.reload ? (
-              <button onClick={reload}>重新加载题目</button>
-            ) : (
-              <button
-                disabled={saving}
-                onClick={() => send(pendingRef.current)}
-              >
-                {loadMixedPending() ? "继续确认 / 重试保存" : "重试保存"}
-              </button>
-            )}
+          <div role="alert" className="quiz-feedback err">
+            <div>{error.message}</div>
+            <div className="save-state-actions" style={{ justifyContent: "center" }}>
+              {error.reload ? (
+                <button className="btn btn-primary btn-small" onClick={reload}>
+                  重新加载题目
+                </button>
+              ) : (
+                <button
+                  className="btn btn-primary btn-small"
+                  disabled={saving}
+                  onClick={() => send(pendingRef.current)}
+                >
+                  {loadMixedPending() ? "继续确认 / 重试保存" : "重试保存"}
+                </button>
+              )}
+            </div>
           </div>
         )}
         {feedback && (
@@ -577,7 +593,11 @@ export default function MixedPage({ onExit }) {
           </button>
         )}
         <button
-          className="btn btn-ghost btn-small spelling-skip"
+          className={
+            feedback
+              ? "btn btn-primary btn-wide"
+              : "btn btn-ghost btn-small spelling-skip"
+          }
           disabled={saving || !!error}
           onClick={feedback ? next : () => answer(null, true)}
         >
