@@ -479,6 +479,7 @@ export default function MixedPage({ onExit }) {
             </div>
             <SpellingBoard
               key={idx}
+              formId="mixed-spelling-form"
               mode={assistance.length ? "assisted" : "independent"}
               target={assistance.length ? q.word : null}
               showFirstHint={assistance.includes("first_letter")}
@@ -564,6 +565,17 @@ export default function MixedPage({ onExit }) {
         )}
       </div>
       <div className="practice-actions">
+        {!feedback && item.type === "spell" && (
+          <button
+            type="submit"
+            form="mixed-spelling-form"
+            className="btn btn-primary btn-wide qwerty-submit"
+            disabled={locked}
+          >
+            {saving ? "保存中…" : "提交答案"}
+            {!saving && <kbd aria-hidden="true">Enter</kbd>}
+          </button>
+        )}
         <button
           className="btn btn-ghost btn-small spelling-skip"
           disabled={saving || !!error}

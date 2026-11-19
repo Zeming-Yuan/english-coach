@@ -338,3 +338,64 @@ test("P2 Slice 2: unified navigation labels/icons, mobile story topbar entries, 
   ).toHaveCount(0);
 });
 
+test("P2 Slice 3: DailySession reinforcement, Quiz typed items, and Mixed spell items expose explicit submit buttons in .practice-actions", async ({
+  appFactory,
+  page,
+}) => {
+  const app = await appFactory();
+  const [cardId] = await app.seedCards([{ word: "apple", meaning: "苹果" }]);
+
+  // 1. 每日轮次巩固（DailySessionPage）：软键盘收起（blur）后点击 .practice-actions「提交答案」完成提交保存
+  await page.goto(app.baseURL);
+  await page.getByRole("button", { name: "开始今天的学习", exact: true }).click();
+  await page.locator(".flip-hint").first().click();
+  await page.locator(".rating-1").click();
+  await expect(
+    page.getByRole("heading", { name: "本轮巩固", exact: true }),
+  ).toBeVisible();
+
+  const dailySubmit = page
+    .locator(".practice-actions")
+    .getByRole("button", { name: "提交答案", exact: true });
+  await expect(dailySubmit).toBeVisible();
+  await page.locator(".spelling-input").fill("apple");
+  await page.locator(".spelling-input").blur();
+  await dailySubmit.click();
+  await expect(page.getByRole("status")).toContainText("已保存：答对");
+  await page.getByRole("button", { name: "查看本轮结果", exact: true }).click();
+  await page.getByRole("button", { name: "← 返回队列", exact: true }).click();
+
+  // 2. 测验输入题（QuizPage cn2en）：点击 .practice-actions「提交答案」提交保存
+  await page.goto(`${app.baseURL}/#/quiz`);
+  await expect(page.locator(".quiz-prompt")).toContainText("苹果");
+  const quizSubmit = page
+    .locator(".practice-actions")
+    .getByRole("button", { name: "提交答案", exact: true });
+  await expect(quizSubmit).toBeVisible();
+  await page.locator(".spelling-input").fill("apple");
+  await page.locator(".spelling-input").blur();
+  await quizSubmit.click();
+  await expect(page.getByRole("status")).toContainText("已保存");
+  await expect(page.locator(".quiz-feedback")).toContainText("正确");
+
+  // 3. 混合练习拼写题（MixedPage spell）：空输入点击不误提交，填写后点击 .practice-actions「提交答案」提交保存
+  await page.goto(`${app.baseURL}/#/mixed`);
+  await expect(page.locator(".study-count")).toContainText("拼写");
+  const mixedSubmit = page
+    .locator(".practice-actions")
+    .getByRole("button", { name: "提交答案", exact: true });
+  await expect(mixedSubmit).toBeVisible();
+  await mixedSubmit.click();
+  await expect(page.getByRole("status")).toHaveCount(0);
+
+  await page.locator(".spelling-input").fill("apple");
+  await page.locator(".spelling-input").blur();
+  await mixedSubmit.click();
+  await expect(page.getByRole("status")).toContainText("已保存");
+
+  const detail = await (await app.request.get(`/api/cards/${cardId}`)).json();
+  const sources = detail.learning_events.map((e) => e.source);
+  expect(sources).toEqual(
+    expect.arrayContaining(["reinforcement", "quiz", "mixed"]),
+  );
+});

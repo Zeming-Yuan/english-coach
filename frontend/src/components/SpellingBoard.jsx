@@ -137,12 +137,24 @@ export default function SpellingBoard({
     </>
   );
 
-  if (!qwerty) return fields;
+  const handleFormSubmit = (e) => {
+    e.preventDefault();
+    if (!composing) submit();
+  };
+
+  if (!qwerty) {
+    if (!formId) return fields;
+    return (
+      <form id={formId} onSubmit={handleFormSubmit}>
+        {fields}
+      </form>
+    );
+  }
   return (
     <form
       id={formId}
       className={`qwerty-typing ${independent ? "qwerty-typing--independent" : "qwerty-typing--assisted"}`}
-      onSubmit={(e) => { e.preventDefault(); if (!composing) submit(); }}
+      onSubmit={handleFormSubmit}
     >
       <div className="qwerty-typing-line" data-feedback={feedbackState}>
         {fields}

@@ -293,6 +293,7 @@ export default function QuizPage({ onExit, onAddWords }) {
         {(q.type === "cn2en" || q.type === "fill") && !feedback && (
           <SpellingBoard
             key={q.id}
+            formId="quiz-spelling-form"
             mode="independent"
             onSubmit={handleTypedSubmit}
             placeholder="输入英文单词…"
@@ -384,6 +385,17 @@ export default function QuizPage({ onExit, onAddWords }) {
       <div className="practice-actions">
         {!feedback && (
           <>
+            {(q.type === "cn2en" || q.type === "fill") && (
+              <button
+                type="submit"
+                form="quiz-spelling-form"
+                className="btn btn-primary btn-wide qwerty-submit"
+                disabled={saving}
+              >
+                {saving ? "保存中…" : "提交答案"}
+                {!saving && <kbd aria-hidden="true">Enter</kbd>}
+              </button>
+            )}
             {(q.type === "choice" || q.type === "related") && (
               <button
                 className="btn btn-primary btn-wide"
