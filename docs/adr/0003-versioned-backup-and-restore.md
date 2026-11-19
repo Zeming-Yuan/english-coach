@@ -84,3 +84,7 @@ V2 的 `reviews.card_id` 必须唯一；预览和执行都在安全副本/数据
 V3 登记所有权收口到 app/services/backup_v3_registry.py，原 schema 注册 API 重导出。导出、校验、映射共用九个扩展登记；V1/V2 分支、安全副本与原子替换保留。预览逐项显示缺失集合，全量替换展示导入 0/当前替换量，V1 部分恢复明确保留未包含记录。
 
 最终 owner/现存调用者、回退与实际验证范围见 [EL-20 契约核对](../verification/el20-contract-evidence-consumers.md)。
+
+## 补充：学习记录页收口备份与恢复入口
+
+学习记录页（`StatsPage.jsx`）不再暴露旧局部导出（`GET /api/export/cards`）或无预览直调导入（`POST /api/import/cards`）按钮，仅保留「导出 Anki / 成绩单」并将备份与恢复统一引导至 `BackupPage`（走 V3 导出与预览确认安全流）；后端 `GET /api/export/cards` 兼容端点按决策 7 保持不变。

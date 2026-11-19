@@ -275,3 +275,135 @@ test("word detail example regeneration previews before saving so keeping old pre
   await expect(page.locator(".word-detail-meaning")).toHaveText("并发更新的苹果");
   await expect(page.getByTestId("revision-panel")).toContainText("第 3 版");
 });
+
+test("stats page routes backup to V3 BackupPage and exports non-overlapping themed report releasing ObjectURL", async ({page}) => {
+  await page.addInitScript(() => {
+    window.__canvasCalls = {texts: [], fills: [], createdUrls: [], revokedUrls: []};
+    const origFillText = CanvasRenderingContext2D.prototype.fillText;
+    CanvasRenderingContext2D.prototype.fillText = function (text, x, y, ...rest) {
+      window.__canvasCalls.texts.push({text: String(text), x, y, fillStyle: String(this.fillStyle)});
+      return origFillText.call(this, text, x, y, ...rest);
+    };
+    const origFillRect = CanvasRenderingContext2D.prototype.fillRect;
+    CanvasRenderingContext2D.prototype.fillRect = function (x, y, w, h) {
+      window.__canvasCalls.fills.push({x, y, w, h, fillStyle: String(this.fillStyle).toLowerCase()});
+      return origFillRect.call(this, x, y, w, h);
+    };
+    const origCreate = URL.createObjectURL.bind(URL);
+    const origRevoke = URL.revokeObjectURL.bind(URL);
+    URL.createObjectURL = function (blob) {
+      const url = origCreate(blob);
+      window.__canvasCalls.createdUrls.push(url);
+      return url;
+    };
+    URL.revokeObjectURL = function (url) {
+      window.__canvasCalls.revokedUrls.push(url);
+      return origRevoke(url);
+    };
+  });
+
+  await page.route("**/api/**", route => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === "/api/today") return route.fulfill({json: {queue: [], target: 0, new_cards: [], due_cards: [], error_cards: []}});
+    if (path === "/api/stats") {
+      return route.fulfill({
+        json: {
+          total_cards: 128,
+          graduated: 34,
+          streak: 12,
+          reviewed_today: 5,
+          attempted_today: 6,
+          skipped_today: 0,
+          evidence_counts: {verified: 10, weak: 2, stale: 1, history_incomplete: 0, insufficient: 115},
+          evidence_samples: 25,
+        },
+      });
+    }
+    if (path === "/api/stats/history") return route.fulfill({json: {days: []}});
+    if (path === "/api/stats/weekly") return route.fulfill({json: {this_week: 85, weeks: []}});
+    if (path === "/api/export/anki") return route.fulfill({contentType: "text/csv", body: "apple\t苹果\n"});
+    if (path === "/api/import/preview") {
+      return route.fulfill({
+        json: {
+          mode: "full_replace",
+          expected_revision: "rev-safe",
+          counts: {cards: 1, learning_events: 0},
+          impact: {replaced: {cards: 1, learning_events: 0}},
+          missing_collections: [],
+        },
+      });
+    }
+    if (path === "/api/import/cards") return route.fulfill({json: {mode: "full_replace", counts: {cards: 1}}});
+    if (path === "/api/recommended") return route.fulfill({json: {recommended: []}});
+    if (path === "/api/lessons") return route.fulfill({json: {lessons: [], next_level: 1, is_done: false, counts: {generated: 0}}});
+    if (path === "/api/stories") return route.fulfill({json: {stories: []}});
+    return route.fulfill({status: 503, json: {detail: "unavailable fixture"}});
+  });
+
+  await ui.mount(page, "/src/App.jsx");
+  await page.getByRole("button", {name: "查看学习记录"}).click();
+  await expect(page.getByRole("heading", {name: "学习记录"})).toBeVisible();
+
+  // Legacy partial export / unpreviewed import controls are removed
+  await expect(page.getByRole("button", {name: "备份词库"})).toHaveCount(0, {timeout: 2000});
+  await expect(page.getByRole("button", {name: "恢复词库"})).toHaveCount(0);
+  await expect(page.locator("input[type='file']")).toHaveCount(0);
+  await expect(page.getByRole("button", {name: "导出 Anki", exact: true})).toBeVisible();
+  const ankiDownload = page.waitForEvent("download");
+  await page.getByRole("button", {name: "导出 Anki", exact: true}).click();
+  expect((await ankiDownload).suggestedFilename()).toBe("englishcoach_anki.csv");
+
+  // Report canvas has non-overlapping rows within bounds, warm product theme colors, and revokes ObjectURL
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", {name: "成绩单", exact: true}).click();
+  await downloadPromise;
+
+  await expect.poll(async () => {
+    const c = await page.evaluate(() => window.__canvasCalls);
+    return c.createdUrls.length >= 2 && c.createdUrls.every(u => c.revokedUrls.includes(u));
+  }, {timeout: 3000}).toBe(true);
+
+  const canvasAudit = await page.evaluate(() => window.__canvasCalls);
+  const yOf = label => canvasAudit.texts.find(t => t.text.includes(label))?.y;
+  const orderedYs = [
+    yOf("EnglishCoach 学习报告"),
+    yOf("零基础英语"),
+    yOf("累计词汇"),
+    yOf("句子练习已解锁"),
+    yOf("连续天数"),
+    yOf("独立回忆已有证据"),
+    yOf("历史证据，待复测"),
+    yOf("历史依据不完整"),
+    yOf("坚持每天"),
+  ];
+  for (let i = 0; i < orderedYs.length; i += 1) {
+    expect(orderedYs[i]).toBeGreaterThan(0);
+    expect(orderedYs[i]).toBeLessThan(460);
+    if (i > 0) expect(orderedYs[i] - orderedYs[i - 1]).toBeGreaterThanOrEqual(18);
+  }
+  const allStyles = [
+    ...canvasAudit.fills.map(f => f.fillStyle.toLowerCase()),
+    ...canvasAudit.texts.map(t => t.fillStyle.toLowerCase()),
+  ];
+  for (const legacyColor of ["#f7fbfa", "#2dbe9e", "#1e2a32", "#7a8b94", "#d9e2e6"]) {
+    expect(allStyles).not.toContain(legacyColor);
+  }
+  expect(allStyles).toContain("#a26243");
+  expect(allStyles).toContain("#fcfaf6");
+  expect(allStyles).toContain("#302e2b");
+  expect(allStyles).toContain("#736c63");
+
+  // Backup & Restore button routes uniformly to V3 BackupPage, returns to StatsPage, and runs V3 preview/confirm
+  await page.getByRole("button", {name: "备份与恢复", exact: true}).click();
+  await expect(page.getByLabel("选择备份文件")).toBeVisible();
+  await page.getByRole("button", {name: /返回/}).click();
+  await expect(page.getByRole("heading", {name: "学习记录"})).toBeVisible();
+  await page.getByRole("button", {name: "备份与恢复", exact: true}).click();
+  await page.getByLabel("选择备份文件").setInputFiles({
+    name: "backup.json",
+    mimeType: "application/json",
+    buffer: Buffer.from("{}"),
+  });
+  await page.getByRole("button", {name: "确认替换学习数据", exact: true}).click();
+  await expect(page.getByTestId("release-journey")).toBeVisible();
+});
