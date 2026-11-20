@@ -115,7 +115,7 @@ def test_new_cards_exclude_casefolded_self_links(db_session, monkeypatch):
             ]
         },
     )
-    cards = card_generator.generate_cards(["happy"], db_session)
+    cards = card_generator.generate_cards(["happy"], db_session).cards
     assert cards[0].related_words == [
         {"kind": "family", "word": "happiness", "meaning": "幸福"}
     ]

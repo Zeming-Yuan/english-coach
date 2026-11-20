@@ -1,17 +1,21 @@
 import json
+from dataclasses import dataclass
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.card import Card
 from app.services.llm import generate_json
+from app.services.llm_client import LLMNotConfigured
 from app.services.word_expansions import (
     EXPANSIONS_PROMPT,
     has_expansions,
     normalize_expansions,
 )
+from app.services.write_transaction import run_write
 
 SYSTEM_PROMPT = EXPANSIONS_PROMPT + (
-    "你是零基础英语老师。为每个单词生成学习卡片，包含以下字段：\n"
+    "你是零基础英语老师。为每个输入条目各生成一张学习卡片。word 使用原条目，保留完整短语和内部空格。其他字段：\n"
     "1. phonetic: 音标\n"
     "2. meaning: 中文释义（简洁）\n"
     "3. example: 一个完整英文例句（必须有具体场景、人物或动作，至少 8 个单词。"
@@ -81,21 +85,74 @@ def regenerate_example(word: str) -> tuple[str, str, str]:
     return example, example_cn, explanation
 
 
-def generate_cards(words: list[str], db: Session) -> list[Card]:
-    """批量生成词卡：调 LLM → 解析 JSON → 入库（已存在的单词跳过）。"""
-    existing = {w for (w,) in db.query(Card.word).filter(Card.word.in_(words)).all()}
-    new_words = list(dict.fromkeys(w for w in words if w not in existing))
-    if not new_words:
-        return []  # 全部已存在：不调 API，白烧钱（教学点 12）
+@dataclass
+class CardGeneration:
+    cards: list[Card]
+    existing_words: list[str]
+    failed_words: list[str]
+    error: ValueError | LLMNotConfigured | None = None
+
+
+def _word_key(word: str) -> str:
+    return word.strip().casefold()
+
+
+def _existing_word_keys(db: Session, requested: dict[str, str]) -> set[str]:
+    return {
+        key
+        for word in db.scalars(select(Card.word).where(Card.kind == "word"))
+        if (key := _word_key(word)) in requested
+    }
+
+
+def generate_cards(words: list[str], db: Session) -> CardGeneration:
+    """Generate only confirmed entries and report the outcome for each distinct word."""
+    requested: dict[str, str] = {}
+    for word in words:
+        if key := _word_key(word):
+            requested.setdefault(key, word.strip())
+    existing = _existing_word_keys(db, requested)
+    missing = {key: word for key, word in requested.items() if key not in existing}
+    if not missing:
+        return CardGeneration([], list(requested.values()), [])
+
+    # Release the read transaction while waiting for the model.
+    db.rollback()
+    error = None
+    try:
+        candidates = _generate_new_cards(missing)
+    except (ValueError, LLMNotConfigured) as exc:
+        error = exc
+        candidates = {}
+
+    def finish(session: Session) -> CardGeneration:
+        result = CardGeneration([], [], [], error)
+        current = _existing_word_keys(session, requested)
+        for key, word in requested.items():
+            if key in current:
+                result.existing_words.append(word)
+            elif key in candidates:
+                card = candidates[key]
+                session.add(card)
+                result.cards.append(card)
+            else:
+                result.failed_words.append(word)
+        return result
+
+    return run_write(db, finish) if candidates else finish(db)
+
+
+def _generate_new_cards(requested: dict[str, str]) -> dict[str, Card]:
     data = generate_json(
-        SYSTEM_PROMPT, json.dumps({"words": new_words}, ensure_ascii=False)
+        SYSTEM_PROMPT,
+        json.dumps({"words": list(requested.values())}, ensure_ascii=False),
     )
     if data is None:
         raise ValueError("LLM 失败")
     generated = data.get("cards")
     if not isinstance(generated, list):
         raise ValueError("LLM 返回的词卡格式错误")  # noqa: TRY004 — 生成失败的公共契约
-    cards = []
+    cards: dict[str, Card] = {}
     content_fields = {
         "word",
         "phonetic",
@@ -107,13 +164,13 @@ def generate_cards(words: list[str], db: Session) -> list[Card]:
         "related_words",
         "chunks",
     }
-    seen = set(existing)
     for c in generated:
         if not isinstance(c, dict):
             continue
         if not isinstance(c.get("word"), str) or not c["word"].strip():
             continue
-        if c["word"] in seen:
+        word_key = _word_key(c["word"])
+        if word_key not in requested or word_key in cards:
             continue
         if any(
             key in c and c[key] is not None and not isinstance(c[key], str)
@@ -122,6 +179,7 @@ def generate_cards(words: list[str], db: Session) -> list[Card]:
             continue
         try:
             c = {key: value for key, value in c.items() if key in content_fields}
+            c["word"] = requested[word_key]
             if not isinstance(c.get("contexts"), list):
                 c["contexts"] = []
             c["related_words"] = normalize_expansions(c.get("related_words"), c["word"])
@@ -141,10 +199,7 @@ def generate_cards(words: list[str], db: Session) -> list[Card]:
                 c["example"] = ""
                 c["example_cn"] = ""
                 c["chunks"] = None
-            cards.append(Card(**c, kind="word", difficulty="basic"))
-            seen.add(c["word"])
+            cards[word_key] = Card(**c, kind="word", difficulty="basic")
         except (TypeError, ValueError):
             continue  # 跳过格式错误的卡，不阻塞整批
-    db.add_all(cards)
-    db.commit()
     return cards

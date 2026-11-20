@@ -1,0 +1,10 @@
+{
+  "llm_responses": [
+    {"cards": [
+      {"word": "apple", "meaning": "苹果"},
+      {"word": "juice", "meaning": "果汁"},
+      {"word": "apple juice", "meaning": "苹果汁"}
+    ]},
+    {"cards": [{"word": "pear", "meaning": "梨"}]}
+  ]
+}
