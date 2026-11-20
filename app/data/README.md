@@ -61,3 +61,9 @@ please。匹配限制为一杯水，其他饮品或数量的类似句式仍未�
 
 `scene_feedback/v2.json` 为未判定提供 “Let us continue.” 或 “OK. Let us continue.”，
 已知不满足仍用相应纠正，跳过沿用继续回应。原 `v1.json` 供已保存反馈读取与恢复。
+
+## S95-10 场景准备词汇（人工核对 2026-11-20）
+
+本次任务委托人已核对并接受 `scene_vocabulary.json` 中 water、one、thank、tea、
+station、left 六个词的中文义项与英文例句。材料按现行规则列出的场景目标词顺序提供，目录
+只报告准备状态。已入库词使用当前词卡内容和修订，缺词使用核对材料并保持在词库之外。

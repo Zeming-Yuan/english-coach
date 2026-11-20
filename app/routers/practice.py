@@ -255,3 +255,13 @@ def scenes(
         "enabled": request.app.state.settings.scenes_enabled,
         "scenes": catalog,
     }
+
+
+@router.get("/scenes/{scene_id}/vocabulary")
+def vocabulary(scene_id: str, db: Session = Depends(get_db)):
+    from app.services.scenes import scene_vocabulary
+
+    try:
+        return scene_vocabulary(db, scene_id)
+    except PracticeNotFoundError as error:
+        raise _not_found(error) from error

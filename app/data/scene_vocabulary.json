@@ -1,0 +1,15 @@
+{
+  "drinks": {
+    "water": {"meaning": "水", "example": "Water is cold."},
+    "one": {"meaning": "一", "example": "I have one book."},
+    "thank": {"meaning": "感谢", "example": "I want to thank you for your help."}
+  },
+  "introduction": {
+    "tea": {"meaning": "茶", "example": "The tea is warm."}
+  },
+  "directions": {
+    "station": {"meaning": "车站", "example": "The station opens early."},
+    "left": {"meaning": "左边", "example": "The door is on the left."},
+    "thank": {"meaning": "感谢", "example": "I want to thank you for your help."}
+  }
+}
