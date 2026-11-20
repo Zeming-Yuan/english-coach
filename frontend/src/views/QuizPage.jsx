@@ -83,7 +83,8 @@ export default function QuizPage({ onExit, onAddWords }) {
     speakOnAnswer: true,
     autoAdvanceMs: null,
     onAnswerAudio: (item) => {
-      if (!mountedRef.current) return;
+      // The related answer is a different word from this question's source card.
+      if (!mountedRef.current || item.type === "related") return;
       return recordPracticeContact({
         cardId: item.q.card_id,
         revision: item.q.content_revision,
@@ -228,7 +229,6 @@ export default function QuizPage({ onExit, onAddWords }) {
                   </div>
                 ))}
               </div>
-              <div className="quiz-wrong-hint">这些词会出现在明天的复习队列里 📚</div>
             </>
           )}
         </div>

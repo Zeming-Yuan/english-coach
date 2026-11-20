@@ -492,3 +492,47 @@ def test_reviews_returns_question_context_errors_without_saving(ec, invalid):
     detail = ec.client.get(f"/api/cards/{question['card_id']}").json()
     assert detail["learning_events"] == []
     assert detail["memory_state"] is None
+
+
+def test_five_question_related_replay_preserves_one_recognition_event(ec):
+    _seed_words(ec, ("banana", "cherry", "date", "egg"))
+    apple = ec.seed_card(
+        word="apple",
+        meaning="苹果",
+        related_words=[
+            {"word": "applesauce", "meaning": "苹果酱"},
+            {"word": "apply", "meaning": "申请"},
+        ],
+    )
+    card_path = f"/api/cards/{apple}"
+    question = next(
+        q
+        for q in ec.client.get("/api/quiz?limit=5").json()["questions"]
+        if q["type"] == "related"
+    )
+
+    before = ec.client.get(card_path).json()
+    assert before["learning_events"] == []
+    assert before["memory_state"] is None
+    payload = _quiz_payload(question, question["answer"], kind="related")
+    saved = _post_batch(ec, [payload])
+    assert saved.status_code == 200
+    replay = _post_batch(ec, [payload])
+    assert replay.status_code == 200
+    assert saved.json() == replay.json()
+    assert saved.json()["details"][0]["scheduled"] is False
+
+    other = next(
+        option for option in question["options"] if option != question["answer"]
+    )
+    assert _post_batch(ec, [{**payload, "answer": other}]).status_code == 409
+    assert ec.client.put(card_path, json={"meaning": "一种水果"}).status_code == 200
+    stale_payload = {**payload, "submission_id": str(uuid4())}
+    assert _post_batch(ec, [stale_payload]).status_code == 409
+    assert _post_batch(ec, [payload]).json() == saved.json()
+
+    detail = ec.client.get(card_path).json()
+    assert detail["memory_state"] is None
+    assert len(detail["learning_events"]) == 1
+    assert detail["learning_events"][0]["kind"] == "related"
+    assert detail["learning_evidence"]["recall"]["status"] == "insufficient"
