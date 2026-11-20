@@ -303,7 +303,8 @@ def scene_payload(
         )
         and message is None
         and scene_status(out) == "independent"
-        and any(t["novel"] for i in out for t in i.get("target_mapping", [])),
+        and any(t["novel"] for i in out for t in i.get("target_mapping", []))
+        and rules["content_hash"] == scene_rules(practice.scene_id)["content_hash"],
         "message": message,
         "can_continue": message is None,
         "creation_enabled": runtime is None

@@ -461,7 +461,7 @@ def test_el14_schema_rollback_refuses_to_remove_scene_history(ec):
     # barrier is exercised separately on its actual schema in EL-21.
     with pytest.raises(
         RuntimeError,
-        match="Keep saved replay identities; roll back the feature instead",
+        match="Keep contextual practice history; roll back the entry point",
     ):
         command.downgrade(config, "el13_merge_story_heads")
     assert ec.snapshot() == before

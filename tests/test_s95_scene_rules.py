@@ -39,3 +39,26 @@ def test_unrecognized_request_and_retry_do_not_create_application_evidence(ec):
         assert completed["session"]["status"] == "completed"
     card = ec.client.get(f"/api/cards/{card_id}").json()
     assert card["learning_evidence"]["application"]["status"] == "insufficient"
+
+
+def test_v1_can_finish_independently_with_historical_application_evidence(
+    ec, monkeypatch
+):
+    from app.services.scenes import SCENE_RULE_FILES
+
+    card_id = ec.seed_card(word="water", meaning="水")
+    with monkeypatch.context() as patch:
+        patch.setitem(SCENE_RULE_FILES, "drinks", {"drinks-v1": "drinks-v1.json"})
+        run = create_scene(ec).json()
+
+    for index, text in enumerate(
+        ("Can I have water, please?", "One cup, please.", "Yes, thank you.")
+    ):
+        saved = answer(ec, run, index, text)
+        assert saved.status_code == 200, saved.text
+        run = saved.json()["session"]
+
+    assert run["status"] == "independent"
+    assert run["application_verified"] is False
+    card = ec.client.get(f"/api/cards/{card_id}").json()
+    assert card["learning_evidence"]["application"]["status"] == "stale"
