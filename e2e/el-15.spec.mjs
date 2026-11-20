@@ -5,7 +5,7 @@ const cases = [
   {id: 'directions', title: '问路', word: 'station', answers: ['Excuse me, where is the station?', 'Should I turn left?', 'Yes, thank you.']},
 ];
 const sceneButton = (page, title) =>
-  page.getByRole('article', {name: title, exact: true}).getByRole('button', {name: /^(开始|继续)$/});
+  page.getByRole('article', {name: title, exact: true}).getByRole('button', {name: /^(直接挑战|继续)$/});
 async function openScene(app, page, title) {
   await page.goto(app.baseURL);
   await page.getByRole('button', {name: '场景练习', exact: true}).click();

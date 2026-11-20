@@ -9,10 +9,11 @@ from datetime import UTC
 from pathlib import Path
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import and_, false, func, select
 from sqlalchemy.orm import Session
 
 from app.models.card import Card
+from app.models.content_revision import ContentRevision
 from app.models.lesson import Lesson
 from app.models.practice import PracticeItem, PracticeSession
 from app.runtime import Runtime, SystemClock
@@ -361,7 +362,6 @@ def judge(task: dict, answer: str | None, skipped: bool = False) -> str:
 def check_scene_current(
     db: Session, practice: PracticeSession, item: PracticeItem
 ) -> None:
-    from app.models.content_revision import ContentRevision
     from app.services.practice import PracticeStaleError
 
     # The reviewed drink versions can still finish under their frozen material.
@@ -683,22 +683,86 @@ def _application_summary(status: str, count: int, last_at) -> dict:
     }
 
 
+def _target_words(rules: dict) -> list[str]:
+    return list(
+        dict.fromkeys(word for task in rules["tasks"] for word in task["target_words"])
+    )
+
+
+def _target_word_cards(words: list[str]):
+    alternatives = "|".join(re.escape(word) for word in words)
+    # SQLite's default trim only removes spaces; \s also accepts pasted tabs
+    # and Unicode whitespace. Match the entire trimmed headword.
+    matches = func.lower(Card.word).regexp_match(rf"\A\s*(?:{alternatives})\s*\Z")
+    return (
+        select(Card)
+        .where(Card.kind == "word", matches if words else false())
+        .order_by(Card.id)
+    )
+
+
+def scene_vocabulary(db: Session, scene_id: str) -> dict:
+    """Read reviewed vocabulary and current word-card revisions without creating either."""
+    rules = scene_rules(scene_id)
+    words = _target_words(rules)
+    material_path = Path(__file__).parents[1] / "data/scene_vocabulary.json"
+    material = json.loads(material_path.read_text(encoding="utf-8"))[scene_id]
+    # Content and revision must come from one SQLite read, even during edits.
+    query = (
+        _target_word_cards(words)
+        .outerjoin(
+            ContentRevision,
+            and_(
+                ContentRevision.resource_kind == "card",
+                ContentRevision.resource_id == Card.id,
+            ),
+        )
+        .add_columns(ContentRevision)
+    )
+    cards: dict[str, tuple[Card, ContentRevision | None]] = {}
+    for card, revision in db.execute(query):
+        cards.setdefault(card.word.strip().lower(), (card, revision))
+
+    entries = []
+    for word in words:
+        match = cards.get(word)
+        if match is None:
+            entries.append(
+                {
+                    "word": word,
+                    **material[word],
+                    "card_id": None,
+                    "content_revision": None,
+                }
+            )
+            continue
+        card, revision = match
+        if revision is None:
+            raise LookupError(f"缺少内容修订身份：card:{card.id}")
+        entries.append(
+            {
+                "word": word,
+                "meaning": card.meaning,
+                "example": card.example,
+                "card_id": card.id,
+                "content_revision": {
+                    "identity": revision.identity,
+                    "version": revision.version,
+                },
+            }
+        )
+    return {"scene_id": scene_id, "title": rules["title"], "words": entries}
+
+
 def scene_preparation(db: Session, runtime: Runtime, rules: dict | None = None) -> dict:
     from app.services.learning_evidence import bulk_evidence_summaries
 
     rules = rules or scene_rules("drinks")
-    words = list(
-        dict.fromkeys(word for task in rules["tasks"] for word in task["target_words"])
-    )
-    cards = list(
-        db.scalars(
-            select(Card)
-            .where(Card.kind == "word", Card.word.in_(words))
-            .order_by(Card.id)
-        )
-    )
-    summaries = bulk_evidence_summaries(db, [c.id for c in cards], runtime)
-    missing = [w for w in words if not any(c.word.lower() == w for c in cards)]
+    words = _target_words(rules)
+    cards = list(db.scalars(_target_word_cards(words)))
+    summaries = bulk_evidence_summaries(db, [card.id for card in cards], runtime)
+    available = {card.word.strip().lower() for card in cards}
+    missing = [word for word in words if word not in available]
     targets = [
         {
             "word": c.word,

@@ -580,7 +580,7 @@ test("P2 Slice 4: MixedPage pauses on wrong/skipped answers, keeps 900ms auto-ad
   await expect(page.getByText("混合练习完成！")).toBeVisible();
 });
 
-test("P2 Slice 4: ScenePage supports Enter submit, renders 开始/继续 card buttons, and deduplicates Standard /api/cards fetches", async ({
+test("P2 Slice 4: ScenePage supports Enter submit, renders 直接挑战/继续 card buttons, and deduplicates Standard /api/cards fetches", async ({
   appFactory,
   page,
 }) => {
@@ -601,16 +601,16 @@ test("P2 Slice 4: ScenePage supports Enter submit, renders 开始/继续 card bu
   const drinksCard = page.getByRole("article", { name: "买饮品", exact: true });
   const introCard = page.getByRole("article", { name: "自我介绍", exact: true });
   await expect(
-    drinksCard.getByRole("button", { name: "开始", exact: true }),
+    drinksCard.getByRole("button", { name: "直接挑战", exact: true }),
   ).toBeVisible();
   await expect(
-    introCard.getByRole("button", { name: "开始", exact: true }),
+    introCard.getByRole("button", { name: "直接挑战", exact: true }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "买饮品", exact: true }),
   ).toHaveCount(0);
 
-  await drinksCard.getByRole("button", { name: "开始", exact: true }).click();
+  await drinksCard.getByRole("button", { name: "直接挑战", exact: true }).click();
   const scene = page.getByTestId("scene-session");
   await expect(scene).toContainText("第 1/3 轮");
 
@@ -641,12 +641,12 @@ test("P2 Slice 4: ScenePage supports Enter submit, renders 开始/继续 card bu
   await scene.getByRole("button", { name: "朗读标准表达", exact: true }).click();
   expect(cardsRequests).toBe(1);
 
-  // 返回场景列表后，已开启的场景显示「继续」，未开启的仍显示「开始」
+  // 返回场景列表后，已开启的场景显示「继续」，未开启的仍显示「直接挑战」
   await scene.getByRole("button", { name: "返回场景列表", exact: true }).click();
   await expect(
     drinksCard.getByRole("button", { name: "继续", exact: true }),
   ).toBeVisible();
   await expect(
-    introCard.getByRole("button", { name: "开始", exact: true }),
+    introCard.getByRole("button", { name: "直接挑战", exact: true }),
   ).toBeVisible();
 });

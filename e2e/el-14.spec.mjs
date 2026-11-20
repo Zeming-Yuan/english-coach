@@ -4,8 +4,8 @@ async function openScene(app, page) {
   await page.goto(app.baseURL);
   await page.getByRole('button', {name: '场景练习', exact: true}).click();
   const card = page.getByRole('article', {name: '买饮品', exact: true});
-  await expect(card.getByRole('button', {name: /^(开始|继续)$/})).toBeVisible();
-  await card.getByRole('button', {name: /^(开始|继续)$/}).click();
+  await expect(card.getByRole('button', {name: /^(直接挑战|继续)$/})).toBeVisible();
+  await card.getByRole('button', {name: /^(直接挑战|继续)$/}).click();
 }
 async function submit(page, text) {
   const scene = page.getByTestId('scene-session');
@@ -60,7 +60,7 @@ for (const failure of ['commit', 'response-loss']) {
     const app = await appFactory();
     await page.goto(app.baseURL);
     await page.getByRole('button', {name: '场景练习', exact: true}).click();
-    const drinksBtn = page.getByRole('article', {name: '买饮品', exact: true}).getByRole('button', {name: '开始', exact: true});
+    const drinksBtn = page.getByRole('article', {name: '买饮品', exact: true}).getByRole('button', {name: '直接挑战', exact: true});
     await expect(drinksBtn).toBeVisible();
     if (failure === 'commit') await app.failCommitOnce();
     else await page.route('**/api/practice-sessions', async route => {await route.fetch(); await route.abort('failed');}, {times: 1});
