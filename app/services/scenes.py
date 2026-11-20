@@ -25,7 +25,7 @@ from app.services.practice import (
 from app.services.write_transaction import run_write
 
 SCENE_RULE_FILES = {
-    "drinks": {"drinks-v1": "drinks.json"},
+    "drinks": {"drinks-v1": "drinks-v1.json", "drinks-v2": "drinks.json"},
     "introduction": {
         "introduction-v1": "introduction-v1.json",
         "introduction-v2": "introduction-v2.json",
@@ -303,7 +303,8 @@ def scene_payload(
         )
         and message is None
         and scene_status(out) == "independent"
-        and any(t["novel"] for i in out for t in i.get("target_mapping", [])),
+        and any(t["novel"] for i in out for t in i.get("target_mapping", []))
+        and rules["content_hash"] == scene_rules(practice.scene_id)["content_hash"],
         "message": message,
         "can_continue": message is None,
         "creation_enabled": runtime is None
@@ -363,7 +364,15 @@ def check_scene_current(
     from app.models.content_revision import ContentRevision
     from app.services.practice import PracticeStaleError
 
-    rules = scene_rules(practice.scene_id)
+    # The reviewed drink versions can still finish under their frozen material.
+    # Other scene revisions retain the existing restart boundary.
+    frozen_version = (
+        practice.rule_version
+        if practice.scene_id == "drinks"
+        and practice.rule_version in {"drinks-v1", "drinks-v2"}
+        else None
+    )
+    rules = scene_rules(practice.scene_id, frozen_version)
     if rules["content_hash"] != (practice.scene_snapshot or {}).get("content_hash"):
         raise PracticeStaleError("场景规则已修订，请新开一轮；历史结果仍可读取")
     targets = [

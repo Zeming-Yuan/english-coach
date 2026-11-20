@@ -133,7 +133,7 @@ def test_el16_every_scene_template_can_roundtrip_without_leaking_standard(ec):
                 "Yes, thank you.",
             ],
         }[scene_id]
-        for item, answer in zip(run["items"], answers):
+        for item, answer in zip(run["items"], answers, strict=True):
             path = f"/api/practice-sessions/{run['id']}/items/{item['id']}"
             assert (
                 ec.client.post(
@@ -309,7 +309,9 @@ def test_el16_model_cannot_turn_unknown_or_rejected_into_success(
     ec.app.state.llm_client = QueuedLLM(
         [
             {
-                "text": "Please try again.",
+                "text": "Let us continue."
+                if verdict == "unknown"
+                else "Please try again.",
                 "correction": correction,
                 "verdict": "accepted",
                 "score": 100,
@@ -614,3 +616,108 @@ def test_el16_malformed_provider_envelope_still_uses_the_template(ec, choices):
     current = ec.client.get(f"/api/practice-sessions/{run['id']}").json()
     assert current["items"][0]["verdict"] == "accepted"
     assert current["counts"]["processed"] == 1
+
+
+def test_s95_unknown_feedback_is_neutral_and_has_no_correction(ec):
+    ec.settings.scene_feedback_enabled = False
+    run, item_id = saved_scene_item(ec, answer="A single glass would be lovely.")
+    assert run["items"][0]["verdict"] == "unknown"
+    response = request_feedback(ec, run, item_id)
+    assert response.status_code == 200, response.text
+    feedback = response.json()
+    assert feedback["text"] == "Let us continue."
+    assert feedback["correction"] is None
+    assert feedback["feedback_version"] == "scene-feedback-v2"
+
+
+@pytest.mark.parametrize("text", ["Please try again.", "Can I have water, please?"])
+def test_s95_unjudged_feedback_falls_back_from_unsafe_model_reply(ec, text):
+    from tests.support.llm_queue import QueuedLLM
+
+    run, item_id = saved_scene_item(ec, answer="A single glass would be lovely.")
+    ec.app.state.llm_client = QueuedLLM(
+        [{"text": text, "correction": None, "verdict": "accepted"}]
+    )
+    response = request_feedback(ec, run, item_id)
+    assert response.status_code == 200, response.text
+    assert response.json()["origin"] == "template"
+    assert response.json()["text"] == "Let us continue."
+    assert response.json()["correction"] is None
+    reopened = ec.client.get(f"/api/practice-sessions/{run['id']}").json()
+    assert reopened["items"][0]["verdict"] == "unknown"
+
+
+def test_s95_mixed_feedback_versions_restore_and_replay_exactly(
+    ec, ec_factory, monkeypatch
+):
+    from app.services import scene_feedback, scenes
+    from tests.test_el11_bounded_personalized_story import restore
+    from tests.test_el14_three_turn_drink_scene import answer
+
+    ec.settings.scene_feedback_enabled = False
+    phrase = "A glass of water, please."
+    with monkeypatch.context() as patch:
+        patch.setitem(
+            scenes.SCENE_RULE_FILES, "drinks", {"drinks-v1": "drinks-v1.json"}
+        )
+        patch.setattr(scene_feedback, "FEEDBACK_VERSION", "scene-feedback-v1")
+        old, old_item = saved_scene_item(ec, answer=phrase)
+        old_reply = request_feedback(ec, old, old_item).json()
+        old_submission = str(uuid4())
+        old_next = answer(ec, old, 1, "One cup, please.", old_submission).json()
+
+    new, new_item = saved_scene_item(ec, answer="A single glass would be lovely.")
+    new_reply = request_feedback(ec, new, new_item).json()
+    new_submission = str(uuid4())
+    new_next = answer(ec, new, 1, "One cup, please.", new_submission).json()
+    assert old["rule_version"] == "drinks-v1"
+    assert new["rule_version"] == "drinks-v2"
+    assert (old_reply["feedback_version"], old_reply["text"]) == (
+        "scene-feedback-v1",
+        "Let us try again.",
+    )
+    assert (new_reply["feedback_version"], new_reply["text"]) == (
+        "scene-feedback-v2",
+        "Let us continue.",
+    )
+
+    backup = ec.client.get("/api/export/backup").json()
+    target = ec_factory()
+    target.seed_card(word="retired")
+    restore(target, backup)
+
+    for run, item_id, reply, submission, second in (
+        (old, old_item, old_reply, old_submission, old_next),
+        (new, new_item, new_reply, new_submission, new_next),
+    ):
+        reopened = target.client.get(f"/api/practice-sessions/{run['id']}").json()
+        assert reopened["items"][0]["verdict"] == "unknown"
+        assert reopened["items"][0]["feedback"] == reply
+        assert (
+            request_feedback(target, run, item_id, reply["operation_id"]).json()
+            == reply
+        )
+        assert request_feedback(target, run, item_id).json() == reply
+        assert answer(target, run, 1, "One cup, please.", submission).json() == second
+
+    replayed = target.snapshot()
+    assert (
+        replayed["extensions"]["scene_attempts"]
+        == backup["extensions"]["scene_attempts"]
+    )
+    assert (
+        replayed["extensions"]["scene_feedback"]
+        == backup["extensions"]["scene_feedback"]
+    )
+    assert replayed["learning_events"] == replayed["reviews"] == []
+
+    old_row = next(
+        row
+        for row in backup["extensions"]["scene_feedback"]
+        if row["item_id"] == old_item
+    )
+    old_row["feedback_version"] = "scene-feedback-v2"
+    preview = target.client.post("/api/import/preview", json=backup)
+    assert preview.status_code == 422, preview.text
+    assert "受约束材料" in preview.text
+    assert target.snapshot() == replayed

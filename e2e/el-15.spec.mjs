@@ -59,7 +59,7 @@ test('EL-15 application outcomes remain separate across scene contexts', async (
   await page.getByRole('button', {name: /单词本/}).click();
   await page.locator('.word-item', {hasText: 'thank'}).first().click();
   const evidence = page.getByTestId('learning-evidence');
-  await expect(evidence).toContainText('买饮品 · drinks-v1：指定语境应用已有证据');
+  await expect(evidence).toContainText('买饮品 · drinks-v2：指定语境应用已有证据');
   await expect(evidence).toContainText('问路 · directions-v1：指定语境仍需巩固');
 });
 

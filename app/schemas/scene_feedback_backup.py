@@ -22,7 +22,7 @@ class FullSceneFeedback(FullRow):
     attempt_id: str
     rule_version: str
     content_hash: str
-    feedback_version: Literal["scene-feedback-v1"]
+    feedback_version: Literal["scene-feedback-v1", "scene-feedback-v2"]
     text: str = Field(min_length=1, max_length=200)
     correction: str | None = Field(max_length=500)
     origin: Literal["template", "model"]
@@ -73,7 +73,11 @@ def validate_feedback_graph(
         rules = practice["scene_snapshot"]
         task = rules["tasks"][item["position"] - 1]
         replies = feedback_choices(
-            practice["scene_id"], task["task_key"], answer["verdict"], answer["skipped"]
+            practice["scene_id"],
+            task["task_key"],
+            answer["verdict"],
+            answer["skipped"],
+            version=row["feedback_version"],
         )
         correction = task["correction"] if answer["verdict"] == "rejected" else None
         if (
