@@ -9,7 +9,7 @@ from datetime import UTC
 from pathlib import Path
 from uuid import uuid4
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, false, func, select
 from sqlalchemy.orm import Session
 
 from app.models.card import Card
@@ -690,9 +690,13 @@ def _target_words(rules: dict) -> list[str]:
 
 
 def _target_word_cards(words: list[str]):
+    alternatives = "|".join(re.escape(word) for word in words)
+    # SQLite's default trim only removes spaces; \s also accepts pasted tabs
+    # and Unicode whitespace. Match the entire trimmed headword.
+    matches = func.lower(Card.word).regexp_match(rf"\A\s*(?:{alternatives})\s*\Z")
     return (
         select(Card)
-        .where(Card.kind == "word", func.lower(Card.word).in_(words))
+        .where(Card.kind == "word", matches if words else false())
         .order_by(Card.id)
     )
 
@@ -717,7 +721,7 @@ def scene_vocabulary(db: Session, scene_id: str) -> dict:
     )
     cards: dict[str, tuple[Card, ContentRevision | None]] = {}
     for card, revision in db.execute(query):
-        cards.setdefault(card.word.lower(), (card, revision))
+        cards.setdefault(card.word.strip().lower(), (card, revision))
 
     entries = []
     for word in words:
@@ -757,7 +761,7 @@ def scene_preparation(db: Session, runtime: Runtime, rules: dict | None = None) 
     words = _target_words(rules)
     cards = list(db.scalars(_target_word_cards(words)))
     summaries = bulk_evidence_summaries(db, [card.id for card in cards], runtime)
-    available = {card.word.lower() for card in cards}
+    available = {card.word.strip().lower() for card in cards}
     missing = [word for word in words if word not in available]
     targets = [
         {

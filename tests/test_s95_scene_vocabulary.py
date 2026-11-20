@@ -114,3 +114,21 @@ def test_preparation_cannot_pair_old_text_with_a_concurrent_edit_revision(ec):
     current = ec.client.get(f"/api/cards/{card_id}").json()
     assert current["meaning"] == "新释义"
     assert current["content_revision"]["version"] == 2
+
+
+def test_preparation_keeps_existing_card_with_edge_whitespace(ec):
+    card_id = ec.seed_card(word="water", meaning="保留我的释义")
+    updated = ec.client.put(f"/api/cards/{card_id}", json={"word": "\u3000WaTeR\t "})
+    assert updated.status_code == 200, updated.text
+    card = ec.client.get(f"/api/cards/{card_id}").json()
+    assert card["word"] == "\u3000WaTeR\t "
+
+    marks = ec.snapshot()
+    result = ec.client.get("/api/scenes/drinks/vocabulary").json()
+    assert result["words"][0]["card_id"] == card_id
+    assert result["words"][0]["meaning"] == "保留我的释义"
+    assert result["words"][0]["content_revision"] == card["content_revision"]
+    catalog = ec.client.get("/api/scenes").json()
+    drinks = next(scene for scene in catalog["scenes"] if scene["id"] == "drinks")
+    assert drinks["preparation"]["missing_words"] == ["one", "thank"]
+    assert ec.snapshot() == marks
