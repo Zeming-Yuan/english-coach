@@ -1,21 +1,13 @@
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useLayoutEffect, useState} from "react";
 import App from "../App.jsx";
 import UiIcon from "./UiIcon.jsx";
 import {configureAccount} from "../lib/accountSession.js";
+import {applyPreAuthDarkMode, primeLoginDarkMode} from "../lib/theme.js";
 import "../styles/login.css";
 
 const AUTH_CHANGE = "ec.auth.change";
 function announceChange() {
   try { localStorage.setItem(AUTH_CHANGE, crypto.randomUUID()); } catch {}
-}
-function readPreAuthDarkMode() {
-  for (const key of ["ec.ui.dark", "darkMode"]) {
-    try {
-      const raw = localStorage.getItem(key);
-      if (raw !== null) return JSON.parse(raw) === true;
-    } catch {}
-  }
-  return false;
 }
 async function sessionRequest(path, options = {}) {
   const response = await fetch(path, {cache: "no-store", credentials: "same-origin", ...options});
@@ -40,7 +32,9 @@ function LoginPage({notice}) {
     if (busy) return;
     setBusy(true); setError("");
     try {
-      await sessionRequest("/auth/login", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({username: username.trim(), password})});
+      const trimmed = username.trim();
+      await sessionRequest("/auth/login", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({username: trimmed, password})});
+      primeLoginDarkMode(trimmed);
       setPassword("");
       announceChange();
       window.location.replace("/");
@@ -93,8 +87,8 @@ export default function SessionRoot() {
   const [notice, setNotice] = useState("");
   const [leaving, setLeaving] = useState(false);
   const preAuth = !session || (session.enabled && !session.username);
-  useEffect(() => {
-    if (preAuth) document.body.classList.toggle("dark", readPreAuthDarkMode());
+  useLayoutEffect(() => {
+    if (preAuth) applyPreAuthDarkMode();
   }, [preAuth]);
   const load = async () => {
     const current = await sessionRequest("/auth/session");

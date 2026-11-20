@@ -117,6 +117,9 @@ test("Tier 1.3: lesson list and detail deduplicate headings, space progress item
   await viewedBtn.click();
   await expect(page.getByTestId("lesson-progress")).toContainText("已浏览");
   await expect(viewedBtn).toHaveClass(/\blesson-viewed-done\b/);
+  await viewedBtn.hover();
+  await expect(viewedBtn).toHaveCSS("color", "rgb(75, 113, 88)");
+  await expect(viewedBtn).toHaveCSS("background-color", "rgb(234, 240, 232)");
 
   const dialogueApp = await appFactory({ fixture: "el06-lesson-dialogue.json" });
   await page.goto(`${dialogueApp.baseURL}/#/lessons`);
@@ -204,7 +207,10 @@ test("Tier 1.5: dark mode heatmap increases luminance monotonically from l0 to l
   page,
 }) => {
   await page.addInitScript(() => {
-    localStorage.setItem("darkMode", "true");
+    if (!sessionStorage.getItem("ec.seeded")) {
+      sessionStorage.setItem("ec.seeded", "1");
+      localStorage.setItem("darkMode", "true");
+    }
   });
 
   await page.goto(`${app.baseURL}/#/stats`);
@@ -220,7 +226,38 @@ test("Tier 1.5: dark mode heatmap increases luminance monotonically from l0 to l
   expect(l1).toBeLessThan(l2);
   expect(l2).toBeLessThan(l3);
 
-  // When SessionRoot renders LoginPage before App mounts, dark preference still applies without white flash
+  // Pre-auth loading & LoginPage honor dark preference immediately and prime account dark mode on login
+  let releaseSession;
+  await page.route("**/auth/session", async (route) => {
+    await new Promise((resolve) => {
+      releaseSession = resolve;
+    });
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ enabled: true, username: null }),
+    });
+  });
+  const pendingGoto = page.goto(app.baseURL, { waitUntil: "commit" });
+  await expect(page.locator(".session-loading")).toBeVisible();
+  await expect(page.locator("body")).toHaveClass(/\bdark\b/);
+  releaseSession();
+  await pendingGoto;
+  await expect(page.getByRole("heading", { name: "欢迎回来" })).toBeVisible();
+  await expect(page.locator("body")).toHaveClass(/\bdark\b/);
+  const loginBg = await page
+    .locator(".login-page")
+    .evaluate((el) => getComputedStyle(el).backgroundColor);
+  expect(relativeLuminance(loginBg)).toBeLessThan(0.05);
+
+  // Multi-account shared browser: after a light user logged out (ec.ui.dark=false),
+  // logging in as a dark-mode account primes ec.ui.dark=true before reload.
+  await page.evaluate(() => {
+    localStorage.removeItem("darkMode");
+    localStorage.setItem("ec.ui.dark", "false");
+    localStorage.setItem("ec.account.owner:darkMode", "true");
+  });
+  await page.unroute("**/auth/session");
   await page.route("**/auth/session", (route) =>
     route.fulfill({
       status: 200,
@@ -228,11 +265,35 @@ test("Tier 1.5: dark mode heatmap increases luminance monotonically from l0 to l
       body: JSON.stringify({ enabled: true, username: null }),
     }),
   );
-  await page.goto(app.baseURL);
+  await page.route("**/auth/login", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ username: "owner" }),
+    }),
+  );
+  await page.reload();
   await expect(page.getByRole("heading", { name: "欢迎回来" })).toBeVisible();
+  await expect(page.locator("body")).not.toHaveClass(/\bdark\b/);
+
+  await page.getByLabel("用户名", { exact: true }).fill("owner");
+  await page.getByLabel("密码", { exact: true }).fill("secret");
+  let releasePostLoginSession;
+  await page.unroute("**/auth/session");
+  await page.route("**/auth/session", async (route) => {
+    await new Promise((resolve) => {
+      releasePostLoginSession = resolve;
+    });
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ enabled: true, username: "owner" }),
+    });
+  });
+  await page.getByRole("button", { name: "登录并开始学习", exact: true }).click();
+  await expect(page.locator(".session-loading")).toBeVisible();
   await expect(page.locator("body")).toHaveClass(/\bdark\b/);
-  const loginBg = await page
-    .locator(".login-page")
-    .evaluate((el) => getComputedStyle(el).backgroundColor);
-  expect(relativeLuminance(loginBg)).toBeLessThan(0.05);
+  releasePostLoginSession();
+  await expect(page.getByLabel("当前账号")).toHaveText("owner");
+  await expect(page.locator("body")).toHaveClass(/\bdark\b/);
 });

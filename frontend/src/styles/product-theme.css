@@ -218,7 +218,7 @@ body.dark .product-app .btn-primary:hover { background: #d8cec0; border-color: #
 .product-app .lesson-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
 .product-app .lesson-actions .btn-wide { width: auto; flex: 1 1 200px; }
 .product-app .lesson-status-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; }
-.product-app .lesson-viewed-done { border-color: var(--success); background: var(--success-soft); color: var(--success); }
+.product-app .btn-ghost.lesson-viewed-done, .product-app .btn-ghost.lesson-viewed-done:hover { border-color: var(--success); background: var(--success-soft); color: var(--success); }
 
 /* The selected dictionary screen: content stays on the paper, evidence is an annotation. */
 .word-detail-toolbar { align-items: center; }

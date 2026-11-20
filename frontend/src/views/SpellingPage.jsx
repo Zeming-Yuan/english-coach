@@ -180,10 +180,8 @@ export default function SpellingPage({ onExit, onAddWords, singleCard, singleCar
           showFirstHint={assistance.includes("first_letter")}
           disabled={!!feedback || saving}
           inputRef={inputRef}
-          variant="qwerty"
           formId="spelling-answer-form"
           feedbackState={feedbackState}
-          placeholder="点击这里，直接输入"
         />
         <div className="spelling-hint">
           {assistance.length > 0

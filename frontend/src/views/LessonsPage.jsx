@@ -14,19 +14,9 @@ import {
 } from "../lib/learning.js";
 import { useLearningAttempt } from "../hooks/useLearningAttempt.js";
 import { useRouteDetail } from "../hooks/useRouteDetail.js";
+import { hasLessonLevelPrefix, formatLessonTitle } from "../lib/utils.js";
 import { showToast } from "../App.jsx";
 import PracticePage from "./PracticePage.jsx";
-
-function hasLessonLevelPrefix(level, title) {
-  const text = typeof title === "string" ? title.trim() : "";
-  return text.startsWith(`第 ${level} 课`) || text.startsWith(`第${level}课`);
-}
-
-function formatLessonTitle(level, title) {
-  const text = typeof title === "string" ? title.trim() : "";
-  if (!text) return `第 ${level} 课`;
-  return hasLessonLevelPrefix(level, text) ? text : `第 ${level} 课 · ${text}`;
-}
 
 function lessonProgressLabel(progress) {
   if (!progress) return "状态未记录";

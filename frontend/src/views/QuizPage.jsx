@@ -293,11 +293,9 @@ export default function QuizPage({ onExit, onAddWords }) {
         {(q.type === "cn2en" || q.type === "fill") && !feedback && (
           <SpellingBoard
             key={q.id}
-            variant="qwerty"
             formId="quiz-spelling-form"
             mode="independent"
             onSubmit={handleTypedSubmit}
-            placeholder="点击这里，直接输入"
             disabled={saving}
           />
         )}

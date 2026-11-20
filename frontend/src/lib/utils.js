@@ -67,6 +67,20 @@ export function storageSet(key, value) {
   } catch {}
 }
 
+/**
+ * 课程标题是否已带“第 N 课”前缀，以及统一格式化课程标题。
+ */
+export function hasLessonLevelPrefix(level, title) {
+  const text = typeof title === "string" ? title.trim() : "";
+  return text.startsWith(`第 ${level} 课`) || text.startsWith(`第${level}课`);
+}
+
+export function formatLessonTitle(level, title) {
+  const text = typeof title === "string" ? title.trim() : "";
+  if (!text) return `第 ${level} 课`;
+  return hasLessonLevelPrefix(level, text) ? text : `第 ${level} 课 · ${text}`;
+}
+
 /** UUID v4 also works on HTTP origins where randomUUID is not exposed. */
 export function randomUUID() {
   if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();

@@ -1,21 +1,22 @@
 import React, { useState, useRef, useCallback, useEffect, useId } from "react";
 
 /**
- * 拼写共享组件：格子 + 输入框 + 输满自动提交。
+ * 拼写共享组件：无框底线打字机输入面 + 辅助逐字反馈 + 输满自动提交。
  *
- * 三处复用：拼写练习（SpellingPage，难度档）/ 测验（QuizPage）/ 混合练习（MixedPage）。
+ * 四处复用：拼写练习（SpellingPage）/ 本轮巩固（DailySessionPage）/ 测验（QuizPage）/ 混合练习（MixedPage）。
  * assisted：逐字反馈 + 输满 300ms 自动提交；independent：自由输入、不渲染格子、
  * 不按目标长度截断，Enter 提交。提交前防重锁，失败后保留输入并允许重试。
  * 父级用 key 换新题即可重置（内部 value 随 key 重建）。
  *
  * props:
- * - mode: "assisted"（默认，保持旧格子体验）| "independent"（不泄露长度/逐字正误）
+ * - mode: "assisted"（默认）| "independent"（不泄露长度/逐字正误）
  * - target: assisted 模式的目标词。有值 → 逐字母实时红/绿着色 + 首字母提示；
  *   null → 只显示占位格；independent 模式忽略 target
  * - maxLength: target 为 null 时的格子数/提交长度判定（assisted 模式）
  * - onSubmit(text): 提交回调。父级判分/记录；返回 Promise 时 reject 会解锁组件允许重试
  * - showFirstHint: 显示目标词首字母（"提示首字母"难度档）
  * - disabled: 提交后锁定输入
+ * - variant: 默认 "qwerty"（统一底线打字机输入面）
  * - placeholder / autoFocus / name / inputRef
  */
 export default function SpellingBoard({
@@ -25,11 +26,11 @@ export default function SpellingBoard({
   onSubmit,
   showFirstHint = false,
   disabled = false,
-  placeholder = "在这里输入英文单词…",
+  placeholder = "点击这里，直接输入",
   autoFocus = true,
   name = "spelling-answer",
   inputRef,
-  variant = "default",
+  variant = "qwerty",
   formId,
   feedbackState = "idle",
 }) {
