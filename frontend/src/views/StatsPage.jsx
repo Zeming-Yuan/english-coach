@@ -21,6 +21,12 @@ const EVIDENCE_DEFAULTS = [
   ["insufficient", "独立证据不足"],
 ];
 
+function shortMonthDay(isoDate) {
+  if (typeof isoDate !== "string") return "";
+  const parts = isoDate.split("-");
+  return parts.length === 3 ? `${Number(parts[1])}/${Number(parts[2])}` : isoDate;
+}
+
 function triggerBlobDownload(blob, filename) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -291,93 +297,174 @@ export default function StatsPage({ onDelayed, onAdvice, onOpenBackup }) {
         <div className="stats-card"><span className="stats-card-value">{stats.reviewed_today}</span><span className="stats-card-label">今日完成</span></div>
       </div>
 
-      <div className="today-stats" style={{ marginTop: 12 }}>
+      <div className="today-stats">
         今日完成 <b>{stats.reviewed_today}</b> 词 · 练习 <b>{stats.attempted_today}</b> 次 ·
         跳过 <b>{stats.skipped_today}</b> 次
       </div>
 
-      <div data-testid="evidence-overview" style={{ marginTop: 12 }}>
-        <h3 className="lesson-section">学习证据</h3>
-        <p style={{ fontSize: 13 }}>
-          {stats.evidence_labels?.verified || "独立回忆已有证据"}{" "}
-          {stats.evidence_counts?.verified || 0} 张 ·{" "}
-          {stats.evidence_labels?.weak || "仍需巩固"}{" "}
-          {stats.evidence_counts?.weak || 0} 张 ·{" "}
-          {stats.evidence_labels?.stale || "历史证据，待复测"}{" "}
-          {stats.evidence_counts?.stale || 0} 张 ·{" "}
-          {stats.evidence_labels?.insufficient || "独立证据不足"}{" "}
-          {stats.evidence_counts?.insufficient || 0} 张
-        </p>
-        <p style={{ fontSize: 12, color: "var(--muted)" }}>
-          {stats.evidence_labels?.history_incomplete || "历史依据不完整"}{" "}
-          {stats.evidence_counts?.history_incomplete || 0} 张 ·
-          独立样本 {stats.evidence_samples || 0} 次 ·
-          最近证据{" "}
+      <section data-testid="evidence-overview" className="metrics-panel stats-half-panel">
+        <h3>学习证据</h3>
+        <dl className="stats-kv-list">
+          {[
+            ["verified", "独立回忆已有证据"],
+            ["weak", "仍需巩固"],
+            ["stale", "历史证据，待复测"],
+            ["insufficient", "独立证据不足"],
+            ["history_incomplete", "历史依据不完整"],
+          ].map(([key, fallback]) => (
+            <div key={key}>
+              <dt>{stats.evidence_labels?.[key] || fallback}</dt>{" "}
+              <dd>{stats.evidence_counts?.[key] || 0} 张</dd>
+            </div>
+          ))}
+        </dl>
+        <p className="stats-panel-foot">
+          独立样本 {stats.evidence_samples || 0} 次 · 最近证据{" "}
           {stats.evidence_latest_at
             ? new Date(stats.evidence_latest_at).toLocaleDateString()
             : "暂无"}
         </p>
-      </div>
-      <div data-testid="retention-overview" className="metrics-panel">
-        <h3>延迟保持 · 距应用内上次记录</h3>
-        <p>每轮最多三题；首测结果按词、学习日和窗口保留，不代表全部词汇。</p>
-        {[["day", "隔日回测"], ["week", "一周回测"], ["other", "其他间隔"]].map(([key, label]) => {
-          const row = stats.retention?.[key];
-          return <div key={key}>
-            <h4>{label}</h4>
-            <p>独立成功/样本 {row?.successes || 0}/{row?.count || 0} · 辅助 {row?.assisted || 0} · 跳过 {row?.skipped || 0} · 覆盖 {row?.covered || 0} 词 · 依据不完整 {row?.incomplete || 0}</p>
-            <p>{!row?.count ? "暂无数据" : row.count < 10 ? "样本较少，仅说明所测内容" : "仅说明所测内容"}</p>
-            <p>实际间隔：{row?.gap_seconds?.length ? row.gap_seconds.map(seconds => `${Number((seconds / 3600).toFixed(2))} 小时`).join("、") : "暂无"}</p>
-            {key !== "other" && stats.delayed_recall_enabled !== false && <button className="btn btn-ghost btn-small" onClick={() => onDelayed(key)}>{label}</button>}
-          </div>;
-        })}
-      </div>
+      </section>
+
+      {/* 分类指标：自评与客观题分开解释 */}
+      <section data-testid="metrics-overview" className="metrics-panel stats-half-panel">
+        <h3>练习指标</h3>
+        <dl className="stats-kv-list">
+          {[
+            ["retrieval", "独立提取正确率"],
+            ["assisted", "辅助练习正确率"],
+            ["recognition", "识别练习正确率"],
+            ["self_report", "自评通过率"],
+          ].map(([key, label]) => {
+            const value = stats.metrics?.[key];
+            return (
+              <div key={key} data-testid={`${key === "self_report" ? "self-report" : key}-metric`}>
+                <dt>{label}</dt>{" "}
+                <dd>
+                  {value?.percent === null || value?.percent === undefined ? "暂无数据" : `${value.percent}%`}
+                  {value && value.count > 0 ? `（${value.successes}/${value.count}）` : ""}
+                </dd>
+              </div>
+            );
+          })}
+        </dl>
+        {today && (
+          <p className="stats-panel-meta" data-testid="new-word-limit">
+            新词建议 {today.recommended_goal} 个 · 有效样本 {today.sample_count}
+          </p>
+        )}
+        <p className="add-hint stats-panel-foot">独立、辅助与识别按客观作答统计；自评只表示主观通过率，不是客观正确率。</p>
+      </section>
+
+      <section data-testid="retention-overview" className="metrics-panel retention-panel">
+        <div className="retention-head">
+          <h3>延迟保持 · 距应用内上次记录</h3>
+          <p>每轮最多三题；首测结果按词、学习日和窗口保留，不代表全部词汇。</p>
+        </div>
+        <div className="retention-windows">
+          {[["day", "隔日回测"], ["week", "一周回测"], ["other", "其他间隔"]].map(([key, label]) => {
+            const row = stats.retention?.[key];
+            return (
+              <div key={key} className="retention-window">
+                <div className="retention-window-head">
+                  <h4>{label}</h4>
+                  <span className="retention-status-tag">
+                    {!row?.count ? "暂无数据" : row.count < 10 ? "样本较少，仅说明所测内容" : "仅说明所测内容"}
+                  </span>
+                </div>
+                <dl className="stats-kv-list">
+                  <div>
+                    <dt>独立成功/样本</dt>{" "}
+                    <dd>{row?.successes || 0}/{row?.count || 0}</dd>
+                  </div>
+                  <div>
+                    <dt>辅助 / 跳过</dt>{" "}
+                    <dd>辅助 {row?.assisted || 0} · 跳过 {row?.skipped || 0}</dd>
+                  </div>
+                  <div>
+                    <dt>覆盖 / 依据不完整</dt>{" "}
+                    <dd>{row?.covered || 0} 词 · {row?.incomplete || 0}</dd>
+                  </div>
+                  <div>
+                    <dt>实际间隔</dt>{" "}
+                    <dd>{row?.gap_seconds?.length ? row.gap_seconds.map(seconds => `${Number((seconds / 3600).toFixed(2))} 小时`).join("、") : "暂无"}</dd>
+                  </div>
+                </dl>
+                {key !== "other" && stats.delayed_recall_enabled !== false && (
+                  <div className="retention-window-action">
+                    <button className="btn btn-ghost btn-small" onClick={() => onDelayed(key)}>{label}</button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
       {stats.history_incomplete && (
         <p role="note" className="add-hint">
           部分旧历史不可还原，图表只展示可确认的记录；旧数据最后活动另见词卡详情。
         </p>
       )}
 
-      {/* 分类指标：自评与客观题分开解释 */}
-      <div className="metrics-panel" style={{ marginTop: 14 }}>
-        <h3 className="lesson-section">练习指标</h3>
-        {[
-          ["retrieval", "独立提取正确率"],
-          ["assisted", "辅助练习正确率"],
-          ["recognition", "识别练习正确率"],
-          ["self_report", "自评通过率"],
-        ].map(([key, label]) => {
-          const value = stats.metrics?.[key];
-          return (
-            <p key={key} data-testid={`${key === "self_report" ? "self-report" : key}-metric`}>
-              {label}：{value?.percent === null || value?.percent === undefined ? "暂无数据" : value.percent + "%"}
-              {value && value.count > 0 && `（${value.successes}/${value.count}）`}
-            </p>
-          );
-        })}
-        {today && (
-          <p data-testid="new-word-limit">
-            新词建议 {today.recommended_goal} 个 · 有效样本 {today.sample_count}
-          </p>
-        )}
-        <p className="add-hint">独立、辅助与识别按客观作答统计；自评只表示主观通过率，不是客观正确率。</p>
-      </div>
-
       <LearningAdvice onStart={onAdvice} />
 
       {/* 本周复习通过率 */}
-      {weekly && (
-        <div className="weekly-accuracy">
-          <h3 className="lesson-section">本周复习通过率 <span className="week-acc" style={{ color: weekly.this_week >= 80 ? "var(--success)" : weekly.this_week >= 60 ? "var(--sun)" : "var(--coral)" }}>{weekly.this_week !== null ? weekly.this_week + "%" : "（暂无）"}</span></h3>
-          <div className="week-bars">
-            {weekly.weeks.map((w, i) => (
-              <div key={i} className="week-bar-wrap" title={`${w.start}：${w.total} 题 · 复习通过率 ${w.accuracy === null ? "-" : w.accuracy + "%"}`}>
-                <div className="week-bar" style={{ height: w.accuracy === null ? 2 : w.accuracy * 0.5, background: w.accuracy === null ? "var(--line)" : w.accuracy >= 80 ? "var(--mint)" : w.accuracy >= 60 ? "var(--sun)" : "var(--coral)" }} />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {weekly && (() => {
+        const hasWeeklyData = weekly.weeks.some((w) => w.accuracy !== null);
+        const weekAccColor =
+          weekly.this_week === null
+            ? "var(--muted)"
+            : weekly.this_week >= 80
+              ? "var(--success)"
+              : weekly.this_week >= 60
+                ? "var(--sun)"
+                : "var(--coral)";
+        return (
+          <section className="metrics-panel weekly-accuracy">
+            <div className="weekly-head">
+              <h3>
+                本周复习通过率{" "}
+                <span className="week-acc" style={{ color: weekAccColor }}>
+                  {weekly.this_week !== null ? `${weekly.this_week}%` : "（暂无）"}
+                </span>
+              </h3>
+              {!hasWeeklyData && (
+                <span className="weekly-empty-note">最近 8 周暂无排期复习记录</span>
+              )}
+            </div>
+            <div className="week-chart">
+              {weekly.weeks.map((w, i) => (
+                <div
+                  key={i}
+                  className="week-col"
+                  title={`${w.start}：${w.total} 题 · 复习通过率 ${w.accuracy === null ? "-" : `${w.accuracy}%`}`}
+                >
+                  <span className="week-col-val">
+                    {w.accuracy === null ? "—" : `${w.accuracy}%`}
+                  </span>
+                  <div className="week-bar-track">
+                    {w.accuracy !== null && (
+                      <div
+                        className="week-bar"
+                        style={{
+                          height: `${Math.max(8, w.accuracy)}%`,
+                          background:
+                            w.accuracy >= 80
+                              ? "var(--mint)"
+                              : w.accuracy >= 60
+                                ? "var(--sun)"
+                                : "var(--coral)",
+                        }}
+                      />
+                    )}
+                  </div>
+                  <span className="week-axis-label">{shortMonthDay(w.start)}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        );
+      })()}
 
       {/* 导出 */}
       <div className="export-row">

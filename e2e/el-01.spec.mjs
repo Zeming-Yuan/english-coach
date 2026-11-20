@@ -28,8 +28,9 @@ test("EL-01 visible revision panel tracks semantic edits", async ({appFactory, p
   await expect(page.getByTestId("revision-panel")).toContainText("内容修订");
   await expect(page.getByTestId("revision-panel")).toContainText("第 1 版");
 
-  page.once("dialog", (dialog) => dialog.accept("一个苹果"));
   await page.getByRole("button", {name: /编辑/}).click();
+  await page.getByLabel("编辑词义", {exact: true}).fill("一个苹果");
+  await page.getByRole("button", {name: "保存", exact: true}).click();
   await expect(page.getByTestId("revision-panel")).toContainText("第 2 版");
 });
 
@@ -62,8 +63,9 @@ test("EL-01 v3 roundtrip preserves revision and keeps working", async ({appFacto
   await openDetail(page, "apple");
   await expect(page.getByTestId("revision-panel")).toContainText("第 2 版");
 
-  page.once("dialog", (dialog) => dialog.accept("苹果（恢复后）"));
   await page.getByRole("button", {name: /编辑/}).click();
+  await page.getByLabel("编辑词义", {exact: true}).fill("苹果（恢复后）");
+  await page.getByRole("button", {name: "保存", exact: true}).click();
   await expect(page.getByTestId("revision-panel")).toContainText("第 3 版");
 
   const restored = await (await target.request.get("/api/export/backup")).json();
@@ -143,12 +145,13 @@ test("EL-01 lost edit response replays without double revision", async ({appFact
     },
     {times: 1},
   );
-  page.once("dialog", (dialog) => dialog.accept("一个苹果"));
   await page.getByRole("button", {name: /编辑/}).click();
+  await page.getByLabel("编辑词义", {exact: true}).fill("一个苹果");
+  await page.getByRole("button", {name: "保存", exact: true}).click();
+  await expect(page.getByRole("alert")).toContainText("保存失败");
   await expect(page.getByTestId("revision-panel")).toContainText("第 1 版");
 
-  page.once("dialog", (dialog) => dialog.accept("一个苹果"));
-  await page.getByRole("button", {name: /编辑/}).click();
+  await page.getByRole("button", {name: "保存", exact: true}).click();
   await expect(page.getByTestId("revision-panel")).toContainText("第 2 版");
 
   const exported = await (await app.request.get("/api/export/backup")).json();

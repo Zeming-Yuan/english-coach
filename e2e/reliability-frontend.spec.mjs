@@ -217,8 +217,9 @@ test('a failed word-list refresh preserves the current edited card detail',async
   await page.route('**/api/tts/**',route=>route.fulfill({body:''}));
   await ui.mount(page,'/src/views/WordsPage.jsx');
   await page.locator('.word-item').click();
-  page.on('dialog',dialog=>dialog.accept('new meaning'));
   await page.getByRole('button',{name:/编辑内容/}).click();
+  await page.getByLabel('编辑词义',{exact:true}).fill('new meaning');
+  await page.getByRole('button',{name:'保存',exact:true}).click();
   await expect(page.getByRole('alert')).toContainText('word list offline');
   await expect(page.locator('.word-detail-view')).toBeVisible({timeout:2000});
 });

@@ -1,11 +1,11 @@
 /* EnglishCoach product UI. The approved story reader is the visual source.
    Keep learning state, visibility conditions, forms and API handlers in their views. */
 :root {
-  --paper: #fcfaf6;
-  --card: #fcfaf6;
+  --paper: #f6f2ea;
+  --card: #fffdf9;
   --ink: #302e2b;
-  --muted: #736c63;
-  --line: #e5dfd5;
+  --muted: #6c655c;
+  --line: #dfd7cb;
   --mint: #a26243;
   --mint-soft: #f0e4d7;
   --coral: #a14c3d;
@@ -19,16 +19,16 @@
   --shadow-sm: none;
   --font: "Noto Sans SC Variable", "Noto Sans SC", "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   --font-reading: "Tinos", "Times New Roman", serif;
-  --nav-paper: #f1eee8;
-  --active-paper: #e6e0d7;
+  --nav-paper: #efeae0;
+  --active-paper: #e3dbce;
 }
 body.dark {
-  --paper: #23211f; --card: #292623; --ink: #ede7dc;
+  --paper: #22201e; --card: #2c2824; --ink: #ede7dc;
   --muted: #b5aa9c; --line: #453f38; --mint: #d09b79;
   --mint-soft: #49362a; --coral: #e29a88; --coral-soft: #482f29;
   --sun: #c4a16a; --sun-soft: #403723;
   --success: #a1b99b; --success-soft: #2c382a;
-  --nav-paper: #1d1b19; --active-paper: #39322b;
+  --nav-paper: #1b1917; --active-paper: #39322b;
 }
 body { font-weight: 400; line-height: 1.65; }
 button, input, select, textarea { font-family: inherit; }
@@ -253,9 +253,16 @@ body.dark .product-app .btn-primary:hover { background: #d8cec0; border-color: #
 .word-detail-view .word-detail-meaning { font-size: 23px; line-height: 1.7; margin-top: 0; }
 .word-detail-view .word-detail-badges { margin-top: 18px; }
 .word-self-rating { margin-top: 36px; }
-.word-detail-view .word-detail-memo { display: flex; flex-wrap: wrap; align-items: start; gap: 10px; }
-.word-detail-view .word-detail-memo-label { font-weight: 400; }
-.word-detail-view .memo-edit-btn { color: var(--muted); background: transparent; box-shadow: none; border: 0; display: inline-flex; align-items: center; padding: 6px; cursor: pointer; }
+.word-detail-view .word-detail-memo { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 14px 18px; border-left: 3px solid var(--sun); border-radius: 0 7px 7px 0; background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgba(48, 46, 43, 0.04); }
+.word-detail-view .word-detail-memo-label { font-size: 12px; font-weight: 500; color: var(--sun); padding: 2px 7px; border-radius: 4px; background: var(--sun-soft); }
+.word-detail-view .memo-edit-btn { color: var(--muted); background: transparent; box-shadow: none; border: 0; display: inline-flex; align-items: center; padding: 6px; margin-left: auto; cursor: pointer; border-radius: 5px; }
+.word-detail-view .memo-edit-btn:hover { background: var(--nav-paper); color: var(--ink); }
+.inline-detail-editor { display: grid; gap: 12px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); box-shadow: 0 2px 10px rgba(48, 46, 43, 0.04); max-width: 640px; }
+.inline-detail-input, .inline-detail-textarea { width: 100%; padding: 11px 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); font: 400 16px/1.6 var(--font); }
+.inline-detail-textarea { resize: vertical; min-height: 84px; }
+.inline-detail-input:focus, .inline-detail-textarea:focus { border-color: var(--mint); background: var(--card); outline: none; }
+.inline-detail-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.inline-detail-error { margin: 0; font-size: 13px; color: var(--coral); }
 .detail-menu { position: relative; flex: none; }
 .detail-menu summary { display: grid; place-items: center; width: 40px; height: 44px; border-radius: 6px; list-style: none; cursor: pointer; }
 .detail-menu summary::-webkit-details-marker { display: none; }
@@ -307,14 +314,27 @@ body.dark .product-app .btn-primary:hover { background: #d8cec0; border-color: #
 .view-queue .view > .home-practice > summary { color: var(--ink); font-size: 20px; }
 .view-queue .home-practice > .btn { font-size: 15px; padding: 14px 20px; min-width: 150px; }
 
-/* Add / settings / backup are normal workspace forms, not floating cards. */
+/* Add / settings / backup are normal workspace forms, with structured primary/secondary cards on Add. */
 .view-add .view-center, .view-settings .view-center, .view-backup .view-center { display: block; min-height: auto; text-align: left; }
-.product-app .add-card { max-width: 760px; background: transparent; border: 0; border-radius: 0; box-shadow: none; padding: 0; }
-.product-app .add-card > .page-title { margin-bottom: 28px; }
-.product-app .add-card > .btn:first-of-type { width: auto; margin-bottom: 8px; background: var(--nav-paper); color: var(--ink); border: 1px solid var(--line); }
-.product-app .add-card > .add-hint:nth-of-type(2) { margin-top: 32px; }
-.product-app .add-input { padding: 18px; min-height: 150px; border: 1px solid var(--line); border-radius: 7px; background: var(--card); font-size: 17px; line-height: 1.8; }
-.product-app .add-card > .btn-wide:last-of-type { width: auto; }
+.product-app .add-card { max-width: 1120px; background: transparent; border: 0; border-radius: 0; box-shadow: none; padding: 0; }
+.product-app .add-page-head { display: grid; gap: 6px; margin-bottom: 24px; }
+.product-app .add-page-head > .page-title { margin: 0; }
+.product-app .add-lead { margin: 0; font-size: 15px; color: var(--muted); line-height: 1.75; }
+.product-app .add-workspace-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(280px, 1fr); gap: 24px; align-items: start; }
+.product-app .add-panel { padding: 26px 28px; border: 1px solid var(--line); border-radius: 10px; display: grid; gap: 14px; }
+.product-app .add-primary-panel { background: var(--card); box-shadow: 0 1px 2px rgba(48, 46, 43, 0.04), 0 8px 22px rgba(48, 46, 43, 0.03); }
+.product-app .add-starter-panel { background: var(--nav-paper); }
+.product-app .add-panel-head { display: grid; gap: 4px; }
+.product-app .add-panel-tag { font-size: 12px; font-weight: 500; color: var(--mint); letter-spacing: .02em; }
+.product-app .add-panel-head h3 { margin: 0; font-size: 20px; font-weight: 500; color: var(--ink); line-height: 1.4; }
+.product-app .add-panel .add-hint { margin: 0; }
+.product-app .add-input { padding: 16px 18px; min-height: 148px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); font-size: 17px; line-height: 1.8; color: var(--ink); }
+.product-app .add-input:focus { background: var(--card); border-color: var(--mint); }
+.product-app .add-panel-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.product-app .add-count-hint { font-size: 13px; color: var(--muted); }
+.product-app .add-starter-points { margin: 2px 0 4px; padding-left: 18px; display: grid; gap: 6px; font-size: 13px; line-height: 1.75; color: var(--muted); }
+.product-app .add-starter-btn { width: 100%; background: var(--card); color: var(--ink); }
+.product-app .add-result:empty { display: none; }
 .product-app .settings-panel { box-shadow: none; border-radius: 0; border: 0; background: transparent; padding: 0; max-width: 840px !important; color: var(--ink); }
 .product-app .settings-panel-head { font-size: 28px; font-weight: 500; margin-bottom: 28px; color: var(--ink); }
 .product-app .settings-row { min-height: 76px; padding: 20px 0; margin: 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; gap: 16px; }
@@ -329,23 +349,47 @@ body.dark .product-app .btn-primary:hover { background: #d8cec0; border-color: #
 .view-backup .settings-panel [role="alert"] { margin-block: 12px; color: var(--coral); }
 
 /* Evidence and history: sober, labeled numbers instead of mastery decoration. */
-.view-stats .stage > .view { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px; align-items: start; }
-.view-stats .stage > .view > :not(.metrics-panel) { grid-column: 1 / -1; }
+.view-stats .stage > .view { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px 24px; align-items: stretch; }
+.view-stats .stage > .view > :not(.stats-half-panel) { grid-column: 1 / -1; }
 .view-stats .page-head { margin-bottom: 0; }
 .view-stats [data-testid="learning-advice"] { padding-bottom: 24px; border-bottom: 1px solid var(--line); }
-.product-app .stats-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 0; border-block: 1px solid var(--line); padding-block: 24px; }
+.product-app .stats-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--card); padding: 22px 24px; box-shadow: 0 1px 2px rgba(48, 46, 43, 0.03); }
 .product-app .stats-card { box-shadow: none; background: transparent; border: 0; border-right: 1px solid var(--line); border-radius: 0; padding: 0 24px; text-align: left; }
 .product-app .stats-card:first-child { padding-left: 0; }
 .product-app .stats-card:last-child { border-right: 0; }
 .product-app .stats-card-value { font: 400 38px/1.2 var(--font-reading); color: var(--ink); }
 .product-app .stats-card-label { font-size: 12px; font-weight: 400; color: var(--muted); margin-top: 6px; }
-.product-app .metrics-panel { padding: 24px; border: 1px solid var(--line); border-radius: 8px; background: transparent; line-height: 1.9; }
-.product-app .metrics-panel > h3 { font-size: 16px; font-weight: 500; margin: 0 0 14px; }
-.product-app .metrics-panel p { color: var(--muted); font-size: 13px; margin-block: 6px; }
-.product-app .metrics-panel h4 { font-size: 14px; font-weight: 500; }
-.product-app [data-testid="retention-overview"] > div { padding-block: 16px; border-top: 1px solid var(--line); }
-.product-app .week-bar { border-radius: 3px 3px 0 0; }
-.product-app .week-bars { border-bottom: 1px solid var(--line); }
+.product-app .metrics-panel { display: flex; flex-direction: column; padding: 22px 24px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); line-height: 1.8; box-shadow: 0 1px 2px rgba(48, 46, 43, 0.03); }
+.product-app .metrics-panel > h3, .product-app .metrics-panel .lesson-section { font-size: 17px; font-weight: 500; margin: 0 0 14px; color: var(--ink); }
+.product-app .metrics-panel p { color: var(--muted); font-size: 13px; margin-block: 4px; }
+.product-app .metrics-panel h4 { font-size: 15px; font-weight: 500; margin: 0; color: var(--ink); }
+.product-app .stats-kv-list { display: grid; gap: 0; margin: 0; font-size: 14px; }
+.product-app .stats-kv-list > div { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding-block: 9px; border-bottom: 1px solid var(--line); }
+.product-app .stats-kv-list > div:last-child { border-bottom: 0; }
+.product-app .stats-kv-list dt { color: var(--muted); font-weight: 400; }
+.product-app .stats-kv-list dd { margin: 0; color: var(--ink); font-weight: 500; font-variant-numeric: tabular-nums; text-align: right; }
+.product-app .stats-panel-meta { margin-top: 12px !important; font-size: 13px; color: var(--ink) !important; font-weight: 500; }
+.product-app .stats-panel-foot { margin-top: auto !important; padding-top: 14px; border-top: 1px solid var(--line); font-size: 12px !important; line-height: 1.75; color: var(--muted); }
+.product-app .retention-head { margin-bottom: 16px; }
+.product-app .retention-head > h3 { font-size: 17px; font-weight: 500; margin: 0 0 4px; color: var(--ink); }
+.product-app .retention-head > p { margin: 0; }
+.product-app .retention-windows { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.product-app .retention-window { display: flex; flex-direction: column; gap: 12px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); }
+.product-app .retention-window-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.product-app .retention-status-tag { font-size: 12px; color: var(--muted); background: var(--card); border: 1px solid var(--line); border-radius: 4px; padding: 2px 8px; line-height: 1.5; }
+.product-app .retention-window .stats-kv-list { font-size: 13px; }
+.product-app .retention-window .stats-kv-list > div { padding-block: 6px; }
+.product-app .retention-window-action { margin-top: auto; padding-top: 8px; }
+.product-app .weekly-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px 16px; margin-bottom: 16px; }
+.product-app .weekly-head > h3 { font-size: 17px; font-weight: 500; margin: 0; color: var(--ink); }
+.product-app .week-acc { font-size: 15px; font-weight: 500; margin-left: 6px; font-variant-numeric: tabular-nums; }
+.product-app .weekly-empty-note { font-size: 13px; color: var(--muted); }
+.product-app .week-chart { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 10px; align-items: end; padding-top: 4px; }
+.product-app .week-col { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+.product-app .week-col-val { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; line-height: 1.2; }
+.product-app .week-bar-track { width: 100%; max-width: 36px; height: 64px; border-radius: 5px; background: var(--nav-paper); border: 1px solid var(--line); display: flex; align-items: flex-end; overflow: hidden; }
+.product-app .week-bar { width: 100%; max-width: none; border-radius: 3px 3px 0 0; }
+.product-app .week-axis-label { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; line-height: 1.2; }
 .product-app .gh-calendar-wrap { overflow-x: auto; padding-block: 12px; }
 .product-app .cal-heatmap { min-width: 600px; }
 .product-app .cal-l0 { background: var(--nav-paper); }
@@ -383,8 +427,9 @@ body.dark .product-app .cal-l3 { background: #cf946d; }
 .product-app .quiz-card { background: transparent; border: 0; border-radius: 0; box-shadow: none; padding: 24px 20px; display: flex; flex-direction: column; justify-content: center; gap: 16px; text-align: center; }
 .product-app .quiz-prompt { font-size: 25px; font-weight: 500; line-height: 1.7; margin-bottom: 8px; }
 .product-app .quiz-options, .product-app .listening-options { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; width: min(100%,640px); margin-inline: auto; }
-.product-app .quiz-option, .product-app .listening-option { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 64px; padding: 16px 20px; background: var(--card); border: 1px solid var(--line); border-radius: 7px; font: 400 23px/1.35 var(--font-reading); color: var(--ink); box-shadow: none; cursor: pointer; }
-.product-app .quiz-option:hover, .product-app .listening-option:hover { background: var(--nav-paper); transform: none; }
+.product-app .quiz-option, .product-app .listening-option { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 64px; padding: 16px 20px; background: var(--card); border: 1px solid var(--line); border-radius: 8px; font: 400 23px/1.35 var(--font-reading); color: var(--ink); box-shadow: 0 1px 2px rgba(48, 46, 43, 0.05), 0 4px 12px rgba(48, 46, 43, 0.03); cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease, background .15s ease; }
+.product-app .quiz-option:hover, .product-app .listening-option:hover { background: var(--card); border-color: var(--mint); box-shadow: 0 3px 12px rgba(48, 46, 43, 0.07); transform: none; }
+body.dark .product-app :is(.quiz-option,.listening-option) { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 16px rgba(0, 0, 0, 0.18); }
 .product-app :is(.quiz-option,.listening-option).selected { background: var(--mint-soft); border-color: var(--mint); }
 .product-app :is(.quiz-option,.listening-option).correct { background: var(--success-soft); border-color: var(--success); color: var(--success); }
 .product-app :is(.quiz-option,.listening-option).wrong { background: var(--coral-soft); border-color: var(--coral); color: var(--coral); }
@@ -396,7 +441,8 @@ body.dark .product-app .cal-l3 { background: #cf946d; }
 .product-app .box-wrong { background: var(--coral-soft); color: var(--coral); border-color: var(--coral); }
 .product-app .box-pending { background: transparent; border-color: var(--line); }
 .product-app .scene { padding: 10px 0; }
-.product-app .card-face { background: var(--card); border: 1px solid var(--line); border-radius: 10px; box-shadow: none; padding: 32px; }
+.product-app .card-face { background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 1px 3px rgba(48, 46, 43, 0.06), 0 10px 28px rgba(48, 46, 43, 0.045); padding: 32px; }
+body.dark .product-app .card-face { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35), 0 12px 30px rgba(0, 0, 0, 0.24); }
 .product-app .front-main { font: 400 60px/1.2 var(--font-reading); color: var(--ink); letter-spacing: -.5px; }
 .product-app .front-main.has-mark { font-size: 32px; line-height: 1.55; }
 .product-app .front-phonetic { font: 400 19px var(--font-reading); color: var(--muted); }
@@ -408,8 +454,8 @@ body.dark .product-app .cal-l3 { background: #cf946d; }
 .product-app .back-lookup-panel { background: var(--paper); border: 1px solid var(--line); border-radius: 7px; }
 .product-app .rating-area { margin-top: 20px; }
 .product-app .rating-buttons { gap: 10px; }
-.product-app .btn-rating { border: 1px solid var(--line); border-radius: 7px; background: var(--card); color: var(--ink); font-size: 17px; font-weight: 500; box-shadow: none; padding: 12px 8px; }
-.product-app .btn-rating:hover { transform: none; background: var(--nav-paper); box-shadow: none; }
+.product-app .btn-rating { border: 1px solid var(--line); border-radius: 7px; background: var(--card); color: var(--ink); font-size: 17px; font-weight: 500; box-shadow: 0 1px 2px rgba(48, 46, 43, 0.04); padding: 12px 8px; }
+.product-app .btn-rating:hover { transform: none; background: var(--card); border-color: var(--mint); box-shadow: 0 3px 10px rgba(48, 46, 43, 0.06); }
 .product-app .rating-label { font-size: 12px; font-weight: 400; color: var(--muted); }
 .product-app .btn-rating.rating-1 { border-bottom: 3px solid var(--coral); }
 .product-app .btn-rating.rating-2 { border-bottom: 3px solid var(--sun); }
@@ -477,7 +523,10 @@ body.dark .product-app .cal-l3 { background: #cf946d; }
   .view-queue .view > details { margin-top: 0; width: 100%; }
   .view-queue .welcome-box { padding: 24px; }
   .view-stats .stage > .view { display: block; }
-  .view-stats .stage > .view > * { margin-bottom: 24px; }
+  .view-stats .stage > .view > * { margin-bottom: 20px; }
+  .product-app .retention-windows { grid-template-columns: 1fr; }
+  .product-app .add-workspace-grid { grid-template-columns: 1fr; gap: 18px; }
+  .product-app .add-panel { padding: 20px; }
   .product-app .stats-card { padding-inline: 16px; }
   .product-app .stats-card-value { font-size: 32px; }
   .product-app .word-detail-card { padding: 0; }
@@ -514,9 +563,11 @@ body.dark .product-app .cal-l3 { background: #cf946d; }
   .view-queue .goal-daily-set { grid-column: 2; grid-row: 1 / span 3; align-self: center; max-width: 120px; }
   .daily-round { padding: 20px; }
   .daily-round > p:first-child { font-size: 14px; line-height: 1.8; }
-  .product-app .stats-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px 0; }
+  .product-app .stats-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 20px 0; padding: 18px 16px; }
   .product-app .stats-card:nth-child(3) { padding-left: 0; }
   .product-app .stats-card:nth-child(2) { border-right: 0; }
+  .product-app .week-chart { gap: 4px; }
+  .product-app .week-col-val, .product-app .week-axis-label { font-size: 10px; }
   .product-app .settings-panel-head { margin-bottom: 20px; }
   .product-app .settings-row { padding-block: 20px; }
   .product-app .settings-row .diff-group { flex-wrap: wrap; gap: 5px; }
