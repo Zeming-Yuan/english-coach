@@ -52,3 +52,12 @@
 《My small book》的正文沿用 `el11-starter-v1`。内容负责人于 2026-11-20 核对并确认接受
 `story_quality.py` 中 `STARTER.glossary` 的 21 条随文释义。释义覆盖阅读器可点选的词形，
 用于理解正文。基础支撑词表仍按 `el11-support-v1` 解释覆盖情况。
+
+## S95-11 点单与中性反馈
+
+`drinks-v2` 在请求水的任务中收录 “A glass of water, please.”，同一表达可省略
+please。匹配限制为一杯水，其他饮品或数量的类似句式仍未判定。原 `drinks-v1`
+材料保存在 `scenes/drinks-v1.json`。
+
+`scene_feedback/v2.json` 为未判定提供 “Let us continue.” 或 “OK. Let us continue.”，
+已知不满足仍用相应纠正，跳过沿用继续回应。原 `v1.json` 供已保存反馈读取与恢复。
