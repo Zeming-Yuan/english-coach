@@ -169,3 +169,29 @@ test("S95-01 failed target lookup can be confirmed after reload", async ({app, p
   expect(detail.last_contact.kind).toBe("answer_visible");
   expect(detail.learning_events).toEqual([]);
 });
+
+test("S95-01 failed contact save keeps the same confirmation after reload", async ({app, page}) => {
+  await app.request.post("/api/cards/starter");
+  const [apply] = await app.seedCards([{word: "apply", meaning: "申请；应用"}]);
+  await page.goto(app.baseURL);
+  await page.getByRole("button", {name: "开始今天的学习"}).click();
+  await page.locator(".card").press("Enter");
+  await page.getByRole("button", {name: "多学一个"}).click();
+  const submissions = [];
+  await page.route("**/api/learning/contacts", route => {
+    const command = route.request().postDataJSON();
+    if (command.card_id !== apply) return route.continue();
+    submissions.push(command.submission_id);
+    if (submissions.length === 1) return route.fulfill({status: 503, json: {detail: "联系暂不可用"}});
+    return route.continue();
+  });
+  await page.getByRole("region", {name: "构词与扩展"}).getByRole("button", {name: /^apply/}).click();
+  await expect(page.getByRole("dialog").getByRole("alert")).toContainText("接触依据不完整", {timeout: 4000});
+  await page.reload();
+  await page.getByRole("button", {name: "继续确认扩展词接触"}).click();
+  await expect(page.getByRole("button", {name: "继续确认扩展词接触"})).toHaveCount(0);
+  expect(submissions).toHaveLength(2);
+  expect(submissions[0]).toBe(submissions[1]);
+  const detail = await (await app.request.get(`/api/cards/${apply}`)).json();
+  expect(detail.last_contact.kind).toBe("answer_visible");
+});

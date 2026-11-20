@@ -178,6 +178,10 @@ async function resolveVisibleContactLookup(scope) {
     failed: targets.filter((_, index) => outcomes[index].status === "rejected").map(({card}) => card),
     unrecorded: record.targets.filter(({card}) => record.unrecorded.includes(card.content_revision.identity)).map(({card}) => card),
   };
+  if (expansion && result.failed.length > 0) {
+    // Keep the lookup and its original submission available after closing/reloading.
+    throw new Error("接触保存尚未确认，请继续确认扩展词接触。");
+  }
   if (!transferVisibleLookup(scope, result.failed, targetScopeFor)) {
     throw new Error("部分接触尚未确认，浏览器未能保存待确认目标，请重试。");
   }

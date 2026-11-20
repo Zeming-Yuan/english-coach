@@ -21,7 +21,11 @@ export default function ExpansionPreview({sourceCard, row, source, closeLabel, o
 
   const confirmContact = kind => {
     const scope = beginExpansionContactLookup({card: sourceCard, row, source, kind});
-    retryVisibleContactLookup(scope).catch(error => {
+    retryVisibleContactLookup(scope).then(({unrecorded}) => {
+      if (active.current && unrecorded.length) {
+        setContactError("接触依据不完整：目标词已删除或修改，请重新查看。");
+      }
+    }).catch(error => {
       if (active.current) setContactError(`接触依据不完整：${error.message}`);
     });
   };
