@@ -51,7 +51,9 @@ export function useLearningAttempt(scope, preparePending) {
         if (result.committed !== true) throw new Error("尚未确认保存");
         if (loadPending(scope)?.payload?.submission_id === target.payload.submission_id) clearPending(scope);
         pending.current = null;
-        if (mounted.current) setState({ phase: "saved", result, error: null });
+        if (mounted.current) {
+          setState({ phase: "saved", result, error: null, confirmedPayload: target.payload });
+        }
         return result;
       } catch (error) {
         if (mounted.current) {

@@ -10,6 +10,7 @@ import {
 import { fetchSpellPool, usePracticeSession } from "../lib/practiceSession.js";
 import { recordPracticeContact } from "../lib/practiceContacts.js";
 import SpellingBoard from "../components/SpellingBoard.jsx";
+import SpellingCorrection from "../components/SpellingCorrection.jsx";
 import PracticeEmptyState from "../components/PracticeEmptyState.jsx";
 
 /**
@@ -36,16 +37,10 @@ export default function SpellingPage({ onExit, onAddWords, singleCard, singleCar
   const inputRef = useRef(null);
 
   const s = usePracticeSession({
-    speakOnAnswer: true,
-    autoAdvanceMs: null,
-    onAnswerAudio: (item) =>
-      recordPracticeContact({
-        cardId: item.q.card_id,
-        revision: item.q.content_revision,
-        source: "spelling",
-        kind: "answer_audio",
-      }),
-    typedAttempt: () => ({ source: "spelling", assistance }),
+    typedAttempt: (item) => ({
+      source: "spelling",
+      assistance: item.answerRevealed ? [...assistance, "answer_visible"] : assistance,
+    }),
     buildItems: async () => {
       if (singleCard && (!singleCardId || singleCard.id === singleCardId)) {
         return [{ type: "spell", q: { ...singleCard, card_id: singleCard.id } }];
@@ -68,8 +63,8 @@ export default function SpellingPage({ onExit, onAddWords, singleCard, singleCar
     },
   });
   const {
-    phase, idx, q, total, feedback, stats, submit, skip, next, replay,
-    saving, saveError, pendingResume, retry, resumePending,
+    phase, idx, item, q, total, feedback, stats, submit, skip, next, replay, restartItems,
+    saving, saveError, reloadRequired, pendingResume, retry, resumePending,
   } = s;
 
   const itemId = q ? `${q.card_id}:spell` : null;
@@ -104,7 +99,7 @@ export default function SpellingPage({ onExit, onAddWords, singleCard, singleCar
   useEffect(() => {
     if (!feedback || !q) return;
     clearAssistance("spelling", `${q.card_id}:spell`);
-    if (feedback.correct === true) return;
+    if (feedback.correct !== false || feedback.skipped) return;
     recordPracticeContact({
       cardId: q.card_id,
       revision: q.content_revision,
@@ -118,13 +113,19 @@ export default function SpellingPage({ onExit, onAddWords, singleCard, singleCar
     return <PracticeEmptyState message="还没有单词，先去加词吧" onAddWords={onAddWords} onExit={onExit} />;
   }
   if (phase === "done") {
+    const retryItems = stats.wrongList
+      .filter(({userInput}) => userInput !== null)
+      .map(({item}) => ({...item, answerRevealed: true}));
     return (
       <section className="view view-center">
         <div className="study-done">
           <div className="done-emoji"><UiIcon name="done" size={40} /></div>
           <h2>拼写完成！</h2>
           <p className="done-detail">拼对 {stats.correct}/{total} 词（{Math.round(stats.correct / total * 100)} 分）</p>
-          <button className="btn btn-primary" onClick={replay}>再来一轮</button>
+          {retryItems.length > 0 && (
+            <button className="btn btn-primary" onClick={() => restartItems(retryItems)}>重练错词</button>
+          )}
+          <button className={`btn ${retryItems.length ? "btn-ghost" : "btn-primary"}`} onClick={replay}>再来一轮</button>
           <button className="btn btn-ghost" style={{ marginTop: 8 }} onClick={onExit}>回到队列</button>
         </div>
       </section>
@@ -133,6 +134,7 @@ export default function SpellingPage({ onExit, onAddWords, singleCard, singleCar
   if (!q) return null;
 
   const independent = assistance.length === 0;
+  const awaitingConfirmation = saving || Boolean(saveError || pendingResume);
   const savedCount = idx + (feedback ? 1 : 0);
   const feedbackState = feedback
     ? (feedback.skipped ? "skipped" : feedback.correct ? "correct" : "incorrect")
@@ -178,7 +180,7 @@ export default function SpellingPage({ onExit, onAddWords, singleCard, singleCar
           target={independent ? null : q.word}
           onSubmit={submit}
           showFirstHint={assistance.includes("first_letter")}
-          disabled={!!feedback || saving}
+          disabled={!!feedback || awaitingConfirmation}
           inputRef={inputRef}
           formId="spelling-answer-form"
           feedbackState={feedbackState}
@@ -186,13 +188,14 @@ export default function SpellingPage({ onExit, onAddWords, singleCard, singleCar
         <div className="spelling-hint">
           {assistance.length > 0
             ? "本题已使用提示，仍按辅助记录"
-            : diffLabels[difficulty]}
+            : item.answerRevealed ? "已看过正确拼写，本次按辅助练习记录" : diffLabels[difficulty]}
         </div>
         {pendingResume && !feedback && (
           <div className="spelling-hint">
             上次提交尚未确认保存
             <button
               className="btn btn-ghost btn-small"
+              disabled={saving}
               onClick={async () => {
                 const result = await resumePending();
                 if (result) setResumeNotice("上次提交已保存");
@@ -207,16 +210,17 @@ export default function SpellingPage({ onExit, onAddWords, singleCard, singleCar
           <div className={`spelling-feedback ${feedback.correct ? "ok" : "err"}`}>
             <span role="status">已保存</span>
             {" "}
-            {feedback.correct
-              ? " · 拼写正确"
-              : ` · ${feedback.skipped ? "已跳过" : "正确拼写"}：${feedback.expected}`}
+            {feedback.skipped ? " · 已跳过，未作答" : feedback.correct ? " · 拼写正确" : (
+              <SpellingCorrection typed={feedback.userInput} expected={feedback.expected}
+                cardId={q.card_id} revision={q.content_revision} source="spelling" />
+            )}
           </div>
         )}
         {saveError && (
           <div role="alert" className="spelling-feedback err">
-            保存未确认：{saveError}
-            <button className="btn btn-ghost btn-small" onClick={retry} disabled={saving}>
-              重试保存
+            {reloadRequired ? saveError : `保存未确认：${saveError}`}
+            <button className="btn btn-ghost btn-small" onClick={reloadRequired ? replay : retry} disabled={saving}>
+              {reloadRequired ? "重新加载题目" : "重试保存"}
             </button>
           </div>
         )}
@@ -224,11 +228,11 @@ export default function SpellingPage({ onExit, onAddWords, singleCard, singleCar
 
       {/* 主操作：钉在首屏底部，不随内容滚动 */}
       <div className="practice-actions">
-        {!feedback && <button type="submit" form="spelling-answer-form" className="btn btn-primary qwerty-submit" disabled={saving}>
+        {!feedback && <button type="submit" form="spelling-answer-form" className="btn btn-primary qwerty-submit" disabled={awaitingConfirmation}>
           {saving ? "正在确认…" : "提交答案"}
           {!saving && <kbd aria-hidden="true">Enter</kbd>}
         </button>}
-        <button className="btn btn-ghost btn-small spelling-skip" onClick={feedback ? next : skip} disabled={saving}>
+        <button className="btn btn-ghost btn-small spelling-skip" onClick={feedback ? next : skip} disabled={awaitingConfirmation}>
           {feedback ? "下一题 →" : "跳过这题 →"}
         </button>
       </div>

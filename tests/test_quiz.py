@@ -1,5 +1,7 @@
 from uuid import uuid4
 
+import pytest
+
 from app.models.card import Card
 
 
@@ -40,9 +42,9 @@ def make_quiz_cards(db):
     """造 5 张带 meaning/example 的卡，模拟测验素材。"""
     for word, meaning, example in [
         ("apple", "苹果", "I like to eat an apple every day."),
-        ("banana", "香蕉", "Monkeys love to eat bananas."),
+        ("banana", "香蕉", "The monkey ate a banana."),
         ("cherry", "樱桃", "She ate a cherry after lunch."),
-        ("date", "枣子", "Dates are sweet fruits."),
+        ("date", "枣子", "I ate a dried date."),
         ("egg", "鸡蛋", "I had a boiled egg for breakfast."),
     ]:
         db.add(Card(word=word, meaning=meaning, example=example))
@@ -177,3 +179,104 @@ def test_quiz_excludes_sentence_cards(client, db_session):
     for q in questions:
         if q["type"] in ("cn2en", "fill"):
             assert q.get("word_length") < 20
+
+
+def test_five_question_quiz_can_include_related(client, db_session):
+    make_quiz_cards(db_session)
+    apple = db_session.query(Card).filter(Card.word == "apple").one()
+    apple.related_words = [
+        {"word": "applesauce", "meaning": "苹果酱", "kind": "compound"},
+        {"word": "apply", "meaning": "申请", "kind": "lookalike"},
+    ]
+    db_session.commit()
+
+    questions = client.get("/api/quiz?limit=5").json()["questions"]
+    assert len(questions) == 5
+    assert len({q["card_id"] for q in questions}) == 5
+    related = [q for q in questions if q["type"] == "related"]
+    assert len(related) == 1
+    assert related[0]["card_id"] == apple.id
+    assert len(set(related[0]["options"])) >= 2
+    assert related[0]["question_token"]
+
+
+@pytest.mark.parametrize(
+    "rows",
+    [
+        None,
+        [{"word": "apply", "meaning": "  "}],
+        [{"word": " APPLE ", "meaning": "苹果"}],
+        [
+            {"word": "apply", "meaning": "申请"},
+            {"word": "application", "meaning": "申请；申请书"},
+        ],
+        [
+            {"word": "apply", "meaning": "申请"},
+            {"word": "application", "meaning": "n. 申请；申请书"},
+        ],
+    ],
+)
+def test_quiz_uses_regular_slots_when_related_material_is_unusable(
+    client, db_session, rows
+):
+    make_quiz_cards(db_session)
+    apple = db_session.query(Card).filter(Card.word == "apple").one()
+    apple.related_words = rows
+    db_session.commit()
+
+    questions = client.get("/api/quiz?limit=5").json()["questions"]
+    assert [q["type"] for q in questions] == [
+        "cn2en",
+        "cn2en",
+        "cn2en",
+        "choice",
+        "fill",
+    ]
+
+
+def test_quiz_related_options_deduplicate_forms_and_prefer_related_words(
+    client, db_session
+):
+    make_quiz_cards(db_session)
+    apple = db_session.query(Card).filter(Card.word == "apple").one()
+    apple.related_words = [
+        {"word": "apple juice", "meaning": "苹果汁"},
+        {"word": " APPLE  JUICE ", "meaning": "苹果汁"},
+        {"word": "apply", "meaning": "申请"},
+    ]
+    db_session.commit()
+
+    questions = client.get("/api/quiz?limit=5").json()["questions"]
+    related = next(q for q in questions if q["type"] == "related")
+    assert sorted(related["options"]) == ["apple juice", "apply"]
+
+
+def test_single_word_quiz_does_not_force_a_related_question(client, db_session):
+    apple = make_card(db_session)
+    apple.related_words = [{"word": "apply", "meaning": "申请"}]
+    db_session.commit()
+
+    questions = client.get("/api/quiz?limit=5").json()["questions"]
+    assert [q["type"] for q in questions] == ["cn2en"]
+
+
+def test_quiz_related_ignores_definitions_of_words_outside_its_options(
+    client, db_session
+):
+    make_quiz_cards(db_session)
+    apple = db_session.query(Card).filter(Card.word == "apple").one()
+    apple.related_words = [
+        {"word": "applesauce", "meaning": "苹果酱"},
+        {"word": "apply", "meaning": "申请"},
+    ]
+    db_session.add_all(
+        [
+            Card(word="apple sauce", meaning="苹果酱"),
+            Card(word="application", meaning="申请；申请书"),
+        ]
+    )
+    db_session.commit()
+
+    questions = client.get("/api/quiz?limit=5").json()["questions"]
+    related = next(q for q in questions if q["type"] == "related")
+    assert sorted(related["options"]) == ["applesauce", "apply"]

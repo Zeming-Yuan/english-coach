@@ -76,10 +76,12 @@ function notifyStarted(onStarted) {
  * @param {string} word
  * @param {HTMLElement|null} btn - 发音时加 .speaking 样式
  * @param {Function|null} onStarted - 实际开始播放时回调；预热、下载与失败不回调
+ * @param {AbortSignal|null} signal - owning question can cancel playback
  * @returns {Promise<"online"|"local"|"none"|"canceled">} 实际使用的发音来源；
  *   canceled 表示被新的朗读打断，调用方不应提示失败
  */
-export function speak(word, btn = null, onStarted = null) {
+export function speak(word, btn = null, onStarted = null, signal = null) {
+  if (signal?.aborted) return Promise.resolve("canceled");
   if (!word) return Promise.resolve("none");
   stopOnlineAudio();
   stopLocalAudio();
@@ -90,9 +92,17 @@ export function speak(word, btn = null, onStarted = null) {
     const done = (mode) => {
       if (settled) return;
       settled = true;
+      signal?.removeEventListener("abort", abort);
       if (btn) btn.classList.remove("speaking");
       resolve(mode);
     };
+    const abort = () => {
+      stopOnlineAudio();
+      stopLocalAudio();
+      if (hasSpeech) speechSynthesis.cancel();
+      done("canceled");
+    };
+    signal?.addEventListener("abort", abort, {once: true});
     speakOnline(word, done, () => speakLocal(word, done, onStarted), onStarted);
     if (btn && !settled) btn.classList.add("speaking");
   });

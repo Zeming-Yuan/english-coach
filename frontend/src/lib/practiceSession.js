@@ -11,7 +11,7 @@
  * q 字段由 buildItems 提供（各视图的题库接口不同）。
  * EC-06 起听写页使用独立的保存确认状态机；混合页迁移由 EC-07 负责。
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { api } from "./api.js";
 import { clearPending, loadPending, makePending, savePending, sendPending } from "./learning.js";
@@ -19,6 +19,25 @@ import { sfxFail, sfxSuccess } from "./sfx.js";
 import { speak } from "./tts.js";
 
 const TYPED_PENDING_SCOPE = "typed-attempt";
+
+function releaseTypedAttempt(pending) {
+  if (loadPending(TYPED_PENDING_SCOPE)?.payload?.submission_id === pending.payload.submission_id) {
+    clearPending(TYPED_PENDING_SCOPE);
+  }
+}
+
+async function confirmTypedAttempt(pending) {
+  const result = await sendPending(pending);
+  if (result.committed !== true || (result.card_id != null && result.card_id !== pending.payload.card_id)) {
+    throw new Error("尚未确认保存");
+  }
+  releaseTypedAttempt(pending);
+  return result;
+}
+
+function shouldSpeakAnswer(setting, item) {
+  return typeof setting === "function" ? setting(item) : setting;
+}
 
 /** 本地归一化判分（与后端 scoring.normalize 语义一致：小写+去标点空白） */
 export const norm = (s) => (s || "").toLowerCase().trim();
@@ -90,7 +109,7 @@ async function judgeAnswer(item, value, fsrsOnSpell) {
  * @param {number} [opts.minItems=1] 题量不足视为 empty
  * @param {boolean} [opts.fsrsOnSpell=false] 专属拼写练习：拼写也写 FSRS（默认只记错词）
  * @param {(correct: boolean) => number | null} [opts.autoAdvanceMs=null] 反馈后自动切题延时；null=手动
- * @param {boolean} [opts.speakOnAnswer=false] 反馈后朗读正确答案
+ * @param {boolean|((item: object) => boolean)} [opts.speakOnAnswer=false] 反馈后朗读正确答案
  * @param {(item: object) => void} [opts.onAnswerAudio] 正确答案语音真正开始播放
  * @param {boolean} [opts.speakListenOnNewItem=false] 进入听写题自动播发音
  * @param {boolean} [opts.enterToNext=true] 反馈阶段 Enter → 下一题
@@ -114,9 +133,15 @@ export function usePracticeSession({
   const [stats, setStats] = useState({ correct: 0, wrongList: [] });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const [reloadRequired, setReloadRequired] = useState(false);
   const [pendingResume, setPendingResume] = useState(() => loadPending(TYPED_PENDING_SCOPE));
   const submittedRef = useRef(false);
   const pendingRef = useRef(null);
+  const mounted = useRef(false);
+  useLayoutEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
   // 视图传入的函数可能每次渲染都是新引用：用 ref 保存最新值，效果只依赖状态
   const buildItemsRef = useRef(buildItems);
   buildItemsRef.current = buildItems;
@@ -127,16 +152,21 @@ export function usePracticeSession({
   const onAnswerAudioRef = useRef(onAnswerAudio);
   onAnswerAudioRef.current = onAnswerAudio;
 
-  const load = useCallback(async () => {
-    setPhase("loading");
+  const resetRound = useCallback(() => {
     setLoadError(false);
     setFeedback(null);
     setIdx(0);
     setStats({ correct: 0, wrongList: [] });
     setSaving(false);
     setSaveError("");
+    setReloadRequired(false);
     submittedRef.current = false;
     pendingRef.current = null;
+  }, []);
+
+  const load = useCallback(async () => {
+    resetRound();
+    setPhase("loading");
     try {
       const list = await buildItemsRef.current();
       if (!list || list.length < minItems) {
@@ -151,7 +181,7 @@ export function usePracticeSession({
       setLoadError(true);
       setPhase("empty");
     }
-  }, [minItems]);
+  }, [minItems, resetRound]);
 
   useEffect(() => {
     load();
@@ -191,10 +221,9 @@ export function usePracticeSession({
   useEffect(() => {
     if (!enterToNext || !feedback) return;
     const handler = (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        advance();
-      }
+      if (e.key !== "Enter" || e.defaultPrevented || e.target.closest?.("button, a")) return;
+      e.preventDefault();
+      advance();
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
@@ -203,10 +232,11 @@ export function usePracticeSession({
   /** 已确认保存后统一进入反馈与统计：只有 committed 的结果才会到这里。 */
   const applySaved = useCallback(
     (outcome, value, skipped = false, target = item) => {
+      if (!mounted.current) return;
       const correct = outcome.correct;
       if (correct) sfxSuccess();
       else sfxFail();
-      if (speakOnAnswer && outcome.expected) {
+      if (shouldSpeakAnswer(speakOnAnswer, target) && outcome.expected) {
         speak(outcome.expected, null, () => {
           if (onAnswerAudioRef.current) onAnswerAudioRef.current(target);
         });
@@ -232,22 +262,35 @@ export function usePracticeSession({
     [item, speakOnAnswer]
   );
 
+  const reportTypedFailure = useCallback((error, pending) => {
+    if (error.status === 404 || error.status === 409) {
+      // The server rejected this command. A saved command would have replayed.
+      releaseTypedAttempt(pending);
+      pendingRef.current = null;
+      setPendingResume(null);
+      setReloadRequired(true);
+      setSaveError(error.message);
+    } else {
+      setSaveError("请检查网络后重试");
+    }
+  }, []);
+
   /** 输入题统一提交：发送前持久化 pending，同一 pending 重试不换标识。 */
   const sendTypedAttempt = useCallback(async (target, value, skipped, config) => {
     const key = `${config.source}:${target.type}:${target.q.card_id}`;
     let record = pendingRef.current;
-    if (
-      !record ||
-      record.key !== key ||
-      record.value !== value ||
-      record.skipped !== skipped
-    ) {
+    if (record && (record.key !== key || record.value !== value || record.skipped !== skipped)) {
+      throw new Error("请先继续确认上次提交");
+    }
+    if (!record) {
+      if (loadPending(TYPED_PENDING_SCOPE)) throw new Error("请先继续确认上次提交");
       record = {
         key,
         value,
         skipped,
         pending: makePending("/api/typing/check", {
           card_id: target.q.card_id,
+          revision: target.q.content_revision,
           user_input: skipped ? "" : value,
           source: config.source,
           kind: "typed",
@@ -262,18 +305,17 @@ export function usePracticeSession({
     setSaving(true);
     setSaveError("");
     try {
-      const result = await sendPending(record.pending);
-      clearPending(TYPED_PENDING_SCOPE);
+      const result = await confirmTypedAttempt(record.pending);
       pendingRef.current = null;
       setPendingResume(null);
       return result;
     } catch (error) {
-      setSaveError("请检查网络后重试");
+      reportTypedFailure(error, record.pending);
       throw error;
     } finally {
       setSaving(false);
     }
-  }, []);
+  }, [reportTypedFailure]);
 
   /** 提交答案：判分 + 记录 + 反馈 + 统计。网络错误抛出（调用方解锁/提示）。 */
   const submit = useCallback(
@@ -325,9 +367,10 @@ export function usePracticeSession({
           return;
         }
       }
+      if (!mounted.current) return;
       sfxFail();
       const expected = q?.word || q?.answer || "";
-      if (speakOnAnswer && expected) {
+      if (shouldSpeakAnswer(speakOnAnswer, item) && expected) {
         speak(expected, null, () => {
           if (onAnswerAudioRef.current) onAnswerAudioRef.current(item);
         });
@@ -351,8 +394,7 @@ export function usePracticeSession({
     setSaving(true);
     setSaveError("");
     try {
-      const result = await sendPending(record.pending);
-      clearPending(TYPED_PENDING_SCOPE);
+      const result = await confirmTypedAttempt(record.pending);
       pendingRef.current = null;
       setPendingResume(null);
       applySaved(
@@ -361,14 +403,14 @@ export function usePracticeSession({
         record.skipped
       );
       return result;
-    } catch {
-      setSaveError("请检查网络后重试");
+    } catch (error) {
+      reportTypedFailure(error, record.pending);
       return null;
     } finally {
       submittedRef.current = false;
       setSaving(false);
     }
-  }, [applySaved]);
+  }, [applySaved, reportTypedFailure]);
 
   /** 刷新后继续确认上次未获得响应的提交。 */
   const resumePending = useCallback(async () => {
@@ -382,28 +424,39 @@ export function usePracticeSession({
     setSaving(true);
     setSaveError("");
     try {
-      const result = await sendPending(saved);
-      if (result.committed !== true) throw new Error("尚未确认保存");
-      clearPending(TYPED_PENDING_SCOPE);
+      const result = await confirmTypedAttempt(saved);
+      if (!mounted.current) return result;
       setPendingResume(null);
+      const currentSource = item && typedAttemptRef.current?.(item)?.source;
+      if (currentSource && currentSource !== saved.payload.source) return result;
+      const matchingCard = items.find(entry => entry.q?.card_id === saved.payload.card_id);
+      const previous = saved.payload.revision;
+      const current = matchingCard?.q.content_revision;
+      if (previous && current && (previous.identity !== current.identity || previous.version !== current.version)) {
+        return result;
+      }
       // A committed old answer may no longer be due in the new pool. Give its
       // feedback its own item, preserving every unanswered item in this round.
       const restoredIndex = items.findIndex((entry, index) => index >= idx && entry.q?.card_id === saved.payload.card_id);
       const restoredItems = [...items];
       const target = restoredIndex >= 0 ? restoredItems.splice(restoredIndex, 1)[0]
-        : {type: "spell", q: {card_id: saved.payload.card_id, word: result.expected}};
+        : {type: item?.type || "spell", q: {
+          card_id: saved.payload.card_id,
+          word: result.expected,
+          content_revision: saved.payload.revision,
+        }};
       restoredItems.splice(idx, 0, target);
       setItems(restoredItems);
       applySaved(result, saved.payload.user_input, saved.payload.skipped, target);
       return result;
-    } catch {
-      setSaveError("请检查网络后重试");
+    } catch (error) {
+      reportTypedFailure(error, saved);
       return null;
     } finally {
       submittedRef.current = false;
       setSaving(false);
     }
-  }, [items, idx, applySaved]);
+  }, [items, idx, item, applySaved, reportTypedFailure]);
 
   /** 手动下一题（反馈阶段按钮；done 判定在 advance 内）。 */
   const next = useCallback(() => {
@@ -411,9 +464,16 @@ export function usePracticeSession({
     advance();
   }, [phase, advance]);
 
+  const restartItems = useCallback((nextItems) => {
+    if (phase !== "done" || !nextItems.length || submittedRef.current || loadPending(TYPED_PENDING_SCOPE)) return;
+    resetRound();
+    setItems(nextItems);
+    setPhase("ready");
+  }, [phase, resetRound]);
+
   /** 再来一轮：重新装配。 */
   const replay = useCallback(() => {
-    load();
+    if (!submittedRef.current) load();
   }, [load]);
 
   return {
@@ -427,6 +487,7 @@ export function usePracticeSession({
     stats, // { correct, wrongList }
     saving,
     saveError,
+    reloadRequired,
     pendingResume,
     submit,
     skip,
@@ -434,5 +495,6 @@ export function usePracticeSession({
     retry,
     resumePending,
     replay,
+    restartItems,
   };
 }
