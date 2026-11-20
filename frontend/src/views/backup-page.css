@@ -14,9 +14,13 @@
 }
 .product-app .backup-panel .backup-download { min-height: 44px; }
 .product-app .backup-panel .backup-upload {
-  margin-top: 32px;
-  padding: 28px 0 0;
-  border-top: 1px solid var(--line);
+  margin-top: 28px;
+  padding: 24px 26px;
+  border: 1px solid var(--hairline, var(--line));
+  border-radius: 20px;
+  background-color: var(--card);
+  background-image: var(--card-grad, none);
+  box-shadow: var(--elev-1, 0 2px 8px rgba(36, 30, 22, 0.04)), inset 0 1px 0 var(--specular, rgba(255, 255, 255, 0.8));
 }
 .backup-upload h2 { margin: 0 0 18px; font-size: 19px; font-weight: 500; }
 .product-app .backup-upload .settings-label { font-size: 13px; color: var(--muted); }
@@ -24,15 +28,22 @@
   display: block;
   width: 100%;
   margin-top: 8px;
-  padding: 8px;
-  border: 1px dashed var(--line);
-  border-radius: 8px;
-  background: var(--nav-paper);
+  padding: 12px;
+  border: 1.5px dashed var(--hairline-strong, var(--line));
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: var(--elev-1, 0 2px 6px rgba(36, 30, 22, 0.04));
   overflow: hidden;
+  transition: border-color 180ms var(--ease-snap, cubic-bezier(0.22, 1, 0.36, 1)), background-color 180ms var(--ease-snap, cubic-bezier(0.22, 1, 0.36, 1));
+}
+.product-app .backup-panel .backup-file:hover {
+  border-color: var(--mint);
+  background: var(--paper-elev, var(--nav-paper));
 }
 .product-app .backup-panel .backup-file::file-selector-button {
   min-height: 40px;
   background: var(--paper);
+  border-radius: 10px;
 }
 .product-app .backup-panel .backup-hint {
   max-width: 48em;
@@ -43,17 +54,20 @@
 .backup-preview {
   margin-top: 28px;
   padding: 28px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--card);
+  border: 1px solid var(--hairline, var(--line));
+  border-radius: 20px;
+  background-color: var(--card);
+  background-image: var(--card-grad, none);
+  box-shadow: var(--elev-2, 0 10px 28px rgba(36, 30, 22, 0.07)), inset 0 1px 0 var(--specular, rgba(255, 255, 255, 0.8));
   overflow-wrap: anywhere;
+  animation: fcCardRise 360ms var(--spring-snappy, cubic-bezier(0.22, 1, 0.36, 1)) backwards;
 }
 .product-app .backup-preview .backup-preview-kicker {
   margin: 0 0 6px;
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: .08em;
-  color: var(--mint);
+  color: var(--mint-ink, var(--mint));
 }
 .backup-preview h2 { margin: 0 0 22px; font-size: 25px; line-height: 1.4; font-weight: 500; }
 .backup-preview-full h2 { color: var(--coral); }
@@ -65,7 +79,7 @@
   list-style: none;
   padding: 0;
   margin: 0;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--hairline, var(--line));
 }
 .backup-missing li {
   display: flex;
@@ -73,7 +87,7 @@
   justify-content: space-between;
   gap: 12px;
   padding: 11px 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--hairline, var(--line));
   font-size: 14px;
 }
 .backup-missing li > span:last-child { color: var(--muted); text-align: right; }
@@ -90,11 +104,12 @@
 .product-app .backup-preview .backup-summary {
   margin: 0 0 22px;
   padding: 16px 18px;
-  border-radius: 7px;
+  border-radius: 12px;
+  border: 1px solid var(--hairline, var(--line));
   background: var(--nav-paper);
   font-size: 14px;
 }
-.product-app .backup-preview-full .backup-summary { background: var(--coral-soft); }
+.product-app .backup-preview-full .backup-summary { background: var(--coral-soft); border-color: rgba(161, 76, 61, 0.24); }
 .backup-count-summary { margin: 14px 0; font-size: 14px; }
 .product-app .backup-panel .backup-counts { margin: 18px 0; font-size: 14px; }
 .product-app .backup-panel .backup-counts > div {
@@ -102,14 +117,14 @@
   grid-template-columns: minmax(100px, 1fr) 2fr;
   gap: 20px;
   padding: 9px 0;
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid var(--hairline, var(--line));
 }
 .backup-counts dt { font-weight: 500; }
 .backup-counts dd { margin: 0; color: var(--muted); }
 .product-app .backup-preview .backup-safety {
   margin: 22px 0 16px;
   padding-top: 20px;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid var(--hairline, var(--line));
   font-size: 13px;
   color: var(--ink);
 }
@@ -119,24 +134,28 @@
 .product-app .backup-panel .backup-success {
   margin: 18px 0;
   padding: 16px 18px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
+  border: 1px solid rgba(75, 113, 88, 0.25);
+  border-radius: 14px;
   background: var(--success-soft);
   color: var(--success);
   font-size: 14px;
   overflow-wrap: anywhere;
 }
 .product-app .backup-panel .backup-contents {
-  margin-top: 32px;
-  padding: 24px 0 0;
-  border-top: 1px solid var(--line);
+  margin-top: 24px;
+  padding: 22px 26px;
+  border: 1px solid var(--hairline, var(--line));
+  border-radius: 20px;
+  background-color: var(--card);
+  background-image: var(--card-grad, none);
+  box-shadow: var(--elev-1, 0 2px 8px rgba(36, 30, 22, 0.04)), inset 0 1px 0 var(--specular, rgba(255, 255, 255, 0.8));
 }
 .backup-contents .settings-label { font-size: 13px; font-weight: 500; }
 .product-app .backup-contents p { margin: 6px 0 18px; font-size: 13px; color: var(--muted); }
 .product-app .backup-panel .backup-back { margin-top: 6px; }
 .backup-panel :is(button, input):focus-visible { outline: 2px solid var(--mint); outline-offset: 4px; }
 @media (max-width: 640px) {
-  .backup-preview { padding: 20px 16px; margin-inline: -4px; }
+  .backup-preview { padding: 20px 16px; margin-inline: -4px; border-radius: 16px; }
   .backup-preview h2 { font-size: 23px; margin-bottom: 18px; }
   .backup-missing ul { grid-template-columns: minmax(0, 1fr); }
   .backup-actions { flex-direction: column; }
