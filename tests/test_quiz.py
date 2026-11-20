@@ -42,9 +42,9 @@ def make_quiz_cards(db):
     """造 5 张带 meaning/example 的卡，模拟测验素材。"""
     for word, meaning, example in [
         ("apple", "苹果", "I like to eat an apple every day."),
-        ("banana", "香蕉", "Monkeys love to eat bananas."),
+        ("banana", "香蕉", "The monkey ate a banana."),
         ("cherry", "樱桃", "She ate a cherry after lunch."),
-        ("date", "枣子", "Dates are sweet fruits."),
+        ("date", "枣子", "I ate a dried date."),
         ("egg", "鸡蛋", "I had a boiled egg for breakfast."),
     ]:
         db.add(Card(word=word, meaning=meaning, example=example))
