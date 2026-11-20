@@ -62,11 +62,11 @@ def feedback(
             enabled=request.app.state.settings.scene_feedback_enabled,
         )
     except PracticeNotFoundError as error:
-        raise _not_found(error)
+        raise _not_found(error) from error
     except (PracticeConflictError, PracticeStaleError) as error:
-        raise _conflict(error)
+        raise _conflict(error) from error
     except PracticeUnavailableError as error:
-        raise _unavailable(error)
+        raise _unavailable(error) from error
 
 
 @router.get("/practice-sessions")
@@ -132,17 +132,25 @@ def create(
                 payload.scene_id == "drinks"
                 or request.app.state.settings.scene_expansions_enabled
             ),
+            expansion={
+                "addition_operation_id": str(payload.addition_operation_id),
+                "source_card_id": payload.source_card_id,
+                "source_revision": payload.source_revision.model_dump(mode="json"),
+            }
+            if payload.source_revision is not None
+            else None,
+            expansion_enabled=request.app.state.settings.expansion_practice_enabled,
         )
     except PermissionError as error:
-        raise HTTPException(403, str(error))
+        raise HTTPException(403, str(error)) from error
     except (PracticeLessonNotFoundError, PracticeNotFoundError) as error:
-        raise _not_found(error)
+        raise _not_found(error) from error
     except (PracticeConflictError, PracticeStaleError) as error:
-        raise _conflict(error)
+        raise _conflict(error) from error
     except (QuestionTokenStale, QuestionTokenExpired) as error:
-        raise _conflict(error)
+        raise _conflict(error) from error
     except (PracticeUnavailableError, InvalidQuestionToken) as error:
-        raise _unavailable(error)
+        raise _unavailable(error) from error
 
 
 @router.get("/practice-sessions/{session_id}")
@@ -155,7 +163,7 @@ def read(
     try:
         return get_session(db, session_id, runtime)
     except PracticeNotFoundError as error:
-        raise _not_found(error)
+        raise _not_found(error) from error
 
 
 @router.post("/practice-sessions/{session_id}/items/{item_id}/assistance")
@@ -170,13 +178,13 @@ def assistance(
     try:
         return set_assistance(db, session_id, item_id, payload.kind, runtime)
     except PracticeNotFoundError as error:
-        raise _not_found(error)
+        raise _not_found(error) from error
     except PracticeStaleError as error:
-        raise _conflict(error)
+        raise _conflict(error) from error
     except (QuestionTokenStale, QuestionTokenExpired) as error:
-        raise _conflict(error)
+        raise _conflict(error) from error
     except (PracticeUnavailableError, InvalidQuestionToken) as error:
-        raise _unavailable(error)
+        raise _unavailable(error) from error
 
 
 @router.post("/practice-sessions/{session_id}/items/{item_id}/attempts")
@@ -191,19 +199,19 @@ def attempt(
     try:
         return submit_practice(db, session_id, item_id, payload, runtime)
     except PracticeNotFoundError as error:
-        raise _not_found(error)
+        raise _not_found(error) from error
     except CardNotFoundError as error:
-        raise _not_found(error)
+        raise _not_found(error) from error
     except (
         PracticeConflictError,
         PracticeStaleError,
         SubmissionConflictError,
     ) as error:
-        raise _conflict(error)
+        raise _conflict(error) from error
     except (QuestionTokenStale, QuestionTokenExpired) as error:
-        raise _conflict(error)
+        raise _conflict(error) from error
     except (PracticeUnavailableError, InvalidQuestionToken) as error:
-        raise _unavailable(error)
+        raise _unavailable(error) from error
 
 
 @router.get("/scenes")

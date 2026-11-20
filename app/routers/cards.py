@@ -307,6 +307,7 @@ def expansion_additions(
 ):
     return {
         "enabled": request.app.state.settings.expansion_additions_enabled,
+        "practice_enabled": request.app.state.settings.expansion_practice_enabled,
         "additions": additions_for_target(db, target_card_id)
         if target_card_id is not None
         else [],

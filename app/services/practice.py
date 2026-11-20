@@ -25,6 +25,17 @@ from app.services.content_revisions import (
     get_content_revision,
     lesson_word_cards,
 )
+from app.services.expansion_practice import (
+    CHOICE_KIND as EXPANSION_CHOICE,
+)
+from app.services.expansion_practice import (
+    RULE_VERSION as EXPANSION_RULE,
+)
+from app.services.expansion_practice import (
+    check_expansion_replay,
+    expansion_items,
+    expansion_source_current,
+)
 from app.services.learning import (
     apply_attempt_in_transaction,
     start_pending_upgrade,
@@ -43,6 +54,7 @@ from app.services.write_transaction import run_write
 
 RULE_VERSION = "el08-v1"
 MAX_ITEMS = 3
+CHOICE_KINDS = {"reading_choice", EXPANSION_CHOICE}
 PURPOSES: dict[str, Callable] = {}
 
 
@@ -246,6 +258,7 @@ def _check_replay_targets(
 
 
 register_purpose("story_check", check_items)
+register_purpose("expansion", expansion_items)
 register_purpose("targeted", _targeted_items)
 register_purpose("lesson_check", _lesson_check_items)
 register_purpose("delayed_check", delayed_items)
@@ -311,6 +324,9 @@ def _session_payload(
     story_stale = practice.purpose == "story_check" and not version_is_current(
         db, version
     )
+    expansion_stale = practice.purpose == "expansion" and not expansion_source_current(
+        db, practice.expansion_snapshot
+    )
     results = []
     out_items = []
     for item in items:
@@ -318,6 +334,7 @@ def _session_payload(
         current = revisions.get(item.card_id)
         stale = (
             story_stale
+            or expansion_stale
             or current is None
             or current["identity"] != item.card_identity
             or current["version"] != item.card_revision
@@ -365,7 +382,7 @@ def _session_payload(
             "skipped": skipped if processed else False,
             "hint": hint,
         }
-        if item.kind == "reading_choice":
+        if item.kind in CHOICE_KINDS:
             assert item.question is not None
             payload_item["options"] = item.question["options"]
         if item.retention_basis:
@@ -375,6 +392,8 @@ def _session_payload(
             payload_item["expected"] = (
                 (event.response or {}).get("expected") if event is not None else None
             )
+            if item.kind == EXPANSION_CHOICE and item.question:
+                payload_item["explanation"] = item.question["explanation"]
         out_items.append(payload_item)
     invalidated = (
         practice.status == "unavailable" and practice.purpose != "lesson_check"
@@ -409,6 +428,8 @@ def _session_payload(
         "message": (
             "本版本暂无可用检查题，原文仍可阅读"
             if practice.purpose == "story_check"
+            else "暂无适合这个词义的语境题，可以返回词卡或本轮结果"
+            if practice.purpose == "expansion"
             else "原目标已删除，本轮不可继续，请返回建议"
             if invalidated and out_items
             else "原目标不可用或暂无符合窗口的词；旧记录不足时可先做普通练习建立依据"
@@ -449,6 +470,9 @@ def create_session(
     version_id: str | None = None,
     scene_id: str | None = None,
     scenes_enabled: bool = True,
+    *,
+    expansion: dict | None = None,
+    expansion_enabled: bool = True,
 ) -> dict:
     if purpose == "scene":
         from app.services.scenes import create_scene
@@ -466,45 +490,48 @@ def create_session(
         .scalars()
         .first()
     )
-    if existing is not None:
+
+    def replay_payload(session: Session, saved: PracticeSession) -> dict:
         if (
-            existing.weak_only != weak_only
-            or existing.purpose != purpose
-            or existing.version_id != version_id
-            or existing.lesson_id != lesson_id
-            or existing.window != window
-            or existing.pending_contact_ids != pending_contact_ids
+            saved.weak_only != weak_only
+            or saved.purpose != purpose
+            or saved.version_id != version_id
+            or saved.lesson_id != lesson_id
+            or saved.window != window
+            or saved.pending_contact_ids != pending_contact_ids
         ):
             raise PracticeConflictError("该轮次标识已用于其他课程或用途")
-        _check_replay_story(db, existing, story_id)
-        _check_replay_targets(db, existing, targets)
-        return _session_payload(db, existing, runtime)
+        if purpose == "expansion":
+            assert saved.expansion_snapshot is not None and expansion is not None
+            check_expansion_replay(
+                session, saved.expansion_snapshot, expansion, targets[0]
+            )
+        else:
+            _check_replay_story(session, saved, story_id)
+            _check_replay_targets(session, saved, targets)
+        return _session_payload(session, saved, runtime)
+
+    if existing is not None:
+        return replay_payload(db, existing)
 
     def operation(session: Session) -> dict:
-        replay = (
-            session.execute(
-                select(PracticeSession).where(PracticeSession.session_id == public_id)
-            )
-            .scalars()
-            .first()
+        replay = session.scalar(
+            select(PracticeSession).where(PracticeSession.session_id == public_id)
         )
         if replay is not None:
-            if (
-                replay.weak_only != weak_only
-                or replay.purpose != purpose
-                or replay.version_id != version_id
-                or replay.lesson_id != lesson_id
-                or replay.window != window
-                or replay.pending_contact_ids != pending_contact_ids
-            ):
-                raise PracticeConflictError("该轮次标识已用于其他课程或用途")
-            _check_replay_story(session, replay, story_id)
-            _check_replay_targets(session, replay, targets)
-            return _session_payload(session, replay, runtime)
+            return replay_payload(session, replay)
+        if purpose == "expansion" and not expansion_enabled:
+            raise PermissionError("新语境练习暂时关闭，已有练习仍可读取")
         issued_at = runtime.clock.now().astimezone(UTC)
         now = issued_at.replace(tzinfo=None)
+        expansion_snapshot = None
         if purpose == "story_check":
             specs = PURPOSES[purpose](session, story_id, version_id)
+        elif purpose == "expansion":
+            assert expansion is not None
+            expansion_snapshot, specs = PURPOSES[purpose](
+                session, expansion, targets[0]
+            )
         elif purpose == "targeted":
             specs = PURPOSES[purpose](session, targets)
         elif purpose == "delayed_check":
@@ -537,9 +564,12 @@ def create_session(
             targets_explicit=bool(targets),
             lesson_id=lesson_id,
             version_id=version_id,
+            expansion_snapshot=expansion_snapshot,
             status="active" if specs else "unavailable",
             rule_version="el13-v1"
             if purpose == "story_check"
+            else EXPANSION_RULE
+            if purpose == "expansion"
             else "el10-v1"
             if purpose == "targeted"
             else "el09-v1"
@@ -604,6 +634,10 @@ def set_assistance(
             session, story_version(session, practice.version_id)
         ):
             raise PracticeStaleError("故事已删除或版本已变化，请返回故事")
+        if practice.purpose == "expansion" and not expansion_source_current(
+            session, practice.expansion_snapshot
+        ):
+            raise PracticeStaleError("来源词卡已变化，请重新查看后开始新练习")
         assert item.card_id is not None
         try:
             current = get_content_revision(session, "card", item.card_id)
@@ -714,7 +748,7 @@ def submit_practice(
             )
         )
         skipped_question = None
-        if item.kind == "reading_choice" and payload.skipped:
+        if item.kind in CHOICE_KINDS and payload.skipped:
             assert item.question is not None
             skipped_question = {
                 "card_id": item.card_id,
@@ -723,14 +757,14 @@ def submit_practice(
                 "expected": item.question["expected"],
             }
         question_token = None
-        if item.kind == "reading_choice" and not payload.skipped:
+        if item.kind in CHOICE_KINDS and not payload.skipped:
             assert item.question is not None
             if existing is not None:
                 question_token = (existing.command_json or {}).get("question_token")
             else:
                 card = session.get(Card, item.card_id)
                 if card is None:
-                    raise PracticeNotFoundError("目标词卡已删除，请返回故事")
+                    raise PracticeNotFoundError("目标词卡已删除，请返回重新选择")
                 question_token = issue_question(
                     card,
                     "choice",
@@ -751,8 +785,10 @@ def submit_practice(
             if practice.purpose == "story_check"
             else "lesson"
             if practice.purpose == "lesson_check"
+            else "quiz"
+            if practice.purpose == "expansion"
             else "spelling",
-            kind="choice" if item.kind == "reading_choice" else "typed",
+            kind="choice" if item.kind in CHOICE_KINDS else "typed",
             question_token=question_token,
             answer=None if payload.skipped else payload.answer,
             skipped=payload.skipped,
@@ -773,6 +809,13 @@ def submit_practice(
                 "skipped": payload.skipped,
                 "session": _session_payload(session, practice, runtime),
             }
+        if practice.purpose == "expansion":
+            if payload.expansion_target_id is None:
+                raise PracticeUnavailableError("扩展练习需要当前目标词卡")
+            if payload.expansion_target_id != item.card_id:
+                raise PracticeStaleError("词库已恢复，请重新打开练习")
+        elif payload.expansion_target_id is not None:
+            raise PracticeUnavailableError("只有扩展练习可携带目标确认")
         if item.first_event_id is not None:
             raise PracticeConflictError("本题首答已保存，请继续下一题或新开一轮")
         if practice.status == "unavailable":
@@ -784,6 +827,10 @@ def submit_practice(
             session, story_version(session, practice.version_id)
         ):
             raise PracticeStaleError("故事已删除或版本已变化，请返回故事")
+        if practice.purpose == "expansion" and not expansion_source_current(
+            session, practice.expansion_snapshot
+        ):
+            raise PracticeStaleError("来源词卡已变化，请重新查看后开始新练习")
         assert item.card_id is not None
         try:
             current = get_content_revision(session, "card", item.card_id)

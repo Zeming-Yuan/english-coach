@@ -23,11 +23,13 @@ export const ROUTE_VIEWS = new Set([
   "advice",
   "delayed",
   "scene",
+  "practice",
 ]);
 
 export const DETAIL_VIEWS = new Set(["words", "lessons", "stories", "spelling"]);
-const VALID_ORIGINS = new Set(["queue", "stats", "settings", "study"]);
+const VALID_ORIGINS = new Set(["queue", "stats", "settings", "study", "words"]);
 const DELAYED_WINDOWS = new Set(["day", "week"]);
+const PRACTICE_ID = /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i;
 
 function parsePositiveInt(segment) {
   if (typeof segment !== "string" || !/^[1-9]\d*$/.test(segment)) return null;
@@ -51,7 +53,9 @@ export function normalizeRoute(input = {}) {
         : null;
   const window = DELAYED_WINDOWS.has(input?.window) ? input.window : "week";
   const origin = VALID_ORIGINS.has(input?.origin) ? input.origin : null;
-  return { view, detailId, subView, window, origin };
+  const result = {view, detailId, subView, window, origin};
+  return view === "practice" && typeof input.practiceId === "string" && PRACTICE_ID.test(input.practiceId)
+    ? {...result, practiceId: input.practiceId.toLowerCase()} : result;
 }
 
 export function parseRoute(rawHash = "", historyState = null) {
@@ -70,6 +74,11 @@ export function parseRoute(rawHash = "", historyState = null) {
 
   if (!ROUTE_VIEWS.has(head)) {
     return normalizeRoute({ view: "queue" });
+  }
+  if (head === "practice") {
+    return parts.length === 2 && PRACTICE_ID.test(parts[1])
+      ? normalizeRoute({view: "practice", practiceId: parts[1], origin})
+      : normalizeRoute({view: "queue"});
   }
   if (head === "queue") {
     return parts.length === 1
@@ -131,6 +140,7 @@ export function parseRoute(rawHash = "", historyState = null) {
 export function formatRouteHash(route) {
   const normalized = normalizeRoute(route);
   if (normalized.view === "queue") return "#/";
+  if (normalized.view === "practice" && normalized.practiceId) return `#/practice/${normalized.practiceId}`;
   if (
     normalized.view === "lessons" &&
     normalized.detailId !== null &&
@@ -160,6 +170,7 @@ export function routesEqual(left, right) {
   return (
     a.view === b.view &&
     a.detailId === b.detailId &&
+    a.practiceId === b.practiceId &&
     a.subView === b.subView &&
     a.window === b.window &&
     a.origin === b.origin

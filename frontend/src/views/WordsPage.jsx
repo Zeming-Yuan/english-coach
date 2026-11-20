@@ -9,11 +9,12 @@ import ChunkChips from "../components/ChunkChips.jsx";
 import LearningEvidence from "../components/LearningEvidence.jsx";
 import RatingButtons from "../components/RatingButtons.jsx";
 import WordExpansions from "../components/WordExpansions.jsx";
+import ExpansionPracticeLinks from "../components/ExpansionPracticeLinks.jsx";
 
 /**
  * 单词本视图：搜索/A-Z/快速查阅/详情/编辑/删除/记忆法/换例句/困难词。
  */
-export default function WordsPage({ onBack, detailId = null, onDetailChange, onReturnToStudy }) {
+export default function WordsPage({ onBack, detailId = null, onDetailChange, onReturnToStudy, onStartExpansionPractice }) {
   const [allCards, setAllCards] = useState([]);
   const [query, setQuery] = useState("");
   const [internalDetail, setInternalDetail] = useState(null);
@@ -167,6 +168,7 @@ export default function WordsPage({ onBack, detailId = null, onDetailChange, onR
         onBack={onReturnToStudy || (() => setDetail(null, { popIfFromParent: true, replace: true }))}
         backLabel={onReturnToStudy ? "返回原词卡" : "单词本"}
         openExpansionCard={setDetail}
+        onStartExpansionPractice={onStartExpansionPractice}
         onDismissDeleted={onReturnToStudy || (() => setDetail(null, { popIfFromParent: true, replace: true }))}
         allCards={filtered}
         setDetail={(nextId) => setDetail(nextId, { replace: true })}
@@ -409,7 +411,7 @@ function InlineDetailEditor({
 }
 
 /* ============ 单词详情子组件 ============ */
-function WordDetail({ cardId, onBack, backLabel, openExpansionCard, onDismissDeleted, allCards, setDetail, onCardChanged }) {
+function WordDetail({ cardId, onBack, backLabel, openExpansionCard, onStartExpansionPractice, onDismissDeleted, allCards, setDetail, onCardChanged }) {
   const [c, setCard] = useState(null);
   const [loadError, setLoadError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -813,6 +815,7 @@ function WordDetail({ cardId, onBack, backLabel, openExpansionCard, onDismissDel
           <div className="word-detail-meaning">{c.kind === "sentence" ? (c.example_cn || "") : (c.meaning || "")}</div>
         )}
 
+        {c.kind !== "sentence" && <ExpansionPracticeLinks cardId={c.id} onStart={onStartExpansionPractice} />}
         {c.kind !== "sentence" && <WordExpansions
           key={`${c.id}:${c.content_revision?.identity}:${c.content_revision?.version}`}
           card={c}

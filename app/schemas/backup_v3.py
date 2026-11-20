@@ -32,6 +32,10 @@ from app.schemas.backup import (
     _digest,
     _issues_from_error,
 )
+from app.schemas.expansion_practice_backup import (
+    FullExpansionSnapshot,
+    validate_expansion_practice,
+)
 from app.schemas.learning import ContactKind, ContactSource
 from app.schemas.practice import PracticeAssistance
 from app.schemas.scene_backup import FullSceneAttempt, validate_scene_graph
@@ -293,13 +297,14 @@ class FullPracticeSession(FullRow):
     id: int = Field(gt=0, strict=True)
     session_id: str
     purpose: Literal[
-        "lesson_check", "delayed_check", "targeted", "story_check", "scene"
+        "lesson_check", "delayed_check", "targeted", "story_check", "scene", "expansion"
     ]
     version_id: str | None = None
     scene_id: str | None = None
     weak_only: bool = Field(default=False, strict=True)
     targets_explicit: bool = Field(default=False, strict=True)
     scene_snapshot: dict | None = None
+    expansion_snapshot: FullExpansionSnapshot | None = None
     feedback_epoch: str | None = None
     lesson_id: int | None = Field(default=None, gt=0, strict=True)
     window: Literal["day", "week"] | None = None
@@ -341,7 +346,7 @@ class FullPracticeItem(FullRow):
     card_revision: int | None = Field(default=None, ge=1, strict=True)
     first_task_attempt_id: str | None = None
     prompt: str = Field(min_length=1)
-    kind: Literal["typed", "reading_choice", "scene_text"]
+    kind: Literal["typed", "reading_choice", "expansion_choice", "scene_text"]
     question: dict | None = None
     assistance: list[PracticeAssistance]
     first_event_id: str | None = None
@@ -839,10 +844,16 @@ def validate_v3(payload: dict) -> ValidatedBackup:
                     if sessions_by_id[item["session_id"]]["purpose"] == "story_check"
                     else "lesson"
                     if sessions_by_id[item["session_id"]]["purpose"] == "lesson_check"
+                    else "quiz"
+                    if sessions_by_id[item["session_id"]]["purpose"] == "expansion"
                     else "spelling"
                 )
                 or event["kind"]
-                != ("choice" if item["kind"] == "reading_choice" else "typed")
+                != (
+                    "choice"
+                    if item["kind"] in ("reading_choice", "expansion_choice")
+                    else "typed"
+                )
                 or event["session_id"] != item["session_id"]
             ):
                 _reject(
@@ -854,9 +865,33 @@ def validate_v3(payload: dict) -> ValidatedBackup:
     versions_by_id = {
         r["version_id"]: r for r in validated_extensions.get("story_versions", [])
     }
+    additions_by_operation = {
+        row["operation_id"]: row
+        for row in validated_extensions.get("expansion_additions", [])
+    }
     for index, practice in enumerate(sessions):
         rows = items_by_session.get(practice["session_id"], [])
-        if practice["purpose"] == "story_check":
+        if (
+            practice["purpose"] != "expansion"
+            and practice["expansion_snapshot"] is not None
+        ):
+            _reject(
+                "practice_sessions",
+                index,
+                "expansion_snapshot",
+                "只有扩展练习可携带来源快照",
+            )
+        if practice["purpose"] == "expansion":
+            validate_expansion_practice(
+                index,
+                practice,
+                rows,
+                additions_by_operation,
+                card_revisions,
+                event_rows,
+                _reject,
+            )
+        elif practice["purpose"] == "story_check":
             version = versions_by_id.get(practice["version_id"])
             if (
                 version is None

@@ -659,3 +659,4 @@ body.dark .product-app .card-face { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35), 0
 .expansion-preview h2 { margin: 0; }
 .expansion-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .expansion-addition { margin-block-start: 12px; }
+.expansion-practice-links { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 12px; }

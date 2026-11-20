@@ -5,6 +5,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
 
+from app.schemas.learning import ContactRevision
+
 PracticeAssistance = Literal["first_letter", "answer_visible", "hint", "answer_audio"]
 
 
@@ -25,12 +27,15 @@ class PracticeTarget(BaseModel):
 class CreatePracticeIn(BaseModel):
     id: UUID
     purpose: Literal[
-        "lesson_check", "delayed_check", "targeted", "story_check", "scene"
+        "lesson_check", "delayed_check", "targeted", "story_check", "scene", "expansion"
     ]
     scene_id: str | None = None
     lesson_id: int | None = Field(default=None, gt=0)
     story_id: int | None = Field(default=None, gt=0)
     version_id: UUID | None = None
+    addition_operation_id: UUID | None = None
+    source_card_id: int | None = Field(default=None, gt=0)
+    source_revision: ContactRevision | None = None
     weak_only: bool = False
     card_ids: list[int] = Field(default_factory=list, max_length=3)
     targets: list[PracticeTarget] = Field(default_factory=list, max_length=3)
@@ -79,6 +84,27 @@ class CreatePracticeIn(BaseModel):
                 raise ValueError("读后检查需要故事和版本，不能指定其他练习目标")
         elif self.story_id is not None or self.version_id is not None:
             raise ValueError("只有读后检查可以指定故事版本")
+        expansion = (
+            self.addition_operation_id,
+            self.source_card_id,
+            self.source_revision,
+        )
+        if self.purpose == "expansion":
+            if (
+                not all(expansion)
+                or len(self.targets) != 1
+                or any(
+                    (
+                        self.lesson_id,
+                        self.window,
+                        self.weak_only,
+                        self.pending_contact_ids,
+                    )
+                )
+            ):
+                raise ValueError("扩展练习需要已加入的单一目标和来源修订")
+        elif any(expansion):
+            raise ValueError("只有扩展练习可指定加入记录与来源修订")
         ids = [target.card_id for target in self.targets]
         if self.card_ids != ids or len(set(ids)) != len(ids):
             raise ValueError("指定目标与词集合不一致或重复")
@@ -93,6 +119,7 @@ class CreatePracticeIn(BaseModel):
 
 class PracticeAttemptIn(BaseModel):
     submission_id: UUID
+    expansion_target_id: int | None = Field(default=None, gt=0)
     answer: str | None = Field(default=None, max_length=2000)
     client_assistance: list[PracticeAssistance] = Field(default_factory=list)
     skipped: bool = False

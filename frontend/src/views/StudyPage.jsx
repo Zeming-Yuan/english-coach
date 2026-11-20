@@ -14,6 +14,7 @@ import { showToast } from "../App.jsx";
 import ChunkChips from "../components/ChunkChips.jsx";
 import RatingButtons from "../components/RatingButtons.jsx";
 import WordExpansions from "../components/WordExpansions.jsx";
+import ExpansionPracticeLinks from "../components/ExpansionPracticeLinks.jsx";
 
 /**
  * 闪卡学习视图。
@@ -21,7 +22,7 @@ import WordExpansions from "../components/WordExpansions.jsx";
  * onExit: () => void 返回队列
  * onToQuiz: () => void 进测验
  */
-export default function StudyPage({ queue = [], session, recoveryVersion, onProgress, onAbort, onPause, onExit, onToQuiz, onToMixed, standaloneSessionId, onOpenExpansionCard }) {
+export default function StudyPage({ queue = [], session, recoveryVersion, onProgress, onAbort, onPause, onExit, onToQuiz, onToMixed, standaloneSessionId, onOpenExpansionCard, onStartExpansionPractice }) {
   const [sessionId] = useState(() => session?.id || standaloneSessionId || randomUUID());
   const [initial] = useState(() => storageGet(`ec.study.position:${sessionId}`, null));
   const [standaloneIdx, setStandaloneIdx] = useState(initial?.index ?? 0);
@@ -193,6 +194,7 @@ export default function StudyPage({ queue = [], session, recoveryVersion, onProg
             {graduated.length > 0 && `${graduated.length} 个词解锁了句子练习：${graduated.join("、")} — 例句已变成句子卡。`}
             {session ? `${answered} 张卡已保存，可返回查看剩余到期任务。` : `${answered} 张卡已复习，明天的队列会按你的记忆自动安排。`}
           </p>
+          <ExpansionPracticeLinks studySessionId={sessionId} onStart={onStartExpansionPractice} />
           <div className="done-actions">
             <button className="btn btn-primary" onClick={onToQuiz}>去做测验</button>
             {onToMixed && <button className="btn btn-ghost" style={{ marginTop: 8 }} onClick={onToMixed}>再练一轮混合</button>}

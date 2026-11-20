@@ -12,6 +12,7 @@ import ContactRecovery from "./components/ContactRecovery.jsx";
 import {ExpansionAdditionRecovery} from "./components/ExpansionAddition.jsx";
 import ScenePage from "./views/ScenePage.jsx";
 import StudyPage from "./views/StudyPage.jsx";
+import PracticePage from "./views/PracticePage.jsx";
 import DailySessionPage from "./views/DailySessionPage.jsx";
 import QuizPage from "./views/QuizPage.jsx";
 import SpellingPage from "./views/SpellingPage.jsx";
@@ -29,6 +30,7 @@ import BackupPage from "./views/BackupPage.jsx";
 import LessonsPage from "./views/LessonsPage.jsx";
 import { useStarterCards } from "./hooks/useStarterCards.js";
 import { useAppRoute } from "./hooks/useAppRoute.js";
+import { parseRoute } from "./lib/router.js";
 import AppNavigation from "./components/AppNavigation.jsx";
 import UiIcon, {navigationIcons} from "./components/UiIcon.jsx";
 import {CaretRightIcon} from "@phosphor-icons/react/dist/csr/CaretRight";
@@ -190,6 +192,13 @@ export default function App({account = null, onLogout, logoutBusy = false, logou
   const [restoringBackup, setRestoringBackup] = useState(false);
   const { route, navigate } = useAppRoute({ locked: restoringBackup });
   const view = route.view;
+  const expansionRequestKey = id => `ec.expansion-practice.create:${id}`;
+  const [recentExpansionRequest, setRecentExpansionRequest] = useState(null);
+  const lastExpansionStart = useRef(null);
+  const expansionRequest = view === "practice" && (
+    recentExpansionRequest?.id === route.practiceId ? recentExpansionRequest :
+      storageGet(expansionRequestKey(route.practiceId), null)
+  );
   const setView = useCallback(
     (nextView, options) => navigate({ view: nextView }, options),
     [navigate],
@@ -300,6 +309,31 @@ export default function App({account = null, onLogout, logoutBusy = false, logou
     updateDaily(finished ? {...dailySession, finished: true} : null);
     setView("queue");
   };
+  const openExpansionPractice = (command, origin, replace = false) => {
+    if (lastExpansionStart.current === route) return;
+    lastExpansionStart.current = route;
+    const {inMemory, ...fields} = command;
+    const request = {...fields, id: randomUUID()};
+    try { accountStorage.setItem(expansionRequestKey(request.id), JSON.stringify(request)); } catch {
+      request.inMemory = true;
+    }
+    setRecentExpansionRequest(request);
+    navigate({view: "practice", practiceId: request.id, origin}, {replace});
+  };
+  const startExpansionPractice = ({addition, source, target}) => openExpansionPractice({
+    purpose: "expansion",
+    addition_operation_id: addition.operation_id,
+    source_card_id: source.id,
+    source_revision: source.content_revision,
+    card_ids: [target.id],
+    targets: [{card_id: target.id, revision: target.content_revision}],
+  }, view === "study" ? "study" : "words");
+  const exitExpansionPractice = () => {
+    const parent = parseRoute(window.history.state?.fromHash);
+    const destination = route.origin === "study" ? {view: "study"} :
+      parent.view === "words" ? parent : {view: "words"};
+    navigate(destination, {popIfFromParent: true, replace: true});
+  };
   const updateWordsDetail = useCallback(
     (cardId, options) =>
       navigate(
@@ -393,7 +427,7 @@ export default function App({account = null, onLogout, logoutBusy = false, logou
         <DurationRecovery />
         {!restoringBackup && <ContactRecovery />}
         {!restoringBackup && <ExpansionAdditionRecovery openCard={openExpansionCard} />}
-        {!restoringBackup && view !== "study" && view !== "scene" && <PendingRecovery view={view} onConfirmed={(result, pending) => {
+        {!restoringBackup && view !== "study" && view !== "scene" && view !== "practice" && <PendingRecovery view={view} onConfirmed={(result, pending) => {
           confirmDailyCard(pending.payload, result);
           setQueueVersion((v) => v + 1);
         }} />}
@@ -402,7 +436,7 @@ export default function App({account = null, onLogout, logoutBusy = false, logou
         }} onAddStarter={addStarterCards} />}
         {view === "scene" && <ScenePage onExit={() => setView("queue")} />}
         {view === "words" && <WordsPage detailId={route.detailId} onDetailChange={updateWordsDetail}
-          onReturnToStudy={route.origin === "study" ? returnToStudy : null} />}
+          onReturnToStudy={route.origin === "study" ? returnToStudy : null} onStartExpansionPractice={startExpansionPractice} />}
         {view === "stories" && <StoriesPage storyId={route.detailId} storySubView={route.subView} onStoryChange={updateStoriesRoute} onNavigate={navigateView} />}
         {view === "add" && <AddPage onAddStarter={addStarterCards} onGoWords={() => setView("words")} onStartStudy={cards => { startDirect(cards); setView("study"); }} />}
         {view === "stats" && <StatsPage onAdvice={(req) => startAdvice(req, "stats")} onDelayed={(win) => startDelayed(win, "stats")} onOpenBackup={() => navigateView("backup", "stats")} />}
@@ -431,12 +465,17 @@ export default function App({account = null, onLogout, logoutBusy = false, logou
           onFinish={() => closeDaily(true)} onAbort={() => closeDaily(false)}
           onPauseExit={() => setView("queue")} recoveryVersion={queueVersion}
           onProgress={confirmDailyCard} queue={studyQueue}
-          onOpenExpansionCard={openExpansionCard}
+          onOpenExpansionCard={openExpansionCard} onStartExpansionPractice={startExpansionPractice}
           onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} />
           : <StudyPage key={directStudy?.id} standaloneSessionId={directStudy?.id}
-            queue={studyQueue} onOpenExpansionCard={openExpansionCard}
+            queue={studyQueue} onOpenExpansionCard={openExpansionCard} onStartExpansionPractice={startExpansionPractice}
             onExit={() => exitDirect("queue")} onToQuiz={() => exitDirect("quiz")}
             onToMixed={() => exitDirect("mixed")} />)}
+        {view === "practice" && route.practiceId && <PracticePage key={route.practiceId}
+          sessionId={route.practiceId} expansionRequest={expansionRequest}
+          onExit={exitExpansionPractice}
+          onRestart={expansionRequest ? () => openExpansionPractice(expansionRequest, route.origin, true) : null}
+          backLabel={route.origin === "study" ? "返回本轮结果" : "返回词卡"} />}
         {view === "quiz" && <QuizPage onExit={goHome} onAddWords={goAddWords} />}
         {view === "spelling" && <SpellingPage key={route.detailId || "pool"} onExit={goHome} onAddWords={goAddWords} singleCard={route.detailId ? singleCard : null} singleCardId={route.detailId} />}
         {view === "listening" && <ListeningPage onExit={goHome} onAddWords={goAddWords} />}

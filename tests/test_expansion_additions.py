@@ -220,5 +220,6 @@ def test_disabling_writes_preserves_read_and_replay(ec):
     ).is_success
     assert ec.client.get("/api/expansion-additions").json() == {
         "enabled": False,
+        "practice_enabled": True,
         "additions": [],
     }
