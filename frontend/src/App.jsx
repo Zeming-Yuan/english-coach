@@ -195,6 +195,8 @@ export default function App({account = null, onLogout, logoutBusy = false, logou
   const expansionRequestKey = id => `ec.expansion-practice.create:${id}`;
   const [recentExpansionRequest, setRecentExpansionRequest] = useState(null);
   const lastExpansionStart = useRef(null);
+  const currentRoute = useRef(route);
+  currentRoute.current = route;
   const expansionRequest = view === "practice" && (
     recentExpansionRequest?.id === route.practiceId ? recentExpansionRequest :
       storageGet(expansionRequestKey(route.practiceId), null)
@@ -320,14 +322,31 @@ export default function App({account = null, onLogout, logoutBusy = false, logou
     setRecentExpansionRequest(request);
     navigate({view: "practice", practiceId: request.id, origin}, {replace});
   };
-  const startExpansionPractice = ({addition, source, target}) => openExpansionPractice({
+  const startExpansionPractice = ({addition, source, target}, origin = view === "study" ? "study" : "words", replace = false) => openExpansionPractice({
     purpose: "expansion",
     addition_operation_id: addition.operation_id,
     source_card_id: source.id,
     source_revision: source.content_revision,
     card_ids: [target.id],
     targets: [{card_id: target.id, revision: target.content_revision}],
-  }, view === "study" ? "study" : "words");
+  }, origin, replace);
+  const restartExpansionPractice = async () => {
+    try {
+      const addition = await api(`/api/expansion-additions/${expansionRequest.addition_operation_id}`);
+      if (!addition.source_card_id || !addition.target_card_id) {
+        throw new Error("来源或目标词卡已删除，请返回重新选择");
+      }
+      const [source, target] = await Promise.all([
+        api(`/api/cards/${addition.source_card_id}`),
+        api(`/api/cards/${addition.target_card_id}`),
+      ]);
+      if (currentRoute.current === route) {
+        startExpansionPractice({addition, source, target}, route.origin, true);
+      }
+    } catch (error) {
+      if (currentRoute.current === route) showToast(error.message);
+    }
+  };
   const exitExpansionPractice = () => {
     const parent = parseRoute(window.history.state?.fromHash);
     const destination = route.origin === "study" ? {view: "study"} :
@@ -474,7 +493,7 @@ export default function App({account = null, onLogout, logoutBusy = false, logou
         {view === "practice" && route.practiceId && <PracticePage key={route.practiceId}
           sessionId={route.practiceId} expansionRequest={expansionRequest}
           onExit={exitExpansionPractice}
-          onRestart={expansionRequest ? () => openExpansionPractice(expansionRequest, route.origin, true) : null}
+          onRestart={expansionRequest ? restartExpansionPractice : null}
           backLabel={route.origin === "study" ? "返回本轮结果" : "返回词卡"} />}
         {view === "quiz" && <QuizPage onExit={goHome} onAddWords={goAddWords} />}
         {view === "spelling" && <SpellingPage key={route.detailId || "pool"} onExit={goHome} onAddWords={goAddWords} singleCard={route.detailId ? singleCard : null} singleCardId={route.detailId} />}

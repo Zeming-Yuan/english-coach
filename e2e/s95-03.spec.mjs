@@ -135,3 +135,36 @@ test("S95-03 reopens the same practice after its create response is lost", async
   expect(sent).toHaveLength(1);
   expect(page.url()).toContain(`#/practice/${sent[0]}`);
 });
+
+test("S95-03 visible options register exposure before an unanswered choice", async ({app, page}) => {
+  await page.goto(app.baseURL);
+  await page.getByRole("button", {name: "体验入门词卡", exact: true}).click();
+  await addFromApple(page);
+  await page.getByRole("button", {name: /退出/}).click();
+  await openApplyDetail(page);
+  await page.getByRole("button", {name: "练这个扩展词", exact: true}).click();
+  await expect(page.getByRole("button", {name: "apply", exact: true})).toBeVisible();
+  const payload = async () => (await (await app.request.get("/api/export/backup")).json());
+  await expect.poll(async () => (await payload()).extensions.learning_contacts.filter(row =>
+    row.source === "quiz" && row.kind === "answer_visible").length, {timeout: 4000}).toBe(1);
+  expect((await payload()).learning_events).toHaveLength(0);
+});
+
+test("S95-03 a stale practice starts anew with the current source revision", async ({app, page}) => {
+  await page.goto(app.baseURL);
+  await page.getByRole("button", {name: "体验入门词卡", exact: true}).click();
+  await addFromApple(page);
+  await page.getByRole("button", {name: /退出/}).click();
+  await openApplyDetail(page);
+  await page.getByRole("button", {name: "练这个扩展词", exact: true}).click();
+  await expect(page.getByRole("button", {name: "apply", exact: true})).toBeVisible();
+  const previous = page.url();
+  const {cards} = await (await app.request.get("/api/cards")).json();
+  const apple = cards.find(card => card.word === "apple");
+  expect((await app.request.put(`/api/cards/${apple.id}`, {data: {example: "I shared an apple."}})).ok()).toBe(true);
+  await page.reload();
+  await expect(page.getByRole("alert").filter({hasText: "题目内容已修订"})).toBeVisible();
+  await page.getByRole("button", {name: "新开一轮"}).click();
+  await expect(page.getByRole("button", {name: "apply", exact: true})).toBeVisible({timeout: 4000});
+  expect(page.url()).not.toBe(previous);
+});

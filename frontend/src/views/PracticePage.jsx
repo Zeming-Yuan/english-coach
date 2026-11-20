@@ -43,6 +43,8 @@ function PracticeItemForm({ session, item, onSession, onFeedback }) {
   const [helping, setHelping] = useState(false);
   const reading = session.purpose === "story_check";
   const choice = choiceItem(item);
+  const expansionChoice = item.kind === "expansion_choice";
+  const visibleOptionsRef = usePracticeAnswerContact(item, expansionChoice && !item.stale, "quiz", 1);
 
   const finish = (result) => {
     if (!result || result.committed !== true) return;
@@ -95,12 +97,14 @@ function PracticeItemForm({ session, item, onSession, onFeedback }) {
     }
   };
 
+  const options = choice && item.options.map(option => <button key={option} className="btn btn-ghost" disabled={attempt.phase === "saving" || attempt.phase === "failed"} onClick={() => {setAnswer(option); submit(false, option);}}>{option}</button>);
+
   return (
     <div className="practice-item">
       {reading && <h3>{choice ? "阅读理解" : "词汇输入"}</h3>}
       <div className="spelling-meaning">{item.prompt}</div>
       {reading && item.assistance.length > 0 && <p role="note">本题已使用帮助，按辅助记录，不排期。</p>}
-      {choice && item.options.map(option => <button key={option} className="btn btn-ghost" disabled={attempt.phase === "saving" || attempt.phase === "failed"} onClick={() => {setAnswer(option); submit(false, option);}}>{option}</button>)}
+      {expansionChoice ? <div className="practice-expansion-options" ref={visibleOptionsRef}>{options}</div> : options}
       {session.purpose === "delayed_check" && <p role="status">距应用内上次记录：{item.gap_seconds == null ? "依据不完整" : `${Number((item.gap_seconds / 3600).toFixed(2))} 小时`} · 发题依据已冻结，提交时复核</p>}
       {item.hint?.kind === "first_letter" && (
         <p ref={hintContactRef} role="status" className="spelling-hint">
