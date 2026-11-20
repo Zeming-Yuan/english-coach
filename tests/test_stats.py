@@ -25,12 +25,30 @@ def test_stats_empty(client):
     assert data["attempted_today"] == 0
     assert data["skipped_today"] == 0
     assert data["total_cards"] == 0
+    assert (data["word_cards"], data["sentence_cards"]) == (0, 0)
     assert data["graduated"] == 0
     assert data["history_incomplete"] is False
 
 
+def test_stats_card_kinds_share_spelling(ec):
+    ec.seed_card("dog")
+    ec.seed_card("dog", kind="sentence", example="I have a dog.")
+    data = ec.client.get("/api/stats").json()
+    assert data["total_cards"] == 2
+    assert (data["word_cards"], data["sentence_cards"]) == (1, 1)
+    assert data["graduated"] == 0
+
+
+def test_stats_sentence_only(ec):
+    ec.seed_card("dog", kind="sentence", example="I have a dog.")
+    data = ec.client.get("/api/stats").json()
+    assert data["total_cards"] == 1
+    assert (data["word_cards"], data["sentence_cards"]) == (0, 1)
+    assert data["graduated"] == 0
+
+
 def test_stats_counts(ec):
-    """完成词按卡去重，练习次数按真实作答事件计。"""
+    """完成数按卡去重，练习次数按真实作答事件计。"""
     card1 = ec.seed_card("apple")
     card2 = ec.seed_card("banana")
     for _ in range(3):
@@ -39,9 +57,10 @@ def test_stats_counts(ec):
     ec.set_time("2026-10-30T01:00:00+00:00")
 
     data = ec.client.get("/api/stats").json()
-    assert data["reviewed_today"] == 1  # 同一张卡多次只算 1 个完成词
+    assert data["reviewed_today"] == 1  # 同一张卡多次只计一张
     assert data["attempted_today"] == 3  # 今天 3 次真实作答
     assert data["total_cards"] == 2
+    assert (data["word_cards"], data["sentence_cards"]) == (2, 0)
     assert data["graduated"] == 1  # card1 复习 3 次毕业
     assert data["streak"] == 2  # 今天 + 昨天
 
@@ -49,7 +68,9 @@ def test_stats_counts(ec):
 def test_streak_consecutive_days(ec):
     card_id = ec.seed_card("apple")
     for day in ["28", "29", "30"]:
-        assert _review(ec, card_id, at=f"2026-10-{day}T01:00:00+00:00").status_code == 200
+        assert (
+            _review(ec, card_id, at=f"2026-10-{day}T01:00:00+00:00").status_code == 200
+        )
     ec.set_time("2026-10-30T01:00:00+00:00")
     assert ec.client.get("/api/stats").json()["streak"] == 3
 
@@ -64,7 +85,9 @@ def test_streak_broken_yesterday(ec):
 def test_streak_today_missed_but_yesterday_ok(ec):
     card_id = ec.seed_card("apple")
     for day in ["27", "28", "29"]:
-        assert _review(ec, card_id, at=f"2026-10-{day}T01:00:00+00:00").status_code == 200
+        assert (
+            _review(ec, card_id, at=f"2026-10-{day}T01:00:00+00:00").status_code == 200
+        )
     ec.set_time("2026-10-30T01:00:00+00:00")
     assert ec.client.get("/api/stats").json()["streak"] == 3
 

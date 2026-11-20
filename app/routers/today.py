@@ -284,11 +284,13 @@ def get_stats(
     db: Session = Depends(get_db),
     runtime: Runtime = Depends(get_runtime),
 ):
-    """学习统计：今日完成词、练习次数、跳过数、连续天数与旧历史提示。"""
+    """学习统计：卡片库存、今日活动、连续天数与旧历史提示。"""
     today = learning_day(runtime.clock.now(), runtime.learning_timezone)
     events = _event_rows(db)
     summary = summary_for_day(events, today)
-    total_cards = db.execute(select(func.count(Card.id))).scalar_one()
+    cards_by_kind = dict(
+        db.execute(select(Card.kind, func.count(Card.id)).group_by(Card.kind)).all()
+    )
     graduated = sum(
         card_is_graduated(card, review)
         for card, review in db.execute(
@@ -304,7 +306,9 @@ def get_stats(
 
     return {
         **summary,
-        "total_cards": total_cards,
+        "total_cards": sum(cards_by_kind.values()),
+        "word_cards": cards_by_kind.get("word", 0),
+        "sentence_cards": cards_by_kind.get("sentence", 0),
         "graduated": graduated,
         "history_incomplete": history_incomplete,
         "evidence_counts": overview["counts"],
