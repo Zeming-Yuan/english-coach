@@ -254,6 +254,7 @@ export default function LessonsPage({
   const nextLesson = async () => {
     if (generating) return;
     let pending = loadPending(NEXT_SCOPE, NEXT_PREFIX);
+    const confirming = Boolean(pending);
     if (!pending && !config?.has_key) return;
     invalidateLessonSelection();
     if (!pending && (isDone || nextLevel > 20)) {
@@ -279,12 +280,12 @@ export default function LessonsPage({
       adoptLesson(lesson);
       await loadLessons().catch(() => {});
     } catch (error) {
-      // The application rejects these requests before committing. Gateway and
-      // transport errors can still mean the response was lost after a commit.
-      const rejected = error?.data?.detail && [400, 409, 422, 502, 503].includes(error.status);
-      if (rejected) {
-        clearPending(NEXT_SCOPE, NEXT_PREFIX);
-        setHasNextPending(false);
+      if (error?.data?.code === "lesson_generation_rejected") {
+        // Rejecting this replay does not resolve an earlier ambiguous request.
+        if (!confirming) {
+          clearPending(NEXT_SCOPE, NEXT_PREFIX);
+          setHasNextPending(false);
+        }
         if (error.status === 503) reloadConfig();
         if (error.status === 409) loadLessons().catch(() => {});
         showToast("课程生成失败：" + error.message);

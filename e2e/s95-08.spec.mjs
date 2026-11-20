@@ -60,12 +60,12 @@ test("S95-08 demo preserves existing pending generation", async ({appFactory, pa
     if (requests.length > 1) return route.continue();
     const response = await route.fetch();
     expect(response.status()).toBe(200);
-    await route.abort("failed");
+    await route.fulfill({status: 502, json: {detail: "upstream response lost"}});
   });
   await openCourses(page, app);
   await page.getByRole("button", {name: "开始", exact: true}).click();
   const resume = page.getByRole("button", {name: "继续确认生成", exact: true});
-  await expect(resume).toBeVisible();
+  await expect(resume).toBeVisible({timeout: 5000});
   await openDemo(page).click();
   await answer(page, "Hello!").click();
   await exitDemo(page).click();

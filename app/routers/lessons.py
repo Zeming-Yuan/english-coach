@@ -5,6 +5,7 @@ from pathlib import Path
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -34,6 +35,7 @@ from app.services.lesson_progress import (
     record_lesson_opened,
     record_lesson_viewed,
 )
+from app.services.llm_client import LLMNotConfigured
 
 router = APIRouter()
 
@@ -139,6 +141,13 @@ def list_lessons(db: Session = Depends(get_db)):
     }
 
 
+def _generation_rejected(status_code: int, error: Exception) -> JSONResponse:
+    return JSONResponse(
+        status_code=status_code,
+        content={"code": "lesson_generation_rejected", "detail": str(error)},
+    )
+
+
 @router.post("/lessons/next")
 def create_next_lesson(
     payload: GenerateLessonIn | None = None,
@@ -153,11 +162,13 @@ def create_next_lesson(
             runtime=runtime,
         )
     except LessonCapReachedError as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
+        return _generation_rejected(400, error)
     except LessonLevelConflictError as error:
-        raise HTTPException(status_code=409, detail=str(error)) from error
+        return _generation_rejected(409, error)
+    except LLMNotConfigured as error:
+        return _generation_rejected(503, error)
     except (ValueError, TypeError) as error:
-        raise HTTPException(status_code=502, detail=str(error)) from error
+        return _generation_rejected(502, error)
     return _lesson_detail(lesson, db)
 
 
