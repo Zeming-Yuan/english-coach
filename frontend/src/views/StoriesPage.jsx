@@ -39,49 +39,46 @@ export default function StoriesPage({
   const [stories, setStories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
-  const [starter, setStarter] = useState(null);
-  const [starterOpen, setStarterOpen] = useState(false);
+  const [starterPreview, setStarterPreview] = useState(null);
+  const [starterError, setStarterError] = useState("");
+  const starterButton = useRef(null);
+  const restoreStarterFocus = useRef(false);
   const [generated, setGenerated] = useState(null);
   const [simplificationEnabled, setSimplificationEnabled] = useState(true);
   const [generationEnabled, setGenerationEnabled] = useState(true);
 
   const syncStoryDetail = useCallback(
-    (id, options) => onStoryChange?.(id, null, options),
+    (id, options) => {
+      if (id === "starter") onStoryChange?.(null, "starter", options);
+      else onStoryChange?.(id, null, options);
+    },
     [onStoryChange],
   );
   const {
-    activeItem: activeStoryItem,
+    activeItem: activeStory,
     setActiveItem: setActiveStoryItem,
     routeOpening,
-    openingIdRef: openingStory,
-    invalidate: invalidateStorySelection,
+    getSelectedId: getSelectedStoryId,
     openItem: openStory,
     adoptItem: adoptStory,
     closeItem: closeStory,
   } = useRouteDetail({
-    detailId: storyId,
+    detailId: storySubView === "starter" ? "starter" : storyId,
     onDetailChange: onStoryChange ? syncStoryDetail : undefined,
     fetchItem: (id) => api(`/api/stories/${id}`),
-    getItemId: (story) => story.id,
-    onLoadError: (error) => {
-      showToast("读取失败：" + error.message);
+    getItemId: (story) => story.mode === "starter" ? "starter" : story.id,
+    onLoadError: (error, _retry, id) => {
+      if (id === "starter") setStarterError("读取入门材料失败：" + error.message);
+      else showToast("读取失败：" + error.message);
     },
   });
 
   useEffect(() => {
-    if (!onStoryChange) return;
-    if (storySubView !== "starter") {
-      if (starterOpen) setStarterOpen(false);
-      return;
+    if (restoreStarterFocus.current && storySubView !== "starter" && starterButton.current) {
+      starterButton.current.focus();
+      restoreStarterFocus.current = false;
     }
-    if (starter) {
-      if (!starterOpen) setStarterOpen(true);
-      return;
-    }
-    if (!loading) {
-      onStoryChange(null, null, { replace: true });
-    }
-  }, [storySubView, starter, starterOpen, loading, onStoryChange]);
+  }, [activeStory, storySubView, loading, routeOpening]);
 
   const loadStories = useCallback(() => {
     setLoading(true);
@@ -99,13 +96,11 @@ export default function StoriesPage({
     try {
       await api(`/api/stories/${id}`, { method: "DELETE" });
       setStories((s) => s.filter((x) => x.id !== id));
-      if (openingStory.current === id || activeStoryItem?.id === id || storyId === id) {
+      if (getSelectedStoryId() === id) {
         closeStory({ popIfFromParent: true, replace: true });
       }
     } catch (e) { showToast("删除失败：" + e.message); }
   };
-
-  const activeStory = starterOpen && starter ? starter : activeStoryItem;
 
   if (loading || routeOpening) return <StoryLayout onNavigate={onNavigate}><div className="story-empty">加载中…</div></StoryLayout>;
 
@@ -118,7 +113,7 @@ export default function StoriesPage({
         key={activeStory.version_id || activeStory.id || "starter"}
         story={activeStory}
         onBack={() => {
-          setStarterOpen(false);
+          restoreStarterFocus.current = activeStory.mode === "starter";
           closeStory({ popIfFromParent: true, replace: true });
         }}
       />
@@ -148,28 +143,39 @@ export default function StoriesPage({
     return <StoryLayout onNavigate={onNavigate}>{checkedReader}</StoryLayout>;
   }
 
+  const starterAction = (
+    <button ref={starterButton} className="btn btn-ghost btn-small" onClick={() => {
+      setStarterError("");
+      openStory("starter");
+    }}>阅读入门材料</button>
+  );
   return (
     <StoryLayout onNavigate={onNavigate}>
     <section className="view story-library">
       <div className="page-head">
         <h2 className="page-title">故事</h2>
-        {generationEnabled && <StoryGeneration onStarter={(story) => {setGenerated(null); setStarter(story);}} onSaved={(story) => {
-          setStarter(null);
-          setGenerated(story);
-          setStories((rows) => [story, ...rows.filter(row => row.id !== story.id)]);
-        }} />}
+        {generationEnabled ? <StoryGeneration starterAction={starterAction}
+          onStarter={story => {setGenerated(null); setStarterPreview(story);}}
+          onSaved={story => {
+            setStarterPreview(null);
+            setGenerated(story);
+            setStories(rows => [story, ...rows.filter(row => row.id !== story.id)]);
+          }}
+        /> : starterAction}
       </div>
+      {starterError && <p role="alert">{starterError}</p>}
       {generated && <StoryQuality story={generated} />}
-      {starter && <div>
-        <StoryQuality story={starter} />
+      {starterPreview && <div>
+        <StoryQuality story={starterPreview} />
         <button className="btn btn-ghost btn-small" onClick={() => {
-          invalidateStorySelection();
-          setStarterOpen(true);
-          onStoryChange?.(null, "starter");
+          setStarterError("");
+          adoptStory(starterPreview);
         }}>打开入门故事</button>
       </div>}
       <div className="story-list">
-        {stories.length === 0 && <div className="story-empty">还没有故事。「生成新故事」会用你学过的词编一篇</div>}
+        {stories.length === 0 && <div className="story-empty">
+          还没有故事。{generationEnabled && "「生成新故事」会用你学过的词编一篇"}
+        </div>}
         {stories.map((s) => (
           <div key={s.id} className="story-item">
             <div className="story-item-main" onClick={() => openStory(s.id)}>
@@ -202,7 +208,7 @@ function StoryRead({ story, onBack }) {
   const [narrow, setNarrow] = useState(() => window.matchMedia("(max-width: 1023px)").matches);
   // 点词查义共享流程（清洗/已学判断/查词接口）
   const { word: activeWord, result: lookupResult, open: handleWordClick, close: closePanel, markLearned } =
-    useWordLookup({ learnedWords: learnedWords });
+    useWordLookup({ learnedWords, glossary: story.glossary });
 
   const dismissWord = useCallback(() => {
     closePanel();
@@ -437,7 +443,7 @@ function StoryRead({ story, onBack }) {
         <div className="reader-meta"><span>短篇故事 <span aria-hidden="true">·</span> {mode === "bilingual" ? "中英对照" : mode === "cn" ? "中文阅读" : "英文阅读"}</span><button className="reader-tool" disabled={reading} onClick={() => contactAudio(story.content, story.visible_card_ids)}><SpeakerHighIcon aria-hidden="true" />{reading ? "朗读中…" : "朗读"}</button></div>
       </header>
 
-      <StoryQuality story={story} />
+      {story.mode !== "starter" && <StoryQuality story={story} />}
       {/* 故事内容：逐句中英对照 */}
       <div className="story-read-content">
         {enLines.map((enSent, i) => (
@@ -464,6 +470,10 @@ function StoryRead({ story, onBack }) {
       {/* 词表 */}
       <footer className="reader-footer">
         <button className="reader-back" onClick={onBack}><ArrowLeftIcon aria-hidden="true" />返回故事列表</button>
+        {story.mode === "starter" && <details className="reader-targets">
+          <summary>材料说明</summary>
+          <StoryQuality story={story} />
+        </details>}
         <details className="reader-targets"><summary>本故事目标词 · {learnedWords.length}</summary>
         <div data-testid="content-contact-status" className="story-tap-tip">应用内接触：本故事正文包含 {story.visible_card_ids?.length || 0} 个目标词</div>
         {learnedWords.map((w) => (

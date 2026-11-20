@@ -19,6 +19,7 @@ export function useRouteDetail({
   );
   const selectionRef = useRef(0);
   const openingIdRef = useRef(null);
+  const activeIdRef = useRef(null);
   const mountedRef = useRef(true);
   const fetchRef = useRef(fetchItem);
   const getIdRef = useRef(getItemId);
@@ -33,6 +34,7 @@ export function useRouteDetail({
       mountedRef.current = false;
       selectionRef.current += 1;
       openingIdRef.current = null;
+      activeIdRef.current = null;
     };
   }, []);
 
@@ -50,15 +52,18 @@ export function useRouteDetail({
         const item = await fetchRef.current(id);
         if (!mountedRef.current || request !== selectionRef.current) return null;
         openingIdRef.current = null;
+        const itemId = getIdRef.current(item);
+        activeIdRef.current = itemId;
         setActiveItem(item);
         if (!fromRoute) {
-          onDetailChange?.(getIdRef.current(item), { replace });
+          onDetailChange?.(itemId, { replace });
         }
         return item;
       } catch (error) {
         if (!mountedRef.current || request !== selectionRef.current) return null;
         openingIdRef.current = null;
         if (error?.status === 404) {
+          activeIdRef.current = null;
           setActiveItem(null);
           onDetailChange?.(null, { replace: true });
           return null;
@@ -70,7 +75,7 @@ export function useRouteDetail({
           if (mountedRef.current && request === selectionRef.current) {
             openItem(id, { replace });
           }
-        });
+        }, id);
         return null;
       } finally {
         if (mountedRef.current && request === selectionRef.current && fromRoute) {
@@ -85,10 +90,12 @@ export function useRouteDetail({
     (item, { syncRoute = true, replace = false } = {}) => {
       selectionRef.current += 1;
       openingIdRef.current = null;
+      const itemId = item ? getIdRef.current(item) : null;
+      activeIdRef.current = itemId;
       setRouteOpening(false);
       setActiveItem(item);
       if (syncRoute) {
-        onDetailChange?.(item ? getIdRef.current(item) : null, { replace });
+        onDetailChange?.(itemId, { replace });
       }
     },
     [onDetailChange],
@@ -98,6 +105,7 @@ export function useRouteDetail({
     (options) => {
       selectionRef.current += 1;
       openingIdRef.current = null;
+      activeIdRef.current = null;
       setRouteOpening(false);
       setActiveItem(null);
       onDetailChange?.(null, options);
@@ -117,6 +125,7 @@ export function useRouteDetail({
       }
       setRouteOpening(false);
       if (activeItemId != null) {
+        activeIdRef.current = null;
         setActiveItem(null);
       }
       return;
@@ -135,7 +144,7 @@ export function useRouteDetail({
     activeItem,
     setActiveItem,
     routeOpening,
-    openingIdRef,
+    getSelectedId: () => openingIdRef.current ?? activeIdRef.current,
     invalidate,
     openItem,
     adoptItem,

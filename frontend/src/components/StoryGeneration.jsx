@@ -22,13 +22,12 @@ export function StoryQuality({story}) {
   </div>;
 }
 
-export default function StoryGeneration({onSaved, onStarter}) {
+export default function StoryGeneration({onSaved, onStarter, starterAction}) {
   const [pending, setPending] = useState(pendingRequest);
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [storageNote, setStorageNote] = useState("");
-  const [starterError, setStarterError] = useState("");
   const alive = useRef(true);
   const saving = useRef(false);
   useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
@@ -64,11 +63,7 @@ export default function StoryGeneration({onSaved, onStarter}) {
     </label>
     <div className="story-generation-actions">
       {!pending && <button className="btn btn-primary btn-small" onClick={generate}>生成新故事</button>}
-      <button className="btn btn-ghost btn-small" onClick={async () => {
-        setStarterError("");
-        try { const story = await api("/api/stories/starter"); if (alive.current) onStarter(story); }
-        catch (e) { if (alive.current) setStarterError("读取入门材料失败：" + e.message); }
-      }}>阅读入门材料</button>
+      {starterAction}
     </div>
     {busy && <p role="status">生成并确认保存中…</p>}
     {pending && !busy && <div className="story-generation-pending">
@@ -79,6 +74,5 @@ export default function StoryGeneration({onSaved, onStarter}) {
       </div>
     </div>}
     {storageNote && <p role="note">{storageNote}</p>}
-    {starterError && <p role="alert">{starterError}</p>}
   </div>;
 }
