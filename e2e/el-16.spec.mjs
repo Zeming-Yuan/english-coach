@@ -78,7 +78,7 @@ test('EL-16 model grading instructions keep unknown answers unknown', async ({ap
   const scene = await submit(page, 'I want water, please');
   await expect(scene).toContainText('未判定');
   await expect(scene.getByTestId('scene-feedback')).toContainText('模型回应');
-  await expect(scene.getByTestId('scene-feedback')).toContainText('Let us try again.');
+  await expect(scene.getByTestId('scene-feedback')).toContainText('Let us continue.');
   const backup = await (await app.request.get('/api/export/backup')).json();
   expect(backup.extensions.scene_attempts[0].verdict).toBe('unknown');
   expect(backup.extensions.practice_items.filter(i => i.first_task_attempt_id)).toHaveLength(1);

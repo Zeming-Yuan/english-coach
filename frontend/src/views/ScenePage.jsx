@@ -96,6 +96,7 @@ function SceneRun({initial, creationEnabled, onRestart, onExit}) {
   const [helpBusy, setHelpBusy] = useState(false);
   const attempt = useLearningAttempt(scope);
   const item = run.items[index];
+  const unjudged = feedback?.verdict === 'unknown' && !feedback.skipped;
   const blocked = attempt.phase === 'saving' || attempt.phase === 'failed' || helpBusy;
   const apply = result => {
     if (result.committed !== true) return;
@@ -145,9 +146,12 @@ function SceneRun({initial, creationEnabled, onRestart, onExit}) {
       {feedback ? <div className="quiz-feedback scene-feedback" data-verdict={feedback.verdict} role="status">
         <p>已保存 · {verdictLabel(feedback)}{feedback.first_response === false ? ' · 再练结果，首答不变' : ''}</p>
         <p>你的答案：{answer || '显式跳过'}</p>
+        {unjudged && <p>这条表达未被当前规则可靠判定。可以继续，或查看标准表达。</p>}
         <div className="save-state-actions">
-          <button className="btn btn-primary" onClick={() => {setIndex(index + 1); setAnswer(''); setComposing(false); setFeedback(null);}}>{index === 2 ? '查看结果' : '下一轮'}</button>
-          {run.can_continue && <button className="btn btn-ghost" onClick={() => {setComposing(false); setFeedback(null);}}>再练本轮</button>}
+          <button className="btn btn-primary" disabled={helpBusy} onClick={() => {setIndex(index + 1); setAnswer(''); setComposing(false); setFeedback(null);}}>{index === 2 ? '查看结果' : '下一轮'}</button>
+          {unjudged && run.can_continue && !item.standard &&
+            <button className="btn btn-ghost" disabled={blocked} onClick={() => help('answer_visible')}>查看标准表达</button>}
+          {run.can_continue && <button className="btn btn-ghost" disabled={helpBusy} onClick={() => {setComposing(false); setFeedback(null);}}>再练本轮</button>}
         </div>
       </div> : <>
         <label className="scene-answer-field">你的答案<input
