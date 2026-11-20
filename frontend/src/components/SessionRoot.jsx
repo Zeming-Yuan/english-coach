@@ -1,6 +1,8 @@
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useLayoutEffect, useState} from "react";
 import App from "../App.jsx";
+import UiIcon from "./UiIcon.jsx";
 import {configureAccount} from "../lib/accountSession.js";
+import {applyPreAuthDarkMode, primeLoginDarkMode} from "../lib/theme.js";
 import "../styles/login.css";
 
 const AUTH_CHANGE = "ec.auth.change";
@@ -16,7 +18,7 @@ async function sessionRequest(path, options = {}) {
 }
 
 function Brand() {
-  return <div className="login-brand"><img src="/static/favicon.svg" alt="" width="30" height="30" /><span>EnglishCoach</span></div>;
+  return <div className="login-brand"><UiIcon name="book" weight="fill" size={30} /><span>EnglishCoach</span></div>;
 }
 
 function LoginPage({notice}) {
@@ -30,7 +32,9 @@ function LoginPage({notice}) {
     if (busy) return;
     setBusy(true); setError("");
     try {
-      await sessionRequest("/auth/login", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({username: username.trim(), password})});
+      const trimmed = username.trim();
+      await sessionRequest("/auth/login", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({username: trimmed, password})});
+      primeLoginDarkMode(trimmed);
       setPassword("");
       announceChange();
       window.location.replace("/");
@@ -82,6 +86,10 @@ export default function SessionRoot() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [leaving, setLeaving] = useState(false);
+  const preAuth = !session || (session.enabled && !session.username);
+  useLayoutEffect(() => {
+    if (preAuth) applyPreAuthDarkMode();
+  }, [preAuth]);
   const load = async () => {
     const current = await sessionRequest("/auth/session");
     if (typeof current.enabled !== "boolean" || (current.username !== null && typeof current.username !== "string")) throw new Error("登录状态无效，请刷新重试");

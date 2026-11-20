@@ -342,6 +342,69 @@ function LearningEventRow({ event }) {
   );
 }
 
+function InlineDetailEditor({
+  id,
+  label,
+  multiline = false,
+  value,
+  onChange,
+  onSave,
+  onCancel,
+  saving = false,
+  error = "",
+  placeholder = "",
+  saveLabel = "保存",
+  inputRef,
+}) {
+  const [composing, setComposing] = useState(false);
+  const handleKeyDown = (e) => {
+    if (e.nativeEvent?.isComposing || e.keyCode === 229 || composing) {
+      if (!multiline && e.key === "Enter") e.preventDefault();
+      return;
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      onCancel();
+    }
+  };
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!composing) onSave();
+  };
+  const sharedProps = {
+    ref: inputRef,
+    id,
+    maxLength: 500,
+    autoFocus: true,
+    disabled: saving,
+    value,
+    onChange: (e) => onChange(e.target.value),
+    onCompositionStart: () => setComposing(true),
+    onCompositionEnd: () => setComposing(false),
+    onKeyDown: handleKeyDown,
+    placeholder,
+  };
+  return (
+    <form className="inline-detail-editor" onSubmit={handleSubmit}>
+      <label className="sr-only" htmlFor={id}>{label}</label>
+      {multiline ? (
+        <textarea {...sharedProps} className="inline-detail-textarea" rows={3} />
+      ) : (
+        <input {...sharedProps} className="inline-detail-input" type="text" />
+      )}
+      {error && <p role="alert" className="inline-detail-error">{error}</p>}
+      <div className="inline-detail-actions">
+        <button type="submit" className="btn btn-primary btn-small" disabled={saving}>
+          {saving ? "保存中…" : saveLabel}
+        </button>
+        <button type="button" className="btn btn-ghost btn-small" disabled={saving} onClick={onCancel}>
+          取消
+        </button>
+      </div>
+    </form>
+  );
+}
+
 /* ============ 单词详情子组件 ============ */
 function WordDetail({ cardId, onBack, onDismissDeleted, allCards, setDetail, onCardChanged }) {
   const [c, setCard] = useState(null);
@@ -427,14 +490,31 @@ function WordDetail({ cardId, onBack, onDismissDeleted, allCards, setDetail, onC
   const [pendingExample, setPendingExample] = useState(null);
   const [regenerating, setRegenerating] = useState(false);
   const [savingExample, setSavingExample] = useState(false);
+  const [editingMeaning, setEditingMeaning] = useState(false);
+  const [meaningDraft, setMeaningDraft] = useState("");
+  const [savingMeaning, setSavingMeaning] = useState(false);
+  const [meaningError, setMeaningError] = useState("");
+  const [editingMemo, setEditingMemo] = useState(false);
+  const [memoDraft, setMemoDraft] = useState("");
+  const [savingMemo, setSavingMemo] = useState(false);
+  const [memoError, setMemoError] = useState("");
   const mountedRef = useRef(true);
   const regenerateRef = useRef(null);
+  const menuRef = useRef(null);
+  const meaningInputRef = useRef(null);
+  const memoInputRef = useRef(null);
   useEffect(() => {
     mountedRef.current = true;
     return () => {
       mountedRef.current = false;
     };
   }, []);
+  useEffect(() => {
+    setEditingMeaning(false);
+    setMeaningError("");
+    setEditingMemo(false);
+    setMemoError("");
+  }, [cardId]);
 
   const refreshDetail = async () => {
     try {
@@ -562,26 +642,84 @@ function WordDetail({ cardId, onBack, onDismissDeleted, allCards, setDetail, onC
     }
   };
 
-  const editMeaning = async () => {
-    const v = prompt("编辑释义：", c.meaning || "");
-    if (v === null) return;
+  const openMeaningEditor = () => {
+    if (!c || savingMeaning) return;
+    if (editingMeaning) {
+      meaningInputRef.current?.focus();
+      return;
+    }
+    setMeaningDraft(c.kind === "sentence" ? (c.example_cn || "") : (c.meaning || ""));
+    setMeaningError("");
+    setEditingMeaning(true);
+  };
+
+  const cancelMeaningEditor = () => {
+    if (savingMeaning) return;
+    setEditingMeaning(false);
+    setMeaningError("");
+  };
+
+  const saveMeaningEdit = async () => {
+    if (!c || savingMeaning) return;
+    const trimmed = meaningDraft.trim();
+    setSavingMeaning(true);
+    setMeaningError("");
     try {
-      await api(`/api/cards/${c.id}`, { method: "PUT", body: JSON.stringify({ meaning: v.trim() }) });
+      const payload = c.kind === "sentence" ? { example_cn: trimmed } : { meaning: trimmed };
+      await api(`/api/cards/${c.id}`, { method: "PUT", body: JSON.stringify(payload) });
       if (!mountedRef.current) return;
+      setEditingMeaning(false);
       setPendingExample(null);
       await refreshDetail();
       onCardChanged?.();
-    } catch {}
+    } catch (err) {
+      if (mountedRef.current) {
+        setMeaningError("保存失败：" + (err?.message || err));
+      }
+    } finally {
+      if (mountedRef.current) setSavingMeaning(false);
+    }
   };
 
-  const editMemo = async () => {
-    const current = c.memo || "";
-    const v = prompt("怎么写这个单词记得更牢？（谐音/联想/小故事）", current);
-    if (v === null) return;
+  const openMemoEditor = () => {
+    if (!c || savingMemo) return;
+    menuRef.current?.removeAttribute("open");
+    if (editingMemo) {
+      memoInputRef.current?.focus();
+      return;
+    }
+    setMemoDraft(c.memo || "");
+    setMemoError("");
+    setEditingMemo(true);
+  };
+
+  const cancelMemoEditor = () => {
+    if (savingMemo) return;
+    setEditingMemo(false);
+    setMemoError("");
+  };
+
+  const saveMemoEdit = async () => {
+    if (!c || savingMemo) return;
+    const trimmed = memoDraft.trim();
+    if (!trimmed) {
+      setMemoError("请输入记忆法内容，或点击取消");
+      return;
+    }
+    setSavingMemo(true);
+    setMemoError("");
     try {
-      await api(`/api/memos/${c.id}`, { method: "PUT", body: JSON.stringify({ content: v.trim() }) });
-      setCard({ ...c, memo: v.trim() });
-    } catch {}
+      await api(`/api/memos/${c.id}`, { method: "PUT", body: JSON.stringify({ content: trimmed }) });
+      if (!mountedRef.current) return;
+      setCard((prev) => (prev ? { ...prev, memo: trimmed } : prev));
+      setEditingMemo(false);
+    } catch (err) {
+      if (mountedRef.current) {
+        setMemoError("保存失败：" + (err?.message || err));
+      }
+    } finally {
+      if (mountedRef.current) setSavingMemo(false);
+    }
   };
 
   if (loading) return <div className="story-empty">加载中…</div>;
@@ -612,12 +750,12 @@ function WordDetail({ cardId, onBack, onDismissDeleted, allCards, setDetail, onC
       )}
 
 
-          <button className="btn btn-ghost" onClick={editMeaning}><UiIcon name="edit" />编辑内容</button>
-          <details className="detail-menu">
+          <button className="btn btn-ghost" disabled={savingMeaning} onClick={openMeaningEditor}><UiIcon name="edit" />编辑内容</button>
+          <details ref={menuRef} className="detail-menu">
             <summary aria-label="更多操作"><UiIcon name="more" /></summary>
             <div className="detail-menu-content">
               <button type="button" onClick={toggleHard}>{c.is_hard ? "取消困难词" : "标为困难词"}</button>
-              <button type="button" onClick={editMemo}>编辑记忆法</button>
+              <button type="button" onClick={openMemoEditor}>编辑记忆法</button>
               <button type="button" className="danger" onClick={deleteCard}>删除</button>
             </div>
           </details>
@@ -654,7 +792,23 @@ function WordDetail({ cardId, onBack, onDismissDeleted, allCards, setDetail, onC
         </div>
 
         <h2 className="word-section-title">{c.kind === "sentence" ? "译文" : "词义"}</h2>
-        <div className="word-detail-meaning">{c.kind === "sentence" ? (c.example_cn || "") : (c.meaning || "")}</div>
+        {editingMeaning ? (
+          <InlineDetailEditor
+            id="word-meaning-input"
+            label={c.kind === "sentence" ? "编辑译文" : "编辑词义"}
+            value={meaningDraft}
+            onChange={setMeaningDraft}
+            onSave={saveMeaningEdit}
+            onCancel={cancelMeaningEditor}
+            saving={savingMeaning}
+            error={meaningError}
+            placeholder={c.kind === "sentence" ? "输入中文译文…" : "输入中文释义…"}
+            saveLabel="保存"
+            inputRef={meaningInputRef}
+          />
+        ) : (
+          <div className="word-detail-meaning">{c.kind === "sentence" ? (c.example_cn || "") : (c.meaning || "")}</div>
+        )}
 
         {/* 例句（或换例句对比） */}
         {pendingExample ? (
@@ -714,15 +868,30 @@ function WordDetail({ cardId, onBack, onDismissDeleted, allCards, setDetail, onC
         )}
 
         <h2 className="word-section-title">记忆法</h2>
-        {/* 记忆法（前置到醒目位置） */}
-        {c.memo ? (
+        {/* 记忆法（原位编辑，保持纸书阅读流） */}
+        {editingMemo ? (
+          <InlineDetailEditor
+            id="word-memo-input"
+            label="编辑记忆法"
+            multiline
+            value={memoDraft}
+            onChange={setMemoDraft}
+            onSave={saveMemoEdit}
+            onCancel={cancelMemoEditor}
+            saving={savingMemo}
+            error={memoError}
+            placeholder="怎么写这个单词记得更牢？（谐音 / 词根 / 联想 / 小故事）"
+            saveLabel="保存记忆法"
+            inputRef={memoInputRef}
+          />
+        ) : c.memo ? (
           <div className="word-detail-memo">
             <span className="word-detail-memo-label">我的记忆法</span>
             <span>{c.memo}</span>
-            <button className="memo-edit-btn" onClick={editMemo} aria-label="编辑记忆法"><UiIcon name="edit" /></button>
+            <button type="button" className="memo-edit-btn" onClick={openMemoEditor} aria-label="编辑记忆法"><UiIcon name="edit" /></button>
           </div>
         ) : (
-          <button className="btn btn-ghost btn-small" style={{ marginTop: 10 }} onClick={editMemo}>写个记忆法</button>
+          <button type="button" className="btn btn-ghost btn-small" onClick={openMemoEditor}>写个记忆法</button>
         )}
 
         {/* 对话体语境 */}

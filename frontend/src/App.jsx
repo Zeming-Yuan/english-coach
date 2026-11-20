@@ -1,7 +1,8 @@
 import { accountStorage } from "./lib/accountSession.js";
-import React, { useState, useEffect, useRef, useCallback, Component } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, Component } from "react";
 import { api } from "./lib/api.js";
-import { storageGet, storageSet } from "./lib/utils.js";
+import { storageGet, storageSet, formatLessonTitle } from "./lib/utils.js";
+import { syncAccountDarkMode } from "./lib/theme.js";
 import {recordRoundOutcome, resetRoundOutcomes, roundBudgetCap, roundObservationGeneration, subscribeRoundAdvice} from "./lib/roundOutcomes.js";
 import { setTtsRate } from "./lib/tts.js";
 import { clearVisibleContactLookups, refreshPendingContacts } from "./lib/contacts.js";
@@ -330,11 +331,13 @@ export default function App({account = null, onLogout, logoutBusy = false, logou
   const [darkMode, setDarkMode] = useState(() => storageGet("darkMode", false));
 
   // 设置初始化
-  useEffect(() => {
-    const rate = storageGet("ttsRate", 0.9);
-    setTtsRate(rate);
-    document.body.classList.toggle("dark", darkMode);
+  useLayoutEffect(() => {
+    syncAccountDarkMode(darkMode);
   }, [darkMode]);
+
+  useEffect(() => {
+    setTtsRate(storageGet("ttsRate", 0.9));
+  }, []);
 
   // 监听"测这个词"事件（从单词详情页跳转）
   useEffect(() => {
@@ -683,7 +686,7 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
         <section className="home-course" aria-label="当前课程">
           <header className="home-section-head"><h2>当前课程</h2><button className="home-text-link" onClick={() => setView("lessons")}>查看全部课程<CaretRightIcon aria-hidden="true" /></button></header>
           {materialsLoading.lessons ? <p className="home-material-empty" role="status">正在读取课程…</p> : materialErrors.lessons ? <div className="home-material-empty"><p role="alert">课程暂时无法读取，今天的学习仍可继续。</p><button className="btn btn-ghost" onClick={retryMaterials}>重新读取课程</button></div> : <>
-            <h3>{currentLesson ? (courseTitle.startsWith(`第 ${currentLesson.level} 课`) || courseTitle.startsWith(`第${currentLesson.level}课`) ? courseTitle : `第 ${currentLesson.level} 课 · ${courseTitle}`) : "从第一课开始"}</h3>
+            <h3>{currentLesson ? formatLessonTitle(currentLesson.level, courseTitle) : "从第一课开始"}</h3>
             <p className="home-course-goal">{currentLesson ? `学习目标：${homeChinesePreview(currentLesson.goal, "通过词汇与对话练习本课主题。")}` : "从基础词汇到简单对话，一课一课地积累。"}</p>
             {currentLesson ? <>
               <p className="home-course-meta">{courseWords.length} 个词汇 · {currentLesson.content?.dialogue?.length || 0} 句对话 · {currentLesson.learning_progress?.browsed ? "已浏览，检查结果见课程" : "浏览与短测分别记录"}</p>

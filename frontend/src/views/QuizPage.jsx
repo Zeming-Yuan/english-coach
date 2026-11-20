@@ -296,7 +296,6 @@ export default function QuizPage({ onExit, onAddWords }) {
             formId="quiz-spelling-form"
             mode="independent"
             onSubmit={handleTypedSubmit}
-            placeholder="输入英文单词…"
             disabled={saving}
           />
         )}

@@ -1,6 +1,7 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import SessionRoot from "./components/SessionRoot.jsx";
+import { applyPreAuthDarkMode } from "./lib/theme.js";
 import "@fontsource-variable/noto-sans-sc";
 import "./styles/product-theme.css";
 import "./styles/qwerty-spelling.css";
@@ -12,5 +13,6 @@ import "./views/scene-page.css";
 document.documentElement.setAttribute("translate", "no");
 document.documentElement.classList.add("notranslate");
 document.body.classList.add("notranslate");
+applyPreAuthDarkMode();
 
 createRoot(document.getElementById("root")).render(<SessionRoot />);

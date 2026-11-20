@@ -127,7 +127,7 @@ test('word detail load and delete failures are visible without leaving the list'
 test('add-word results display plain text without HTML entity escaping',async({page})=>{
   await page.route('**/api/cards/generate',route=>route.fulfill({json:{generated:1,skipped:0,cards:[{id:1,word:'tea & coffee'}]}}));
   await ui.mount(page,'/src/views/AddPage.jsx');
-  await page.getByRole('textbox',{name:''}).fill('tea');
+  await page.getByRole('textbox',{name:'要添加的英文单词',exact:true}).fill('tea');
   await page.getByRole('button',{name:'AI 生成词卡',exact:true}).click();
   await expect(page.locator('.add-result .ok')).toContainText('tea & coffee',{timeout:2000});
 });
@@ -217,8 +217,9 @@ test('a failed word-list refresh preserves the current edited card detail',async
   await page.route('**/api/tts/**',route=>route.fulfill({body:''}));
   await ui.mount(page,'/src/views/WordsPage.jsx');
   await page.locator('.word-item').click();
-  page.on('dialog',dialog=>dialog.accept('new meaning'));
   await page.getByRole('button',{name:/编辑内容/}).click();
+  await page.getByLabel('编辑词义',{exact:true}).fill('new meaning');
+  await page.getByRole('button',{name:'保存',exact:true}).click();
   await expect(page.getByRole('alert')).toContainText('word list offline');
   await expect(page.locator('.word-detail-view')).toBeVisible({timeout:2000});
 });

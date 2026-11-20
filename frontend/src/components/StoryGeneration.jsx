@@ -57,21 +57,28 @@ export default function StoryGeneration({onSaved, onStarter}) {
       if (alive.current) setBusy(false);
     }
   };
-  return <div>
-    <label><input type="checkbox" checked={pending ? pending.include_new_target : consent} disabled={busy || !!pending} onChange={e => setConsent(e.target.checked)} />同意加入最多一个新目标词（不自动加词）</label>
-    {!pending && <button className="btn btn-primary btn-small" onClick={generate}>生成新故事</button>}
+  return <div className="story-generation">
+    <label className="story-generation-consent">
+      <input type="checkbox" checked={pending ? pending.include_new_target : consent} disabled={busy || !!pending} onChange={e => setConsent(e.target.checked)} />
+      <span>同意加入最多一个新目标词（不自动加词）</span>
+    </label>
+    <div className="story-generation-actions">
+      {!pending && <button className="btn btn-primary btn-small" onClick={generate}>生成新故事</button>}
+      <button className="btn btn-ghost btn-small" onClick={async () => {
+        setStarterError("");
+        try { const story = await api("/api/stories/starter"); if (alive.current) onStarter(story); }
+        catch (e) { if (alive.current) setStarterError("读取入门材料失败：" + e.message); }
+      }}>阅读入门材料</button>
+    </div>
     {busy && <p role="status">生成并确认保存中…</p>}
-    {pending && !busy && <div>
+    {pending && !busy && <div className="story-generation-pending">
       <p role="alert">{error || "有一条待确认的故事生成，请继续确认。"}</p>
-      <button className="btn btn-primary btn-small" onClick={generate}>继续确认保存</button>
-      <button className="btn btn-ghost btn-small" onClick={() => {remember(null); setError("");}}>放弃待确认生成</button>
+      <div className="save-state-actions">
+        <button className="btn btn-primary btn-small" onClick={generate}>继续确认保存</button>
+        <button className="btn btn-ghost btn-small" onClick={() => {remember(null); setError("");}}>放弃待确认生成</button>
+      </div>
     </div>}
     {storageNote && <p role="note">{storageNote}</p>}
     {starterError && <p role="alert">{starterError}</p>}
-    <button className="btn btn-ghost btn-small" onClick={async () => {
-      setStarterError("");
-      try { const story = await api("/api/stories/starter"); if (alive.current) onStarter(story); }
-      catch (e) { if (alive.current) setStarterError("读取入门材料失败：" + e.message); }
-    }}>阅读入门材料</button>
   </div>;
 }

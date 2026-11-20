@@ -78,3 +78,17 @@ def test_production_bundle_matches_frontend_source_without_stale_assets():
         css_resp = client.get(f"/static/assets/{css_name}")
         assert css_resp.status_code == 200
         assert "text/css" in css_resp.headers["content-type"]
+
+
+def test_favicon_uses_warm_terracotta_palette_without_legacy_mint():
+    """/static/favicon.svg 使用暖纸陶土色与 Phosphor BookOpen fill 图形，不残留旧薄荷绿或 Arial 字标。"""
+    client = TestClient(app)
+    resp = client.get("/static/favicon.svg")
+    assert resp.status_code == 200
+    assert "image/svg+xml" in resp.headers["content-type"]
+    raw = resp.text
+    svg = raw.lower()
+    assert "#a26243" in svg
+    assert "M240,56V200a8,8,0,0,1-8,8H160a24,24,0,0,0-24,23.94" in raw
+    for legacy in ("#2dbe9e", "#1f9e85", "arial"):
+        assert legacy not in svg

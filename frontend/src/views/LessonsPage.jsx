@@ -14,6 +14,7 @@ import {
 } from "../lib/learning.js";
 import { useLearningAttempt } from "../hooks/useLearningAttempt.js";
 import { useRouteDetail } from "../hooks/useRouteDetail.js";
+import { hasLessonLevelPrefix, formatLessonTitle } from "../lib/utils.js";
 import { showToast } from "../App.jsx";
 import PracticePage from "./PracticePage.jsx";
 
@@ -322,7 +323,10 @@ export default function LessonsPage({
             {isDone
               ? "20 课已全部生成 · 尚无短测，待检查"
               : lessons.length > 0
-                ? `第 ${lessons[lessons.length - 1].level} 课 · ${lessons[lessons.length - 1].title}`
+                ? formatLessonTitle(
+                    lessons[lessons.length - 1].level,
+                    lessons[lessons.length - 1].title,
+                  )
                 : "开始零基础课程"}
           </div>
           <div className="lesson-entry-sub">
@@ -376,7 +380,7 @@ export default function LessonsPage({
           {[...lessons].reverse().map((l) => (
             <div key={l.id} className="lesson-list-item" onClick={() => openLesson(l.level)}>
               <div className="lesson-list-item-main">
-                <div className="lesson-list-item-title">第 {l.level} 课 · {l.title}</div>
+                <div className="lesson-list-item-title">{formatLessonTitle(l.level, l.title)}</div>
                 <div className="lesson-list-item-sub">
                   {(l.content.dialogue || []).length} 句对话 ·{" "}
                   短测：{l.learning_progress?.checked_count ? `通过 ${l.learning_progress.passed_count}/${l.learning_progress.checked_count} 题` : "尚无（待检查）"} · {lessonProgressLabel(l.learning_progress)}
@@ -563,12 +567,14 @@ function LessonDetail({ lesson, onBack, onNext, onViewed, onStartPractice, gener
       <div className="page-head">
         <button className="btn btn-ghost btn-small" onClick={onBack}>← 返回</button>
       </div>
-      <p className="eyebrow">第 {L.level} 课</p>
+      {!hasLessonLevelPrefix(L.level, L.title) && (
+        <p className="eyebrow">第 {L.level} 课</p>
+      )}
       <h2 className="page-title">{L.title}</h2>
       <p className="lesson-goal" data-testid="lesson-goal">
         本课目标：{goal}
       </p>
-      <div className="lesson-progress" data-testid="lesson-progress">
+      <div className="lesson-progress lesson-status-bar" data-testid="lesson-progress">
         <span>学习状态：{lessonProgressLabel(progress)}</span>
         <span>
           短测：
@@ -636,21 +642,25 @@ function LessonDetail({ lesson, onBack, onNext, onViewed, onStartPractice, gener
         应用内接触：本课目标词按实际显示记录
       </div>
 
-      <h3 className="lesson-section">对话 · 点句子听发音</h3>
-      <div className="bubble-list">
-        {dialogue.map((line, i) => (
-          <div
-            key={i}
-            data-contact-ids={(line.visible_card_ids || []).join(",")}
-            className={`bubble ${i % 2 === 0 ? "bubble-a" : "bubble-b"} lesson-dialogue-row`}
-            onClick={() => contactAudio(line.en, line.visible_card_ids)}
-          >
-            <span className="spk">{line.speaker}</span>
-            <div className="bubble-en">{line.en}</div>
-            <div className="bubble-cn">{line.cn}</div>
+      {dialogue.length > 0 && (
+        <>
+          <h3 className="lesson-section">对话 · 点句子听发音</h3>
+          <div className="bubble-list">
+            {dialogue.map((line, i) => (
+              <div
+                key={i}
+                data-contact-ids={(line.visible_card_ids || []).join(",")}
+                className={`bubble ${i % 2 === 0 ? "bubble-a" : "bubble-b"} lesson-dialogue-row`}
+                onClick={() => contactAudio(line.en, line.visible_card_ids)}
+              >
+                <span className="spk">{line.speaker}</span>
+                <div className="bubble-en">{line.en}</div>
+                <div className="bubble-cn">{line.cn}</div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </>
+      )}
 
       <div className="lesson-actions">
         <button
@@ -660,7 +670,7 @@ function LessonDetail({ lesson, onBack, onNext, onViewed, onStartPractice, gener
           开始本课短测
         </button>
         <button
-          className="btn btn-primary btn-wide"
+          className={`btn btn-ghost btn-wide ${progress.status === "browsed" || progress.browsed ? "lesson-viewed-done" : ""}`}
           onClick={markViewed}
           disabled={viewed.phase === "saving" || viewed.phase === "failed"}
         >
@@ -684,7 +694,6 @@ function LessonDetail({ lesson, onBack, onNext, onViewed, onStartPractice, gener
         )}
         <button
           className="btn btn-ghost btn-wide"
-          style={{ marginTop: 8 }}
           onClick={onNext}
           disabled={generating}
         >

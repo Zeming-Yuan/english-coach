@@ -21,8 +21,9 @@ test("word detail keeps content and evidence readable in the approved story fami
   } else {
     expect(evidenceBox.y).toBeGreaterThanOrEqual(mainBox.y + mainBox.height);
   }
-  page.once("dialog", dialog => dialog.accept("苹果（水果）"));
   await page.getByRole("button", {name: "编辑内容", exact: true}).click();
+  await page.getByLabel("编辑词义", {exact: true}).fill("苹果（水果）");
+  await page.getByRole("button", {name: "保存", exact: true}).click();
   await expect(content).toContainText("苹果（水果）");
   await expect(evidence.getByTestId("learning-evidence")).toContainText("独立证据不足");
   await page.getByRole("button", {name: "测这个词", exact: true}).click();

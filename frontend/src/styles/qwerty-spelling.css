@@ -1,5 +1,5 @@
 /* Qwerty Learner interaction reference, adapted to EnglishCoach recall rules.
-   Scope the typewriter surface to spelling; other SpellingBoard consumers keep their UI. */
+   Shared bottom-line typewriter surface for all variant="qwerty" SpellingBoard consumers. */
 .product-app .qwerty-spelling {
   display: flex;
   flex-direction: column;
@@ -33,7 +33,7 @@
   border-bottom: 1px solid var(--line);
 }
 .product-app .qwerty-typing-line:focus-within { border-color: var(--mint); }
-.product-app .qwerty-spelling .spelling-input {
+.product-app .qwerty-typing .spelling-input {
   display: block;
   width: 100%;
   max-width: 100%;
@@ -51,8 +51,8 @@
   caret-color: var(--mint);
   color: var(--ink);
 }
-.product-app .qwerty-spelling .spelling-input::placeholder { font: 400 16px/1.5 var(--font); letter-spacing: 0; color: var(--muted); }
-.product-app .qwerty-spelling .spelling-input:disabled { opacity: 1; -webkit-text-fill-color: currentColor; }
+.product-app .qwerty-typing .spelling-input::placeholder { font: 400 16px/1.5 var(--font); letter-spacing: 0; color: var(--muted); }
+.product-app .qwerty-typing .spelling-input:disabled { opacity: 1; -webkit-text-fill-color: currentColor; }
 .product-app .qwerty-typing--assisted .spelling-word-display {
   min-height: 98px;
   display: flex;
@@ -64,7 +64,7 @@
   padding: 18px 12px;
   pointer-events: none;
 }
-.product-app .qwerty-typing--assisted .spelling-input {
+.product-app .qwerty-typing.qwerty-typing--assisted .spelling-input {
   position: absolute;
   inset: 0;
   height: 100%;
@@ -72,8 +72,8 @@
   caret-color: transparent;
   -webkit-text-fill-color: transparent;
 }
-.product-app .qwerty-typing--assisted .spelling-input::placeholder { color: transparent; }
-.product-app .qwerty-spelling .qwerty-typing--assisted .spelling-input:disabled { color: transparent; -webkit-text-fill-color: transparent; }
+.product-app .qwerty-typing.qwerty-typing--assisted .spelling-input::placeholder { color: transparent; }
+.product-app .qwerty-typing.qwerty-typing--assisted .spelling-input:disabled { color: transparent; -webkit-text-fill-color: transparent; }
 .product-app .qwerty-letter.spelling-box {
   width: 1.1ch;
   height: auto;
