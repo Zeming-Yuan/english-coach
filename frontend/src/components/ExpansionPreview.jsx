@@ -1,7 +1,6 @@
 import React, {useEffect, useId, useRef, useState} from "react";
-import {api} from "../lib/api.js";
+import {beginExpansionContactLookup, retryVisibleContactLookup} from "../lib/contacts.js";
 import {speak} from "../lib/tts.js";
-import {recordPracticeContact} from "../lib/practiceContacts.js";
 
 const appleExamples = [
   {word: "apple juice", meaning: "苹果汁", example: "I'd like a glass of apple juice."},
@@ -14,43 +13,34 @@ export default function ExpansionPreview({sourceCard, row, source, closeLabel, o
   const labelId = useId();
   const dialog = useRef(null);
   const active = useRef(false);
-  const target = useRef(null);
+  const [contactError, setContactError] = useState("");
   const [audio, setAudio] = useState("idle");
   const example = sourceCard.word.trim().toLowerCase() === "apple" && sourceCard.meaning?.trim() === "苹果"
     ? appleExamples.find(entry => entry.word === row.word && entry.meaning === row.meaning)?.example
     : null;
 
-  useEffect(() => {
-    const panel = dialog.current;
-    panel.showModal();
-    return () => panel.close();
-  }, []);
+  const confirmContact = kind => {
+    const scope = beginExpansionContactLookup({card: sourceCard, row, source, kind});
+    retryVisibleContactLookup(scope).catch(error => {
+      if (active.current) setContactError(`接触依据不完整：${error.message}`);
+    });
+  };
 
   useEffect(() => {
-    let current = true;
+    const panel = dialog.current;
     active.current = true;
-    api("/api/cards").then(({cards}) => {
-      if (!current || !dialog.current?.open) return;
-      const card = cards.find(card => card.kind === "word" &&
-        card.word.trim().toLowerCase() === row.word.trim().toLowerCase() &&
-        card.meaning?.trim() === row.meaning.trim());
-      if (!card) return;
-      target.current = card;
-      recordPracticeContact({cardId: card.id, revision: card.content_revision, source, kind: "answer_visible"});
-    }).catch(() => {});
+    panel.showModal();
+    confirmContact("answer_visible");
     return () => {
-      current = false;
       active.current = false;
+      panel.close();
     };
-  }, [row, source]);
+  }, []);
 
   const listen = async () => {
     setAudio("loading");
-    const card = target.current;
     const mode = await speak(row.word, null, () => {
-      if (active.current && card) {
-        recordPracticeContact({cardId: card.id, revision: card.content_revision, source, kind: "answer_audio"});
-      }
+      confirmContact("answer_audio");
     });
     if (active.current) setAudio(mode === "none" ? "failed" : "idle");
   };
@@ -71,6 +61,7 @@ export default function ExpansionPreview({sourceCard, row, source, closeLabel, o
       </button>
       <button type="button" className="btn btn-ghost btn-small" onClick={close}>{closeLabel}</button>
     </div>
+    {contactError && <p role="alert">{contactError}</p>}
     {audio === "failed" && <p role="status">朗读暂不可用，可继续查看</p>}
   </dialog>;
 }

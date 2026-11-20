@@ -116,3 +116,56 @@ test("S95-01 legacy rows and late completion do not block the next card", async 
   await page.getByRole("button", {name: /太简单/}).click();
   await expect(page.getByRole("heading", {name: "本轮学习结果"})).toBeVisible();
 });
+
+test("S95-01 early audio and closing during lookup retain real contacts", async ({app, page}) => {
+  const [apply] = await app.seedCards([{word: "apply", meaning: "申请；应用"}]);
+  await app.request.post("/api/cards/starter");
+  await page.goto(app.baseURL);
+  await page.getByRole("button", {name: "开始今天的学习"}).click();
+  await page.locator(".card").press("Enter");
+  // Existing apply sorts into the daily round ahead of starter cards.
+  await page.getByRole("button", {name: /太简单/}).click();
+  await expect(page.locator(".card-front")).toContainText("apple");
+  await page.locator(".card").press("Enter");
+  await page.getByRole("button", {name: "多学一个"}).click();
+
+  let release;
+  const delayed = new Promise(resolve => { release = resolve; });
+  await page.route("**/api/cards", async route => {
+    const response = await route.fetch();
+    await delayed;
+    await route.fulfill({response});
+  });
+  try {
+    await page.getByRole("region", {name: "构词与扩展"}).getByRole("button", {name: /^apply/}).click();
+    const dialog = page.getByRole("dialog");
+    await dialog.getByRole("button", {name: "试听"}).click();
+    await expect(dialog.getByRole("button", {name: "试听"})).toBeEnabled();
+    await dialog.getByRole("button", {name: "返回原词卡"}).click();
+  } finally {
+    release();
+  }
+  await expect.poll(async () => {
+    const backup = await (await app.request.get("/api/export/backup")).json();
+    return backup.extensions.learning_contacts
+      .filter(row => row.card_id === apply).map(row => row.kind).sort();
+  }, {timeout: 4000}).toEqual(["answer_audio", "answer_visible", "answer_visible"]);
+});
+
+test("S95-01 failed target lookup can be confirmed after reload", async ({app, page}) => {
+  await app.request.post("/api/cards/starter");
+  const [apply] = await app.seedCards([{word: "apply", meaning: "申请；应用"}]);
+  await page.goto(app.baseURL);
+  await page.getByRole("button", {name: "开始今天的学习"}).click();
+  await page.locator(".card").press("Enter");
+  await page.getByRole("button", {name: "多学一个"}).click();
+  await page.route("**/api/cards", route => route.abort("failed"), {times: 1});
+  await page.getByRole("region", {name: "构词与扩展"}).getByRole("button", {name: /^apply/}).click();
+  await expect(page.getByRole("dialog").getByRole("alert")).toContainText("接触依据不完整");
+  await page.reload();
+  await page.getByRole("button", {name: "继续确认扩展词接触"}).click();
+  await expect(page.getByRole("button", {name: "继续确认扩展词接触"})).toHaveCount(0);
+  const detail = await (await app.request.get(`/api/cards/${apply}`)).json();
+  expect(detail.last_contact.kind).toBe("answer_visible");
+  expect(detail.learning_events).toEqual([]);
+});
