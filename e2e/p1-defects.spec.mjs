@@ -341,8 +341,10 @@ test("stats page routes backup to V3 BackupPage and exports non-overlapping them
   });
 
   await ui.mount(page, "/src/App.jsx");
+  await expect(page.locator(".home-record-total")).toContainText("共 128 张卡");
   await page.getByRole("button", {name: "查看学习记录"}).click();
   await expect(page.getByRole("heading", {name: "学习记录"})).toBeVisible();
+  await expect(page.locator(".stats-grid")).toContainText("共 128 张卡");
 
   // Legacy partial export / unpreviewed import controls are removed
   await expect(page.getByRole("button", {name: "备份词库"})).toHaveCount(0, {timeout: 2000});
@@ -357,6 +359,7 @@ test("stats page routes backup to V3 BackupPage and exports non-overlapping them
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", {name: "成绩单", exact: true}).click();
   await downloadPromise;
+  await expect(page.getByTestId("export-summary")).toContainText("共 128 张卡");
 
   await expect.poll(async () => {
     const c = await page.evaluate(() => window.__canvasCalls);
@@ -368,8 +371,8 @@ test("stats page routes backup to V3 BackupPage and exports non-overlapping them
   const orderedYs = [
     yOf("EnglishCoach 学习报告"),
     yOf("零基础英语"),
-    yOf("累计词汇"),
-    yOf("句子练习已解锁"),
+    yOf("共 128 张卡"),
+    yOf("达到句子解锁条件的词"),
     yOf("连续天数"),
     yOf("独立回忆已有证据"),
     yOf("历史证据，待复测"),

@@ -1,6 +1,7 @@
 import { accountStorage } from "./lib/accountSession.js";
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, Component } from "react";
 import { api } from "./lib/api.js";
+import { cardInventoryLabel } from "./lib/cardInventory.js";
 import { randomUUID, storageGet, storageSet, formatLessonTitle } from "./lib/utils.js";
 import { syncAccountDarkMode } from "./lib/theme.js";
 import {recordRoundOutcome, resetRoundOutcomes, roundBudgetCap, roundObservationGeneration, subscribeRoundAdvice} from "./lib/roundOutcomes.js";
@@ -796,7 +797,7 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
       </details>
 
       <div className="home-record-strip">
-        <button className="today-stats home-record-total" onClick={() => setView("stats")}>今日完成 <b>{stats?.reviewed_today || 0}</b> 词 · 练习 {stats?.attempted_today || 0} 次 · 跳过 {stats?.skipped_today || 0} 次 · 累计 {stats?.total_cards || 0} 词{stats?.streak > 0 ? ` · 连续 ${stats.streak} 天` : ""}</button>
+        <button className="today-stats home-record-total" onClick={() => setView("stats")}>今日完成 <b>{stats?.reviewed_today || 0}</b> 张卡 · 练习 {stats?.attempted_today || 0} 次 · 跳过 {stats?.skipped_today || 0} 次 · {cardInventoryLabel(stats)}{stats?.streak > 0 ? ` · 连续 ${stats.streak} 天` : ""}</button>
         <button className="home-text-link" onClick={() => setView("stats")}>查看学习记录<CaretRightIcon aria-hidden="true" /></button>
       </div>
 

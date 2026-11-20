@@ -14,6 +14,132 @@ async function stats(page, app) {
   await expect(page.getByTestId("learning-advice")).toBeVisible();
 }
 
+async function observeReportText(page) {
+  await page.addInitScript(() => {
+    const fillText = CanvasRenderingContext2D.prototype.fillText;
+    window.reportText = [];
+    CanvasRenderingContext2D.prototype.fillText = function(text, ...args) {
+      window.reportText.push(text);
+      return fillText.call(this, text, ...args);
+    };
+  });
+}
+
+async function downloadReport(page, inventory, filename) {
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", {name: "成绩单", exact: true}).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe("englishcoach_report.png");
+  expect(await download.failure()).toBeNull();
+  if (filename) await download.saveAs(test.info().outputPath(filename));
+  await expect(page.getByTestId("export-summary")).toContainText(inventory);
+  expect(await page.evaluate(() => window.reportText)).toContain(inventory);
+}
+
+async function backup(app) {
+  const response = await app.request.get("/api/export/backup");
+  expect(response.ok()).toBeTruthy();
+  return response.json();
+}
+
+test("S95-12 three inventories agree and the first screen opens dog practice", async ({appFactory, page}) => {
+  const app = await appFactory();
+  const [dog] = await app.seedCards([
+    {word: "dog", meaning: "狗", example: "I have a dog.", example_cn: "我有一只狗。"},
+    ...["apple", "book", "cat", "door", "egg", "fish", "glass", "house", "ice"].map(word => ({word, meaning: word})),
+  ]);
+  for (let i = 0; i < 3; i += 1) {
+    expect((await app.request.post("/api/reviews", {data: {
+      card_id: dog, rating: 3, source: "study", submission_id: crypto.randomUUID(),
+    }})).ok()).toBeTruthy();
+  }
+  const detail = await (await app.request.get(`/api/cards/${dog}`)).json();
+  expect(detail.sentence_card_id).not.toBeNull();
+  expect((await app.request.post("/api/typing/check", {data: {
+    card_id: dog, user_input: "dig", source: "spelling", submission_id: crypto.randomUUID(),
+  }})).ok()).toBeTruthy();
+  expect(await (await app.request.get("/api/stats")).json()).toMatchObject({
+    word_cards: 10, sentence_cards: 1, total_cards: 11, graduated: 1,
+  });
+  const before = await backup(app);
+  const inventory = "10 个词 · 1 张句子卡";
+  await observeReportText(page);
+  await page.goto(app.baseURL);
+  await expect(page.locator(".home-record-total")).toContainText(inventory);
+  await page.getByRole("button", {name: "查看学习记录", exact: true}).click();
+  await expect(page.locator(".stats-grid")).toContainText(inventory);
+
+  const advice = page.getByTestId("learning-advice");
+  const startDog = advice.getByRole("button", {name: "开始建议练习", exact: true});
+  await expect(startDog).toBeInViewport({ratio: 1});
+  await expect(advice).toContainText("独立首答未答对");
+  await expect(advice).toContainText("狗");
+  await expect(advice).not.toContainText(/\bdog\b/i);
+  await page.screenshot({path: test.info().outputPath("records-first-screen.png")});
+  await downloadReport(page, inventory, "englishcoach_report.png");
+  const afterReading = await backup(app);
+  expect(afterReading.learning_events).toEqual(before.learning_events);
+  expect(afterReading.extensions.learning_contacts).toEqual(before.extensions.learning_contacts);
+  expect(afterReading.extensions.practice_sessions).toEqual(before.extensions.practice_sessions);
+
+  await startDog.click();
+  const practice = page.getByTestId("practice-session");
+  await expect(practice).toContainText("狗");
+  await expect(practice).not.toContainText(/\bdog\b/i);
+  await page.getByRole("textbox", {name: "英文答案"}).fill("dog");
+  await page.getByRole("button", {name: "提交", exact: true}).click();
+  await expect(page.getByText("✅ 正确！")).toBeVisible();
+  const afterPractice = await backup(app);
+  const targeted = afterPractice.extensions.practice_sessions.filter(row => row.purpose === "targeted");
+  expect(targeted).toHaveLength(1);
+  expect(afterPractice.extensions.practice_items
+    .filter(row => row.session_id === targeted[0].session_id).map(row => row.card_id)).toEqual([dog]);
+  expect(afterPractice.learning_events.filter(row => row.card_id === dog && row.kind === "typed")
+    .map(row => row.correct)).toEqual([false, true]);
+  await page.screenshot({path: test.info().outputPath("dog-practice.png")});
+});
+
+test("S95-12 empty and sentence-only inventories use the current export data", async ({app, page}) => {
+  const empty = "0 个词 · 0 张句子卡";
+  const sentenceOnly = "0 个词 · 1 张句子卡";
+  await observeReportText(page);
+  await page.goto(app.baseURL);
+  await expect(page.locator(".home-record-total")).toContainText(empty);
+  await page.getByRole("button", {name: "查看学习记录", exact: true}).click();
+  await expect(page.locator(".stats-grid")).toContainText(empty);
+  const advice = page.getByTestId("learning-advice");
+  await expect(advice).toContainText("暂无数据不代表能力不足");
+  await expect(advice.getByRole("button", {name: "开始建议练习", exact: true})).toHaveCount(0);
+  await downloadReport(page, empty, "empty-report.png");
+
+  // Another writer adds a sentence after this page loaded.
+  await app.seedCards([{word: "dog", kind: "sentence", meaning: "我有一只狗。", example: "I have a dog."}]);
+  await expect(page.locator(".stats-grid")).toContainText(empty);
+  await downloadReport(page, sentenceOnly, "sentence-only-report.png");
+  await expect(page.locator(".stats-grid")).toContainText(sentenceOnly);
+  await page.goto(app.baseURL);
+  await expect(page.locator(".home-record-total")).toContainText(sentenceOnly);
+  await page.getByRole("button", {name: "查看学习记录", exact: true}).click();
+  await expect(advice).toContainText("暂无数据不代表能力不足");
+  await expect(advice.getByRole("button", {name: "开始建议练习", exact: true})).toHaveCount(0);
+  expect((await backup(app)).learning_events).toEqual([]);
+});
+
+test("S95-12 unavailable export statistics do not produce a stale report", async ({app, page}) => {
+  await observeReportText(page);
+  await stats(page, app);
+  await downloadReport(page, "0 个词 · 0 张句子卡");
+  await app.seedCards([{word: "dog", meaning: "狗"}]);
+  await page.route("**/api/stats", route => route.fulfill({status: 503, json: {detail: "unavailable"}}), {times: 1});
+  const downloads = [];
+  page.on("download", download => downloads.push(download.suggestedFilename()));
+  await page.getByRole("button", {name: "成绩单", exact: true}).click();
+  await expect(page.getByText("无法读取最新统计，请重试导出", {exact: true})).toBeVisible();
+  await expect(page.getByTestId("export-summary")).toHaveCount(0);
+  expect(downloads).toEqual([]);
+  await downloadReport(page, "1 个词 · 0 张句子卡");
+});
+
 test("EL-10 failed advice starts the exact independent practice", async ({appFactory, page}) => {
   const app = await appFactory();
   const id = await failed(app);
@@ -73,7 +199,20 @@ test("EL-10 assisted-only advice remains separate from independent recall", asyn
 
 test("EL-10 no evidence explains uncertainty without diagnosing weakness", async ({appFactory, page}) => {
   const app = await appFactory();
-  await app.seedCards([{word: "apple", meaning: "苹果"}]);
+  const [apple] = await app.seedCards([
+    {word: "apple", meaning: "苹果"}, {word: "dog", meaning: "狗"},
+    {word: "cat", meaning: "猫"}, {word: "book", meaning: "书"},
+  ]);
+  for (const review of [{rating: 1}, {skipped: true}]) {
+    expect((await app.request.post("/api/reviews", {data: {
+      card_id: apple, source: "study", kind: "self_rating", submission_id: crypto.randomUUID(), ...review,
+    }})).ok()).toBeTruthy();
+  }
+  const {questions: [question]} = await (await app.request.get("/api/listening?limit=1")).json();
+  expect((await app.request.post("/api/listening/score", {data: {
+    card_id: question.card_id, answer: question.options.find(option => option !== question.word),
+    question_token: question.question_token, source: "listening", kind: "choice", submission_id: crypto.randomUUID(),
+  }})).ok()).toBeTruthy();
   await stats(page, app);
   await expect(page.getByTestId("learning-advice")).toContainText("暂无数据不代表能力不足");
   await expect(page.getByTestId("learning-advice").getByRole("button", {name: "开始建议练习", exact: true})).toHaveCount(0);
@@ -218,7 +357,10 @@ test("EL-10 V3 restore resumes the original targeted round", async ({appFactory,
   await start(page);
   const backup = await (await source.request.get("/api/export/backup")).json();
   const target = await appFactory();
-  await target.seedCards([{id: 900, word: "reserved", meaning: "保留"}]);
+  await target.seedCards([
+    {id: 900, word: "reserved", meaning: "保留"},
+    {word: "reserved", kind: "sentence", meaning: "已被预订", example: "It is reserved."},
+  ]);
   await page.goto(target.baseURL);
   await page.getByRole("button", {name: "设置", exact: true}).click();
   await page.getByRole("button", {name: "备份与恢复", exact: true}).click();
@@ -226,6 +368,7 @@ test("EL-10 V3 restore resumes the original targeted round", async ({appFactory,
   await page.getByRole("button", {name: "确认替换学习数据", exact: true}).click();
   await expect(page.getByRole("status")).toContainText("恢复成功");
   await page.goto(target.baseURL);
+  await expect(page.locator(".home-record-total")).toContainText("1 个词 · 0 张句子卡");
   await page.getByTestId("learning-advice").getByRole("button", {name: "继续建议练习", exact: true}).click();
   await submit(page);
   await expect(page.getByText("✅ 正确！")).toBeVisible();

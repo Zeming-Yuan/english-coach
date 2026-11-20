@@ -2,9 +2,11 @@ import { accountFetch } from "../lib/accountSession.js";
 import LearningAdvice from "../components/LearningAdvice.jsx";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { api } from "../lib/api.js";
+import { cardInventoryLabel } from "../lib/cardInventory.js";
 import { showToast } from "../App.jsx";
 
 const URL_REVOKE_DELAY_MS = 1000;
+const GRADUATED_LABEL = "达到句子解锁条件的词";
 const REPORT_THEME = {
   paper: "#fcfaf6",
   accent: "#a26243",
@@ -79,8 +81,11 @@ function drawReportCanvas(canvas, fresh, items) {
     ctx.fillStyle = REPORT_THEME.muted;
     ctx.fillText(label, Math.max(104, 40 + numWidth + 14), y - 6);
   };
-  drawStatRow(fresh.total_cards, "累计词汇", 138);
-  drawStatRow(fresh.graduated, "句子练习已解锁", 208);
+  ctx.textAlign = "left";
+  ctx.fillStyle = REPORT_THEME.ink;
+  ctx.font = "600 19px sans-serif";
+  ctx.fillText(cardInventoryLabel(fresh), 40, 138, 270);
+  drawStatRow(fresh.graduated, GRADUATED_LABEL, 208);
   drawStatRow(fresh.streak, "连续天数", 278);
 
   ctx.strokeStyle = REPORT_THEME.line;
@@ -179,17 +184,16 @@ export default function StatsPage({ onDelayed, onAdvice, onOpenBackup }) {
     if (!canvas) return;
     reportBusyRef.current = true;
     setExportingReport(true);
+    setExportSummary(null);
     try {
-      let fresh = stats;
-      try {
-        fresh = await api("/api/stats");
-        if (!mountedRef.current) return;
-        setStats(fresh);
-      } catch {
-        if (!mountedRef.current) return;
+      const fresh = await api("/api/stats").catch(() => null);
+      if (!mountedRef.current) return;
+      if (!fresh) {
+        showToast("无法读取最新统计，请重试导出");
+        return;
       }
+      setStats(fresh);
       const items = formatEvidenceItems(fresh);
-      setExportSummary(EVIDENCE_DEFAULTS.map(([key]) => items[key]).join(" · "));
       if (!drawReportCanvas(canvas, fresh, items)) {
         showToast("成绩单导出失败");
         return;
@@ -207,6 +211,7 @@ export default function StatsPage({ onDelayed, onAdvice, onOpenBackup }) {
             return;
           }
           triggerBlobDownload(blob, "englishcoach_report.png");
+          setExportSummary([cardInventoryLabel(fresh), ...EVIDENCE_DEFAULTS.map(([key]) => items[key])].join(" · "));
           resolve();
         });
       });
@@ -293,14 +298,16 @@ export default function StatsPage({ onDelayed, onAdvice, onOpenBackup }) {
       </div>
 
       <div className="stats-grid">
-        <div className="stats-card"><span className="stats-card-value">{stats.total_cards}</span><span className="stats-card-label">累计词汇</span></div>
-        <div className="stats-card"><span className="stats-card-value">{stats.graduated}</span><span className="stats-card-label">句子练习已解锁</span></div>
+        <div className="stats-card"><strong className="stats-inventory">{cardInventoryLabel(stats)}</strong><span className="stats-card-label">词句库存</span></div>
+        <div className="stats-card"><span className="stats-card-value">{stats.graduated}</span><span className="stats-card-label">{GRADUATED_LABEL}</span></div>
         <div className="stats-card"><span className="stats-card-value" data-testid="streak">{stats.streak}</span><span className="stats-card-label">连续天数</span></div>
-        <div className="stats-card"><span className="stats-card-value">{stats.reviewed_today}</span><span className="stats-card-label">今日完成</span></div>
+        <div className="stats-card"><span className="stats-card-value">{stats.reviewed_today}</span><span className="stats-card-label">今日完成（张卡）</span></div>
       </div>
 
+      <LearningAdvice onStart={onAdvice} />
+
       <div className="today-stats">
-        今日完成 <b>{stats.reviewed_today}</b> 词 · 练习 <b>{stats.attempted_today}</b> 次 ·
+        今日完成 <b>{stats.reviewed_today}</b> 张卡 · 练习 <b>{stats.attempted_today}</b> 次 ·
         跳过 <b>{stats.skipped_today}</b> 次
       </div>
 
@@ -402,8 +409,6 @@ export default function StatsPage({ onDelayed, onAdvice, onOpenBackup }) {
         </p>
       )}
 
-      <LearningAdvice onStart={onAdvice} />
-
       {/* 本周复习通过率 */}
       {weekly && (() => {
         const hasWeeklyData = weekly.weeks.some((w) => w.accuracy !== null);
@@ -472,7 +477,7 @@ export default function StatsPage({ onDelayed, onAdvice, onOpenBackup }) {
       </div>
       {exportSummary && (
         <p role="status" data-testid="export-summary" style={{ fontSize: 12, color: "var(--muted)" }}>
-          成绩单已按导出时证据生成：{exportSummary}
+          成绩单已按导出时统计生成：{exportSummary}
         </p>
       )}
 

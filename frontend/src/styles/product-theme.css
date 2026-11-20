@@ -376,6 +376,7 @@ body.dark .product-app .btn-primary:hover { background: #d8cec0; border-color: #
 .product-app .stats-card:first-child { padding-left: 0; }
 .product-app .stats-card:last-child { border-right: 0; }
 .product-app .stats-card-value { font: 400 38px/1.2 var(--font-reading); color: var(--ink); }
+.product-app .stats-inventory { font-size: 16px; line-height: 1.6; color: var(--ink); }
 .product-app .stats-card-label { font-size: 12px; font-weight: 400; color: var(--muted); margin-top: 6px; }
 .product-app .metrics-panel { display: flex; flex-direction: column; padding: 22px 24px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); line-height: 1.8; box-shadow: 0 1px 2px rgba(48, 46, 43, 0.03); }
 .product-app .metrics-panel > h3, .product-app .metrics-panel .lesson-section { font-size: 17px; font-weight: 500; margin: 0 0 14px; color: var(--ink); }
