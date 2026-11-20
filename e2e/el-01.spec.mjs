@@ -133,18 +133,16 @@ test("EL-01 lost edit response replays without double revision", async ({appFact
   await openDetail(page, "apple");
   await expect(page.getByTestId("revision-panel")).toContainText("第 1 版");
 
-  await page.route(
-    "**/api/cards/*",
-    async (route) => {
-      if (route.request().method() !== "PUT") {
-        await route.continue();
-        return;
-      }
-      await route.fetch();
-      await route.abort("failed");
-    },
-    {times: 1},
-  );
+  let abortedPut = false;
+  await page.route("**/api/cards/*", async (route) => {
+    if (route.request().method() !== "PUT" || abortedPut) {
+      await route.continue();
+      return;
+    }
+    abortedPut = true;
+    await route.fetch();
+    await route.abort("failed");
+  });
   await page.getByRole("button", {name: /编辑/}).click();
   await page.getByLabel("编辑词义", {exact: true}).fill("一个苹果");
   await page.getByRole("button", {name: "保存", exact: true}).click();
