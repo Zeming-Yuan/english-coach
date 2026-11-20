@@ -5,6 +5,7 @@ import {recordContact, recordVisibleCards} from '../lib/contacts.js';
 import {speak} from '../lib/tts.js';
 import {useLearningAttempt} from '../hooks/useLearningAttempt.js';
 import SceneFeedback from '../components/SceneFeedback.jsx';
+import SceneVocabulary from '../components/SceneVocabulary.jsx';
 
 const CREATION_SCOPE = 'scene:create';
 const CONTEXT_PREFIX = 'ec.context.';
@@ -204,6 +205,9 @@ function SceneRun({initial, creationEnabled, onRestart, onExit}) {
 export default function ScenePage({onExit}) {
   const pending = useRef((loadPending(CREATION_SCOPE, CONTEXT_PREFIX) || loadPending('scene:drinks', CONTEXT_PREFIX))?.payload || null);
   const [catalog, setCatalog] = useState(null);
+  const [preparingSceneId, setPreparingSceneId] = useState(null);
+  const preparationButtons = useRef(new Map());
+  const returnFocus = useRef(null);
   const [run, setRun] = useState(null);
   const [error, setError] = useState('');
   const [note, setNote] = useState('');
@@ -214,6 +218,12 @@ export default function ScenePage({onExit}) {
     api('/api/scenes').then(data => {if (live.current) setCatalog(data);}).catch(e => {if (live.current) setError(e.message);});
     return () => {live.current = false;};
   }, []);
+  useEffect(() => {
+    if (preparingSceneId === null && returnFocus.current !== null) {
+      preparationButtons.current.get(returnFocus.current)?.focus();
+      returnFocus.current = null;
+    }
+  }, [preparingSceneId]);
   const start = async (sceneId, fresh = false) => {
     if (busy) return;
     setBusy(true); setError('');
@@ -233,6 +243,11 @@ export default function ScenePage({onExit}) {
     finally {if (live.current) setBusy(false);}
   };
   if (run) return <SceneRun key={run.id} initial={run} creationEnabled={catalog?.scenes.find(s => s.id === run.scene_id)?.enabled === true} onRestart={() => start(run.scene_id, true)} onExit={() => setRun(null)} />;
+  const preparationScene = catalog?.scenes.find(scene => scene.id === preparingSceneId);
+  if (preparationScene) return <SceneVocabulary key={preparationScene.id} sceneId={preparationScene.id} title={preparationScene.title} onExit={() => {
+    returnFocus.current = preparationScene.id;
+    setPreparingSceneId(null);
+  }} />;
   return <section className="view scene-page scene-catalog">
     <button className="btn btn-ghost btn-small scene-back" onClick={onExit}>返回队列</button>
     <h2 className="page-title scene-title">场景练习</h2>
@@ -244,7 +259,13 @@ export default function ScenePage({onExit}) {
       <p className="scene-card-context">{scene.situation}</p>
       {scene.task_goal.map(goal => <p className="scene-card-goal" key={goal}>{goal}</p>)}
       <Preparation preparation={scene.preparation} />
-      {(scene.enabled || scene.session_id) && <button className="btn btn-primary" aria-describedby={`scene-title-${scene.id}`} disabled={busy || !!pending.current} onClick={() => start(scene.id)}>{scene.session_id ? '继续' : '开始'}</button>}
+      <div className="save-state-actions">
+        {(scene.enabled || scene.session_id) && <button className="btn btn-primary" aria-describedby={`scene-title-${scene.id}`} disabled={busy || !!pending.current} onClick={() => start(scene.id)}>{scene.session_id ? '继续' : '直接挑战'}</button>}
+        {scene.enabled && <button className="btn btn-ghost" aria-describedby={`scene-title-${scene.id}`} ref={button => {
+          if (button) preparationButtons.current.set(scene.id, button);
+          else preparationButtons.current.delete(scene.id);
+        }} disabled={busy || !!pending.current} onClick={() => setPreparingSceneId(scene.id)}>先学本场景用词</button>}
+      </div>
     </article>)}
     {pending.current && <div className="save-state-actions">
       <button className="btn btn-primary" disabled={busy} onClick={() => start(pending.current.scene_id)}>继续确认保存</button>

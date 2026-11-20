@@ -23,7 +23,7 @@ async function lessonAnswer(page) {
 async function scene(page, app, title) {
   await page.goto(app.baseURL);
   await button(page, "场景练习").click();
-  await page.getByRole("article", {name: title, exact: true}).getByRole("button", {name: /^(开始|继续)$/}).click();
+  await page.getByRole("article", {name: title, exact: true}).getByRole("button", {name: /^(直接挑战|继续)$/}).click();
 }
 async function sceneAnswer(page, text) {
   const result = page.getByTestId("scene-session");

@@ -64,7 +64,7 @@ test('saved scene feedback spans the result grid and restart has a single stable
   await mount(page, app);
   await page.setViewportSize({width:1440,height:1000});
   await page.getByRole('button', {name:'场景练习',exact:true}).click();
-  await page.getByRole('article', {name:'买饮品',exact:true}).getByRole('button', {name:/^(开始|继续)$/}).click();
+  await page.getByRole('article', {name:'买饮品',exact:true}).getByRole('button', {name:/^(直接挑战|继续)$/}).click();
   const scene = page.getByTestId('scene-session');
   for (let i=0;i<3;i++) {
     await scene.getByRole('button', {name:'跳过本轮',exact:true}).click();

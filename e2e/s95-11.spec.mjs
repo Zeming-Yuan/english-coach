@@ -4,7 +4,7 @@ async function openDrinks(app, page) {
   await page.goto(app.baseURL);
   await page.getByRole('button', {name: '场景练习', exact: true}).click();
   await page.getByRole('article', {name: '买饮品', exact: true})
-    .getByRole('button', {name: /^(开始|直接挑战|继续)$/}).click();
+    .getByRole('button', {name: /^(直接挑战|继续)$/}).click();
   return page.getByTestId('scene-session');
 }
 

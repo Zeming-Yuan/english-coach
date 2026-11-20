@@ -3,7 +3,7 @@ import {test, expect} from './support/test.mjs';
 async function openScene(app, page, title = '买饮品') {
   await page.goto(app.baseURL);
   await page.getByRole('button', {name: '场景练习', exact: true}).click();
-  await page.getByRole('article', {name: title, exact: true}).getByRole('button', {name: /^(开始|继续)$/}).click();
+  await page.getByRole('article', {name: title, exact: true}).getByRole('button', {name: /^(直接挑战|继续)$/}).click();
 }
 
 async function submit(page, text) {
@@ -133,7 +133,7 @@ for (const destination of ['next-turn', 'another-scene']) {
         await expect(scene).toContainText('第 2/3 轮');
       } else {
         await scene.getByRole('button', {name: '返回场景列表', exact: true}).click();
-        await page.getByRole('article', {name: '自我介绍', exact: true}).getByRole('button', {name: /^(开始|继续)$/}).click();
+        await page.getByRole('article', {name: '自我介绍', exact: true}).getByRole('button', {name: /^(直接挑战|继续)$/}).click();
         await expect(scene).toContainText('自我介绍');
         await expect(scene).toContainText('已处理 0/3');
       }
