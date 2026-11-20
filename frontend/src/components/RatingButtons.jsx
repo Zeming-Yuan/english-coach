@@ -12,7 +12,10 @@ export default function RatingButtons({ onRate, disabled = false }) {
           disabled={disabled}
           onClick={() => onRate(r)}
         >
-          {r}
+          <span className="rating-top">
+            <span className="rating-dot" aria-hidden="true" />
+            <span className="rating-key">{r}</span>
+          </span>
           <span className="rating-label">
             {r === 1 ? "忘了" : r === 2 ? "模糊" : r === 3 ? "记得" : "太简单"}
           </span>
