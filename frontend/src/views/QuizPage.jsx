@@ -6,7 +6,11 @@ import { speak } from "../lib/tts.js";
 import { usePracticeSession } from "../lib/practiceSession.js";
 import { recordPracticeContact } from "../lib/practiceContacts.js";
 import SpellingBoard from "../components/SpellingBoard.jsx";
+import SpellingCorrection from "../components/SpellingCorrection.jsx";
 import PracticeEmptyState from "../components/PracticeEmptyState.jsx";
+
+const isQuizInput = item => item.type === "cn2en" || item.type === "fill";
+const speakRecognitionAnswer = item => !isQuizInput(item);
 
 /** 选择题：一次提交保存并返回服务端判分；重试沿用同一 submission_id。 */
 function attachChoiceSubmission(item, q) {
@@ -80,7 +84,7 @@ export default function QuizPage({ onExit, onAddWords }) {
         return item;
       });
     },
-    speakOnAnswer: true,
+    speakOnAnswer: speakRecognitionAnswer,
     autoAdvanceMs: null,
     onAnswerAudio: (item) => {
       // The related answer is a different word from this question's source card.
@@ -92,15 +96,11 @@ export default function QuizPage({ onExit, onAddWords }) {
         kind: "answer_audio",
       });
     },
-    // EC-05 只迁移输入题（cn2en/fill）；choice/related 留给 EC-06。
-    typedAttempt: (item) =>
-      item.type === "cn2en" || item.type === "fill"
-        ? { source: "quiz", assistance: [] }
-        : null,
+    typedAttempt: (item) => isQuizInput(item) ? { source: "quiz", assistance: [] } : null,
   });
   const {
     phase, loadError, idx, item, q, total, feedback, stats, submit, skip, next, replay,
-    saving, saveError, pendingResume, retry, resumePending,
+    saving, saveError, reloadRequired, pendingResume, retry, resumePending,
   } = s;
 
   const [selected, setSelected] = useState(null);
@@ -140,26 +140,6 @@ export default function QuizPage({ onExit, onAddWords }) {
           retry,
         }
       : { message: "答案尚未确认保存，请重试。", reload: false, retry };
-
-  // cn2en/fill 格子渲染（feedback 阶段显示正确答案）
-  const renderBoxes = (typed, wordLen, expected = null) => {
-    const boxes = [];
-    for (let i = 0; i < wordLen; i++) {
-      const ch = i < typed.length ? typed[i] : "";
-      let cls = "spelling-box box-pending";
-      if (expected) {
-        // 反馈阶段：显示正确字母（绿色）
-        cls = "spelling-box box-correct";
-        boxes.push(<span key={i} className={cls}>{expected[i] || ""}</span>);
-      } else if (ch) {
-        cls = "spelling-box";
-        boxes.push(<span key={i} className={cls}>{ch}</span>);
-      } else {
-        boxes.push(<span key={i} className={cls}>{""}</span>);
-      }
-    }
-    return boxes;
-  };
 
   // choice/related：点选项后点"确认"；保存成功后才显示服务端反馈。
   const confirmChoice = async () => {
@@ -202,6 +182,7 @@ export default function QuizPage({ onExit, onAddWords }) {
 
   // cn2en/fill：SpellingBoard 输满自动提交入口（失败由组件内部解锁重试）
   const handleTypedSubmit = (userInput) => submit(userInput);
+  const awaitingInputConfirmation = saving || Boolean(saveError || pendingResume);
 
   // 结果页
   if (phase === "done") {
@@ -296,7 +277,7 @@ export default function QuizPage({ onExit, onAddWords }) {
             formId="quiz-spelling-form"
             mode="independent"
             onSubmit={handleTypedSubmit}
-            disabled={saving}
+            disabled={awaitingInputConfirmation}
           />
         )}
 
@@ -348,20 +329,19 @@ export default function QuizPage({ onExit, onAddWords }) {
         {feedback && (
           <>
             <div role="status" className="save-status">已保存</div>
-            {/* 错题高亮正确字母 */}
-            {!feedback.correct && (q.type === "cn2en" || q.type === "fill") && (
-              <div className="spelling-word-display">
-                {renderBoxes(feedback.userInput || "", q.word_length || feedback.expected.length, feedback.expected)}
-              </div>
-            )}
             <div className={`quiz-feedback ${feedback.correct ? "ok" : "err"}`}>
               {feedback.skipped ? (
-                "已跳过：本题不计正误，也不排期。"
+                <>
+                  已跳过，未作答。本题不计正误，也不排期。
+                  {isQuizInput(item) && <div>正确拼写：{feedback.expected}</div>}
+                </>
               ) : feedback.correct ? (
                 "✅ 正确！"
+              ) : isQuizInput(item) ? (
+                <SpellingCorrection typed={feedback.userInput} expected={feedback.expected}
+                  cardId={q.card_id} revision={q.content_revision} source="quiz" />
               ) : (
                 <>
-                  {feedback.skipped && "已跳过 · "}
                   {feedback.userInput && <>❌ 你的答案：<b>{feedback.userInput || "（空）"}</b><br /></>}
                   正确答案：<b className="right">{feedback.expected || ""}</b>
                 </>
@@ -371,9 +351,9 @@ export default function QuizPage({ onExit, onAddWords }) {
         )}
         {saveError && (q.type === "cn2en" || q.type === "fill") && (
           <div role="alert" className="quiz-feedback err">
-            保存未确认：{saveError}
-            <button className="btn btn-ghost btn-small" onClick={retry} disabled={saving}>
-              重试保存
+            {reloadRequired ? saveError : `保存未确认：${saveError}`}
+            <button className="btn btn-ghost btn-small" onClick={reloadRequired ? reloadQuiz : retry} disabled={saving}>
+              {reloadRequired ? "重新加载题目" : "重试保存"}
             </button>
           </div>
         )}
@@ -389,7 +369,7 @@ export default function QuizPage({ onExit, onAddWords }) {
                 type="submit"
                 form="quiz-spelling-form"
                 className="btn btn-primary btn-wide qwerty-submit"
-                disabled={saving}
+                disabled={awaitingInputConfirmation}
               >
                 {saving ? "保存中…" : "提交答案"}
                 {!saving && <kbd aria-hidden="true">Enter</kbd>}
@@ -408,7 +388,7 @@ export default function QuizPage({ onExit, onAddWords }) {
               className="btn btn-ghost btn-small"
               style={{ marginTop: 14, width: "100%", justifyContent: "center" }}
               onClick={handleSkip}
-              disabled={submitting || Boolean(choiceError) || saving}
+              disabled={submitting || Boolean(choiceError) || saving || (isQuizInput(item) && awaitingInputConfirmation)}
             >
               跳过这题 →
             </button>

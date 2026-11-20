@@ -4,6 +4,7 @@ import { api } from "../lib/api.js";
 import StudyPage from "./StudyPage.jsx";
 import ExpansionPracticeLinks from "../components/ExpansionPracticeLinks.jsx";
 import SpellingBoard from "../components/SpellingBoard.jsx";
+import SpellingCorrection from "../components/SpellingCorrection.jsx";
 import { useLearningAttempt } from "../hooks/useLearningAttempt.js";
 import { clearPending, loadPending } from "../lib/learning.js";
 import {
@@ -45,6 +46,9 @@ export default function DailySessionPage({ session, onSessionChange, onFinish, o
     !loadPending("reinforcement"),
   );
   const attempt = useLearningAttempt("reinforcement", captureDuration);
+  const confirmed = attempt.confirmedPayload;
+  const confirmedHere = attempt.phase === "saved" && confirmed?.session_id === session.id
+    && confirmed.card_id === attempt.result.card_id;
   const itemId = current ? `${current.card_id}:typed` : null;
   useEffect(() => {
     if (!itemId) {
@@ -61,19 +65,17 @@ export default function DailySessionPage({ session, onSessionChange, onFinish, o
     setAssisted(true);
   };
   useEffect(() => {
-    if (attempt.phase !== "saved" || !current) return;
-    if (attempt.result?.correct !== false) {
-      clearAssistance("reinforcement", itemId);
-      return;
+    if (!confirmedHere) return;
+    if (attempt.result.correct === false) {
+      recordPracticeContact({
+        cardId: confirmed.card_id,
+        revision: confirmed.revision,
+        source: "reinforcement",
+        kind: "answer_visible",
+      });
     }
-    recordPracticeContact({
-      cardId: current.card_id,
-      revision: current.content_revision,
-      source: "reinforcement",
-      kind: "answer_visible",
-    });
-    clearAssistance("reinforcement", itemId);
-  }, [attempt.phase, itemId]);
+    clearAssistance("reinforcement", `${confirmed.card_id}:typed`);
+  }, [confirmedHere, confirmed, attempt.result]);
   const [summary, setSummary] = useState(null);
   const [paused, setPaused] = useState(false);
   const [error, setError] = useState("");
@@ -222,8 +224,14 @@ export default function DailySessionPage({ session, onSessionChange, onFinish, o
         </div>
         <SpellingBoard key={questions[0].card_id} formId="reinforcement-spelling-form" mode={assisted ? "assisted" : "independent"} target={assisted ? questions[0].word : null} showFirstHint={assisted} onSubmit={submit} disabled={attempt.phase !== "idle" || loading} />
       </>}
-      {attempt.phase === "saved" && (
-        <p role="status">{attempt.result.correct === true ? "已保存：答对" : attempt.result.correct === false ? `已保存：答错，正确拼写：${attempt.result.expected}` : "已保存：已跳过"}</p>
+      {confirmedHere && (
+        <>
+          <p role="status">{attempt.result.correct === true ? "已保存：答对" : attempt.result.correct === false ? `已保存：答错，正确拼写：${attempt.result.expected}` : "已保存：已跳过"}</p>
+          {attempt.result.correct === false && (
+            <SpellingCorrection typed={confirmed.user_input} expected={attempt.result.expected}
+              cardId={confirmed.card_id} revision={confirmed.revision} source="reinforcement" showExpected={false} />
+          )}
+        </>
       )}
       {attempt.phase === "saving" && <p role="status">正在确认保存…</p>}
       {attempt.phase === "failed" && (
