@@ -26,7 +26,7 @@ export const ROUTE_VIEWS = new Set([
 ]);
 
 export const DETAIL_VIEWS = new Set(["words", "lessons", "stories", "spelling"]);
-const VALID_ORIGINS = new Set(["queue", "stats", "settings"]);
+const VALID_ORIGINS = new Set(["queue", "stats", "settings", "study"]);
 const DELAYED_WINDOWS = new Set(["day", "week"]);
 
 function parsePositiveInt(segment) {

@@ -102,3 +102,12 @@ V2 协议，新增记录会先被允许丢失，再等最终集成票补救。
 
 - 词卡详情交互式「换一个例句」调用 `POST /api/cards/{id}/regenerate?preview=true`，仅返回候选例句/翻译/讲解而不落库、不递增 `content_revision.version`（无参 `POST /api/cards/{id}/regenerate` 保留既有直接更新契约）；LLM 调用前释放只读事务快照，预览返回前重读当前修订，若期间发生并发编辑则标记 `preview=false, stale=true` 供界面刷新。
 - 用户点击「保留旧的」仅丢弃本地预览候选，零写事务副作用，原修订的回忆证据保持不变；点击「用新的」通过带 `expected_revision` 的 `PUT /api/cards/{id}` 在同一 `BEGIN IMMEDIATE` 事务中核对当前修订并保存更新，并发修订变化返回 409。
+
+## 扩展词的明确加入（#97）
+
+`expansion_additions` 保存操作 UUID、原生来源卡 ID、来源身份和版本、规范化所选词形及
+释义、目标身份、确认时间和是否新建。当前来源与目标引用在 V3 恢复时重映射，原请求
+来源 ID 留作同次回放依据。卡片删除把相应引用置空并保留确认记录。目标删除后的回放返回
+不可用，完整恢复后未提交的旧请求仍按退休 ID 拒绝。旧备份缺少该集合时预览会列出；
+全量替换使集合为空，旧格式部分恢复保留现有记录。升级只添加表，功能回退保留 V3 适配，
+使用 `EXPANSION_ADDITIONS_ENABLED=false` 关闭新加入。

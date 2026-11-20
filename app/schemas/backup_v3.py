@@ -15,6 +15,7 @@ from uuid import UUID, uuid4
 from pydantic import Field, ValidationError, field_validator
 
 from app.models.content_revision import ContentRevision
+from app.models.expansion_addition import ExpansionAddition
 from app.models.learning_contact import LearningContact
 from app.models.lesson_progress import LessonProgress
 from app.models.practice import PracticeItem, PracticeSession
@@ -71,6 +72,61 @@ register_extension(
     _remap_content_revision,
     model=ContentRevision,
     complete=True,
+)
+
+
+class FullExpansionAddition(FullRow):
+    id: int = Field(gt=0)
+    operation_id: str
+    source_card_id: int | None = Field(gt=0)
+    target_card_id: int | None = Field(gt=0)
+    original_source_id: int = Field(gt=0)
+    source_identity: str
+    source_version: int = Field(ge=1)
+    target_identity: str
+    target_word: str = Field(min_length=1, max_length=80)
+    target_meaning: str = Field(min_length=1, max_length=200)
+    created: bool
+    created_at: datetime = Field(strict=False)
+
+    @field_validator("operation_id", "source_identity", "target_identity")
+    @classmethod
+    def _uuid(cls, value: str) -> str:
+        return str(UUID(value))
+
+    @field_validator("target_word", "target_meaning")
+    @classmethod
+    def _strip(cls, value: str) -> str:
+        if not value.strip() or value != value.strip():
+            raise ValueError("词形或释义缺失或带首尾空白")
+        return value
+
+    @field_validator("target_word")
+    @classmethod
+    def _canonical_word(cls, value: str) -> str:
+        if value != value.casefold():
+            raise ValueError("扩展词形必须规范化")
+        return value
+
+
+def _remap_expansion_addition(row: dict, mapping: dict[str, dict[int, int]]) -> dict:
+    cards = mapping["cards"]
+    source = row["source_card_id"]
+    target = row["target_card_id"]
+    return {
+        **row,
+        "source_card_id": cards[source] if source is not None else None,
+        "target_card_id": cards[target] if target is not None else None,
+    }
+
+
+register_extension(
+    "expansion_additions",
+    FullExpansionAddition,
+    ("cards",),
+    _remap_expansion_addition,
+    model=ExpansionAddition,
+    unique=("operation_id",),
 )
 
 
@@ -577,6 +633,34 @@ def validate_v3(payload: dict) -> ValidatedBackup:
         for row in validated_extensions.get("content_revisions", [])
         if row["resource_kind"] == "card"
     }
+    for index, addition in enumerate(
+        validated_extensions.get("expansion_additions", [])
+    ):
+        if addition["source_identity"] == addition["target_identity"]:
+            _reject(
+                "expansion_additions",
+                index,
+                "target_identity",
+                "来源和目标不能为同一词卡",
+            )
+        for side in ("source", "target"):
+            field = f"{side}_card_id"
+            card_id = addition[field]
+            if card_id is None:
+                continue
+            card = saved_cards.get(card_id)
+            revision = card_revisions.get(card_id)
+            if (
+                card is None
+                or card["kind"] != "word"
+                or revision is None
+                or str(UUID(revision["identity"])) != addition[f"{side}_identity"]
+                or (
+                    side == "source"
+                    and addition["source_version"] > revision["version"]
+                )
+            ):
+                _reject("expansion_additions", index, field, "引用的词卡或内容修订无效")
     for index, contact in enumerate(validated_extensions.get("learning_contacts", [])):
         revision = card_revisions.get(contact["card_id"])
         if (

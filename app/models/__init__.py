@@ -3,6 +3,7 @@
 from app.models.card import Card
 from app.models.content_revision import ContentRevision
 from app.models.error_card import ErrorCard
+from app.models.expansion_addition import ExpansionAddition
 from app.models.hard_card import HardCard
 from app.models.learning_contact import LearningContact
 from app.models.lesson import Lesson
@@ -22,6 +23,7 @@ __all__ = [
     "Card",
     "ContentRevision",
     "ErrorCard",
+    "ExpansionAddition",
     "HardCard",
     "LearningContact",
     "Lesson",

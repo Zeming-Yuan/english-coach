@@ -1,7 +1,7 @@
 import { accountStorage } from "./lib/accountSession.js";
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, Component } from "react";
 import { api } from "./lib/api.js";
-import { storageGet, storageSet, formatLessonTitle } from "./lib/utils.js";
+import { randomUUID, storageGet, storageSet, formatLessonTitle } from "./lib/utils.js";
 import { syncAccountDarkMode } from "./lib/theme.js";
 import {recordRoundOutcome, resetRoundOutcomes, roundBudgetCap, roundObservationGeneration, subscribeRoundAdvice} from "./lib/roundOutcomes.js";
 import { setTtsRate } from "./lib/tts.js";
@@ -9,6 +9,7 @@ import { clearVisibleContactLookups, refreshPendingContacts } from "./lib/contac
 import { loadPending, sendPending, clearPending, clearAllPending, savePending } from "./lib/learning.js";
 import DurationRecovery from "./components/DurationRecovery.jsx";
 import ContactRecovery from "./components/ContactRecovery.jsx";
+import {ExpansionAdditionRecovery} from "./components/ExpansionAddition.jsx";
 import ScenePage from "./views/ScenePage.jsx";
 import StudyPage from "./views/StudyPage.jsx";
 import DailySessionPage from "./views/DailySessionPage.jsx";
@@ -208,14 +209,19 @@ export default function App({account = null, onLogout, logoutBusy = false, logou
     navigate({ view: "delayed", window: win, origin });
   }, [navigate]);
   const [dailySession, setDailySession] = useState(() => storageGet("activeDailySession", null));
-  const [isDailyStudy, setIsDailyStudy] = useState(
-    () => route.view === "study" && Boolean(dailySession && !dailySession.finished),
-  );
-  const [studyQueue, setStudyQueue] = useState(() =>
-    route.view === "study" && dailySession && !dailySession.finished
-      ? dailySession.queue
-      : [],
-  );
+  const [directStudy, setDirectStudy] = useState(() => storageGet("ec.study.direct", null));
+  const isDailyStudy = !directStudy && Boolean(dailySession && !dailySession.finished);
+  const studyQueue = (isDailyStudy ? dailySession?.queue : directStudy?.queue) ?? [];
+  const clearStudyPosition = id => {
+    if (!id) return;
+    try { accountStorage.removeItem(`ec.study.position:${id}`); } catch {}
+  };
+  const updateDirectStudy = next => {
+    clearStudyPosition(directStudy?.id);
+    storageSet("ec.study.direct", next);
+    setDirectStudy(next);
+  };
+  const startDirect = cards => updateDirectStudy({id: randomUUID(), queue: cards});
   const updateDaily = (session) => {
     storageSet("activeDailySession", session?.finished ? null : session);
     setDailySession(session);
@@ -240,32 +246,13 @@ export default function App({account = null, onLogout, logoutBusy = false, logou
   };
   const startDaily = (data) => {
     const session = { id: crypto.randomUUID(), observationGeneration: roundObservationGeneration(), queue: data.queue, target: data.target, index: 0, remainingDue: data.remaining_due, reviewCount: data.review_count, newCount: data.new_count, plan: data.plan, startedAt: Date.now() };
+    updateDirectStudy(null);
     updateDaily(session);
-    setIsDailyStudy(true);
-    setStudyQueue(session.queue);
     setView("study");
   };
   useEffect(() => {
-    if (view !== "study") {
-      if (!isDailyStudy && studyQueue.length > 0) setStudyQueue([]);
-      return;
-    }
-    const activeDaily = dailySession && !dailySession.finished ? dailySession : null;
-    if (isDailyStudy) {
-      if (activeDaily) return;
-      setIsDailyStudy(false);
-      setStudyQueue([]);
-      navigate({ view: "queue" }, { replace: true });
-      return;
-    }
-    if (studyQueue.length > 0) return;
-    if (activeDaily) {
-      setIsDailyStudy(true);
-      setStudyQueue(activeDaily.queue);
-      return;
-    }
-    navigate({ view: "queue" }, { replace: true });
-  }, [view, isDailyStudy, studyQueue.length, dailySession, navigate]);
+    if (view === "study" && !studyQueue.length) navigate({view: "queue"}, {replace: true});
+  }, [view, studyQueue.length, navigate]);
   useEffect(() => {
     if (view !== "advice" || adviceRequest) return;
     const saved = storageGet("ec.advice.request", null);
@@ -278,9 +265,10 @@ export default function App({account = null, onLogout, logoutBusy = false, logou
   const lastDailyStudy = useRef(null);
   useEffect(() => {
     const previous = lastDailyStudy.current;
-    if (view !== "study" && previous && !previous.complete) void recordRoundOutcome(previous, "interrupted");
-    lastDailyStudy.current = view === "study" && isDailyStudy ? dailySession : null;
-  }, [view, isDailyStudy, dailySession]);
+    const inStudy = view === "study" || route.origin === "study";
+    if (!inStudy && previous && !previous.complete) void recordRoundOutcome(previous, "interrupted");
+    lastDailyStudy.current = inStudy && isDailyStudy ? dailySession : null;
+  }, [view, route.origin, isDailyStudy, dailySession]);
   const [singleCard, setSingleCard] = useState(null);
   useEffect(() => {
     if (view !== "spelling" || !route.detailId) setSingleCard(null);
@@ -297,6 +285,21 @@ export default function App({account = null, onLogout, logoutBusy = false, logou
     setSingleCard(null);
     navigateView("add");
   }, [navigateView]);
+  const openExpansionCard = (cardId, roundId) => {
+    const round = isDailyStudy ? dailySession : directStudy;
+    const origin = view === "study" || (roundId && round?.id === roundId) ? "study" : null;
+    navigate({view: "words", detailId: cardId, origin});
+  };
+  const returnToStudy = () => navigate({view: "study"}, {popIfFromParent: true, replace: true});
+  const exitDirect = destination => {
+    updateDirectStudy(null);
+    setView(destination);
+  };
+  const closeDaily = finished => {
+    clearStudyPosition(dailySession.id);
+    updateDaily(finished ? {...dailySession, finished: true} : null);
+    setView("queue");
+  };
   const updateWordsDetail = useCallback(
     (cardId, options) =>
       navigate(
@@ -389,17 +392,19 @@ export default function App({account = null, onLogout, logoutBusy = false, logou
       <main className="stage">
         <DurationRecovery />
         {!restoringBackup && <ContactRecovery />}
+        {!restoringBackup && <ExpansionAdditionRecovery openCard={openExpansionCard} />}
         {!restoringBackup && view !== "study" && view !== "scene" && <PendingRecovery view={view} onConfirmed={(result, pending) => {
           confirmDailyCard(pending.payload, result);
           setQueueVersion((v) => v + 1);
         }} />}
-        {view === "queue" && <QueueView onAdvice={(req) => startAdvice(req, "queue")} key={queueVersion} setView={navigateView} onDelayed={(win) => startDelayed(win, "queue")} setStudyQueue={(cards) => { setIsDailyStudy(false); setStudyQueue(cards); }} dailySession={dailySession} onStartDaily={startDaily} onResumeDaily={() => {
-          setIsDailyStudy(true); setStudyQueue(dailySession.queue); setView("study");
+        {view === "queue" && <QueueView onAdvice={(req) => startAdvice(req, "queue")} key={queueVersion} setView={navigateView} onDelayed={(win) => startDelayed(win, "queue")} setStudyQueue={startDirect} dailySession={dailySession} onStartDaily={startDaily} onResumeDaily={() => {
+          updateDirectStudy(null); setView("study");
         }} onAddStarter={addStarterCards} />}
         {view === "scene" && <ScenePage onExit={() => setView("queue")} />}
-        {view === "words" && <WordsPage detailId={route.detailId} onDetailChange={updateWordsDetail} />}
+        {view === "words" && <WordsPage detailId={route.detailId} onDetailChange={updateWordsDetail}
+          onReturnToStudy={route.origin === "study" ? returnToStudy : null} />}
         {view === "stories" && <StoriesPage storyId={route.detailId} storySubView={route.subView} onStoryChange={updateStoriesRoute} onNavigate={navigateView} />}
-        {view === "add" && <AddPage onAddStarter={addStarterCards} onGoWords={() => setView("words")} onStartStudy={(cards) => { setIsDailyStudy(false); setStudyQueue(cards); setView("study"); }} />}
+        {view === "add" && <AddPage onAddStarter={addStarterCards} onGoWords={() => setView("words")} onStartStudy={cards => { startDirect(cards); setView("study"); }} />}
         {view === "stats" && <StatsPage onAdvice={(req) => startAdvice(req, "stats")} onDelayed={(win) => startDelayed(win, "stats")} onOpenBackup={() => navigateView("backup", "stats")} />}
         {view === "advice" && adviceRequest && <AdvicePracticePage request={adviceRequest} onExit={exitToPracticeOrigin} onNormal={() => setView("spelling")} />}
         {view === "delayed" && <DelayedCheckPage key={delayedWindow} window={delayedWindow} backLabel={practiceOrigin === "stats" ? "返回统计" : "返回首页"} onExit={exitToPracticeOrigin} onNormal={() => setView("spelling")} />}
@@ -412,16 +417,26 @@ export default function App({account = null, onLogout, logoutBusy = false, logou
             accountStorage.removeItem("ec.advice.request");
             accountStorage.removeItem("ec.practice.active");
           } catch {}
-          setIsDailyStudy(false);
+          clearStudyPosition(dailySession?.id);
           updateDaily(null);
-          setStudyQueue([]);
+          updateDirectStudy(null);
           setSingleCard(null);
           setQueueVersion((v) => v + 1);
           await resetRoundOutcomes();
           if (!pendingCleared || !contactsCleared) throw new Error("浏览器未能清理旧的待确认记录，请清理本站浏览器数据后继续学习");
         }} />}
         {view === "lessons" && <LessonsPage lessonLevel={route.detailId} lessonSubView={route.subView} onLessonChange={updateLessonsRoute} />}
-        {view === "study" && (isDailyStudy ? <DailySessionPage session={dailySession} onRoundObserved={recordRoundOutcome} onSessionChange={(details) => updateDailyDetails(dailySession.id, details)} onFinish={() => { setIsDailyStudy(false); setStudyQueue([]); updateDaily({...dailySession, finished: true}); setView("queue"); }} onPauseExit={() => setView("queue")} recoveryVersion={queueVersion} onAbort={() => { setIsDailyStudy(false); updateDaily(null); setStudyQueue([]); setView("queue"); }} onProgress={confirmDailyCard} queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} /> : <StudyPage recoveryVersion={queueVersion} session={isDailyStudy ? dailySession : null} onAbort={() => { setIsDailyStudy(false); updateDaily(null); setStudyQueue([]); setView("queue"); }} onProgress={confirmDailyCard} queue={studyQueue} onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} />)}
+        {view === "study" && (isDailyStudy ? <DailySessionPage key={dailySession.id} session={dailySession}
+          onRoundObserved={recordRoundOutcome} onSessionChange={details => updateDailyDetails(dailySession.id, details)}
+          onFinish={() => closeDaily(true)} onAbort={() => closeDaily(false)}
+          onPauseExit={() => setView("queue")} recoveryVersion={queueVersion}
+          onProgress={confirmDailyCard} queue={studyQueue}
+          onOpenExpansionCard={openExpansionCard}
+          onExit={() => setView("queue")} onToQuiz={() => setView("quiz")} onToMixed={() => setView("mixed")} />
+          : <StudyPage key={directStudy?.id} standaloneSessionId={directStudy?.id}
+            queue={studyQueue} onOpenExpansionCard={openExpansionCard}
+            onExit={() => exitDirect("queue")} onToQuiz={() => exitDirect("quiz")}
+            onToMixed={() => exitDirect("mixed")} />)}
         {view === "quiz" && <QuizPage onExit={goHome} onAddWords={goAddWords} />}
         {view === "spelling" && <SpellingPage key={route.detailId || "pool"} onExit={goHome} onAddWords={goAddWords} singleCard={route.detailId ? singleCard : null} singleCardId={route.detailId} />}
         {view === "listening" && <ListeningPage onExit={goHome} onAddWords={goAddWords} />}

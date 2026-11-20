@@ -1,6 +1,7 @@
 import React, {useEffect, useId, useRef, useState} from "react";
 import {beginExpansionContactLookup, retryVisibleContactLookup} from "../lib/contacts.js";
 import {speak} from "../lib/tts.js";
+import ExpansionAddition from "./ExpansionAddition.jsx";
 
 const appleExamples = [
   {word: "apple juice", meaning: "苹果汁", example: "I'd like a glass of apple juice."},
@@ -9,7 +10,7 @@ const appleExamples = [
   {word: "apply", meaning: "申请", example: "She will apply for a job."},
 ];
 
-export default function ExpansionPreview({sourceCard, row, source, closeLabel, onClose}) {
+export default function ExpansionPreview({sourceCard, row, source, closeLabel, onClose, onOpenCard, studySessionId}) {
   const labelId = useId();
   const dialog = useRef(null);
   const active = useRef(false);
@@ -65,6 +66,11 @@ export default function ExpansionPreview({sourceCard, row, source, closeLabel, o
       </button>
       <button type="button" className="btn btn-ghost btn-small" onClick={close}>{closeLabel}</button>
     </div>
+    {sourceCard.content_revision && <ExpansionAddition card={sourceCard} row={row}
+      studySessionId={studySessionId} openCard={onOpenCard && (id => {
+        close();
+        onOpenCard(id);
+      })} />}
     {contactError && <p role="alert">{contactError}</p>}
     {audio === "failed" && <p role="status">朗读暂不可用，可继续查看</p>}
   </dialog>;

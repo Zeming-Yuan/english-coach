@@ -41,6 +41,7 @@ class Settings(BaseSettings):
     bounded_stories_enabled: bool = True
     simpler_stories_enabled: bool = True
     story_checks_enabled: bool = True
+    expansion_additions_enabled: bool = True
     scenes_enabled: bool = True
     scene_expansions_enabled: bool = True
     scene_feedback_enabled: bool = True

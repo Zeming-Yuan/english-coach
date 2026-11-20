@@ -10,7 +10,7 @@ const validWord = row => row && typeof row.word === "string" && row.word.trim() 
   typeof row.meaning === "string" && row.meaning.trim();
 const typedWord = row => validWord(row) && GROUPS.some(([kind]) => kind !== "legacy" && row.kind === kind);
 
-export default function WordExpansions({card, onUpdate, onConflict, source = "card_detail", onClose}) {
+export default function WordExpansions({card, onUpdate, onConflict, source = "card_detail", onClose, onOpenCard, studySessionId}) {
   const [selection, setSelection] = useState(null);
   const trigger = useRef(null);
   const closePreview = () => {
@@ -89,7 +89,8 @@ export default function WordExpansions({card, onUpdate, onConflict, source = "ca
     </details>}
     {onClose && <button type="button" className="btn btn-ghost btn-small" onClick={onClose}>收起扩展</button>}
     {selection && <ExpansionPreview sourceCard={card} row={selection} source={source}
-      closeLabel={onClose ? "返回原词卡" : "关闭扩展词"} onClose={closePreview} />}
+      closeLabel={onClose ? "返回原词卡" : "关闭扩展词"} onClose={closePreview}
+      onOpenCard={onOpenCard} studySessionId={studySessionId} />}
     {error && <p role="alert" className="inline-detail-error">{error}</p>}
     {!complete && <button type="button" className="btn btn-ghost btn-small" onClick={generate} disabled={busy}>
       {busy ? "补全中…" : error ? "重试补全扩展词" : "补全扩展词"}
