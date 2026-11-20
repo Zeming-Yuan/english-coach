@@ -20,6 +20,7 @@ test('S95-10 prepare missing words and return without creating cards', async ({a
   await openCatalog(app, page);
   const study = studyButton(page);
   await expect(study).toBeVisible();
+  await expect(sceneCard(page)).toContainText('还有 3 项任务词汇尚未进入词库。', {timeout: 4000});
   expect(await backup(app)).toEqual(before);
   await study.click();
 

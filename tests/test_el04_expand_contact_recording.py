@@ -283,17 +283,7 @@ def test_el04_v3_roundtrip_keeps_contact_time_and_revision(ec, ec_factory):
     preview = target.client.post("/api/import/preview", json=backup)
     assert preview.status_code == 200, preview.text
     assert preview.json()["extensions"] == {
-        "provided": [
-            "content_revisions",
-            "story_versions",
-            "learning_contacts",
-            "practice_durations",
-            "lesson_progress",
-            "practice_sessions",
-            "practice_items",
-            "scene_attempts",
-            "scene_feedback",
-        ],
+        "provided": backup["features"],
         "missing": [],
     }
     restored = target.client.post(

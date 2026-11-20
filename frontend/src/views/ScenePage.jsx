@@ -18,7 +18,7 @@ function Preparation({preparation}) {
     {preparation.targets.map(target => <p key={target.revision.identity}>
       {target.meaning}：{target.ready ? '独立回忆已有证据' : '暂无独立回忆依据'}
     </p>)}
-    {!!preparation.missing_words.length && <p>还有 {preparation.missing_words.length} 项任务词汇尚未进入词库；可先去单词本学习，也可继续挑战。</p>}
+    {!!preparation.missing_words.length && <p>还有 {preparation.missing_words.length} 项任务词汇尚未进入词库。</p>}
   </div>;
 }
 
