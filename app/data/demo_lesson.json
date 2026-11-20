@@ -1,0 +1,17 @@
+{
+  "mode": "demo",
+  "version": "demo-lesson-v1",
+  "title": "问候示范课",
+  "words": [
+    {"word": "hello", "phonetic": "/həˈləʊ/", "meaning": "你好"}
+  ],
+  "dialogue": [
+    {"speaker": "A", "en": "Hello!", "cn": "你好！"},
+    {"speaker": "B", "en": "Hello!", "cn": "你好！"}
+  ],
+  "task": {
+    "prompt": "见面打招呼选哪一句？",
+    "options": ["Hello!", "Goodbye!"],
+    "expected": "Hello!"
+  }
+}
