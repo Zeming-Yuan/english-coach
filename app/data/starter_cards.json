@@ -4,69 +4,203 @@
     "phonetic": "/ˈæp.əl/",
     "meaning": "苹果",
     "example": "I eat an apple every morning.",
-    "example_cn": "我每天早上吃一个苹果。"
+    "example_cn": "我每天早上吃一个苹果。",
+    "related_words": [
+      {
+        "kind": "compound",
+        "word": "apple juice",
+        "meaning": "苹果汁"
+      },
+      {
+        "kind": "compound",
+        "word": "applesauce",
+        "meaning": "苹果酱"
+      },
+      {
+        "kind": "lookalike",
+        "word": "apply",
+        "meaning": "申请；应用"
+      },
+      {
+        "kind": "lookalike",
+        "word": "applet",
+        "meaning": "小程序"
+      }
+    ]
   },
   {
     "word": "banana",
     "phonetic": "/bəˈnɑː.nə/",
     "meaning": "香蕉",
     "example": "The monkey is eating a banana.",
-    "example_cn": "猴子正在吃香蕉。"
+    "example_cn": "猴子正在吃香蕉。",
+    "related_words": [
+      {
+        "kind": "compound",
+        "word": "banana bread",
+        "meaning": "香蕉面包"
+      },
+      {
+        "kind": "compound",
+        "word": "banana skin",
+        "meaning": "香蕉皮"
+      }
+    ]
   },
   {
     "word": "teacher",
     "phonetic": "/ˈtiː.tʃə/",
     "meaning": "老师",
     "example": "My teacher is very kind.",
-    "example_cn": "我的老师非常和蔼。"
+    "example_cn": "我的老师非常和蔼。",
+    "related_words": [
+      {
+        "kind": "formation",
+        "text": "teach（教） + -er（做某事的人）"
+      },
+      {
+        "kind": "family",
+        "word": "teach",
+        "meaning": "教；教授"
+      },
+      {
+        "kind": "family",
+        "word": "teaching",
+        "meaning": "教学；教书"
+      }
+    ]
   },
   {
     "word": "dog",
     "phonetic": "/dɒɡ/",
     "meaning": "狗",
     "example": "The dog is running in the garden.",
-    "example_cn": "狗正在花园里跑。"
+    "example_cn": "狗正在花园里跑。",
+    "related_words": [
+      {
+        "kind": "compound",
+        "word": "doghouse",
+        "meaning": "狗窝"
+      },
+      {
+        "kind": "compound",
+        "word": "hot dog",
+        "meaning": "热狗（食物）"
+      }
+    ]
   },
   {
     "word": "house",
     "phonetic": "/haʊs/",
     "meaning": "房子",
     "example": "They live in a small house.",
-    "example_cn": "他们住在一所小房子里。"
+    "example_cn": "他们住在一所小房子里。",
+    "related_words": [
+      {
+        "kind": "compound",
+        "word": "housework",
+        "meaning": "家务"
+      },
+      {
+        "kind": "lookalike",
+        "word": "horse",
+        "meaning": "马（注意中间是 r）"
+      }
+    ]
   },
   {
     "word": "book",
     "phonetic": "/bʊk/",
     "meaning": "书",
     "example": "This book is very interesting.",
-    "example_cn": "这本书很有趣。"
+    "example_cn": "这本书很有趣。",
+    "related_words": [
+      {
+        "kind": "compound",
+        "word": "notebook",
+        "meaning": "笔记本"
+      },
+      {
+        "kind": "compound",
+        "word": "bookshop",
+        "meaning": "书店"
+      }
+    ]
   },
   {
     "word": "water",
     "phonetic": "/ˈwɔː.tə/",
     "meaning": "水",
     "example": "Please give me a glass of water.",
-    "example_cn": "请给我一杯水。"
+    "example_cn": "请给我一杯水。",
+    "related_words": [
+      {
+        "kind": "compound",
+        "word": "waterfall",
+        "meaning": "瀑布"
+      },
+      {
+        "kind": "compound",
+        "word": "rainwater",
+        "meaning": "雨水"
+      }
+    ]
   },
   {
     "word": "hello",
     "phonetic": "/həˈləʊ/",
     "meaning": "你好",
     "example": "Hello, nice to meet you.",
-    "example_cn": "你好，很高兴见到你。"
+    "example_cn": "你好，很高兴见到你。",
+    "related_words": [
+      {
+        "kind": "synonym",
+        "word": "hi",
+        "meaning": "嗨；你好（更口语化）"
+      },
+      {
+        "kind": "synonym",
+        "word": "hey",
+        "meaning": "嘿；你好（随意的招呼）"
+      }
+    ]
   },
   {
     "word": "cat",
     "phonetic": "/kæt/",
     "meaning": "猫",
     "example": "The cat is sleeping on the sofa.",
-    "example_cn": "猫正在沙发上睡觉。"
+    "example_cn": "猫正在沙发上睡觉。",
+    "related_words": [
+      {
+        "kind": "compound",
+        "word": "catfish",
+        "meaning": "鲶鱼"
+      },
+      {
+        "kind": "lookalike",
+        "word": "cap",
+        "meaning": "帽子（末尾是 p）"
+      }
+    ]
   },
   {
     "word": "school",
     "phonetic": "/skuːl/",
     "meaning": "学校",
     "example": "We go to school by bus.",
-    "example_cn": "我们坐公交车去学校。"
+    "example_cn": "我们坐公交车去学校。",
+    "related_words": [
+      {
+        "kind": "compound",
+        "word": "schoolbag",
+        "meaning": "书包"
+      },
+      {
+        "kind": "compound",
+        "word": "schoolboy",
+        "meaning": "男学生"
+      }
+    ]
   }
 ]

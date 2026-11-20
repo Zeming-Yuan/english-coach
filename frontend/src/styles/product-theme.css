@@ -257,6 +257,12 @@ body.dark .product-app .btn-primary:hover { background: #d8cec0; border-color: #
 .word-detail-view .word-detail-example > span { overflow-wrap: anywhere; }
 .word-detail-view .example-cn { color: var(--muted); font: 400 16px/1.8 var(--font); margin: 8px 0 0 20px; }
 .word-detail-view .word-detail-meaning { font-size: 23px; line-height: 1.7; margin-top: 0; }
+.word-expansions { min-width: 0; }
+.word-expansions .related-words-label { margin: 0 0 6px; font-size: 13px; font-weight: 500; color: var(--muted); }
+.word-formation { color: var(--ink); line-height: 1.8; }
+.word-formation p { margin: 0 0 12px; overflow-wrap: anywhere; }
+.word-expansions .related-word-chip { white-space: normal; overflow-wrap: anywhere; }
+.word-expansions > .btn { margin-top: 8px; }
 .word-detail-view .word-detail-badges { margin-top: 18px; }
 .word-self-rating { margin-top: 36px; }
 .word-detail-view .word-detail-memo { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 14px 18px; border-left: 3px solid var(--sun); border-radius: 0 7px 7px 0; background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgba(48, 46, 43, 0.04); }

@@ -8,6 +8,7 @@ import { showToast } from "../App.jsx";
 import ChunkChips from "../components/ChunkChips.jsx";
 import LearningEvidence from "../components/LearningEvidence.jsx";
 import RatingButtons from "../components/RatingButtons.jsx";
+import WordExpansions from "../components/WordExpansions.jsx";
 
 /**
  * 单词本视图：搜索/A-Z/快速查阅/详情/编辑/删除/记忆法/换例句/困难词。
@@ -810,6 +811,18 @@ function WordDetail({ cardId, onBack, onDismissDeleted, allCards, setDetail, onC
           <div className="word-detail-meaning">{c.kind === "sentence" ? (c.example_cn || "") : (c.meaning || "")}</div>
         )}
 
+        {c.kind !== "sentence" && <WordExpansions
+          key={`${c.id}:${c.content_revision?.identity}:${c.content_revision?.version}`}
+          card={c}
+          onConflict={refreshDetail}
+          onUpdate={(related_words) => setCard(current => (
+            current?.id === c.id &&
+            current.content_revision?.identity === c.content_revision?.identity &&
+            current.content_revision?.version === c.content_revision?.version
+              ? {...current, related_words} : current
+          ))}
+        />}
+
         {/* 例句（或换例句对比） */}
         {pendingExample ? (
           <div className="example-compare">
@@ -903,21 +916,6 @@ function WordDetail({ cardId, onBack, onDismissDeleted, allCards, setDetail, onC
                 <div className="bubble-cn">{ctx.cn}</div>
               </div>
             ))}
-          </div>
-        )}
-
-        {/* 词族/近义词 */}
-        {Array.isArray(c.related_words) && c.related_words.length > 0 && (
-          <div className="related-words-box">
-            <div className="related-words-label">相关词</div>
-            <div className="related-words-list">
-              {c.related_words.map((rw, i) => (
-                <span key={i} className="related-word-chip" title={rw.meaning}>
-                  {rw.word}
-                  <span className="related-word-meaning">{rw.meaning}</span>
-                </span>
-              ))}
-            </div>
           </div>
         )}
 

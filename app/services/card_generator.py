@@ -4,8 +4,13 @@ from sqlalchemy.orm import Session
 
 from app.models.card import Card
 from app.services.llm import generate_json
+from app.services.word_expansions import (
+    EXPANSIONS_PROMPT,
+    has_expansions,
+    normalize_expansions,
+)
 
-SYSTEM_PROMPT = (
+SYSTEM_PROMPT = EXPANSIONS_PROMPT + (
     "你是零基础英语老师。为每个单词生成学习卡片，包含以下字段：\n"
     "1. phonetic: 音标\n"
     "2. meaning: 中文释义（简洁）\n"
@@ -17,9 +22,7 @@ SYSTEM_PROMPT = (
     "用法要点 | 常见搭配 | 易错提醒。"
     "例：'可数名词，复数加s | a cat / cats / kitten(小猫) | 不要写成 catt'\n"
     "6. contexts: 2–3 条对话体语境例句（两人简短对话，目标词必须出现，用词简单），中英成对。\n"
-    "7. related_words: 词族/近义词数组（2-4个），每个元素含 word 和 meaning。"
-    '例：[{"word": "kitten", "meaning": "小猫"}, {"word": "pet", "meaning": "宠物"}]。'
-    "优先选同词族（如 teach→teacher）和常用近义词，用词简单零基础可懂。\n"
+    "7. related_words: 按上述词汇扩展要求生成。\n"
     "8. chunks: 把 example 按意群切分为数组（3-6 段，每段 2-6 词，逗号/连接词/介词短语处切分），"
     "每块标注角色 role（subject=主语 / predicate=谓宾 / adverbial=状语）。\n"
     "【记忆科学要求】例句和语境必须具体、有画面感：有真实场景和情绪，"
@@ -27,7 +30,7 @@ SYSTEM_PROMPT = (
     '严格输出 JSON: {"cards": [{"word":..., "phonetic":..., "meaning":...,'
     '"example":..., "example_cn":..., "explanation":...,'
     '"contexts": [{"en": ..., "cn": ...}, ...],'
-    '"related_words": [{"word":..., "meaning":...}, ...],'
+    '"related_words": [{"kind":..., "word":..., "meaning":...}, ...],'
     '"chunks": [{"text": "意群", "role": "subject|predicate|adverbial"}...]}]}'
 )
 
@@ -40,6 +43,20 @@ _REGENERATE_PROMPT = (
     "例：'可数名词，复数加s | a cat / cats / kitten(小猫) | 不要写成 catt'\n"
     '严格输出 JSON: {"example": "...", "example_cn": "...", "explanation": "..."}'
 )
+
+
+def generate_expansions(word: str, meaning: str) -> list[dict[str, str]]:
+    """Generate usable typed expansions for an existing card, or fail explicitly."""
+    data = generate_json(
+        EXPANSIONS_PROMPT + '严格输出 JSON: {"related_words": [...]}',
+        json.dumps({"word": word, "meaning": meaning}, ensure_ascii=False),
+    )
+    rows = normalize_expansions(
+        data.get("related_words") if isinstance(data, dict) else None, word
+    )
+    if not has_expansions(rows):
+        raise ValueError("LLM 返回的词汇扩展不可用，请重试")
+    return rows
 
 
 def regenerate_example(word: str) -> tuple[str, str, str]:
@@ -107,8 +124,7 @@ def generate_cards(words: list[str], db: Session) -> list[Card]:
             c = {key: value for key, value in c.items() if key in content_fields}
             if not isinstance(c.get("contexts"), list):
                 c["contexts"] = []
-            if not isinstance(c.get("related_words"), list):
-                c["related_words"] = []
+            c["related_words"] = normalize_expansions(c.get("related_words"), c["word"])
             if isinstance(c.get("chunks"), list):
                 # 兼容对象数组 [{text, role}] 或字符串数组
                 c["chunks"] = [

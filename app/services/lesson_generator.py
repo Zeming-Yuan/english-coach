@@ -21,6 +21,7 @@ from app.models.lesson import Lesson
 from app.models.lesson_progress import LessonProgress
 from app.runtime import Runtime
 from app.services.llm import generate_json
+from app.services.word_expansions import EXPANSIONS_PROMPT, normalize_expansions
 from app.services.write_transaction import run_write
 
 LEVEL_DESCRIPTIONS = {
@@ -133,9 +134,11 @@ def _level_prompt(level: int) -> str:
         "【记忆科学要求】例句和对话要具体、有画面感：有真实场景和情绪，"
         "避免 I like xxx / This is xxx 式空泛句；对话尽量像真实生活里会说的，"
         "可以有小意外、小笑点、上下文。"
-        "对话围绕主题，每句给说话人（A/B）和中英对照。"
+        "每个单词还需提供 related_words。"
+        + EXPANSIONS_PROMPT
+        + "对话围绕主题，每句给说话人（A/B）和中英对照。"
         '严格输出 JSON: {"title": "...", "words": [{"word":..., "phonetic":..., '
-        '"meaning":..., "example":..., "example_cn":...}], '
+        '"meaning":..., "example":..., "example_cn":..., "related_words":[]}], '
         '"dialogue": [{"speaker": "A", "en": "...", "cn": "..."}], '
         '"tips": ["..."]}'
     )
@@ -174,6 +177,13 @@ def generate_lesson(
     if data is None:
         raise ValueError("LLM 失败")
     content = validate_lesson(data)
+    # Keep optional enrichment on cards only; lesson snapshots retain their schema.
+    expansions = {
+        word["word"].strip().casefold(): normalize_expansions(
+            word.get("related_words"), word=word["word"]
+        )
+        for word in data["words"]
+    }
     now = runtime.clock.now().astimezone(UTC).replace(tzinfo=None)
 
     def operation(session: Session) -> Lesson:
@@ -216,6 +226,7 @@ def generate_lesson(
                     meaning=word["meaning"],
                     example=word["example"],
                     example_cn=word["example_cn"],
+                    related_words=expansions[word["word"].casefold()],
                     kind="word",
                 )
             )

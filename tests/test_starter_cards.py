@@ -81,8 +81,19 @@ def test_starter_source_has_ten_unique_rows_without_kind():
     assert [row["word"] for row in rows] == STARTER_WORDS
     assert len({row["word"] for row in rows}) == 10
     for row in rows:
-        assert set(row) == {"word", "phonetic", "meaning", "example", "example_cn"}
-        assert all(isinstance(value, str) and value.strip() for value in row.values())
+        assert set(row) == {
+            "word",
+            "phonetic",
+            "meaning",
+            "example",
+            "example_cn",
+            "related_words",
+        }
+        assert all(
+            isinstance(row[key], str) and row[key].strip()
+            for key in ("word", "phonetic", "meaning", "example", "example_cn")
+        )
+        assert isinstance(row["related_words"], list) and row["related_words"]
 
 
 def test_concurrent_adds_create_cards_once(ec):
@@ -128,7 +139,10 @@ def test_starter_learning_works_without_llm_key(ec):
     """RF4：无 AI 密钥也能加载入门词卡并完成一次真实评分。"""
     added = ec.client.post("/api/cards/starter")
     assert added.status_code == 200
-    assert ec.client.post("/api/cards/generate", json={"words": ["pear"]}).status_code == 503
+    assert (
+        ec.client.post("/api/cards/generate", json={"words": ["pear"]}).status_code
+        == 503
+    )
 
     card_id = added.json()["cards"][0]["id"]
     review = ec.client.post("/api/reviews", json={"card_id": card_id, "rating": 3})

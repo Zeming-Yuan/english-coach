@@ -20,7 +20,11 @@ from app.models.review import Review
 from app.models.review_baseline import ReviewBaseline
 from app.models.review_event import ReviewEvent
 from app.runtime import Runtime, get_runtime
-from app.services.card_generator import generate_cards, regenerate_example
+from app.services.card_generator import (
+    generate_cards,
+    generate_expansions,
+    regenerate_example,
+)
 from app.services.card_payload import card_payload
 from app.services.contacts import contact_summary
 from app.services.content_revisions import (
@@ -28,6 +32,7 @@ from app.services.content_revisions import (
     content_revision_map,
     delete_content_revision,
     get_content_revision,
+    semantic_value,
 )
 from app.services.graduation import card_is_graduated
 from app.services.learning import (
@@ -40,7 +45,12 @@ from app.services.learning import (
 from app.services.learning_evidence import bulk_evidence_summaries, evidence_summary
 from app.services.llm_client import LLMNotConfigured
 from app.services.practice import refresh_practice_session
-from app.services.starter_cards import load_starter_cards, starter_card_rows
+from app.services.starter_cards import (
+    load_starter_cards,
+    starter_card_rows,
+    starter_expansions,
+)
+from app.services.word_expansions import has_expansions
 from app.services.write_transaction import run_write
 
 router = APIRouter()
@@ -111,6 +121,12 @@ def update_card(card_id: int, payload: UpdateCardIn, db: Session = Depends(get_d
             raise HTTPException(status_code=409, detail="Card content changed")
         # 必须在赋值前读取旧内容，才能判断这次编辑是否实质变化。
         advance_content_revision(session, "card", card_id, data)
+        if card.related_words and any(
+            field in data
+            and semantic_value(data[field]) != semantic_value(getattr(card, field))
+            for field in ("word", "meaning")
+        ):
+            card.related_words = []
         for field, value in data.items():
             setattr(card, field, value)
         session.flush()
@@ -271,6 +287,47 @@ def _load_current_card_and_revision(
             raise HTTPException(status_code=404, detail="Card not found") from error
         raise
     return current, current_revision
+
+
+@router.post("/cards/{card_id}/expansions")
+def complete_card_expansions(
+    card_id: int,
+    expected_revision: ExpectedRevisionIn | None = None,
+    db: Session = Depends(get_db),
+):
+    """按当前词形和释义生成扩展；同一张词卡只采用第一份完成的结果。"""
+    card, before = _load_current_card_and_revision(db, card_id)
+    if card.kind != "word":
+        raise HTTPException(status_code=422, detail="仅单词卡可补全扩展词")
+    if expected_revision is not None and expected_revision.model_dump() != before:
+        raise HTTPException(status_code=409, detail="词卡已更新，请刷新后重试")
+    if has_expansions(card.related_words):
+        return {"related_words": card.related_words, "content_revision": before}
+
+    word, meaning = card.word, card.meaning or ""
+    db.rollback()
+    try:
+        rows = starter_expansions(word, meaning) or generate_expansions(word, meaning)
+    except ValueError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from error
+
+    def save(session: Session) -> dict:
+        current, revision = _load_current_card_and_revision(session, card_id)
+        if revision != before:
+            raise HTTPException(status_code=409, detail="词卡已更新，请刷新后重试")
+        if not has_expansions(current.related_words):
+            # 保留未被新分类覆盖的旧相关词，供学习者继续查阅。
+            words = {row["word"].casefold() for row in rows if "word" in row}
+            for old in current.related_words or []:
+                if isinstance(old, dict) and isinstance(old.get("word"), str):
+                    key = old["word"].strip().casefold()
+                    if key and key not in words:
+                        rows.append(old)
+                        words.add(key)
+            current.related_words = rows
+        return {"related_words": current.related_words, "content_revision": revision}
+
+    return run_write(db, save)
 
 
 @router.post("/cards/{card_id}/regenerate")

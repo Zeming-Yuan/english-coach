@@ -11,13 +11,25 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.card import Card
+from app.services.word_expansions import normalize_expansions
 
 DATA_FILE = Path(__file__).resolve().parents[1] / "data" / "starter_cards.json"
 
 
 def starter_card_rows() -> list[dict]:
-    """读取固定入门内容（只含 word/phonetic/meaning/example/example_cn）。"""
+    """读取固定入门内容及已核对的词汇扩展。"""
     return json.loads(DATA_FILE.read_text(encoding="utf-8"))
+
+
+def starter_expansions(word: str, meaning: str) -> list[dict[str, str]] | None:
+    """Return curated expansions only for the exact starter meaning."""
+    for row in starter_card_rows():
+        if (
+            row["word"].strip().casefold() == word.strip().casefold()
+            and row["meaning"].strip() == meaning.strip()
+        ):
+            return normalize_expansions(row.get("related_words"), word=row["word"])
+    return None
 
 
 def load_starter_cards(db: Session, rows: list[dict] | None = None) -> list[Card]:
@@ -39,6 +51,9 @@ def load_starter_cards(db: Session, rows: list[dict] | None = None) -> list[Card
                 for key, value in row.items()
                 if key in {"word", "phonetic", "meaning", "example", "example_cn"}
             },
+            related_words=normalize_expansions(
+                row.get("related_words"), word=row["word"]
+            ),
             kind="word",
             difficulty="basic",
         )
