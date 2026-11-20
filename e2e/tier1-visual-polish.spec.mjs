@@ -76,6 +76,7 @@ test("Tier 1.3: lesson list and detail deduplicate headings, space progress item
   page,
 }, testInfo) => {
   const emptyDialogueApp = await appFactory({ fixture: "full-design.json" });
+  await page.route("**/api/ai-config", route => route.fulfill({json: {has_key: true}}));
   await page.goto(`${emptyDialogueApp.baseURL}/#/lessons`);
 
   await expect(page.locator(".lesson-entry-title")).toHaveText("第 1 课");

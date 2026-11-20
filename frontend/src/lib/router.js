@@ -48,9 +48,11 @@ export function normalizeRoute(input = {}) {
   const subView =
     view === "lessons" && detailId !== null && input?.subView === "check"
       ? "check"
-      : view === "stories" && detailId === null && input?.subView === "starter"
-        ? "starter"
-        : null;
+      : view === "lessons" && detailId === null && input?.subView === "demo"
+        ? "demo"
+        : view === "stories" && detailId === null && input?.subView === "starter"
+          ? "starter"
+          : null;
   const window = DELAYED_WINDOWS.has(input?.window) ? input.window : "week";
   const origin = VALID_ORIGINS.has(input?.origin) ? input.origin : null;
   const result = {view, detailId, subView, window, origin};
@@ -96,6 +98,9 @@ export function parseRoute(rawHash = "", historyState = null) {
       });
     }
     return normalizeRoute({ view: "lessons", origin });
+  }
+  if (head === "lessons" && parts.length === 2 && parts[1] === "demo") {
+    return normalizeRoute({ view: head, subView: "demo", origin });
   }
   if (head === "stories" && parts.length === 2 && parts[1] === "starter") {
     return normalizeRoute({
@@ -155,6 +160,7 @@ export function formatRouteHash(route) {
   ) {
     return "#/stories/starter";
   }
+  if (normalized.view === "lessons" && normalized.subView === "demo") return "#/lessons/demo";
   if (DETAIL_VIEWS.has(normalized.view) && normalized.detailId !== null) {
     return `#/${normalized.view}/${normalized.detailId}`;
   }

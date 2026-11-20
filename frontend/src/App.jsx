@@ -484,7 +484,7 @@ export default function App({account = null, onLogout, logoutBusy = false, logou
           await resetRoundOutcomes();
           if (!pendingCleared || !contactsCleared) throw new Error("浏览器未能清理旧的待确认记录，请清理本站浏览器数据后继续学习");
         }} />}
-        {view === "lessons" && <LessonsPage lessonLevel={route.detailId} lessonSubView={route.subView} onLessonChange={updateLessonsRoute} />}
+        {view === "lessons" && <LessonsPage lessonLevel={route.detailId} lessonSubView={route.subView} onLessonChange={updateLessonsRoute} onNavigate={navigateView} />}
         {view === "study" && (isDailyStudy ? <DailySessionPage key={dailySession.id} session={dailySession}
           onRoundObserved={recordRoundOutcome} onSessionChange={details => updateDailyDetails(dailySession.id, details)}
           onFinish={() => closeDaily(true)} onAbort={() => closeDaily(false)}

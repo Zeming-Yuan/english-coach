@@ -109,7 +109,7 @@ test("EL-07 next lesson response loss replays without skipping", async ({appFact
     {times: 1},
   );
   await page.getByRole("button", {name: "开始", exact: true}).click();
-  await expect(page.getByText(/生成尚未确认/)).toBeVisible();
+  await expect(page.getByRole("status")).toContainText("上次生成尚未确认保存");
   await expect
     .poll(async () => {
       const payload = await (await app.request.get("/api/export/backup")).json();
@@ -152,9 +152,10 @@ test("EL-07 invalid generation leaves no half lesson", async ({appFactory, page}
   await openLessonsFromHome(page, app);
   await page.getByRole("button", {name: "开始", exact: true}).click();
   await expect(
-    page.locator(".toast").filter({hasText: "生成尚未确认"}),
+    page.locator(".toast").filter({hasText: "课程生成失败"}),
   ).toBeVisible();
   await expect(page.locator(".lesson-list-item")).toHaveCount(0);
+  await expect(page.getByRole("button", {name: "继续确认生成", exact: true})).toHaveCount(0);
   const lessons = await (await app.request.get("/api/lessons")).json();
   expect(lessons.lessons).toHaveLength(0);
 });

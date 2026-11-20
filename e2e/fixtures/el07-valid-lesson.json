@@ -1,4 +1,5 @@
 {
+ "settings": {"llm_api_key": "isolated-e2e-only"},
  "llm_responses": [
   {
    "title": "水果课",
