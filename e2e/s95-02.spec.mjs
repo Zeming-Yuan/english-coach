@@ -108,3 +108,21 @@ test("S95-02 late confirmation does not switch the current card", async ({app, p
   await expect(page.getByRole("dialog")).toHaveCount(0);
   expect((await wordCards(app)).filter(card => card.word === "apply")).toHaveLength(1);
 });
+
+test("S95-02 resumed face records the displayed source answer", async ({app, page}) => {
+  await page.goto(app.baseURL);
+  await page.getByRole("button", {name: "体验入门词卡", exact: true}).click();
+  await page.locator(".card").press("Enter");
+  await expect(page.locator(".card.flipped .back-meaning")).toHaveText("苹果");
+  const apple = (await wordCards(app)).find(card => card.word === "apple");
+  const visible = async () => {
+    const backup = await (await app.request.get("/api/export/backup")).json();
+    return backup.extensions.learning_contacts.filter(row =>
+      row.card_id === apple.id && row.kind === "answer_visible").length;
+  };
+  await expect.poll(visible).toBe(1);
+  await page.reload();
+  await expect(page.locator(".card.flipped .back-meaning")).toHaveText("苹果");
+  await expect.poll(visible, {timeout: 4000}).toBe(2);
+  await expect(page.locator(".study-count")).toHaveText("1 / 10");
+});

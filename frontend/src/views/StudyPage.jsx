@@ -85,6 +85,17 @@ export default function StudyPage({ queue = [], session, recoveryVersion, onProg
     api(`/api/memos/${card.id}`).then((d) => setMemoText(d.content)).catch(() => {});
   }, [idx, done]);
 
+  useEffect(() => {
+    if (!flipped || done || exiting || !card?.content_revision || contactedRef.current.has(card.id)) return;
+    contactedRef.current.add(card.id);
+    recordPracticeContact({
+      cardId: card.id,
+      revision: card.content_revision,
+      source: "study",
+      kind: "answer_visible",
+    });
+  }, [card, flipped, done, exiting]);
+
   // 翻面（支持翻回）；翻到背面才显示答案，也才记录接触。
   const flip = useCallback(() => {
     if (!card || exiting || done) return;
@@ -95,15 +106,6 @@ export default function StudyPage({ queue = [], session, recoveryVersion, onProg
         showToast("先自己回想一下这个词的含义，再翻面对照效果更好 ✍️");
       }
       speak(isSentence ? (card.example || card.word) : card.word, null);
-      if (!contactedRef.current.has(card.id)) {
-        contactedRef.current.add(card.id);
-        recordPracticeContact({
-          cardId: card.id,
-          revision: card.content_revision,
-          source: "study",
-          kind: "answer_visible",
-        });
-      }
     }
     const position = next ? idx : null;
     setFlippedAt(position);
