@@ -13,6 +13,8 @@ import { recordPracticeContact } from "../lib/practiceContacts.js";
 import { showToast } from "../App.jsx";
 import ChunkChips from "../components/ChunkChips.jsx";
 import RatingButtons from "../components/RatingButtons.jsx";
+import WordExpansions from "../components/WordExpansions.jsx";
+import ExpansionPracticeLinks from "../components/ExpansionPracticeLinks.jsx";
 
 /**
  * 闪卡学习视图。
@@ -20,24 +22,28 @@ import RatingButtons from "../components/RatingButtons.jsx";
  * onExit: () => void 返回队列
  * onToQuiz: () => void 进测验
  */
-export default function StudyPage({ queue = [], session, recoveryVersion, onProgress, onAbort, onPause, onExit, onToQuiz, onToMixed }) {
-  const [standaloneIdx, setStandaloneIdx] = useState(0);
+export default function StudyPage({ queue = [], session, recoveryVersion, onProgress, onAbort, onPause, onExit, onToQuiz, onToMixed, standaloneSessionId, onOpenExpansionCard, onStartExpansionPractice }) {
+  const [sessionId] = useState(() => session?.id || standaloneSessionId || randomUUID());
+  const [initial] = useState(() => storageGet(`ec.study.position:${sessionId}`, null));
+  const [standaloneIdx, setStandaloneIdx] = useState(initial?.index ?? 0);
   const idx = session ? session.index : standaloneIdx;
-  const [flipped, setFlipped] = useState(false);
+  const [flippedAt, setFlippedAt] = useState(initial?.flippedAt ?? null);
+  const flipped = flippedAt === idx;
   const [graduated, setGraduated] = useState([]);
-  const [standaloneAnswered, setStandaloneAnswered] = useState(0);
+  const [standaloneAnswered, setStandaloneAnswered] = useState(initial?.answered ?? 0);
   const answered = session ? session.index : standaloneAnswered;
   const [flipStartedAt, setFlipStartedAt] = useState(null);
   const [memoText, setMemoText] = useState(null);
   const cardRef = useRef(null);
   const contactedRef = useRef(new Set());
   const [exiting, setExiting] = useState(false);
-  const [standaloneDone, setStandaloneDone] = useState(false);
+  const [standaloneDone, setStandaloneDone] = useState(initial?.done === true);
   const done = session ? session.complete === true : standaloneDone;
   // 中文翻译档位：auto=复习<3次显示，>=3次自动隐藏；on=常显；off=隐藏
   const [cnMode, setCnMode] = useState(() => storageGet("sentenceCnMode", "auto"));
-  // 每日主队列复用固定会话 ID；专项自评使用独立 ID。
-  const [sessionId] = useState(() => session?.id || randomUUID());
+  const savePosition = useCallback(position => {
+    if (session || standaloneSessionId) storageSet(`ec.study.position:${sessionId}`, position);
+  }, [session?.id, standaloneSessionId, sessionId]);
   const timedCard = queue[idx];
   const captureDuration = useActiveTime(
     timedCard ? `${sessionId}:${timedCard.id}:${idx}` : null,
@@ -74,12 +80,22 @@ export default function StudyPage({ queue = [], session, recoveryVersion, onProg
   // 每张卡重置
   useEffect(() => {
     if (done || !card) return;
-    setFlipped(false);
     setFlipStartedAt(Date.now());
     setMemoText(null);
     // 加载记忆法
     api(`/api/memos/${card.id}`).then((d) => setMemoText(d.content)).catch(() => {});
   }, [idx, done]);
+
+  useEffect(() => {
+    if (!flipped || done || exiting || !card?.content_revision || contactedRef.current.has(card.id)) return;
+    contactedRef.current.add(card.id);
+    recordPracticeContact({
+      cardId: card.id,
+      revision: card.content_revision,
+      source: "study",
+      kind: "answer_visible",
+    });
+  }, [card, flipped, done, exiting]);
 
   // 翻面（支持翻回）；翻到背面才显示答案，也才记录接触。
   const flip = useCallback(() => {
@@ -91,28 +107,24 @@ export default function StudyPage({ queue = [], session, recoveryVersion, onProg
         showToast("先自己回想一下这个词的含义，再翻面对照效果更好 ✍️");
       }
       speak(isSentence ? (card.example || card.word) : card.word, null);
-      if (!contactedRef.current.has(card.id)) {
-        contactedRef.current.add(card.id);
-        recordPracticeContact({
-          cardId: card.id,
-          revision: card.content_revision,
-          source: "study",
-          kind: "answer_visible",
-        });
-      }
     }
-    setFlipped(next);
-  }, [card, flipStartedAt, isSentence, exiting, done, flipped]);
+    const position = next ? idx : null;
+    setFlippedAt(position);
+    savePosition({flippedAt: position, index: idx, answered, done});
+  }, [card, flipStartedAt, isSentence, exiting, done, flipped, idx, answered, savePosition]);
 
   // 只有服务端确认保存才推进；失败停留当前题并保留同一提交标识。
   const advance = useCallback((command, result) => {
     if (session) {
-      setFlipped(false);
+      setFlippedAt(null);
+      savePosition({flippedAt: null});
       onProgress(command, result);
       return;
     }
+    const isLast = idx + 1 >= total;
+    savePosition({index: isLast ? idx : idx + 1, answered: answered + 1, done: isLast});
     setStandaloneAnswered((n) => n + 1);
-    if (idx + 1 >= total) {
+    if (isLast) {
       // 最后一张：直接完成
       setStandaloneDone(true);
       return;
@@ -123,7 +135,7 @@ export default function StudyPage({ queue = [], session, recoveryVersion, onProg
       setExiting(false);
       setStandaloneIdx((i) => i + 1);
     }, 320);
-  }, [idx, total, session, onProgress, card]);
+  }, [idx, total, session, onProgress, answered, savePosition]);
 
   const rate = useCallback(async (rating) => {
     if (!card || done || exiting) return;
@@ -182,6 +194,7 @@ export default function StudyPage({ queue = [], session, recoveryVersion, onProg
             {graduated.length > 0 && `${graduated.length} 个词解锁了句子练习：${graduated.join("、")} — 例句已变成句子卡。`}
             {session ? `${answered} 张卡已保存，可返回查看剩余到期任务。` : `${answered} 张卡已复习，明天的队列会按你的记忆自动安排。`}
           </p>
+          <ExpansionPracticeLinks studySessionId={sessionId} onStart={onStartExpansionPractice} />
           <div className="done-actions">
             <button className="btn btn-primary" onClick={onToQuiz}>去做测验</button>
             {onToMixed && <button className="btn btn-ghost" style={{ marginTop: 8 }} onClick={onToMixed}>再练一轮混合</button>}
@@ -320,6 +333,11 @@ export default function StudyPage({ queue = [], session, recoveryVersion, onProg
         </div>
       </div>
 
+      {flipped && !isSentence && !exiting && <StudyExpansions
+        key={`${idx}:${card.id}:${card.content_revision?.identity}:${card.content_revision?.version}`}
+        card={card} studySessionId={sessionId} onOpenCard={onOpenExpansionCard}
+      />}
+
       {/* 评分按钮：包裹层常驻占位（高度已在 CSS 预留），翻面后按钮永远在首屏 */}
       <div className="rating-area">
         {session && <button className="btn btn-ghost btn-small" disabled={attempt.phase === "saving" || attempt.phase === "failed"} onClick={() => rate(null)}>跳过这张卡</button>}
@@ -345,4 +363,35 @@ export default function StudyPage({ queue = [], session, recoveryVersion, onProg
       </div>
     </section>
   );
+}
+
+function StudyExpansions({card, studySessionId, onOpenCard}) {
+  const [open, setOpen] = useState(false);
+  const [displayCard, setDisplayCard] = useState(card);
+  const [reloadError, setReloadError] = useState("");
+  const trigger = useRef(null);
+  const close = () => {
+    setOpen(false);
+    trigger.current?.focus();
+  };
+  const refresh = async () => {
+    try {
+      setDisplayCard(await api(`/api/cards/${card.id}`));
+      setReloadError("");
+    } catch (error) {
+      setReloadError(error.message);
+    }
+  };
+
+  return <div className="study-expansions">
+    <button type="button" ref={trigger} className="btn btn-ghost btn-small"
+      aria-expanded={open} onClick={() => setOpen(!open)}>多学一个</button>
+    {open && <WordExpansions
+      key={`${displayCard.content_revision?.identity}:${displayCard.content_revision?.version}`}
+      card={displayCard} source="study" onClose={close} onConflict={refresh}
+      studySessionId={studySessionId} onOpenCard={onOpenCard}
+      onUpdate={related_words => setDisplayCard(current => ({...current, related_words}))}
+    />}
+    {open && reloadError && <p role="alert">{reloadError}</p>}
+  </div>;
 }

@@ -21,19 +21,21 @@ export default function ContactRecovery() {
     setBusy(scope); setError(''); setNote('');
     try {
       const result = await retryVisibleContactLookup(scope);
-      setNote(result.failed.length ? '已找到反馈目标词；接触仍有待确认记录，依据尚不完整。' : result.unrecorded.length ? '部分反馈目标已删除或修订，该次接触未记录；请重新查看当前内容。' : '反馈接触已确认。');
-    } catch (cause) {setError('反馈接触尚未确认：' + cause.message);}
+      setNote(result.failed.length ? '已找到接触目标词；接触仍有待确认记录，依据尚不完整。' : result.unrecorded.length ? '部分接触目标已删除或修订，该次接触未记录；请重新查看当前内容。' : '接触核对已完成。');
+    } catch (cause) {setError('接触尚未确认：' + cause.message);}
     finally {setBusy(''); setLookups(pendingVisibleContactLookups());}
   };
   if (!lookups.length && !note) return null;
-  return <aside aria-label="反馈接触恢复" className="save-state">
-    {lookups.length > 0 && <p>有反馈展示的接触依据尚未确认。</p>}
+  return <aside aria-label="接触恢复" className="save-state">
+    {lookups.length > 0 && <p>有应用内接触的依据尚未确认。</p>}
     {lookups.map(lookup => <div key={lookup.scope}>
-      {lookup.source === 'scene' && typeof lookup.text === 'string' ?
+      {lookup.expansion ?
+        <button className="btn btn-ghost btn-small" disabled={Boolean(busy)} onClick={() => retry(lookup.scope)}>继续确认扩展词接触</button> :
+        lookup.source === 'scene' && typeof lookup.text === 'string' ?
         <button className="btn btn-ghost btn-small" disabled={Boolean(busy)} onClick={() => retry(lookup.scope)}>继续确认反馈接触</button> :
         <p>旧接触记录缺少反馈内容，接触依据仍不完整，请回到原反馈继续确认。</p>}
     </div>)}
-    {busy && <p role="status">正在确认反馈接触…</p>}
+    {busy && <p role="status">正在确认接触…</p>}
     {error && <p role="alert">{error}</p>}
     {note && <p role="status">{note}</p>}
   </aside>;

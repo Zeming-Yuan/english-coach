@@ -87,3 +87,40 @@ def test_legacy_apple_uses_matching_starter_sense_without_ai(ec):
         f"/api/cards/{card_id}", json={"meaning": "苹果公司"}
     ).is_success
     assert ec.client.post(path).status_code == 503
+
+
+def test_backfill_rejects_source_removed_while_generating(ec, monkeypatch):
+    card_id = ec.seed_card("unhappy", meaning="不高兴的")
+    path = f"/api/cards/{card_id}"
+    revision = ec.client.get(path).json()["content_revision"]
+
+    def remove_source(word, meaning):
+        assert ec.client.delete(path).is_success
+        return [FORMATION, AFFIX]
+
+    monkeypatch.setattr(cards, "generate_expansions", remove_source)
+    assert ec.client.post(path + "/expansions", json=revision).status_code == 404
+    assert ec.client.get("/api/cards").json()["cards"] == []
+
+
+def test_backfill_rejects_old_source_after_full_restore(ec, monkeypatch):
+    card_id = ec.seed_card("unhappy", meaning="不高兴的")
+    path = f"/api/cards/{card_id}"
+    revision = ec.client.get(path).json()["content_revision"]
+    backup = ec.client.get("/api/export/backup").json()
+    preview = ec.client.post("/api/import/preview", json=backup).json()
+
+    def restore_source(word, meaning):
+        response = ec.client.post(
+            "/api/import/cards",
+            json={"backup": backup, "expected_revision": preview["expected_revision"]},
+        )
+        assert response.is_success, response.text
+        return [FORMATION, AFFIX]
+
+    monkeypatch.setattr(cards, "generate_expansions", restore_source)
+    assert ec.client.post(path + "/expansions", json=revision).status_code == 404
+    (restored,) = ec.client.get("/api/cards").json()["cards"]
+    assert restored["id"] != card_id
+    assert restored["content_revision"] == revision
+    assert not restored["related_words"]

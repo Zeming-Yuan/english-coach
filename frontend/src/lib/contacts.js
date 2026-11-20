@@ -6,6 +6,7 @@ import { accountStorage } from "./accountSession.js";
  * 待确认标记使用独立存储前缀，避免被评分恢复界面当成学习提交。
  */
 import {api} from "./api.js";
+import {randomUUID} from "./utils.js";
 import {
   makePending,
   sendPending,
@@ -58,7 +59,24 @@ export function beginVisibleContactLookup(identity, feedback = null) {
   return scope;
 }
 
-/** Only feedback lookup ownership is recoverable here; old unknown exposures stay incomplete. */
+/** Preserve actual expansion exposure while its existing target identity is resolved. */
+export function beginExpansionContactLookup({card, row, source, kind}) {
+  const scope = `lookup:expansion:${randomUUID()}`;
+  persistVisibleLookup(scope, {
+    awaiting_targets: true,
+    source,
+    kind,
+    expansion: {
+      sourceId: card.id,
+      revision: card.content_revision,
+      word: row.word.trim().toLowerCase(),
+      meaning: row.meaning.trim(),
+    },
+  });
+  return scope;
+}
+
+/** Old unknown exposures stay incomplete. */
 export function pendingVisibleContactLookups() {
   const scopes = new Set(visibleLookups.keys());
   try {
@@ -93,20 +111,39 @@ export function retryVisibleContactLookup(scope) {
 
 async function resolveVisibleContactLookup(scope) {
   const record = visibleLookups.get(scope) || loadPending(scope, PREFIX);
-  if (record?.source !== "scene" || typeof record.text !== "string") {
+  const expansion = record?.expansion;
+  const scene = record?.source === "scene" && typeof record.text === "string";
+  if (!scene && !expansion) {
     throw new Error("旧接触记录缺少反馈内容，接触依据仍不完整，请回到原反馈继续确认。");
   }
   visibleLookups.set(scope, record);
   const stillOwned = () => visibleLookups.get(scope) === record;
+  const kind = record.kind || "answer_visible";
+  const targetScopeFor = card => scopeFor({source: record.source, kind, cardId: card.id});
   if (!Array.isArray(record.targets)) {
     const {cards} = await api("/api/cards");
     if (!stillOwned()) throw new Error("反馈所属数据已变化，请重新查看反馈。");
-    const words = new Set(record.text.toLowerCase().match(/[a-z]+(?:'[a-z]+)?/g) || []);
-    record.targets = cards.filter(card => card.kind === "word" && words.has(card.word.toLowerCase())).map(card => {
-      const targetScope = scopeFor({source: "scene", kind: "answer_visible", cardId: card.id});
-      const existing = loadPending(targetScope, PREFIX);
-      return {card, pending: matchesRevision(existing, card.content_revision) ? existing : makePending("/api/learning/contacts", {
-        card_id: card.id, revision: card.content_revision, source: "scene", kind: "answer_visible",
+    let matched;
+    if (expansion) {
+      const sourceCard = cards.find(card => card.id === expansion.sourceId);
+      const revision = sourceCard?.content_revision;
+      if (revision?.identity !== expansion.revision?.identity ||
+          revision?.version !== expansion.revision?.version || !revision) {
+        completeVisibleLookup(scope);
+        throw new Error("来源词卡已变化，请重新查看扩展词。");
+      }
+      matched = cards.filter(card => card.kind === "word" &&
+        card.word.trim().toLowerCase() === expansion.word &&
+        card.meaning?.trim() === expansion.meaning).sort((a, b) => a.id - b.id).slice(0, 1);
+    } else {
+      const words = new Set(record.text.toLowerCase().match(/[a-z]+(?:'[a-z]+)?/g) || []);
+      matched = cards.filter(card => card.kind === "word" && words.has(card.word.toLowerCase()));
+    }
+    record.targets = matched.map(({id, content_revision}) => {
+      const card = {id, content_revision};
+      const existing = loadPending(targetScopeFor(card), PREFIX);
+      return {card, pending: matchesRevision(existing, content_revision) ? existing : makePending("/api/learning/contacts", {
+        card_id: id, revision: content_revision, source: record.source, kind,
       })};
     });
     persistVisibleLookup(scope, record);
@@ -117,7 +154,7 @@ async function resolveVisibleContactLookup(scope) {
     !record.confirmed.includes(card.content_revision.identity) && !record.unrecorded.includes(card.content_revision.identity));
   const outcomes = await Promise.allSettled(targets.map(async ({card, pending}) => {
     if (!stillOwned()) throw new Error("反馈所属数据已变化，请重新查看反馈。");
-    const targetScope = scopeFor({source: "scene", kind: "answer_visible", cardId: card.id});
+    const targetScope = targetScopeFor(card);
     savePending(targetScope, pending, PREFIX);
     try {
       await send(targetScope, pending);
@@ -141,15 +178,19 @@ async function resolveVisibleContactLookup(scope) {
     failed: targets.filter((_, index) => outcomes[index].status === "rejected").map(({card}) => card),
     unrecorded: record.targets.filter(({card}) => record.unrecorded.includes(card.content_revision.identity)).map(({card}) => card),
   };
-  if (!transferVisibleLookup(scope, result.failed)) {
-    throw new Error("部分反馈接触尚未确认，浏览器未能保存待确认目标，请重试。");
+  if (expansion && result.failed.length > 0) {
+    // Keep the lookup and its original submission available after closing/reloading.
+    throw new Error("接触保存尚未确认，请继续确认扩展词接触。");
+  }
+  if (!transferVisibleLookup(scope, result.failed, targetScopeFor)) {
+    throw new Error("部分接触尚未确认，浏览器未能保存待确认目标，请重试。");
   }
   return {...result, targets: targets.map(({card}) => card)};
 }
 
-function transferVisibleLookup(scope, failed) {
+function transferVisibleLookup(scope, failed, targetScopeFor) {
   const owned = failed.every(card => {
-    const targetScope = scopeFor({source: "scene", kind: "answer_visible", cardId: card.id});
+    const targetScope = targetScopeFor(card);
     const pending = loadPending(targetScope, PREFIX);
     if (!pending || !savePending(targetScope, pending, PREFIX)) return false;
     deniedScopes.delete(targetScope);

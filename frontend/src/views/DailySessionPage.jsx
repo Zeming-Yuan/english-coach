@@ -2,6 +2,7 @@ import {useActiveTime} from "../hooks/useActiveTime.js";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../lib/api.js";
 import StudyPage from "./StudyPage.jsx";
+import ExpansionPracticeLinks from "../components/ExpansionPracticeLinks.jsx";
 import SpellingBoard from "../components/SpellingBoard.jsx";
 import { useLearningAttempt } from "../hooks/useLearningAttempt.js";
 import { clearPending, loadPending } from "../lib/learning.js";
@@ -165,6 +166,7 @@ export default function DailySessionPage({ session, onSessionChange, onFinish, o
       {session.plan?.mode === "recovery" && <button className="btn btn-ghost" onClick={onFinish}>继续常规计划</button>}
 
     </>}
+    {!paused && <ExpansionPracticeLinks studySessionId={session.id} onStart={studyProps.onStartExpansionPractice} />}
     <details className="daily-summary-details">
       <summary>查看详细学习记录与自选练习</summary>
     {[["retrieval", "独立提取"], ["assisted", "辅助练习"], ["recognition", "识别练习"], ["self_report", "自评"]].map(([key, label]) => <p key={key}>{label}：{summary.metrics[key].count ? `${summary.metrics[key].successes} / ${summary.metrics[key].count}` : "暂无数据"}</p>)}

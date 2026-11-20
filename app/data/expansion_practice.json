@@ -1,0 +1,15 @@
+[
+  {
+    "version": "s95-apple-apply-v1",
+    "source_word": "apple",
+    "source_meaning": "苹果",
+    "target_word": "apply",
+    "target_meanings": ["申请", "申请；应用"],
+    "question": {
+      "prompt": "I want to ___ for this job.",
+      "options": ["apply", "application"],
+      "expected": "apply",
+      "explanation": "apply 是动词，此处表示申请工作。"
+    }
+  }
+]

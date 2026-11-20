@@ -60,6 +60,7 @@ def test_el20_registry_keeps_the_published_registration_interface():
     assert compatible_register is register_extension
     assert compatible_specs is registered_extensions
     assert set(registered_extensions()) == {
+        "expansion_additions",
         "content_revisions",
         "story_versions",
         "learning_contacts",
@@ -216,7 +217,7 @@ def test_el20_revision_reversal_and_cached_replay_cannot_reissue_current_evidenc
     )
     mapped = target.client.get("/api/cards").json()["cards"][0]["id"]
     before = target.snapshot()
-    for command, original in zip(commands, responses):
+    for command, original in zip(commands, responses, strict=True):
         replay = target.client.post(
             "/api/typing/check", json={**command, "card_id": mapped}
         )

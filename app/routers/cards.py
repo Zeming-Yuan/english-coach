@@ -1,8 +1,9 @@
 """词卡路由：生成词卡 + 单词本列表。"""
 
 from datetime import UTC
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select, text
 from sqlalchemy.orm import Session
@@ -20,6 +21,7 @@ from app.models.review import Review
 from app.models.review_baseline import ReviewBaseline
 from app.models.review_event import ReviewEvent
 from app.runtime import Runtime, get_runtime
+from app.schemas.expansion_additions import ExpansionAdditionIn
 from app.services.card_generator import (
     generate_cards,
     generate_expansions,
@@ -33,6 +35,13 @@ from app.services.content_revisions import (
     delete_content_revision,
     get_content_revision,
     semantic_value,
+)
+from app.services.expansion_additions import (
+    addition_reference,
+    additions_for_target,
+    confirm_expansion,
+    confirmed_addition,
+    detach_expansion_additions,
 )
 from app.services.graduation import card_is_graduated
 from app.services.learning import (
@@ -183,6 +192,7 @@ def delete_card(
             practice,
             runtime.clock.now().astimezone(UTC).replace(tzinfo=None),
         )
+    detach_expansion_additions(db, card_id)
     delete_content_revision(db, "card", card_id)
     db.execute(delete(Memo).where(Memo.card_id == card_id))
     db.execute(delete(ErrorCard).where(ErrorCard.card_id == card_id))
@@ -287,6 +297,46 @@ def _load_current_card_and_revision(
             raise HTTPException(status_code=404, detail="Card not found") from error
         raise
     return current, current_revision
+
+
+@router.get("/expansion-additions")
+def expansion_additions(
+    request: Request,
+    target_card_id: int | None = Query(default=None, gt=0),
+    db: Session = Depends(get_db),
+):
+    return {
+        "enabled": request.app.state.settings.expansion_additions_enabled,
+        "practice_enabled": request.app.state.settings.expansion_practice_enabled,
+        "additions": additions_for_target(db, target_card_id)
+        if target_card_id is not None
+        else [],
+    }
+
+
+@router.get("/expansion-additions/{operation_id}")
+def expansion_addition(operation_id: UUID, db: Session = Depends(get_db)):
+    row = confirmed_addition(db, str(operation_id))
+    if row is None:
+        raise HTTPException(404, "加入记录不存在")
+    return addition_reference(row)
+
+
+@router.post("/cards/{card_id}/expansion-additions")
+def add_expansion(
+    card_id: int,
+    command: ExpansionAdditionIn,
+    request: Request,
+    db: Session = Depends(get_db),
+    runtime: Runtime = Depends(get_runtime),
+):
+    return confirm_expansion(
+        db,
+        card_id,
+        command,
+        runtime.clock.now(),
+        enabled=request.app.state.settings.expansion_additions_enabled,
+    )
 
 
 @router.post("/cards/{card_id}/expansions")

@@ -479,7 +479,7 @@ body.dark .product-app .card-face { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35), 0
 .product-app .result-badge { font-family: var(--font-reading); font-weight: 400; box-shadow: none; background: var(--nav-paper); }
 .product-app .practice-item { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px; min-height: 0; overflow-y: auto; }
 .product-app .practice-item > p { max-width: 620px; text-align: center; font-size: 12px; color: var(--muted); }
-.product-app .practice-item > .btn-ghost { width: min(100%,560px); min-height: 48px; font: 400 22px/1.4 var(--font-reading); }
+.product-app .practice-item > .btn-ghost, .product-app .practice-expansion-options > .btn-ghost { width: min(100%,560px); min-height: 48px; font: 400 22px/1.4 var(--font-reading); }
 .product-app .practice-item .save-state-actions { width: min(100%,560px); justify-content: center; }
 .product-app .practice-results { font-size: 12px; color: var(--muted); max-height: 100px; overflow-y: auto; padding: 12px 20px; background: var(--nav-paper); border-radius: 6px; }
 
@@ -641,3 +641,23 @@ body.dark .product-app .card-face { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35), 0
 .product-app .daily-summary-details > summary { cursor: pointer; color: var(--muted); font-size: 14px; }
 .product-app .daily-summary-details > p { margin-top: 12px; }
 .product-app .daily-summary-details > button { margin-top: 16px; }
+
+.product-app .study-expansions { margin-block: 12px; }
+.product-app .study-expansions .word-expansions { margin-block-start: 12px; }
+.product-app button.related-word-chip { cursor: pointer; font: inherit; text-align: start; }
+.expansion-preview {
+  width: min(420px, calc(100% - 32px));
+  max-height: calc(100% - 32px);
+  overflow: auto;
+  padding: 22px;
+  border: 1px solid var(--border, #c9c4bb);
+  border-radius: 8px;
+  background: var(--paper, #fff);
+  color: var(--ink, #23221f);
+}
+.expansion-preview::backdrop { background: rgb(0 0 0 / 42%); }
+.expansion-preview h2 { margin: 0; }
+.expansion-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.expansion-addition { margin-block-start: 12px; }
+.expansion-practice-links { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 12px; }
+.product-app .practice-expansion-options { width: min(100%, 560px); display: grid; gap: 14px; }

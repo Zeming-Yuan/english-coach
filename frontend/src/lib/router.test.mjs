@@ -137,3 +137,13 @@ test("formatRouteHash produces canonical hashes and routesEqual avoids duplicate
     false,
   );
 });
+
+test("contextual practice keeps its UUID and entry origin across hash reload", () => {
+  const practiceId = "73c1414a-94bd-4a7e-b2ec-67424e5d516b";
+  const route = parseRoute(`#/practice/${practiceId}`, {origin: "study"});
+  assert.equal(route.view, "practice");
+  assert.equal(route.practiceId, practiceId);
+  assert.equal(route.origin, "study");
+  assert.equal(formatRouteHash(route), `#/practice/${practiceId}`);
+  assert.equal(parseRoute("#/practice/invalid").view, "queue");
+});

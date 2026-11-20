@@ -11,7 +11,7 @@ const COLLECTION_LABELS = {
   review_baselines: "迁移基线", memos: "记忆法", errors: "错词", hard_cards: "困难词",
   lessons: "课程", stories: "故事", story_words: "故事关联", content_revisions: "内容修订",
   story_versions: "故事版本", learning_contacts: "应用内接触", practice_durations: "主动用时",
-  lesson_progress: "课程进度", practice_sessions: "练习轮次", practice_items: "练习题目",
+  expansion_additions: "扩展词加入记录", lesson_progress: "课程进度", practice_sessions: "练习轮次", practice_items: "练习题目",
   scene_attempts: "场景首答", scene_feedback: "场景表达反馈",
 };
 
