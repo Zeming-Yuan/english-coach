@@ -183,7 +183,8 @@ test("EL-17 empty library explains zero work for every budget", async ({app, pag
   await page.goto(app.baseURL);
   for (const minutes of [3, 8, 15]) {
     await page.getByRole("combobox", {name: "今天可用时间"}).selectOption(String(minutes));
-    await expect(page.getByTestId("time-budget-plan")).toContainText("预计约 0 分钟");
+    await expect(page.getByTestId("time-budget-plan")).toHaveCount(0);
+    await expect(page.getByRole("button", {name: "体验入门词卡", exact: true})).toBeEnabled();
     await expect(page.getByRole("heading", {name: "欢迎来到 EnglishCoach", exact: true})).toBeVisible();
     await expect(page.getByRole("button", {name: "开始今天的学习", exact: true})).toHaveCount(0);
   }

@@ -22,6 +22,7 @@ import WordsPage from "./views/WordsPage.jsx";
 import StoriesPage from "./views/StoriesPage.jsx";
 import AddPage from "./views/AddPage.jsx";
 import LearningAdvice from "./components/LearningAdvice.jsx";
+import HomeStarter from "./components/HomeStarter.jsx";
 import AdvicePracticePage from "./views/AdvicePracticePage.jsx";
 import StatsPage from "./views/StatsPage.jsx";
 import DelayedCheckPage from "./views/DelayedCheckPage.jsx";
@@ -223,6 +224,10 @@ export default function App({account = null, onLogout, logoutBusy = false, logou
   const [directStudy, setDirectStudy] = useState(() => storageGet("ec.study.direct", null));
   const isDailyStudy = !directStudy && Boolean(dailySession && !dailySession.finished);
   const studyQueue = (isDailyStudy ? dailySession?.queue : directStudy?.queue) ?? [];
+  const directPosition = view === "queue" && directStudy
+    ? storageGet(`ec.study.position:${directStudy.id}`, null)
+    : null;
+  const directRoundTarget = directPosition?.done ? 0 : (directStudy?.queue?.length ?? 0);
   const clearStudyPosition = id => {
     if (!id) return;
     try { accountStorage.removeItem(`ec.study.position:${id}`); } catch {}
@@ -407,10 +412,11 @@ export default function App({account = null, onLogout, logoutBusy = false, logou
   }, [navigate]);
 
   // 入门词卡：首页空态与「加词」页共用同一个显式添加动作（无需 AI）
-  const addStarterCards = useCallback(
-    () => api("/api/cards/starter", { method: "POST" }),
-    []
-  );
+  const addStarterCards = useCallback(async () => {
+    const fromRoute = currentRoute.current;
+    const result = await api("/api/cards/starter", { method: "POST" });
+    return currentRoute.current === fromRoute ? result : null;
+  }, []);
 
   const isNavView = ["queue", "lessons", "words", "stories", "add", "stats", "settings", "backup"].includes(view);
 
@@ -450,7 +456,7 @@ export default function App({account = null, onLogout, logoutBusy = false, logou
           confirmDailyCard(pending.payload, result);
           setQueueVersion((v) => v + 1);
         }} />}
-        {view === "queue" && <QueueView onAdvice={(req) => startAdvice(req, "queue")} key={queueVersion} setView={navigateView} onDelayed={(win) => startDelayed(win, "queue")} setStudyQueue={startDirect} dailySession={dailySession} onStartDaily={startDaily} onResumeDaily={() => {
+        {view === "queue" && <QueueView onAdvice={(req) => startAdvice(req, "queue")} key={queueVersion} setView={navigateView} onDelayed={(win) => startDelayed(win, "queue")} setStudyQueue={startDirect} dailySession={dailySession} directRoundTarget={directRoundTarget} onStartDaily={startDaily} onResumeDaily={() => {
           updateDirectStudy(null); setView("study");
         }} onAddStarter={addStarterCards} />}
         {view === "scene" && <ScenePage onExit={() => setView("queue")} />}
@@ -530,7 +536,7 @@ function homeChinesePreview(value, fallback = "") {
   return text && !/[a-z]/i.test(text) ? text : fallback;
 }
 
-function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, onStartDaily, onResumeDaily, onAddStarter }) {
+function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, directRoundTarget, onStartDaily, onResumeDaily, onAddStarter }) {
   const [data, setData] = useState(null);
   const [stats, setStats] = useState(null);
   const [lessonData, setLessonData] = useState(null);
@@ -647,9 +653,11 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
   };
 
   const activeSession = dailySession && !dailySession.finished ? dailySession : null;
+  const resumeDirect = !activeSession && directRoundTarget > 0;
+  const hasActiveRound = Boolean(activeSession || resumeDirect);
   const plan = activeSession?.plan ?? data.plan;
   const errorCount = (data.error_cards || []).length;
-  const isEmpty = stats?.total_cards === 0 && !activeSession;
+  const isEmpty = stats?.total_cards === 0 && !hasActiveRound;
 
   // 每日最低目标、新词建议与本轮卡数分别表达。
   const done = stats?.reviewed_today || 0;
@@ -658,7 +666,7 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
   const target = dailyGoal;
   const pct = target > 0 ? Math.min(1, done / target) : 0;
   const hour = new Date().getHours();
-  const showEveningReminder = hour >= 20 && done === 0;
+  const showEveningReminder = hour >= 20 && done === 0 && !isEmpty && !hasActiveRound;
   const currentLesson = lessonData?.lessons?.at(-1);
   const courseWords = currentLesson?.content?.words || [];
   const dialogue = (currentLesson?.content?.dialogue || []).map(line => homeChinesePreview(line.cn)).filter(Boolean).slice(0, 2);
@@ -675,9 +683,11 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
     ? activeSession.complete
       ? "主队列已保存，继续可选巩固或查看本轮结果。"
       : `上轮还有 ${activeSession.target - activeSession.index} 张未完成，先从保存的位置继续。`
-    : isEmpty
-      ? "先添加想学的词，或从入门词卡开始。"
-      : queueTotal === 0
+    : resumeDirect
+      ? "继续已开始的词卡学习。"
+      : isEmpty
+        ? "用 10 张内置入门词卡开始，无需配置 AI。"
+        : queueTotal === 0
         ? "当前没有待学词卡，今天可以结束了，也可自选练习。"
         : plan?.mode === "recovery"
           ? "先用一小轮到期复习找回节奏，无需一次清空积压。"
@@ -700,39 +710,40 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
           <p data-testid="next-step-reason">{nextStepReason}</p>
         </div>
         <div className="home-round-notes">
-          {data.time_budget_enabled !== false && <label>今天可用时间 <select aria-label="今天可用时间" value={activeSession?.plan?.budget_minutes ?? data.plan?.budget_minutes ?? budget} disabled={!!activeSession} onChange={event => {
+          {!resumeDirect && data.time_budget_enabled !== false && <label>今天可用时间 <select aria-label="今天可用时间" value={activeSession?.plan?.budget_minutes ?? data.plan?.budget_minutes ?? budget} disabled={!!activeSession || starterLoading} onChange={event => {
             const minutes = Number(event.target.value);
             explicitBudget.current = true; storageSet("timeBudget", minutes); setBudget(minutes); setMode("regular");
           }}>{[3, 8, 15].map(minutes => <option key={minutes} value={minutes}>约 {minutes} 分钟</option>)}</select></label>}
-          <p role="status" data-testid="time-budget-plan">预计约 {Math.ceil((plan?.estimated_seconds ?? 0) / 60)} 分钟 · 巩固至多 {plan?.reinforcement_limit ?? 3} 题</p>
-          {plan?.may_exceed_budget && <p role="status">至少保留一张有效词卡，本轮可能超过所选时间，可保存后暂停。</p>}
+          {!isEmpty && !resumeDirect && <p role="status" data-testid="time-budget-plan">预计约 {Math.ceil((plan?.estimated_seconds ?? 0) / 60)} 分钟 · 巩固至多 {plan?.reinforcement_limit ?? 3} 题</p>}
+          {!isEmpty && !resumeDirect && plan?.may_exceed_budget && <p role="status">至少保留一张有效词卡，本轮可能超过所选时间，可保存后暂停。</p>}
 
         </div>
-        {!activeSession && data.recovery_available && <div className="home-round-notes" data-testid="recovery-offer">
+        {!hasActiveRound && data.recovery_available && <div className="home-round-notes" data-testid="recovery-offer">
           <p role="status">恢复学习：中断至少三个学习日，可先用约三分钟复习至多五张到期词，零新词；无需一次清空积压。</p>
           {data.plan?.mode === "recovery"
             ? <button className="btn btn-ghost home-on-dark" onClick={() => setMode("regular")}>选择常规计划</button>
             : <button className="btn btn-ghost home-on-dark" onClick={() => setMode("recovery")}>选择恢复学习</button>}
         </div>}
-        {isEmpty ? <div className="home-welcome">
-          <div><h2>欢迎来到 EnglishCoach</h2><p>添加想学的词，或先用 10 张已核对的入门词卡开始。</p></div>
-          <div className="home-welcome-actions">
-            <button className="btn home-primary" onClick={() => setView("add")}>先加几个词<CaretRightIcon aria-hidden="true" /></button>
-            <button className="btn home-on-dark" onClick={addStarter} disabled={starterLoading}>{starterLoading ? "正在添加…" : "体验入门词卡"}</button>
-            <button className="home-text-link home-on-dark" onClick={() => setView("backup")}>恢复备份</button>
-          </div>
-          {starterError && <p role="alert">添加失败：{starterError}，请重试</p>}
-        </div> : <>
-          <div className="home-round-body">
-            <div className="home-round-summary">
-              <h2>{activeSession || queueTotal > 0 ? "本轮学习" : "今日复习已完成"}</h2>
-              {activeSession || queueTotal > 0 ? <p data-testid="round-target">本轮目标 {activeSession?.target ?? data.target} 张 · 到期复习 {activeSession?.reviewCount ?? data.review_count} 张 · 新词 {activeSession?.newCount ?? data.new_count} 个</p> : <p>{data.new_remaining === 0 ? "今日新词余量已用完，可稍后复习或继续专项练习。" : "当前没有到期词或待学新词，可继续专项练习。"}</p>}
-            </div>
-            <button className="btn home-primary home-round-action" onClick={() => activeSession ? onResumeDaily() : queueTotal > 0 ? onStartDaily(data) : setView("add")}>
-              {activeSession ? "继续本轮学习" : queueTotal > 0 ? (plan?.mode === "recovery" ? "开始恢复学习" : "开始今天的学习") : "添加新词"}<CaretRightIcon aria-hidden="true" size={20} />
-            </button>
-          </div>
-        </>}
+        {isEmpty
+          ? <HomeStarter onStart={addStarter} loading={starterLoading} error={starterError} onNavigate={setView} />
+          : <div className="home-round-body">
+              <div className="home-round-summary">
+                <h2>{hasActiveRound || queueTotal > 0 ? "本轮学习" : "今日复习已完成"}</h2>
+                {resumeDirect ? <p data-testid="round-target">本轮目标 {directRoundTarget} 张</p>
+                  : activeSession || queueTotal > 0
+                    ? <p data-testid="round-target">本轮目标 {activeSession?.target ?? data.target} 张 · 到期复习 {activeSession?.reviewCount ?? data.review_count} 张 · 新词 {activeSession?.newCount ?? data.new_count} 个</p>
+                    : <p>{data.new_remaining === 0 ? "今日新词余量已用完，可稍后复习或继续专项练习。" : "当前没有到期词或待学新词，可继续专项练习。"}</p>}
+              </div>
+              <button className="btn home-primary home-round-action" onClick={() => {
+                if (activeSession) onResumeDaily();
+                else if (resumeDirect) setView("study");
+                else if (queueTotal > 0) onStartDaily(data);
+                else setView("add");
+              }}>
+                {hasActiveRound ? "继续本轮学习" : queueTotal > 0 ? (plan?.mode === "recovery" ? "开始恢复学习" : "开始今天的学习") : "添加新词"}<CaretRightIcon aria-hidden="true" size={20} />
+              </button>
+            </div>}
+
         <details className="home-plan-details">
           <summary>计划详情与目标设置</summary>
           <p>本浏览器保留最近 30 轮实际暂停、退出和完成的明细，并保留更早记录的建议摘要；不改变排期或全日新词配额，不随数据库备份转移。刷新继续同一轮，重复暂停不重复计轮。</p>
