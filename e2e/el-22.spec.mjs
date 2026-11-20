@@ -243,10 +243,11 @@ test("EL-22 unavailable browser storage cannot block saved learning or invent co
 
 test("EL-22 empty due and recovery reasons reflect the real queue without creating learning events", async ({app, page}) => {
   await page.goto(app.baseURL);
-  await expect(page.getByTestId("next-step-reason")).toHaveText("先添加想学的词，或从入门词卡开始。");
+  await expect(page.getByTestId("next-step-reason")).toHaveText("用 10 张内置入门词卡开始，无需配置 AI。");
   for (const minutes of [3, 8, 15]) {
     await page.getByLabel("今天可用时间").selectOption(String(minutes));
-    await expect(page.getByTestId("time-budget-plan")).toContainText("预计约 0 分钟");
+    await expect(page.getByTestId("time-budget-plan")).toHaveCount(0);
+    await expect(page.getByRole("button", {name: "体验入门词卡", exact: true})).toBeEnabled();
   }
   const [id] = await app.seedCards([{word: "apple", meaning: "苹果"}, {word: "book", meaning: "书"}]);
   await app.setTime("2026-10-01T01:00:00Z");

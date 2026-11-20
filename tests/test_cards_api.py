@@ -439,3 +439,152 @@ def test_update_card_rejects_stale_expected_revision(ec):
     current = ec.client.get(f"/api/cards/{card_id}").json()
     assert current["meaning"] == "红苹果"
     assert current["example"] == "Old example."
+
+
+def test_generation_preserves_existing_phrase_and_separates_sentence_card(ec):
+    from tests.support.llm_queue import QueuedLLM
+
+    existing = ec.seed_card(" Apple Juice ", meaning="自定义果汁")
+    sentence = ec.seed_card("green tea", kind="sentence", meaning="自定义句子")
+    ec.app.state.llm_client = QueuedLLM(
+        [{"cards": [{"word": "  GREEN TEA  ", "meaning": "绿茶"}]}]
+    )
+    response = ec.client.post(
+        "/api/cards/generate",
+        json={"words": [" apple juice ", "green tea", " GREEN TEA "]},
+    )
+    assert response.status_code == 200
+    result = response.json()
+    assert result["existing_words"] == ["apple juice"]
+    assert result["failed_words"] == []
+    assert result["generated"] == 1
+    assert result["skipped"] == 2
+    assert [(card["word"], card["kind"]) for card in result["cards"]] == [
+        ("green tea", "word")
+    ]
+
+    cards = {card["id"]: card for card in ec.client.get("/api/cards").json()["cards"]}
+    assert len(cards) == 3
+    assert cards[existing]["meaning"] == "自定义果汁"
+    assert cards[sentence]["meaning"] == "自定义句子"
+    replay = ec.client.post(
+        "/api/cards/generate", json={"words": ["APPLE JUICE", "Green Tea"]}
+    )
+    assert replay.status_code == 200
+    assert replay.json()["existing_words"] == ["APPLE JUICE", "Green Tea"]
+    assert replay.json()["generated"] == 0
+
+
+def test_generation_reports_missing_phrase_without_saving_model_extras(ec):
+    from tests.support.llm_queue import QueuedLLM
+
+    ec.app.state.llm_client = QueuedLLM(
+        [
+            {
+                "cards": [
+                    {"word": "pear", "meaning": "梨"},
+                    {"word": "apple"},
+                    {"word": "juice"},
+                    {"word": "banana"},
+                ]
+            },
+            {"cards": [{"word": "apple juice", "meaning": "苹果汁"}]},
+        ]
+    )
+    request = {"words": ["apple juice", "pear"]}
+    response = ec.client.post("/api/cards/generate", json=request)
+    assert response.status_code == 200
+    result = response.json()
+    assert [card["word"] for card in result["cards"]] == ["pear"]
+    assert result["existing_words"] == []
+    assert result["failed_words"] == ["apple juice"]
+
+    replay = ec.client.post("/api/cards/generate", json=request)
+    assert replay.status_code == 200
+    assert [card["word"] for card in replay.json()["cards"]] == ["apple juice"]
+    assert replay.json()["existing_words"] == ["pear"]
+    assert sorted(
+        card["word"] for card in ec.client.get("/api/cards").json()["cards"]
+    ) == ["apple juice", "pear"]
+
+
+def test_overlapping_phrase_generation_saves_once(ec):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+
+    from tests.support.llm_queue import QueuedLLM
+
+    requests_overlap = Barrier(2)
+
+    class OverlappingLLM(QueuedLLM):
+        def create(self, **kwargs):
+            requests_overlap.wait(timeout=10)
+            return super().create(**kwargs)
+
+    card_data = {"cards": [{"word": "apple juice", "meaning": "苹果汁"}]}
+    ec.app.state.llm_client = OverlappingLLM([card_data, card_data])
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        responses = list(
+            pool.map(
+                lambda word: ec.client.post(
+                    "/api/cards/generate", json={"words": [word]}
+                ),
+                ["apple juice", "Apple Juice"],
+            )
+        )
+
+    assert [response.status_code for response in responses] == [200, 200]
+    assert sorted(response.json()["generated"] for response in responses) == [0, 1]
+    assert sum(len(response.json()["existing_words"]) for response in responses) == 1
+    assert len(ec.client.get("/api/cards").json()["cards"]) == 1
+
+
+def test_generation_rejects_blank_items_without_writing(ec):
+    response = ec.client.post("/api/cards/generate", json={"words": ["  \n  "]})
+    assert response.status_code == 422
+    assert ec.client.get("/api/cards").json()["cards"] == []
+
+
+def test_generation_upstream_failure_reports_already_existing_words(ec):
+    from tests.support.llm_queue import QueuedLLM
+
+    ec.seed_card("pear", meaning="原有梨")
+    ec.app.state.llm_client = QueuedLLM([RuntimeError("provider unavailable")])
+    response = ec.client.post(
+        "/api/cards/generate", json={"words": ["pear", "apple juice"]}
+    )
+    assert response.status_code == 502
+    assert response.json()["existing_words"] == ["pear"]
+    assert response.json()["failed_words"] == ["apple juice"]
+    assert [card["word"] for card in ec.client.get("/api/cards").json()["cards"]] == [
+        "pear"
+    ]
+
+
+def test_generated_phrase_preserves_spelling_and_revision_after_v3_restore(
+    ec, ec_factory
+):
+    from tests.support.llm_queue import QueuedLLM
+
+    ec.app.state.llm_client = QueuedLLM(
+        [{"cards": [{"word": "APPLE  JUICE", "meaning": "苹果汁"}]}]
+    )
+    response = ec.client.post("/api/cards/generate", json={"words": ["Apple  Juice"]})
+    assert response.status_code == 200
+    generated = response.json()["cards"][0]
+    backup = ec.client.get("/api/export/backup").json()
+
+    target = ec_factory()
+    preview = target.client.post("/api/import/preview", json=backup)
+    assert preview.status_code == 200
+    restore = target.client.post(
+        "/api/import/cards",
+        json={
+            "backup": backup,
+            "expected_revision": preview.json()["expected_revision"],
+        },
+    )
+    assert restore.status_code == 200
+    cards = target.client.get("/api/cards").json()["cards"]
+    assert [card["word"] for card in cards] == ["Apple  Juice"]
+    assert cards[0]["content_revision"] == generated["content_revision"]

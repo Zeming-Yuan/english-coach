@@ -74,7 +74,7 @@ def test_generator_keeps_only_one_card_per_requested_word(db_session, monkeypatc
         "generate_json",
         lambda *args: {"cards": [{"word": "cat"}, {"word": "cat"}]},
     )
-    cards = card_generator.generate_cards(["cat", "cat"], db_session)
+    cards = card_generator.generate_cards(["cat", "cat"], db_session).cards
     assert [card.word for card in cards] == ["cat"]
 
 
@@ -94,7 +94,7 @@ def test_generator_discards_chunks_of_a_rejected_example(db_session, monkeypatch
             ]
         },
     )
-    card = card_generator.generate_cards(["cat"], db_session)[0]
+    card = card_generator.generate_cards(["cat"], db_session).cards[0]
     assert card.example == ""
     assert card.chunks is None
 

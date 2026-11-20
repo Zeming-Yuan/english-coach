@@ -4,7 +4,8 @@ from datetime import UTC
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel, Field
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import delete, select, text
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.exc import ObjectDeletedError
@@ -69,6 +70,13 @@ class GenerateCardsIn(BaseModel):
     """生成词卡请求体。"""
 
     words: list[str] = Field(min_length=1, max_length=20)
+
+    @field_validator("words")
+    @classmethod
+    def require_non_blank_words(cls, words: list[str]) -> list[str]:
+        if any(not word.strip() for word in words):
+            raise ValueError("条目不能为空")
+        return words
 
 
 class ExpectedRevisionIn(BaseModel):
@@ -247,14 +255,21 @@ def _card_to_dict_fast(
 @router.post("/cards/generate")
 def generate(req: GenerateCardsIn, db: Session = Depends(get_db)):
     """AI 批量生成词卡（已存在的词跳过）。"""
-    try:
-        cards = generate_cards(req.words, db)
-    except ValueError as e:
-        raise HTTPException(status_code=502, detail=str(e)) from e
+    result = generate_cards(req.words, db)
+    outcome = {
+        "existing_words": result.existing_words,
+        "failed_words": result.failed_words,
+    }
+    if result.error is not None and result.failed_words:
+        return JSONResponse(
+            status_code=503 if isinstance(result.error, LLMNotConfigured) else 502,
+            content={"detail": str(result.error), **outcome},
+        )
     return {
-        "generated": len(cards),
-        "skipped": len(req.words) - len(cards),
-        "cards": [card_to_dict(c, db) for c in cards],
+        "generated": len(result.cards),
+        "skipped": len(req.words) - len(result.cards),
+        "cards": [card_to_dict(card, db) for card in result.cards],
+        **outcome,
     }
 
 

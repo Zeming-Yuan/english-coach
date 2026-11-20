@@ -341,6 +341,12 @@ body.dark .product-app .btn-primary:hover { background: #d8cec0; border-color: #
 .product-app .add-panel .add-hint { margin: 0; }
 .product-app .add-input { padding: 16px 18px; min-height: 148px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); font-size: 17px; line-height: 1.8; color: var(--ink); }
 .product-app .add-input:focus { background: var(--card); border-color: var(--mint); }
+.product-app .add-mode { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; color: var(--ink); }
+.product-app .add-mode select { padding: 8px 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); color: var(--ink); font: inherit; }
+.product-app .add-preview { min-width: 0; overflow-wrap: anywhere; }
+.product-app .add-preview p { margin: 0; }
+.product-app .add-preview ol { margin: 6px 0; padding-inline-start: 24px; }
+.product-app .add-preview li { white-space: pre-wrap; }
 .product-app .add-panel-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
 .product-app .add-count-hint { font-size: 13px; color: var(--muted); }
 .product-app .add-starter-points { margin: 2px 0 4px; padding-left: 18px; display: grid; gap: 6px; font-size: 13px; line-height: 1.75; color: var(--muted); }

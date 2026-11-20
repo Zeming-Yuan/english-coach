@@ -110,6 +110,9 @@
 .home-workspace .home-welcome h2 { color: #fff7eb; font-size: 23px; }
 .home-welcome p { color: #e1d7c9; font-size: 15px; margin-top: 8px; }
 .home-welcome-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; }
+.home-welcome-actions .home-primary svg { width: 20px; height: 20px; }
+.home-ai-config-actions { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 14px; }
+.home-ai-config-actions p { margin: 0; }
 .home-workspace .home-on-dark { color: #fff7eb; border-color: #a89a87; }
 .home-workspace .home-on-dark:hover { background: #4b4840; }
 

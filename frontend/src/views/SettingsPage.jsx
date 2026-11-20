@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { api } from "../lib/api.js";
+import { useAiConfig } from "../hooks/useAiConfig.js";
 import { storageGet, storageSet } from "../lib/utils.js";
 import { setTtsRate } from "../lib/tts.js";
 import { showToast } from "../App.jsx";
@@ -14,32 +15,24 @@ export default function SettingsPage({ darkMode, setDarkMode, onOpenBackup }) {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshResult, setRefreshResult] = useState(null);
   const [regenerating, setRegenerating] = useState(false);
-  const [aiConfig, setAiConfig] = useState(null);
+  const { config: aiConfig, error: aiLoadError, reload: reloadAiConfig, setConfig: setAiConfig } = useAiConfig();
   const [aiBaseUrl, setAiBaseUrl] = useState("");
   const [aiModel, setAiModel] = useState("");
   const [aiKey, setAiKey] = useState("");
   const [aiBusy, setAiBusy] = useState("");
   const [aiTest, setAiTest] = useState(null);
-  const [aiLoadError, setAiLoadError] = useState("");
-  const [aiLoadRetry, setAiLoadRetry] = useState(0);
+  const [aiSaveUnconfirmed, setAiSaveUnconfirmed] = useState(false);
 
   useEffect(() => {
-    let alive = true;
-    setAiLoadError("");
-    api("/api/ai-config")
-      .then((r) => {
-        if (!alive) return;
-        setAiConfig(r);
-        setAiBaseUrl(r.base_url);
-        setAiModel(r.model);
-      })
-      .catch((error) => {
-        if (alive) setAiLoadError("AI 配置加载失败：" + error.message);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [aiLoadRetry]);
+    if (!aiConfig) return;
+    setAiBaseUrl(aiConfig.base_url);
+    setAiModel(aiConfig.model);
+  }, [aiConfig]);
+
+  const retryAiConfig = () => {
+    setAiSaveUnconfirmed(false);
+    reloadAiConfig();
+  };
 
   const aiPayload = () => ({ base_url: aiBaseUrl, model: aiModel, api_key: aiKey });
 
@@ -52,7 +45,12 @@ export default function SettingsPage({ darkMode, setDarkMode, onOpenBackup }) {
       setAiKey("");
       showToast("✅ AI 服务配置已保存");
     } catch (e) {
-      showToast("保存失败：" + e.message);
+      if (!e.status) {
+        setAiSaveUnconfirmed(true);
+        setAiKey("");
+      } else {
+        showToast("保存失败：" + e.message);
+      }
     } finally {
       setAiBusy("");
     }
@@ -120,7 +118,12 @@ export default function SettingsPage({ darkMode, setDarkMode, onOpenBackup }) {
           </div>
         </div>
         <h2 className="settings-section-title">AI 服务</h2>
-        {aiLoadError && <p role="alert">{aiLoadError} <button className="btn btn-ghost btn-small" onClick={() => setAiLoadRetry(n => n + 1)}>重试加载配置</button></p>}
+        {(aiLoadError || aiSaveUnconfirmed) && (
+          <p role="alert">
+            {aiSaveUnconfirmed ? "AI 配置保存状态未知，请重新读取配置。" : `AI 配置加载失败：${aiLoadError}`}{" "}
+            <button className="btn btn-ghost btn-small" onClick={retryAiConfig}>重试加载配置</button>
+          </p>
+        )}
         <div className="settings-row" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
           <p style={{ fontSize: 12, color: "var(--muted)", margin: 0 }}>
             用于生成词卡、故事与查词。保存后立即生效；配置只存在本机 data/llm_config.json，不进入备份。
@@ -132,9 +135,9 @@ export default function SettingsPage({ darkMode, setDarkMode, onOpenBackup }) {
           <label className="settings-label" htmlFor="ai-key">API Key</label>
           <input id="ai-key" className="word-search-input" type="password" value={aiKey} onChange={(e) => setAiKey(e.target.value)} placeholder={aiConfig?.has_key ? "已保存，留空则不修改" : "sk-..."} autoComplete="new-password" />
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-            <button className="btn btn-primary btn-small" disabled={!!aiBusy || !aiConfig} onClick={saveAiConfig}>{aiBusy === "save" ? "保存中…" : "保存配置"}</button>
-            <button className="btn btn-ghost btn-small" disabled={!!aiBusy || !aiConfig} onClick={testAiConfig}>{aiBusy === "test" ? "测试中…" : "测试连接"}</button>
-            <span style={{ fontSize: 12, color: "var(--muted)" }}>{!aiConfig ? "配置尚未读取" : aiConfig.has_key ? "密钥已配置" : "密钥未配置"}</span>
+            <button className="btn btn-primary btn-small" disabled={!!aiBusy || !aiConfig || aiSaveUnconfirmed} onClick={saveAiConfig}>{aiBusy === "save" ? "保存中…" : "保存配置"}</button>
+            <button className="btn btn-ghost btn-small" disabled={!!aiBusy || !aiConfig || aiSaveUnconfirmed} onClick={testAiConfig}>{aiBusy === "test" ? "测试中…" : "测试连接"}</button>
+            {!aiSaveUnconfirmed && <span style={{ fontSize: 12, color: "var(--muted)" }}>{!aiConfig ? "配置尚未读取" : aiConfig.has_key ? "密钥已配置" : "密钥未配置"}</span>}
           </div>
           {aiTest && (
             <p role="status" style={{ fontSize: 12, margin: 0, color: aiTest.ok ? "var(--success)" : "var(--coral)" }}>

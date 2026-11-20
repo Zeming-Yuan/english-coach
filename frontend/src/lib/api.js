@@ -16,8 +16,9 @@ export async function api(path, opts = {}) {
   }
   if (!resp.ok) {
     let detail = resp.statusText;
+    let body;
     try {
-      const body = await resp.json();
+      body = await resp.json();
       if (typeof body.detail === "string") {
         detail = body.detail;
       } else if (Array.isArray(body.detail)) {
@@ -31,6 +32,7 @@ export async function api(path, opts = {}) {
     } catch {}
     const error = new Error(detail);
     error.status = resp.status;
+    error.data = body;
     throw error;
   }
   const text = await resp.text();
