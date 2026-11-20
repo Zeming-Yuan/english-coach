@@ -25,8 +25,9 @@ export async function sendPending(pending) {
   });
   if (!response.ok) {
     let detail = response.statusText;
+    let body;
     try {
-      const body = await response.json();
+      body = await response.json();
       if (body && body.detail !== undefined) detail = body.detail;
     } catch {}
     const error = new Error(
@@ -34,6 +35,7 @@ export async function sendPending(pending) {
     );
     error.status = response.status;
     error.detail = detail;
+    error.data = body;
     throw error;
   }
   let result;

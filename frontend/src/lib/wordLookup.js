@@ -8,12 +8,12 @@ import { api } from "./api.js";
 import { cleanToken } from "./utils.js";
 
 /**
- * @param {{ learnedWords?: Array<{word: string}> }} opts 已学词（如故事目标词）
+ * @param {{ learnedWords?: Array<{word: string}>, glossary?: Record<string, string> }} opts 已学词与随材料发布的释义
  * @returns {{ word, result, open, close, markLearned }}
  *  word: { word, phonetic, meaning, card_id? } 面板数据
  *  result: { status: "idle"|"loading"|"found"|"missing"|"error", isLearned?: boolean }
  */
-export function useWordLookup({ learnedWords = [] } = {}) {
+export function useWordLookup({ learnedWords = [], glossary } = {}) {
   const [word, setWord] = useState(null);
   const [result, setResult] = useState({ status: "idle" });
   const requestSequence = useRef(0);
@@ -27,6 +27,12 @@ export function useWordLookup({ learnedWords = [] } = {}) {
     if (learned) {
       setWord(learned);
       setResult({ status: "found", isLearned: true });
+      return;
+    }
+    const meaning = glossary?.[clean];
+    if (typeof meaning === "string") {
+      setWord({ word: clean, meaning });
+      setResult({ status: "found", isLearned: false });
       return;
     }
     setWord({ word: clean });

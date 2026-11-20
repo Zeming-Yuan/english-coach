@@ -1,4 +1,5 @@
 import { accountStorage } from "../lib/accountSession.js";
+import DemoLesson from "../components/DemoLesson.jsx";
 import UiIcon from "../components/UiIcon.jsx";
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { api } from "../lib/api.js";
@@ -13,6 +14,7 @@ import {
   clearPending,
 } from "../lib/learning.js";
 import { useLearningAttempt } from "../hooks/useLearningAttempt.js";
+import { useAiConfig } from "../hooks/useAiConfig.js";
 import { useRouteDetail } from "../hooks/useRouteDetail.js";
 import { hasLessonLevelPrefix, formatLessonTitle } from "../lib/utils.js";
 import { showToast } from "../App.jsx";
@@ -60,6 +62,7 @@ export default function LessonsPage({
   lessonLevel = null,
   lessonSubView = null,
   onLessonChange,
+  onNavigate,
 }) {
   const [lessons, setLessons] = useState([]);
   const [nextLevel, setNextLevel] = useState(1);
@@ -74,6 +77,9 @@ export default function LessonsPage({
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [generating, setGenerating] = useState(false);
+  const { config, error: configError, reload: reloadConfig } = useAiConfig();
+  const demoButton = useRef(null);
+  const restoreDemoFocus = useRef(false);
   const [hasNextPending, setHasNextPending] = useState(() =>
     Boolean(loadPending(NEXT_SCOPE, NEXT_PREFIX)),
   );
@@ -90,7 +96,10 @@ export default function LessonsPage({
   const [startingPractice, setStartingPractice] = useState(false);
 
   const syncLessonDetail = useCallback(
-    (level, options) => onLessonChange?.(level, null, options),
+    (level, options) => {
+      if (level === "demo") onLessonChange?.(null, "demo", options);
+      else onLessonChange?.(level, null, options);
+    },
     [onLessonChange],
   );
   const {
@@ -101,10 +110,10 @@ export default function LessonsPage({
     adoptItem: adoptLesson,
     closeItem: closeLesson,
   } = useRouteDetail({
-    detailId: lessonLevel,
+    detailId: lessonSubView === "demo" ? "demo" : lessonLevel,
     onDetailChange: onLessonChange ? syncLessonDetail : undefined,
     fetchItem: (level) => api(`/api/lessons/${level}`),
-    getItemId: (lesson) => lesson.level,
+    getItemId: (lesson) => lesson.mode === "demo" ? "demo" : lesson.level,
     onLoadError: (error, retryOpen) => {
       showToast("课程加载失败：" + error.message, "重试", retryOpen);
     },
@@ -113,6 +122,13 @@ export default function LessonsPage({
   useEffect(() => {
     if (!activeLesson) setViewPending(pendingViewLevels());
   }, [activeLesson]);
+
+  useEffect(() => {
+    if (restoreDemoFocus.current && lessonSubView !== "demo" && demoButton.current) {
+      demoButton.current.focus();
+      restoreDemoFocus.current = false;
+    }
+  }, [activeLesson, lessonSubView, loading, routeOpening]);
 
   const loadLessons = useCallback(
     () => {
@@ -237,8 +253,10 @@ export default function LessonsPage({
 
   const nextLesson = async () => {
     if (generating) return;
-    invalidateLessonSelection();
     let pending = loadPending(NEXT_SCOPE, NEXT_PREFIX);
+    const confirming = Boolean(pending);
+    if (!pending && !config?.has_key) return;
+    invalidateLessonSelection();
     if (!pending && (isDone || nextLevel > 20)) {
       closeLesson();
       return;
@@ -251,25 +269,49 @@ export default function LessonsPage({
         payload: { operation_id: crypto.randomUUID() },
       };
       savePending(NEXT_SCOPE, pending, NEXT_PREFIX);
-      setHasNextPending(true);
     }
     try {
       const lesson = await sendPending(pending);
+      if (!Number.isInteger(lesson.level) || !lesson.content) {
+        throw new Error("服务器未返回可读取的课程");
+      }
       clearPending(NEXT_SCOPE, NEXT_PREFIX);
       setHasNextPending(false);
       adoptLesson(lesson);
       await loadLessons().catch(() => {});
     } catch (error) {
-      setHasNextPending(true);
-      showToast(
-        "生成尚未确认：" + (error?.message || error),
-        "重试",
-        nextLesson,
-      );
+      if (error?.data?.code === "lesson_generation_rejected") {
+        // Rejecting this replay does not resolve an earlier ambiguous request.
+        if (!confirming) {
+          clearPending(NEXT_SCOPE, NEXT_PREFIX);
+          setHasNextPending(false);
+        }
+        if (error.status === 503) reloadConfig();
+        if (error.status === 409) loadLessons().catch(() => {});
+        showToast("课程生成失败：" + error.message);
+      } else {
+        setHasNextPending(true);
+        showToast("生成尚未确认：" + (error?.message || error), "重试", nextLesson);
+      }
     } finally {
       setGenerating(false);
     }
   };
+
+  const configAction = !config?.has_key && (
+    configError ? <div>
+      <p role="alert">无法读取 AI 配置：{configError}</p>
+      <button className="btn btn-ghost btn-small" onClick={reloadConfig}>重试读取 AI 配置</button>
+    </div> : config ? <div>
+      <p>正式课程生成需要配置 AI 服务。</p>
+      <button className="btn btn-ghost btn-small" onClick={() => onNavigate("settings")}>配置 AI 服务</button>
+    </div> : <p role="status">正在读取 AI 配置…</p>
+  );
+  const generationButton = (label, className) => (
+    <button className={className} disabled={generating} onClick={nextLesson}>
+      {generating ? "生成中…" : label}
+    </button>
+  );
 
   if (practiceSessionId) {
     return (
@@ -286,6 +328,12 @@ export default function LessonsPage({
   if (loading || routeOpening || (lessonSubView === "check" && !practiceSessionId)) {
     return <div className="story-empty">加载中…</div>;
   }
+  if (activeLesson?.mode === "demo") {
+    return <DemoLesson lesson={activeLesson} onExit={() => {
+      restoreDemoFocus.current = true;
+      closeLesson({ popIfFromParent: true, replace: true });
+    }} />;
+  }
   if (loadError && !activeLesson) return <div role="alert">加载失败：{loadError}<button className="btn btn-ghost" onClick={() => {setLoading(true); loadLessons().catch(() => {});}}>重试加载</button></div>;
 
   // 课程学习页
@@ -297,10 +345,11 @@ export default function LessonsPage({
         key={activeLesson.id}
         lesson={activeLesson}
         onBack={() => closeLesson({ popIfFromParent: true, replace: true })}
-        onNext={nextLesson}
+        nextAction={hasNextPending || !configAction
+          ? generationButton(hasNextPending ? "继续确认生成" : "稍后检查，继续下一课", "btn btn-ghost btn-wide")
+          : configAction}
         onViewed={loadLessons}
         onStartPractice={startPractice}
-        generating={generating}
       />
       </>
     );
@@ -311,6 +360,18 @@ export default function LessonsPage({
     <section className="view">
       <div className="page-head">
         <h2 className="page-title">课程</h2>
+      </div>
+
+      <div className="lesson-entry">
+        <div className="lesson-entry-body">
+          <div className="eyebrow">示范课 · 免 AI 配置</div>
+          <strong>问候示范课</strong>
+          <div className="lesson-entry-sub">学习一句问候，完成一道示例任务。</div>
+        </div>
+        <button ref={demoButton} className="btn btn-primary btn-small"
+          disabled={generating} onClick={() => openLesson("demo")}>
+          体验示范课
+        </button>
       </div>
 
       {/* 当前进度 */}
@@ -336,28 +397,15 @@ export default function LessonsPage({
             {isDone ? " · 可随时回顾" : ` · 下一课：第 ${nextLevel} 课`}
           </div>
         </div>
-        {!isDone && (
-          <button
-            className="btn btn-primary btn-small"
-            data-testid="open-lessons"
-            disabled={generating}
-            onClick={nextLesson}
-          >
-            {generating ? "生成中…" : lessons.length === 0 ? "开始" : "继续 →"}
-          </button>
-        )}
+        {!isDone && (configAction || (!hasNextPending && generationButton(
+          lessons.length === 0 ? "开始" : "继续 →", "btn btn-primary btn-small",
+        )))}
       </div>
 
       {hasNextPending && (
         <div role="status" className="lesson-entry">
-          上次生成尚未确认保存
-          <button
-            className="btn btn-ghost btn-small"
-            disabled={generating}
-            onClick={nextLesson}
-          >
-            继续确认生成
-          </button>
+          {generating ? "正在确认上次生成" : "上次生成尚未确认保存"}
+          {generationButton("继续确认生成", "btn btn-ghost btn-small")}
         </div>
       )}
 
@@ -409,7 +457,7 @@ function LessonRetention({retention}) {
   </div>;
 }
 
-function LessonDetail({ lesson, onBack, onNext, onViewed, onStartPractice, generating }) {
+function LessonDetail({ lesson, onBack, nextAction, onViewed, onStartPractice }) {
   const [mastered, setMastered] = useState(new Set());
   const [revealed, setRevealed] = useState(new Set());
   const [guesses, setGuesses] = useState({});
@@ -692,13 +740,7 @@ function LessonDetail({ lesson, onBack, onNext, onViewed, onStartPractice, gener
             </div>
           </div>
         )}
-        <button
-          className="btn btn-ghost btn-wide"
-          onClick={onNext}
-          disabled={generating}
-        >
-          {generating ? "生成中…" : "稍后检查，继续下一课"}
-        </button>
+        {nextAction}
       </div>
     </section>
   );

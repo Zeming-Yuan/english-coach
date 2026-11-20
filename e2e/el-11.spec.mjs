@@ -41,6 +41,7 @@ for (const basis of ["empty", "self-rating"]) {
     await expect(page.getByTestId("story-quality")).toContainText("回忆依据不足");
     await page.getByRole("button", {name: "打开入门故事", exact: true}).click();
     await expect(page.locator(".story-read-title")).toContainText("My small book");
+    await page.getByText("材料说明", {exact: true}).click();
     await expect(page.getByTestId("story-quality")).toContainText("不代表个人掌握");
     expect((await (await app.request.get("/api/export/backup")).json()).stories).toHaveLength(0);
   });
@@ -91,7 +92,10 @@ test("EL-11 invalid generation keeps saved story and offers starter", async ({ap
   await expect(page.getByRole("alert")).toContainText("两次生成仍不合格");
   await expect(page.locator(".story-item")).toHaveCount(1);
   await page.getByRole("button", {name: "阅读入门材料", exact: true}).click();
+  await expect(page.locator(".story-read-title")).toHaveText("My small book");
+  await page.getByText("材料说明", {exact: true}).click();
   await expect(page.getByTestId("story-quality")).toContainText("已核对的入门材料");
+  await page.getByRole("button", {name: "返回故事列表", exact: true}).first().click();
   await page.locator(".story-item-main").click();
   await expect(page.locator(".story-read-title")).toContainText("My apple");
 });
@@ -104,8 +108,10 @@ for (const external of ["missing", "timeout"]) {
     await page.getByRole("button", {name: "生成新故事", exact: true}).click();
     await expect(page.getByRole("alert")).toContainText(external === "missing" ? "LLM_API_KEY" : "故事生成失败");
     await page.getByRole("button", {name: "阅读入门材料", exact: true}).click();
+    await page.getByText("材料说明", {exact: true}).click();
     await expect(page.getByTestId("story-quality")).toContainText("已核对的入门材料");
     if (external === "missing") {
+      await page.getByRole("button", {name: "返回故事列表", exact: true}).first().click();
       await page.locator(".story-item-main").click();
       await expect(page.getByText("本篇暂无检查题", {exact: true})).toBeVisible();
     }
@@ -245,7 +251,7 @@ test("EL-11 starter read transport failure is visible and retryable", async ({ap
   await page.getByRole("button", {name: "阅读入门材料", exact: true}).click();
   await expect(page.getByRole("alert")).toContainText("读取入门材料失败");
   await page.getByRole("button", {name: "阅读入门材料", exact: true}).click();
-  await expect(page.getByTestId("story-quality")).toContainText("已核对的入门材料");
+  await expect(page.locator(".story-read-title")).toHaveText("My small book");
   await expect(page.getByRole("alert")).toHaveCount(0);
 });
 
