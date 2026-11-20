@@ -13,6 +13,7 @@ import { recordPracticeContact } from "../lib/practiceContacts.js";
 import { showToast } from "../App.jsx";
 import ChunkChips from "../components/ChunkChips.jsx";
 import RatingButtons from "../components/RatingButtons.jsx";
+import WordExpansions from "../components/WordExpansions.jsx";
 
 /**
  * 闪卡学习视图。
@@ -320,6 +321,11 @@ export default function StudyPage({ queue = [], session, recoveryVersion, onProg
         </div>
       </div>
 
+      {flipped && !isSentence && !exiting && <StudyExpansions
+        key={`${idx}:${card.id}:${card.content_revision?.identity}:${card.content_revision?.version}`}
+        card={card}
+      />}
+
       {/* 评分按钮：包裹层常驻占位（高度已在 CSS 预留），翻面后按钮永远在首屏 */}
       <div className="rating-area">
         {session && <button className="btn btn-ghost btn-small" disabled={attempt.phase === "saving" || attempt.phase === "failed"} onClick={() => rate(null)}>跳过这张卡</button>}
@@ -345,4 +351,34 @@ export default function StudyPage({ queue = [], session, recoveryVersion, onProg
       </div>
     </section>
   );
+}
+
+function StudyExpansions({card}) {
+  const [open, setOpen] = useState(false);
+  const [displayCard, setDisplayCard] = useState(card);
+  const [reloadError, setReloadError] = useState("");
+  const trigger = useRef(null);
+  const close = () => {
+    setOpen(false);
+    trigger.current?.focus();
+  };
+  const refresh = async () => {
+    try {
+      setDisplayCard(await api(`/api/cards/${card.id}`));
+      setReloadError("");
+    } catch (error) {
+      setReloadError(error.message);
+    }
+  };
+
+  return <div className="study-expansions">
+    <button type="button" ref={trigger} className="btn btn-ghost btn-small"
+      aria-expanded={open} onClick={() => setOpen(!open)}>多学一个</button>
+    {open && <WordExpansions
+      key={`${displayCard.content_revision?.identity}:${displayCard.content_revision?.version}`}
+      card={displayCard} source="study" onClose={close} onConflict={refresh}
+      onUpdate={related_words => setDisplayCard(current => ({...current, related_words}))}
+    />}
+    {open && reloadError && <p role="alert">{reloadError}</p>}
+  </div>;
 }

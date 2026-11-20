@@ -641,3 +641,20 @@ body.dark .product-app .card-face { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35), 0
 .product-app .daily-summary-details > summary { cursor: pointer; color: var(--muted); font-size: 14px; }
 .product-app .daily-summary-details > p { margin-top: 12px; }
 .product-app .daily-summary-details > button { margin-top: 16px; }
+
+.product-app .study-expansions { margin-block: 12px; }
+.product-app .study-expansions .word-expansions { margin-block-start: 12px; }
+.product-app button.related-word-chip { cursor: pointer; font: inherit; text-align: start; }
+.expansion-preview {
+  width: min(420px, calc(100% - 32px));
+  max-height: calc(100% - 32px);
+  overflow: auto;
+  padding: 22px;
+  border: 1px solid var(--border, #c9c4bb);
+  border-radius: 8px;
+  background: var(--paper, #fff);
+  color: var(--ink, #23221f);
+}
+.expansion-preview::backdrop { background: rgb(0 0 0 / 42%); }
+.expansion-preview h2 { margin: 0; }
+.expansion-actions { display: flex; flex-wrap: wrap; gap: 8px; }
