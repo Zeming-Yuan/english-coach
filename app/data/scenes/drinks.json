@@ -1,8 +1,8 @@
 {
   "scene_id": "drinks",
   "title": "买饮品",
-  "rule_version": "drinks-v1",
-  "content_revision": 1,
+  "rule_version": "drinks-v2",
+  "content_revision": 2,
   "review_basis": "人工核对的限定任务模板；完整句式与槽位匹配，未收录表达保持未判定。",
   "tasks": [
     {
@@ -11,7 +11,7 @@
       "role": "你好，欢迎光临。你想要什么饮品？",
       "hint": "用完整的请求句式，说明想要的饮品。",
       "standard": "Can I have water, please?",
-      "patterns": ["can i have (?:some )?water(?: please)?", "could i have (?:some )?water(?: please)?", "i would like (?:some )?water(?: please)?", "i'd like (?:some )?water(?: please)?", "may i have (?:some )?water(?: please)?"],
+      "patterns": ["a glass of water(?: please)?", "can i have (?:some )?water(?: please)?", "could i have (?:some )?water(?: please)?", "i would like (?:some )?water(?: please)?", "i'd like (?:some )?water(?: please)?", "may i have (?:some )?water(?: please)?"],
       "rejected": ["water", "no", "i like water", "can i have coffee please", "can i have tea please"],
       "correction": "请用请求句式说明你要水；只说饮品名还没有完成请求。",
       "target_words": ["water"]
