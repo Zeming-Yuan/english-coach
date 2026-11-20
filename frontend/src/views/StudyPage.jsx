@@ -247,88 +247,109 @@ export default function StudyPage({ queue = [], session, recoveryVersion, onProg
       </div>
 
       <div className="scene">
-        <div
-          ref={cardRef}
-          className={`card ${flipped ? "flipped" : ""} ${isSentence ? "card-tall" : ""} ${exiting ? (idx % 2 === 0 ? "leave-left" : "leave-right") : "enter"}`}
-          onClick={flip}
-          tabIndex={0}
-          role="button"
-          aria-label="点击翻面"
-          onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && flip()}
-        >
-          <div className="card-face card-front">
-            {isDialog ? (
-              <div className="front-dialog">
-                {dialogLines.map((line, i) => {
-                  const isA = line.startsWith("A:");
-                  const body = highlightWord(line.replace(/^[AB]:\s*/, ""), card.word);
-                  return (
-                    <div key={i} className={`dialog-line ${isA ? "dialog-a" : "dialog-b"}`}>
-                      <span className="dialog-name">{isA ? "A" : "B"}</span>
-                      <span className="dialog-text" dangerouslySetInnerHTML={{ __html: body }} />
-                    </div>
-                  );
-                })}
+        <div className={`card-deck-shell${isSentence ? " is-tall" : ""}`}>
+          {!isSentence && total > 1 && <>
+            <div className="card-deck-layer layer-2" aria-hidden="true" />
+            <div className="card-deck-layer layer-1" aria-hidden="true" />
+          </>}
+          <div
+            ref={cardRef}
+            className={`card ${flipped ? "flipped" : ""} ${isSentence ? "card-tall" : ""} ${exiting ? (idx % 2 === 0 ? "leave-left" : "leave-right") : "enter"}`}
+            onClick={flip}
+            tabIndex={0}
+            role="button"
+            aria-label="点击翻面"
+            onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && flip()}
+          >
+            <div className="card-face card-front">
+              <span className="card-face-kicker">
+                {isSentence ? "句子卡" : `核心词卡 · ${String(idx + 1).padStart(2, "0")}`}
+              </span>
+              {isDialog ? (
+                <div className="front-dialog">
+                  {dialogLines.map((line, i) => {
+                    const isA = line.startsWith("A:");
+                    const body = highlightWord(line.replace(/^[AB]:\s*/, ""), card.word);
+                    return (
+                      <div key={i} className={`dialog-line ${isA ? "dialog-a" : "dialog-b"}`}>
+                        <span className="dialog-name">{isA ? "A" : "B"}</span>
+                        <span className="dialog-text" dangerouslySetInnerHTML={{ __html: body }} />
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className={`front-main ${isSentence ? "has-mark" : ""}`} dangerouslySetInnerHTML={{ __html: frontMain }} />
+              )}
+              <div className="front-phonetic">
+                {isSentence ? card.word : (card.phonetic || "")}
+                {isSentence && card.difficulty === "reading" &&
+                  <span className="diff-chip">阅读句</span>}
               </div>
-            ) : (
-              <div className={`front-main ${isSentence ? "has-mark" : ""}`} dangerouslySetInnerHTML={{ __html: frontMain }} />
-            )}
-            <div className="front-phonetic">
-              {isSentence ? card.word : (card.phonetic || "")}
-              {isSentence && card.difficulty === "reading" &&
-                <span className="diff-chip">阅读句</span>}
+              {/* 句子卡：意群切分提示（初学友好）— 点击单块朗读，可跟读 */}
+              {isSentence && (
+                <ChunkChips chunks={chunkList} onSpeak={(t) => speak(t)} />
+              )}
+              {/* 句子卡：正面显示中文翻译（初学友好，可在设置关闭） */}
+              {isSentence && showSentenceCn && card.example_cn && (
+                <div className="front-sentence-cn">{card.example_cn}</div>
+              )}
+              <button className="speak-btn" title="朗读" onClick={(e) => { e.stopPropagation(); speak(isSentence ? (card.example || card.word) : card.word); }} aria-label="朗读"><UiIcon name="speaker" /></button>
+              <span className="flip-hint">先回想 3 秒 · 点这翻面对照</span>
             </div>
-            {/* 句子卡：意群切分提示（初学友好）— 点击单块朗读，可跟读 */}
-            {isSentence && (
-              <ChunkChips chunks={chunkList} onSpeak={(t) => speak(t)} />
-            )}
-            {/* 句子卡：正面显示中文翻译（初学友好，可在设置关闭） */}
-            {isSentence && showSentenceCn && card.example_cn && (
-              <div className="front-sentence-cn">{card.example_cn}</div>
-            )}
-            <button className="speak-btn" title="朗读" onClick={(e) => { e.stopPropagation(); speak(isSentence ? (card.example || card.word) : card.word); }} aria-label="朗读"><UiIcon name="speaker" /></button>
-            <span className="flip-hint">先回想 3 秒 · 点这翻面对照</span>
-          </div>
-          <div className="card-face card-back">
-            <span className="flip-hint flip-hint-back">点这翻回正面</span>
-            <div className="back-meaning">{backMeaning}</div>
-            {backExample && (
-              <div className="back-example-block">
-                <div className="back-example">{renderClickableExample(card.example)}</div>
-                {card.example_cn && <div className="back-example-cn">{card.example_cn}</div>}
-                <button className="speak-mini" title="朗读例句" onClick={(e) => { e.stopPropagation(); speak(card.example); }} aria-label="朗读"><UiIcon name="speaker" /></button>
-              </div>
-            )}
-            {/* 词查询浮层 */}
-            {lookupWord && (
-              <div className="back-lookup-panel" onClick={(e) => e.stopPropagation()}>
-                <div className="back-lookup-head">
-                  <b>{lookupWord.word}</b>
-                  <button className="speak-mini" onClick={() => speak(lookupWord.word)} aria-label="朗读"><UiIcon name="speaker" /></button>
-                  <button className="story-word-panel-close" onClick={closeLookup} aria-label="关闭"><UiIcon name="close" /></button>
-                </div>
-                {lookupWord.phonetic && <div className="back-lookup-phonetic">{lookupWord.phonetic}</div>}
-                <div className="back-lookup-meaning">{lookupWord.meaning || (lookupResult.status === "error" ? `查询失败：${lookupResult.error}，请点词重试` : lookupResult.status === "missing" ? "暂无释义" : "查询中…")}</div>
-              </div>
-            )}
-            {contexts.length > 0 && (
-              <div className="bubble-list">
-                {contexts.map((ctx, i) => (
-                  <div key={i} className={`bubble ${i % 2 === 0 ? "bubble-a" : "bubble-b"}`}>
-                    <div className="bubble-en">{ctx.en}</div>
-                    <div className="bubble-cn">{ctx.cn}</div>
+            <div className="card-face card-back">
+              {isSentence ? (
+                <span className="flip-hint flip-hint-back">点这翻回正面</span>
+              ) : (
+                <div className="card-back-head">
+                  <div className="back-word-anchor">
+                    <span className="back-word-en">{card.word}</span>
+                    {card.phonetic && <span className="back-word-ph">{card.phonetic}</span>}
                   </div>
-                ))}
-              </div>
-            )}
-            {memoText && (
-              <div className="back-memo">
-                <div className="back-memo-label">你的记忆法</div>
-                <div className="back-memo-content">
-                  <span>{memoText}</span>
+                  <span className="flip-hint flip-hint-back">点这翻回正面</span>
                 </div>
-              </div>
-            )}
+              )}
+              <div className="back-meaning">{backMeaning}</div>
+              {backExample && (
+                <div className="back-example-block">
+                  <div className="back-example-copy">
+                    <div className="back-example">{renderClickableExample(card.example)}</div>
+                    {card.example_cn && <div className="back-example-cn">{card.example_cn}</div>}
+                  </div>
+                  <button className="speak-mini" title="朗读例句" onClick={(e) => { e.stopPropagation(); speak(card.example); }} aria-label="朗读"><UiIcon name="speaker" /></button>
+                </div>
+              )}
+              {/* 词查询浮层 */}
+              {lookupWord && (
+                <div className="back-lookup-panel" onClick={(e) => e.stopPropagation()}>
+                  <div className="back-lookup-head">
+                    <b>{lookupWord.word}</b>
+                    <button className="speak-mini" onClick={() => speak(lookupWord.word)} aria-label="朗读"><UiIcon name="speaker" /></button>
+                    <button className="story-word-panel-close" onClick={closeLookup} aria-label="关闭"><UiIcon name="close" /></button>
+                  </div>
+                  {lookupWord.phonetic && <div className="back-lookup-phonetic">{lookupWord.phonetic}</div>}
+                  <div className="back-lookup-meaning">{lookupWord.meaning || (lookupResult.status === "error" ? `查询失败：${lookupResult.error}，请点词重试` : lookupResult.status === "missing" ? "暂无释义" : "查询中…")}</div>
+                </div>
+              )}
+              {contexts.length > 0 && (
+                <div className="bubble-list">
+                  {contexts.map((ctx, i) => (
+                    <div key={i} className={`bubble ${i % 2 === 0 ? "bubble-a" : "bubble-b"}`}>
+                      <div className="bubble-en">{ctx.en}</div>
+                      <div className="bubble-cn">{ctx.cn}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {memoText && (
+                <div className="back-memo">
+                  <div className="back-memo-label">你的记忆法</div>
+                  <div className="back-memo-content">
+                    <span>{memoText}</span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -384,14 +405,28 @@ function StudyExpansions({card, studySessionId, onOpenCard}) {
   };
 
   return <div className="study-expansions">
-    <button type="button" ref={trigger} className="btn btn-ghost btn-small"
-      aria-expanded={open} onClick={() => setOpen(!open)}>多学一个</button>
-    {open && <WordExpansions
-      key={`${displayCard.content_revision?.identity}:${displayCard.content_revision?.version}`}
-      card={displayCard} source="study" onClose={close} onConflict={refresh}
-      studySessionId={studySessionId} onOpenCard={onOpenCard}
-      onUpdate={related_words => setDisplayCard(current => ({...current, related_words}))}
-    />}
-    {open && reloadError && <p role="alert">{reloadError}</p>}
+    <div className="expansion-strip">
+      <div className="expansion-strip-info">
+        <span className="expansion-dot" aria-hidden="true" />
+        <span className="expansion-strip-glyph" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.9 5.3L19 10.2l-5.1 1.9L12 17.4l-1.9-5.3L5 10.2l5.1-1.9L12 3z"/></svg>
+        </span>
+        <span>熟词延伸 · 复合词 / 形近词</span>
+      </div>
+      <button type="button" ref={trigger} className="btn-more-one"
+        aria-expanded={open} onClick={() => setOpen(!open)}>
+        多学一个
+        <svg className="btn-arrow" aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+      </button>
+    </div>
+    {open && <div className="study-expansions-tray">
+      <WordExpansions
+        key={`${displayCard.content_revision?.identity}:${displayCard.content_revision?.version}`}
+        card={displayCard} source="study" onClose={close} onConflict={refresh}
+        studySessionId={studySessionId} onOpenCard={onOpenCard}
+        onUpdate={related_words => setDisplayCard(current => ({...current, related_words}))}
+      />
+    </div>}
+    {open && reloadError && <p role="alert" className="inline-notice is-err is-shaking">{reloadError}</p>}
   </div>;
 }

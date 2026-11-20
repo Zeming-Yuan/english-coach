@@ -77,17 +77,23 @@ export default function WordExpansions({card, onUpdate, onConflict, source = "ca
   </div>;
 
   return <section className="word-expansions" aria-label="构词与扩展">
-    <h2 className="word-section-title">构词与扩展</h2>
+    {onClose ? (
+      <div className="word-expansions-head">
+        <h2 className="word-section-title">构词与扩展</h2>
+        <button type="button" className="btn btn-ghost btn-small word-expansions-close" onClick={onClose}>收起扩展</button>
+      </div>
+    ) : (
+      <h2 className="word-section-title">构词与扩展</h2>
+    )}
     {formation.length > 0 && <div className="word-formation">
       <h3 className="related-words-label">构词拆解</h3>
       {formation.map((row, index) => <p key={index}>{row.text}</p>)}
     </div>}
     {(onClose ? groups.slice(0, 2) : groups).map(renderGroup)}
-    {onClose && groups.length > 2 && <details>
+    {onClose && groups.length > 2 && <details className="exp-other-details">
       <summary>查看其他扩展</summary>
       {groups.slice(2).map(renderGroup)}
     </details>}
-    {onClose && <button type="button" className="btn btn-ghost btn-small" onClick={onClose}>收起扩展</button>}
     {selection && <ExpansionPreview sourceCard={card} row={selection} source={source}
       closeLabel={onClose ? "返回原词卡" : "关闭扩展词"} onClose={closePreview}
       onOpenCard={onOpenCard} studySessionId={studySessionId} />}

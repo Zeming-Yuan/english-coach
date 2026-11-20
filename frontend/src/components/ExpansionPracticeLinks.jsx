@@ -57,16 +57,25 @@ export default function ExpansionPracticeLinks({studySessionId, cardId, onStart}
   }, [studySessionId, cardId, Boolean(onStart), reload]);
 
   if (!entries.length && !error) return null;
-  return <div className="expansion-practice-links">
-    {error && <div role="alert">{error}
+  const links = <div className="expansion-practice-links">
+    {error && <div role="alert" className="inline-notice is-err is-shaking">{error}
       <button type="button" className="btn btn-ghost btn-small" onClick={() => setReload(value => value + 1)}>
         重试查找已加入词
       </button>
     </div>}
-    {entries.map(entry => <button type="button" className="btn btn-ghost btn-small"
+    {entries.map(entry => <button type="button" className="btn btn-accent btn-small"
       key={entry.addition.operation_id} onClick={() => onStart(entry)}>
       {studySessionId ? `练习 ${entry.target.word.trim()}` : "练这个扩展词"}
       {entries.filter(other => other.target.id === entry.target.id).length > 1 && `（来自 ${entry.source.word.trim()}）`}
     </button>)}
+  </div>;
+
+  if (!studySessionId) return links;
+  return <div className="expansion-practice-card">
+    <div className="expansion-practice-head">
+      <span className="expansion-dot is-done" aria-hidden="true" />
+      <span>本轮新加入的扩展词</span>
+    </div>
+    {links}
   </div>;
 }

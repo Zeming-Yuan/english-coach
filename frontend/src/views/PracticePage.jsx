@@ -35,6 +35,17 @@ function PracticeResult({item, delayed, source}) {
   </li>;
 }
 
+function renderPromptText(prompt) {
+  if (typeof prompt !== "string" || !prompt.includes("___")) return prompt;
+  const parts = prompt.split("___");
+  return parts.map((part, idx) => (
+    <React.Fragment key={idx}>
+      {idx > 0 && <span className="quiz-blank">___</span>}
+      {part}
+    </React.Fragment>
+  ));
+}
+
 function PracticeItemForm({ session, item, onSession, onFeedback }) {
   const scope = `practice:${session.id}:${item.id}`;
   const attempt = useLearningAttempt(scope, refreshPendingContacts);
@@ -97,12 +108,32 @@ function PracticeItemForm({ session, item, onSession, onFeedback }) {
     }
   };
 
-  const options = choice && item.options.map(option => <button key={option} className="btn btn-ghost" disabled={attempt.phase === "saving" || attempt.phase === "failed"} onClick={() => {setAnswer(option); submit(false, option);}}>{option}</button>);
+  const options = choice && item.options.map((option, index) => (
+    <button
+      key={option}
+      className={expansionChoice ? "btn btn-ghost practice-expansion-option" : "btn btn-ghost"}
+      disabled={attempt.phase === "saving" || attempt.phase === "failed"}
+      onClick={() => {setAnswer(option); submit(false, option);}}
+    >
+      {expansionChoice ? (
+        <>
+          <span className="quiz-opt-key" aria-hidden="true">{index === 0 ? "A" : "B"}</span>
+          <span className="quiz-opt-word">{option}</span>
+        </>
+      ) : option}
+    </button>
+  ));
 
   return (
-    <div className="practice-item">
+    <div className={`practice-item${expansionChoice ? " practice-expansion-card" : ""}`}>
       {reading && <h3>{choice ? "阅读理解" : "词汇输入"}</h3>}
-      <div className="spelling-meaning">{item.prompt}</div>
+      {expansionChoice && (
+        <div className="practice-context-pill">
+          <span className="practice-context-badge">扩展词辨析</span>
+          <span>按识别证据记录，不改变排期</span>
+        </div>
+      )}
+      <div className="spelling-meaning">{expansionChoice ? renderPromptText(item.prompt) : item.prompt}</div>
       {reading && item.assistance.length > 0 && <p role="note">本题已使用帮助，按辅助记录，不排期。</p>}
       {expansionChoice ? <div className="practice-expansion-options" ref={visibleOptionsRef}>{options}</div> : options}
       {session.purpose === "delayed_check" && <p role="status">距应用内上次记录：{item.gap_seconds == null ? "依据不完整" : `${Number((item.gap_seconds / 3600).toFixed(2))} 小时`} · 发题依据已冻结，提交时复核</p>}
