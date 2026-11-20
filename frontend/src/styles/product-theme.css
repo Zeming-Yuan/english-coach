@@ -1,16 +1,18 @@
 /* EnglishCoach product UI. The approved story reader is the visual source.
    Keep learning state, visibility conditions, forms and API handlers in their views. */
 :root {
-  --paper: #f6f2ea;
-  --card: #fffdf9;
+  --paper: #f9f6f0;
+  --card: #ffffff;
   --ink: #302e2b;
   --muted: #6c655c;
   --line: #dfd7cb;
   --mint: #a26243;
+  --mint-ink: #844a2e;
   --mint-soft: #f0e4d7;
   --coral: #a14c3d;
   --coral-soft: #f6e8e2;
   --sun: #a48144;
+  --sun-ink: #6e5220;
   --sun-soft: #f5efdf;
   --success: #4b7158;
   --success-soft: #eaf0e8;
@@ -24,11 +26,15 @@
 }
 body.dark {
   --paper: #22201e; --card: #2c2824; --ink: #ede7dc;
-  --muted: #b5aa9c; --line: #453f38; --mint: #d09b79;
+  --muted: #b5aa9c; --line: #453f38; --mint: #d09b79; --mint-ink: #d09b79;
   --mint-soft: #49362a; --coral: #e29a88; --coral-soft: #482f29;
-  --sun: #c4a16a; --sun-soft: #403723;
+  --sun: #c4a16a; --sun-ink: #e2c58e; --sun-soft: #403723;
   --success: #a1b99b; --success-soft: #2c382a;
   --nav-paper: #1b1917; --active-paper: #39322b;
+}
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
 }
 body { font-weight: 400; line-height: 1.65; }
 button, input, select, textarea { font-family: inherit; }
@@ -166,7 +172,7 @@ body.dark .product-app .btn-primary:hover { background: #d8cec0; border-color: #
 .product-app .welcome-emoji, .product-app .done-emoji { color: var(--mint); margin: 0 0 18px; }
 .product-app .welcome-emoji svg, .product-app .done-emoji svg { width: 40px; height: 40px; }
 .product-app .lesson-entry { background: var(--nav-paper) !important; border: 1px solid var(--line); border-radius: 8px; box-shadow: none; padding: 20px 22px; margin-bottom: 16px; }
-.product-app .lesson-entry-label { color: var(--mint); font-size: 12px; font-weight: 500; letter-spacing: 0; }
+.product-app .lesson-entry-label { color: var(--mint-ink); font-size: 12px; font-weight: 500; letter-spacing: 0; }
 .product-app .lesson-entry-title { font-size: 18px; font-weight: 500; margin-top: 6px; }
 .product-app .lesson-entry-sub { margin-top: 8px; line-height: 1.8; }
 .product-app .recommended-chip { color: var(--muted); background: var(--card); border: 1px solid var(--line); font-weight: 400; border-radius: 4px; }
@@ -182,11 +188,11 @@ body.dark .product-app .btn-primary:hover { background: #d8cec0; border-color: #
 .product-app .word-search-input { padding: 12px 16px; min-height: 44px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--ink); font-size: 14px; }
 .product-app .word-letter-header { background: var(--paper); color: var(--muted); font: 400 17px var(--font-reading); border-bottom: 1px solid var(--line); padding: 16px 8px 12px; }
 .product-app .alpha-nav { background: var(--paper); padding: 4px; }
-.product-app .alpha-btn { color: var(--mint); font-size: 11px; }
+.product-app .alpha-btn { color: var(--mint-ink); font-size: 11px; }
 .product-app .alpha-disabled { color: var(--muted); opacity: .45; }
 .product-app .badge { font: 400 11px/1.6 var(--font); border-radius: 4px; padding: 2px 6px; background: var(--nav-paper); color: var(--muted); }
 .product-app .badge-error { background: var(--coral-soft); color: var(--coral); }
-.product-app .badge-graduated { background: var(--sun-soft); color: var(--sun); }
+.product-app .badge-graduated { background: var(--sun-soft); color: var(--sun-ink); }
 .product-app .word-detail-card { min-width: 0; background: transparent; border: 0; border-radius: 0; box-shadow: none; padding: 0; }
 .product-app .word-detail-header { background: transparent; padding-bottom: 12px; border: 0; justify-content: flex-start; gap: 20px; }
 .product-app .word-detail-word { min-width: 0; font: 400 80px/1.15 var(--font-reading); letter-spacing: -.5px; white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
@@ -254,13 +260,13 @@ body.dark .product-app .btn-primary:hover { background: #d8cec0; border-color: #
 .word-detail-view .word-detail-badges { margin-top: 18px; }
 .word-self-rating { margin-top: 36px; }
 .word-detail-view .word-detail-memo { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 14px 18px; border-left: 3px solid var(--sun); border-radius: 0 7px 7px 0; background: var(--card); color: var(--ink); box-shadow: 0 1px 2px rgba(48, 46, 43, 0.04); }
-.word-detail-view .word-detail-memo-label { font-size: 12px; font-weight: 500; color: var(--sun); padding: 2px 7px; border-radius: 4px; background: var(--sun-soft); }
+.word-detail-view .word-detail-memo-label { font-size: 12px; font-weight: 500; color: var(--sun-ink); padding: 2px 7px; border-radius: 4px; background: var(--sun-soft); }
 .word-detail-view .memo-edit-btn { color: var(--muted); background: transparent; box-shadow: none; border: 0; display: inline-flex; align-items: center; padding: 6px; margin-left: auto; cursor: pointer; border-radius: 5px; }
 .word-detail-view .memo-edit-btn:hover { background: var(--nav-paper); color: var(--ink); }
 .inline-detail-editor { display: grid; gap: 12px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); box-shadow: 0 2px 10px rgba(48, 46, 43, 0.04); max-width: 640px; }
 .inline-detail-input, .inline-detail-textarea { width: 100%; padding: 11px 14px; border: 1px solid var(--line); border-radius: 6px; background: var(--paper); color: var(--ink); font: 400 16px/1.6 var(--font); }
 .inline-detail-textarea { resize: vertical; min-height: 84px; }
-.inline-detail-input:focus, .inline-detail-textarea:focus { border-color: var(--mint); background: var(--card); outline: none; }
+.inline-detail-input:focus, .inline-detail-textarea:focus { border-color: var(--mint); background: var(--card); }
 .inline-detail-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .inline-detail-error { margin: 0; font-size: 13px; color: var(--coral); }
 .detail-menu { position: relative; flex: none; }
@@ -284,7 +290,6 @@ body.dark .product-app .btn-primary:hover { background: #d8cec0; border-color: #
 .product-app .lesson-progress { padding: 16px 0; border-block: 1px solid var(--line); }
 .product-app .lesson-list-item-sub { line-height: 1.85; }
 .product-app .lesson-list-item-title { font-size: 20px; font-weight: 400; }
-.product-app .metrics-panel { border-radius: 0; padding: 24px 0; border: 0; border-top: 1px solid var(--line); }
 .product-app [data-testid="learning-advice"] .lesson-progress { border-radius: 0; padding: 16px 0; border: 0; border-top: 1px solid var(--line); background: transparent; }
 .product-app .bubble:hover { background: var(--nav-paper); }
 .product-app :is(.example-compare,.back-memo,.back-lookup-panel,.practice-results,.study-done,.result-badge) { border-radius: 6px; }
@@ -325,7 +330,7 @@ body.dark .product-app .btn-primary:hover { background: #d8cec0; border-color: #
 .product-app .add-primary-panel { background: var(--card); box-shadow: 0 1px 2px rgba(48, 46, 43, 0.04), 0 8px 22px rgba(48, 46, 43, 0.03); }
 .product-app .add-starter-panel { background: var(--nav-paper); }
 .product-app .add-panel-head { display: grid; gap: 4px; }
-.product-app .add-panel-tag { font-size: 12px; font-weight: 500; color: var(--mint); letter-spacing: .02em; }
+.product-app .add-panel-tag { font-size: 12px; font-weight: 500; color: var(--mint-ink); letter-spacing: .02em; }
 .product-app .add-panel-head h3 { margin: 0; font-size: 20px; font-weight: 500; color: var(--ink); line-height: 1.4; }
 .product-app .add-panel .add-hint { margin: 0; }
 .product-app .add-input { padding: 16px 18px; min-height: 148px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); font-size: 17px; line-height: 1.8; color: var(--ink); }
@@ -333,7 +338,8 @@ body.dark .product-app .btn-primary:hover { background: #d8cec0; border-color: #
 .product-app .add-panel-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
 .product-app .add-count-hint { font-size: 13px; color: var(--muted); }
 .product-app .add-starter-points { margin: 2px 0 4px; padding-left: 18px; display: grid; gap: 6px; font-size: 13px; line-height: 1.75; color: var(--muted); }
-.product-app .add-starter-btn { width: 100%; background: var(--card); color: var(--ink); }
+.product-app .btn-ghost.add-starter-btn { width: 100%; background: var(--card); color: var(--ink); }
+.product-app .btn-ghost.add-starter-btn:hover { background: var(--paper); border-color: var(--mint); color: var(--ink); }
 .product-app .add-result:empty { display: none; }
 .product-app .settings-panel { box-shadow: none; border-radius: 0; border: 0; background: transparent; padding: 0; max-width: 840px !important; color: var(--ink); }
 .product-app .settings-panel-head { font-size: 28px; font-weight: 500; margin-bottom: 28px; color: var(--ink); }
@@ -368,8 +374,8 @@ body.dark .product-app .btn-primary:hover { background: #d8cec0; border-color: #
 .product-app .stats-kv-list > div:last-child { border-bottom: 0; }
 .product-app .stats-kv-list dt { color: var(--muted); font-weight: 400; }
 .product-app .stats-kv-list dd { margin: 0; color: var(--ink); font-weight: 500; font-variant-numeric: tabular-nums; text-align: right; }
-.product-app .stats-panel-meta { margin-top: 12px !important; font-size: 13px; color: var(--ink) !important; font-weight: 500; }
-.product-app .stats-panel-foot { margin-top: auto !important; padding-top: 14px; border-top: 1px solid var(--line); font-size: 12px !important; line-height: 1.75; color: var(--muted); }
+.product-app .metrics-panel .stats-panel-meta { margin-top: 12px; font-size: 13px; color: var(--ink); font-weight: 500; }
+.product-app .metrics-panel .stats-panel-foot { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--line); font-size: 12px; line-height: 1.75; color: var(--muted); }
 .product-app .retention-head { margin-bottom: 16px; }
 .product-app .retention-head > h3 { font-size: 17px; font-weight: 500; margin: 0 0 4px; color: var(--ink); }
 .product-app .retention-head > p { margin: 0; }

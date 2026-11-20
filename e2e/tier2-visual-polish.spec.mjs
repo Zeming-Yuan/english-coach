@@ -1,12 +1,20 @@
 import { test, expect } from "./support/test.mjs";
+import { relativeLuminance, contrastRatio } from "./support/color.mjs";
 
-function relativeLuminance(rgbString) {
-  const [r, g, b] = rgbString
-    .match(/[\d.]+/g)
-    .slice(0, 3)
-    .map((v) => Number(v) / 255)
-    .map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+async function elementContrast(locator) {
+  return locator.evaluate((el) => {
+    let surface = el;
+    while (
+      surface.parentElement &&
+      getComputedStyle(surface).backgroundColor === "rgba(0, 0, 0, 0)"
+    ) {
+      surface = surface.parentElement;
+    }
+    return {
+      fg: getComputedStyle(el).color,
+      bg: getComputedStyle(surface).backgroundColor,
+    };
+  });
 }
 
 test("Tier 2.1: flashcard and choice cards have distinct layered paper surface and tactile elevation over canvas", async ({
@@ -74,11 +82,12 @@ test("Tier 2.1: flashcard and choice cards have distinct layered paper surface a
   expect(optionSurface.shadow).not.toBe("none");
 });
 
-test("Tier 2.2: StatsPage aligns evidence and metrics as key-value panels, grids retention windows, and gives weekly chart axis and neutral empty state", async ({
+test("Tier 2.2: StatsPage aligns evidence and metrics as key-value panels, grids retention windows, and gives weekly chart MM/DD axis and neutral empty state", async ({
   appFactory,
   page,
 }, testInfo) => {
   const app = await appFactory();
+  await app.setTime("2026-10-05T08:00:00Z");
   await app.seedCards([{ word: "apple", meaning: "苹果" }]);
 
   await page.goto(`${app.baseURL}/#/stats`);
@@ -108,14 +117,20 @@ test("Tier 2.2: StatsPage aligns evidence and metrics as key-value panels, grids
   const weekAccColor = await weekAcc.evaluate((el) => getComputedStyle(el).color);
   expect(weekAccColor).not.toBe("rgb(161, 76, 61)");
 
-  await expect(page.locator(".weekly-accuracy .week-axis-label")).toHaveCount(8);
+  const axisLabels = await page
+    .locator(".weekly-accuracy .week-axis-label")
+    .allTextContents();
+  expect(axisLabels).toHaveLength(8);
+  for (const label of axisLabels) {
+    expect(label).toMatch(/^\d{2}\/\d{2}$/);
+  }
   await expect(page.locator(".weekly-accuracy")).toContainText("暂无排期复习记录");
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
   ).toBe(true);
 });
 
-test("Tier 2.3: AddPage separates primary AI generation and secondary starter pack into structured cards with a single primary CTA", async ({
+test("Tier 2.3: AddPage separates primary AI generation and secondary starter pack into structured cards with AA contrast and honest count hints", async ({
   app,
   page,
 }, testInfo) => {
@@ -129,9 +144,25 @@ test("Tier 2.3: AddPage separates primary AI generation and secondary starter pa
   await expect(
     page.getByRole("button", { name: "AI 生成词卡", exact: true }),
   ).toHaveClass(/\bbtn-primary\b/);
-  await expect(
-    page.getByRole("button", { name: "体验入门词卡", exact: true }),
-  ).toHaveClass(/\bbtn-ghost\b/);
+  const starterBtn = page.getByRole("button", { name: "体验入门词卡", exact: true });
+  await expect(starterBtn).toHaveClass(/\bbtn-ghost\b/);
+
+  const tagColors = await elementContrast(starterPanel.locator(".add-panel-tag"));
+  expect(contrastRatio(tagColors.fg, tagColors.bg)).toBeGreaterThanOrEqual(4.5);
+
+  await starterBtn.hover();
+  const hoverSurface = await starterBtn.evaluate((el) => ({
+    btnBg: getComputedStyle(el).backgroundColor,
+    panelBg: getComputedStyle(el.closest(".add-starter-panel")).backgroundColor,
+  }));
+  expect(hoverSurface.btnBg).not.toBe(hoverSurface.panelBg);
+
+  const wordsTextbox = page.getByRole("textbox", { name: "要添加的英文单词", exact: true });
+  await expect(wordsTextbox).toBeVisible();
+  await wordsTextbox.fill(
+    Array.from({ length: 22 }, (_, i) => `word${i + 1}`).join(", "),
+  );
+  await expect(page.locator(".add-count-hint")).toContainText("仅处理前 20 个");
 
   const pBox = await primaryPanel.boundingBox();
   const sBox = await starterPanel.boundingBox();
@@ -146,7 +177,7 @@ test("Tier 2.3: AddPage separates primary AI generation and secondary starter pa
   ).toBe(true);
 });
 
-test("Tier 2.4: WordDetail edits meaning and memo inline on the page without native browser prompt dialogs", async ({
+test("Tier 2.4: WordDetail edits meaning and memo inline with IME Escape safety, focus-visible ring, draft preservation, and AA contrast", async ({
   appFactory,
   page,
 }) => {
@@ -168,6 +199,28 @@ test("Tier 2.4: WordDetail edits meaning and memo inline on the page without nat
   const meaningInput = page.getByRole("textbox", { name: "编辑词义", exact: true });
   await expect(meaningInput).toBeVisible();
   await expect(meaningInput).toHaveValue("苹果");
+
+  // Keyboard focus-visible ring is preserved on inline inputs
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Shift+Tab");
+  const focusOutline = await meaningInput.evaluate((el) => {
+    const cs = getComputedStyle(el);
+    return { style: cs.outlineStyle, width: cs.outlineWidth };
+  });
+  expect(focusOutline.style).not.toBe("none");
+  expect(focusOutline.width).not.toBe("0px");
+
+  // Re-clicking toolbar "编辑内容" does not wipe an in-progress draft
+  await meaningInput.fill("未保存草稿");
+  await page.getByRole("button", { name: "编辑内容", exact: true }).click();
+  await expect(meaningInput).toHaveValue("未保存草稿");
+
+  // Pressing Escape during active IME composition does not cancel the inline editor
+  await meaningInput.dispatchEvent("compositionstart");
+  await meaningInput.press("Escape");
+  await expect(meaningInput).toBeVisible();
+  await expect(meaningInput).toHaveValue("未保存草稿");
+  await meaningInput.dispatchEvent("compositionend");
 
   await page.getByRole("button", { name: "取消", exact: true }).click();
   await expect(meaningInput).toHaveCount(0);
@@ -192,6 +245,11 @@ test("Tier 2.4: WordDetail edits meaning and memo inline on the page without nat
   await expect(page.locator(".word-detail-memo")).toContainText(
     "A-P-P-L-E 红彤彤的苹果",
   );
+
+  const memoBadgeColors = await elementContrast(
+    page.locator(".word-detail-memo-label"),
+  );
+  expect(contrastRatio(memoBadgeColors.fg, memoBadgeColors.bg)).toBeGreaterThanOrEqual(4.5);
 
   await page.locator(".word-detail-memo").getByRole("button", { name: "编辑记忆法", exact: true }).click();
   await expect(memoInput).toHaveValue("A-P-P-L-E 红彤彤的苹果");

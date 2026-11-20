@@ -6,7 +6,7 @@
 .login-brand svg { flex-shrink: 0; color: var(--mint); }
 .login-brand span { font-family: var(--font-reading); font-size: 24px; font-weight: 700; letter-spacing: -.5px; }
 .login-editorial { margin: auto 0; padding: 70px 0; }
-.login-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 2px; color: var(--mint); }
+.login-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 2px; color: var(--mint-ink, var(--mint)); }
 .login-headline { font-size: clamp(32px, 3.4vw, 54px); line-height: 1.45; letter-spacing: -1.8px; font-weight: 500; margin: 24px 0; }
 .login-intro-copy { font-size: 15px; line-height: 2; color: var(--muted); margin: 0; }
 .login-intro-note { color: var(--muted); font-size: 12px; margin: 0; }

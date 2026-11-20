@@ -3,6 +3,11 @@ import { api } from "../lib/api.js";
 import { showToast } from "../App.jsx";
 import { useStarterCards } from "../hooks/useStarterCards.js";
 
+function parseInputWords(raw) {
+  const trimmed = typeof raw === "string" ? raw.trim() : "";
+  return trimmed ? trimmed.split(/[,，\s]+/).filter(Boolean) : [];
+}
+
 /**
  * 加词视图：AI 生成词卡 + 入门词卡 + 立即学一学。
  */
@@ -30,9 +35,9 @@ export default function AddPage({ onStartStudy, onAddStarter, onGoWords }) {
   };
 
   const generate = async () => {
-    const raw = input.trim();
-    if (!raw) { setResult({ error: "先输入一些单词吧" }); return; }
-    const words = raw.split(/[,，\s]+/).filter(Boolean).slice(0, 20);
+    const parsed = parseInputWords(input);
+    if (parsed.length === 0) { setResult({ error: "先输入一些单词吧" }); return; }
+    const words = parsed.slice(0, 20);
     setLoading(true);
     setResult(null);
     try {
@@ -49,9 +54,13 @@ export default function AddPage({ onStartStudy, onAddStarter, onGoWords }) {
     }
   };
 
-  const wordCount = input.trim()
-    ? input.trim().split(/[,，\s]+/).filter(Boolean).length
-    : 0;
+  const wordCount = parseInputWords(input).length;
+  const countHint =
+    wordCount === 0
+      ? "用逗号、空格或换行分隔，单次最多 20 个单词"
+      : wordCount <= 20
+        ? `已输入 ${wordCount} / 20 个单词`
+        : `已输入 ${wordCount} 个单词，单次仅处理前 20 个`;
 
   return (
     <section className="view view-center">
@@ -67,8 +76,10 @@ export default function AddPage({ onStartStudy, onAddStarter, onGoWords }) {
               <span className="add-panel-tag">自定义词库</span>
               <h3 id="add-ai-heading">AI 生成词卡</h3>
             </div>
-            <p className="add-hint">输入想学的单词，用逗号、空格或换行分隔（单次最多 20 个），自动生成释义、音标与例句。</p>
+            <p className="add-hint">输入想学的英文单词，用逗号、空格或换行分隔（单次最多 20 个），自动生成释义、音标与例句。</p>
+            <label className="sr-only" htmlFor="add-words-input">要添加的英文单词</label>
             <textarea
+              id="add-words-input"
               className="add-input"
               name="words"
               rows={4}
@@ -79,9 +90,7 @@ export default function AddPage({ onStartStudy, onAddStarter, onGoWords }) {
               placeholder="例：apple, banana, teacher"
             />
             <div className="add-panel-footer">
-              <span className="add-count-hint">
-                {wordCount > 0 ? `已输入 ${Math.min(wordCount, 20)} / 20 个词` : "支持单词与常见短语"}
-              </span>
+              <span className="add-count-hint">{countHint}</span>
               <button className="btn btn-primary" onClick={generate} disabled={loading}>
                 {loading ? "生成中…" : "AI 生成词卡"}
               </button>

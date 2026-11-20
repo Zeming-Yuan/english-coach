@@ -24,7 +24,9 @@ const EVIDENCE_DEFAULTS = [
 function shortMonthDay(isoDate) {
   if (typeof isoDate !== "string") return "";
   const parts = isoDate.split("-");
-  return parts.length === 3 ? `${Number(parts[1])}/${Number(parts[2])}` : isoDate;
+  return parts.length === 3
+    ? `${parts[1].padStart(2, "0")}/${parts[2].padStart(2, "0")}`
+    : isoDate;
 }
 
 function triggerBlobDownload(blob, filename) {
@@ -305,13 +307,7 @@ export default function StatsPage({ onDelayed, onAdvice, onOpenBackup }) {
       <section data-testid="evidence-overview" className="metrics-panel stats-half-panel">
         <h3>学习证据</h3>
         <dl className="stats-kv-list">
-          {[
-            ["verified", "独立回忆已有证据"],
-            ["weak", "仍需巩固"],
-            ["stale", "历史证据，待复测"],
-            ["insufficient", "独立证据不足"],
-            ["history_incomplete", "历史依据不完整"],
-          ].map(([key, fallback]) => (
+          {EVIDENCE_DEFAULTS.map(([key, fallback]) => (
             <div key={key}>
               <dt>{stats.evidence_labels?.[key] || fallback}</dt>{" "}
               <dd>{stats.evidence_counts?.[key] || 0} 张</dd>

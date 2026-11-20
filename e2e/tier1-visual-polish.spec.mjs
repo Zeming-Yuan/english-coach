@@ -1,4 +1,5 @@
 import { test, expect } from "./support/test.mjs";
+import { relativeLuminance } from "./support/color.mjs";
 
 test("Tier 1.1: login brand renders terracotta book icon and Tinos serif wordmark matching workspace sidebar", async ({
   app,
@@ -192,15 +193,6 @@ test("Tier 1.4: DailySession reinforcement, Quiz typed items, and Mixed spell it
     "rgba(0, 0, 0, 0)",
   );
 });
-
-function relativeLuminance(rgbString) {
-  const [r, g, b] = rgbString
-    .match(/[\d.]+/g)
-    .slice(0, 3)
-    .map((v) => Number(v) / 255)
-    .map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-}
 
 test("Tier 1.5: dark mode heatmap increases luminance monotonically from l0 to l3 and SessionRoot honors dark preference on login", async ({
   app,
