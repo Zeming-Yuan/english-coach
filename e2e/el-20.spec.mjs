@@ -29,7 +29,7 @@ test("EL-20 visible evidence overview remains independent of unlock counts", asy
   await page.locator(".today-stats").click();
   await expect(page.getByTestId("evidence-overview")).toContainText("学习证据");
   await expect(page.getByTestId("evidence-overview")).toContainText("仍需巩固 1 张");
-  await expect(page.locator(".stats-grid")).toContainText("句子练习已解锁");
+  await expect(page.locator(".stats-grid")).toContainText("达到句子解锁条件的词");
   await page.screenshot({path: test.info().outputPath("contract-evidence.png")});
 });
 

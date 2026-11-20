@@ -49,15 +49,21 @@ test('session login shows errors, survives refresh and revokes logout',async({ga
   expect((await context.request.get(gateway.baseURL+'/api/stats')).status()).toBe(401);
 });
 test('switching accounts isolates pending records and AI settings',async({gateway,page})=>{
+  await gateway.owner.seedCards([
+    {word:'dog',meaning:'狗'},
+    {word:'dog',kind:'sentence',meaning:'我有一只狗。',example:'I have a dog.'},
+  ]);
   await page.goto(gateway.baseURL);
   await login(page,'owner','trial-password');
   await expect(page.getByLabel('当前账号')).toHaveText('owner');
+  await expect(page.locator('.home-record-total')).toContainText('1 个词 · 1 张句子卡');
   await page.evaluate(()=>localStorage.setItem('ec.account.owner:ec.pending.study',JSON.stringify({path:'/api/reviews',payload:{submission_id:'owner-pending'}})));
   expect(await page.evaluate(async()=> (await fetch('/api/ai-config',{method:'PUT',headers:{'Content-Type':'application/json','X-EC-Account':'owner'},body:JSON.stringify({base_url:'http://127.0.0.1:9/v1',model:'owner-model',api_key:'disposable-key'})})).status)).toBe(200);
   await page.getByRole('button',{name:'退出登录',exact:true}).click();
   await expect(page.getByRole('heading',{name:'欢迎回来'})).toBeVisible();
   await login(page,'friend1','friend-password');
   await expect(page.getByLabel('当前账号')).toHaveText('friend1');
+  await expect(page.locator('.home-record-total')).toContainText('0 个词 · 0 张句子卡');
   await expect(page.getByText('有一条学习记录尚未确认保存；刷新后可能需要重新核对。')).toHaveCount(0);
   expect((await page.evaluate(async()=> (await fetch('/api/ai-config',{headers:{'X-EC-Account':'friend1'}})).json())).has_key).toBe(false);
   expect(await page.evaluate(()=>localStorage.getItem('ec.account.owner:ec.pending.study'))).toContain('owner-pending');
