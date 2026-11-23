@@ -299,13 +299,13 @@ export default function LessonsPage({
   };
 
   const configAction = !config?.has_key && (
-    configError ? <div>
+    configError ? <div className="ec-callout is-err ec-callout-inline">
       <p role="alert">无法读取 AI 配置：{configError}</p>
       <button className="btn btn-ghost btn-small" onClick={reloadConfig}>重试读取 AI 配置</button>
-    </div> : config ? <div>
+    </div> : config ? <div className="ec-callout is-info ec-callout-inline lesson-config-callout">
       <p>正式课程生成需要配置 AI 服务。</p>
       <button className="btn btn-ghost btn-small" onClick={() => onNavigate("settings")}>配置 AI 服务</button>
-    </div> : <p role="status">正在读取 AI 配置…</p>
+    </div> : <p role="status" className="ec-callout is-info is-compact">正在读取 AI 配置…</p>
   );
   const generationButton = (label, className) => (
     <button className={className} disabled={generating} onClick={nextLesson}>
@@ -334,13 +334,13 @@ export default function LessonsPage({
       closeLesson({ popIfFromParent: true, replace: true });
     }} />;
   }
-  if (loadError && !activeLesson) return <div role="alert">加载失败：{loadError}<button className="btn btn-ghost" onClick={() => {setLoading(true); loadLessons().catch(() => {});}}>重试加载</button></div>;
+  if (loadError && !activeLesson) return <div role="alert" className="ec-callout is-err ec-callout-inline"><span>加载失败：{loadError}</span><button className="btn btn-ghost btn-small" onClick={() => {setLoading(true); loadLessons().catch(() => {});}}>重试加载</button></div>;
 
   // 课程学习页
   if (activeLesson) {
     return (
       <>
-      {loadError && <div role="alert">课程列表刷新失败：{loadError}<button className="btn btn-ghost" onClick={() => loadLessons().catch(() => {})}>重试刷新</button></div>}
+      {loadError && <div role="alert" className="ec-callout is-err ec-callout-inline"><span>课程列表刷新失败：{loadError}</span><button className="btn btn-ghost btn-small" onClick={() => loadLessons().catch(() => {})}>重试刷新</button></div>}
       <LessonDetail
         key={activeLesson.id}
         lesson={activeLesson}
@@ -403,15 +403,15 @@ export default function LessonsPage({
       </div>
 
       {hasNextPending && (
-        <div role="status" className="lesson-entry">
-          {generating ? "正在确认上次生成" : "上次生成尚未确认保存"}
+        <div role="status" className="lesson-entry ec-banner is-warn lesson-pending-banner">
+          <span>{generating ? "正在确认上次生成" : "上次生成尚未确认保存"}</span>
           {generationButton("继续确认生成", "btn btn-ghost btn-small")}
         </div>
       )}
 
       {viewPending.length > 0 && (
-        <div role="status" className="lesson-entry">
-          有课程浏览尚未确认：第 {viewPending.join("、")} 课
+        <div role="status" className="lesson-entry ec-banner is-warn lesson-pending-banner">
+          <span>有课程浏览尚未确认：第 {viewPending.join("、")} 课</span>
           <button
             className="btn btn-ghost btn-small"
             onClick={() => openLesson(Number(viewPending[0]))}
@@ -446,10 +446,10 @@ export default function LessonsPage({
 
 /* ============ 课程学习详情 ============ */
 function LessonRetention({retention}) {
-  return <div data-testid="lesson-retention">
+  return <div data-testid="lesson-retention" className="lesson-retention-strip">
     {[['day', '隔日回测'], ['week', '一周回测']].map(([key, label]) => {
       const result = retention?.[key];
-      return <p key={key}>本课{label}：{result?.count ? `独立成功/样本 ${result.successes}/${result.count}` : '暂无数据'}
+      return <p key={key} className="lesson-retention-row">本课{label}：{result?.count ? `独立成功/样本 ${result.successes}/${result.count}` : '暂无数据'}
         {result?.count > 0 && result.count < 10 ? ' · 样本较少，依据有限' : ''}
         {` · 辅助 ${result?.assisted || 0} · 跳过 ${result?.skipped || 0}`}
       </p>;

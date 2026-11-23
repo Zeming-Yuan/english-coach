@@ -182,15 +182,17 @@ function SceneRun({initial, creationEnabled, onRestart, onExit}) {
           <button className="btn btn-ghost" disabled={blocked || !run.can_continue} onClick={() => help('answer_visible')}>查看标准表达</button>
         </div>
       </>}
-      {attempt.phase === 'saving' && <p role="status">正在确认保存…</p>}
-      {helpBusy && <p role="status">正在确认帮助…</p>}
-      {attempt.phase === 'failed' && <div role="alert">
+      {attempt.phase === 'saving' && <p role="status" className="ec-callout is-info is-compact">正在确认保存…</p>}
+      {helpBusy && <p role="status" className="ec-callout is-info is-compact">正在确认帮助…</p>}
+      {attempt.phase === 'failed' && <div role="alert" className="ec-callout is-err">
         <p>{attempt.error}</p>
-        <button className="btn btn-primary" onClick={async () => {try {apply(await attempt.retry());} catch {}}}>继续确认保存</button>
-        <button className="btn btn-ghost" onClick={async () => {
-          attempt.clear(); restored.current = null;
-          try {const saved = await api(`/api/practice-sessions/${run.id}`); setRun(saved); const next = saved.items.findIndex(i => !i.processed); setIndex(next < 0 ? 3 : next); setAnswer(''); setComposing(false); setFeedback(null);} catch (e) {setError(e.message);}
-        }}>放弃这条待确认</button>
+        <div className="save-state-actions">
+          <button className="btn btn-primary btn-small" onClick={async () => {try {apply(await attempt.retry());} catch {}}}>继续确认保存</button>
+          <button className="btn btn-ghost btn-small" onClick={async () => {
+            attempt.clear(); restored.current = null;
+            try {const saved = await api(`/api/practice-sessions/${run.id}`); setRun(saved); const next = saved.items.findIndex(i => !i.processed); setIndex(next < 0 ? 3 : next); setAnswer(''); setComposing(false); setFeedback(null);} catch (e) {setError(e.message);}
+          }}>放弃这条待确认</button>
+        </div>
       </div>}
     </>}
     {run.items.filter(saved => saved.processed).map(saved => <details key={saved.id} className="scene-saved-feedback" open={saved.position - 1 === index}>
@@ -251,9 +253,9 @@ export default function ScenePage({onExit}) {
   return <section className="view scene-page scene-catalog">
     <button className="btn btn-ghost btn-small scene-back" onClick={onExit}>返回队列</button>
     <h2 className="page-title scene-title">场景练习</h2>
-    {error && <p role="alert">{error}</p>}
-    {note && <p role="note">{note}</p>}
-    {busy && <p role="status">正在确认保存…</p>}
+    {error && <p role="alert" className="ec-callout is-err is-compact">{error}</p>}
+    {note && <p role="note" className="ec-callout is-warn is-compact">{note}</p>}
+    {busy && <p role="status" className="ec-callout is-info is-compact">正在确认保存…</p>}
     {catalog?.scenes.map(scene => <article key={scene.id} aria-label={scene.title} className="lesson-progress scene-card">
       <h3 id={`scene-title-${scene.id}`}>{scene.title} · 约三轮 · 文字输入</h3>
       <p className="scene-card-context">{scene.situation}</p>

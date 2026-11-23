@@ -21,7 +21,7 @@ function BudgetNotice({session}) {
     return () => clearInterval(timer);
   }, []);
   if (!session.startedAt || !session.plan || now - session.startedAt < session.plan.budget_minutes * 60000) return null;
-  return <p role="status" data-testid="budget-expired">已到预计时间，可在确认保存后先到这里；也可继续本轮，目标保持不变。</p>;
+  return <p role="status" className="ec-callout is-warn budget-notice-bar" data-testid="budget-expired">已到预计时间，可在确认保存后先到这里；也可继续本轮，目标保持不变。</p>;
 }
 
 /** Daily orchestration only; main progress and attempt commits keep their existing owners. */
@@ -156,32 +156,37 @@ export default function DailySessionPage({ session, onSessionChange, onFinish, o
     <h2>{paused ? "本段已保存结果" : session.plan?.mode === "recovery" ? "恢复学习结果" : "本轮学习结果"}</h2>
     {!paused && <p role="status" className="daily-closure" data-testid="daily-closure">本轮已完成，今天可以结束了。</p>}
     <p className="done-detail">{summary.counts.completed_cards} 张卡已保存并排期；主队列 {summary.counts.main} 次，巩固 {summary.counts.reinforcement} 次；跳过 {summary.counts.skipped} 次。</p>
-    <p>仍需复习：{summary.weak_words.map(w => w.word).join("、") || "本轮暂无薄弱词"}</p>
+    <p className="summary-weak-row">仍需复习：{summary.weak_words.map(w => w.word).join("、") || "本轮暂无薄弱词"}</p>
 
-    {session.plan?.mode === "recovery" && <p role="status" data-testid="recovery-remaining">剩余到期 {summary.remaining_due} 张，可另选常规计划；无需一次清空积压。</p>}
-    {paused ? <>
-      <p>本轮目标 {session.target} 张，仍有 {session.target - session.index} 张未完成</p>
-      <button className="btn btn-primary" onClick={onPauseExit}>返回首页</button>
-      <button className="btn btn-ghost" onClick={continueRound}>继续本轮学习</button>
-    </> : <>
-      <button className="btn btn-primary" onClick={onFinish}>{session.plan?.mode === "recovery" ? "今天先到这里" : "← 返回队列"}</button>
-      {session.plan?.mode === "recovery" && <button className="btn btn-ghost" onClick={onFinish}>继续常规计划</button>}
-
-    </>}
+    {session.plan?.mode === "recovery" && <p role="status" className="ec-callout is-warn is-compact" data-testid="recovery-remaining">剩余到期 {summary.remaining_due} 张，可另选常规计划；无需一次清空积压。</p>}
+    <div className="daily-summary-actions">
+      {paused ? <>
+        <p className="summary-paused-remaining">本轮目标 {session.target} 张，仍有 {session.target - session.index} 张未完成</p>
+        <div className="save-state-actions" style={{ justifyContent: "center" }}>
+          <button className="btn btn-primary" onClick={onPauseExit}>返回首页</button>
+          <button className="btn btn-ghost" onClick={continueRound}>继续本轮学习</button>
+        </div>
+      </> : <div className="save-state-actions" style={{ justifyContent: "center" }}>
+        <button className="btn btn-primary" onClick={onFinish}>{session.plan?.mode === "recovery" ? "今天先到这里" : "← 返回队列"}</button>
+        {session.plan?.mode === "recovery" && <button className="btn btn-ghost" onClick={onFinish}>继续常规计划</button>}
+      </div>}
+    </div>
     {!paused && <ExpansionPracticeLinks studySessionId={session.id} onStart={studyProps.onStartExpansionPractice} />}
     <details className="daily-summary-details">
       <summary>查看详细学习记录与自选练习</summary>
-    {[["retrieval", "独立提取"], ["assisted", "辅助练习"], ["recognition", "识别练习"], ["self_report", "自评"]].map(([key, label]) => <p key={key}>{label}：{summary.metrics[key].count ? `${summary.metrics[key].successes} / ${summary.metrics[key].count}` : "暂无数据"}</p>)}
-    <p>{summary.next_due ? `已有排期：${summary.next_due}` : "暂无排期，可稍后返回队列继续学习"}</p>
-      {!paused && <button className="btn btn-ghost" onClick={() => { onFinish(); studyProps.onToQuiz(); }}>去做测验</button>}
+    {[["retrieval", "独立提取"], ["assisted", "辅助练习"], ["recognition", "识别练习"], ["self_report", "自评"]].map(([key, label]) => <p key={key} className="daily-summary-metric">{label}：{summary.metrics[key].count ? `${summary.metrics[key].successes} / ${summary.metrics[key].count}` : "暂无数据"}</p>)}
+    <p className="daily-summary-schedule">{summary.next_due ? `已有排期：${summary.next_due}` : "暂无排期，可稍后返回队列继续学习"}</p>
+      {!paused && <button className="btn btn-ghost daily-summary-quiz-btn" onClick={() => { onFinish(); studyProps.onToQuiz(); }}>去做测验</button>}
     </details>
   </div></section>;
   if (paused) return <section className="view view-center">
-    {loading && <p role="status">正在读取本段已保存结果…</p>}
-    {error && <p role="alert">{error}</p>}
-    {error && <button className="btn btn-primary" onClick={() => finish(true)}>重试加载</button>}
-    <button className="btn btn-ghost" onClick={onPauseExit}>返回首页</button>
-    <button className="btn btn-ghost" onClick={continueRound}>继续本轮学习</button>
+    {loading && <p role="status" className="ec-callout is-info is-compact">正在读取本段已保存结果…</p>}
+    {error && <p role="alert" className="ec-callout is-err is-compact">{error}</p>}
+    <div className="save-state-actions" style={{ justifyContent: "center" }}>
+      {error && <button className="btn btn-primary" onClick={() => finish(true)}>重试加载</button>}
+      <button className="btn btn-ghost" onClick={onPauseExit}>返回首页</button>
+      <button className="btn btn-ghost" onClick={continueRound}>继续本轮学习</button>
+    </div>
   </section>;
   if (!session.complete) return <><BudgetNotice session={session} /><StudyPage {...studyProps} session={session} onPause={() => finish(true)} /></>;
   return <section className="view view-practice">
@@ -199,10 +204,10 @@ export default function DailySessionPage({ session, onSessionChange, onFinish, o
       </button>
     </div>
     <div className="spelling-body">
-      {loading && <p role="status">正在读取已保存结果…</p>}
+      {loading && <p role="status" className="ec-callout is-info is-compact">正在读取已保存结果…</p>}
       {error && (
-        <div role="alert">
-          {error}
+        <div role="alert" className="ec-callout is-err">
+          <p>{error}</p>
           <div className="save-state-actions" style={{ justifyContent: "center" }}>
             <button className="btn btn-primary btn-small" onClick={load}>重试加载</button>
           </div>
@@ -226,17 +231,17 @@ export default function DailySessionPage({ session, onSessionChange, onFinish, o
       </>}
       {confirmedHere && (
         <>
-          <p role="status">{attempt.result.correct === true ? "已保存：答对" : attempt.result.correct === false ? `已保存：答错，正确拼写：${attempt.result.expected}` : "已保存：已跳过"}</p>
+          <p role="status" className="reinforcement-save-status" data-outcome={attempt.result.correct === true ? "ok" : attempt.result.correct === false ? "err" : "skip"}>{attempt.result.correct === true ? "已保存：答对" : attempt.result.correct === false ? `已保存：答错，正确拼写：${attempt.result.expected}` : "已保存：已跳过"}</p>
           {attempt.result.correct === false && (
             <SpellingCorrection typed={confirmed.user_input} expected={attempt.result.expected}
               cardId={confirmed.card_id} revision={confirmed.revision} source="reinforcement" showExpected={false} />
           )}
         </>
       )}
-      {attempt.phase === "saving" && <p role="status">正在确认保存…</p>}
+      {attempt.phase === "saving" && <p role="status" className="ec-callout is-info is-compact">正在确认保存…</p>}
       {attempt.phase === "failed" && (
-        <div role="alert">
-          {attempt.error}
+        <div role="alert" className="ec-callout is-err">
+          <p>{attempt.error}</p>
           <div className="save-state-actions" style={{ justifyContent: "center" }}>
             <button className="btn btn-primary btn-small" onClick={retry}>继续确认保存</button>
             <button className="btn btn-ghost btn-small" onClick={() => { attempt.clear(); studyProps.onAbort(); }}>退出本轮并重新加载</button>

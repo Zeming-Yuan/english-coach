@@ -14,7 +14,7 @@ export default function DurationRecovery() {
     };
   }, []);
   if (!rows.length) return null;
-  return <aside role="alert" data-testid="duration-recovery" className="pending-recovery">
+  return <aside role="alert" data-testid="duration-recovery" className="pending-recovery ec-banner is-warn">
     <p>答案保存流程不受影响；{rows.length} 条主动时长尚未确认；仅服务端已保存时长用于估算。可继续确认或放弃时长；浏览器存储不可用时刷新可能丢失。</p>
     <div className="save-state-actions">
       <button className="btn btn-primary btn-small" disabled={busy} onClick={async () => {

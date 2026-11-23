@@ -39,7 +39,9 @@ export default function DelayedCheckPage({window, backLabel = "返回统计", on
   }} />;
   return <section className="view">
     <h2>{window === "week" ? "一周回测" : "隔日回测"}</h2>
-    {error ? <div role="alert">{error}<button className="btn btn-primary" onClick={() => setRetry(v => v + 1)}>继续确认创建</button></div> : <p role="status">正在确认回测轮次…</p>}
-    <button className="btn btn-ghost" onClick={onExit}>{backLabel}</button>
+    {error ? <div role="alert" className="ec-callout is-err ec-callout-inline"><span>{error}</span><button className="btn btn-primary btn-small" onClick={() => setRetry(v => v + 1)}>继续确认创建</button></div> : <p role="status" className="ec-callout is-info is-compact">正在确认回测轮次…</p>}
+    <div className="save-state-actions">
+      <button className="btn btn-ghost" onClick={onExit}>{backLabel}</button>
+    </div>
   </section>;
 }

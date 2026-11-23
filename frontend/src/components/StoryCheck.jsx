@@ -42,9 +42,9 @@ export default function StoryCheck({story, onCreated, children}) {
     finally {setBusy(false);}
   };
   return <>
-    {error && <p role="alert">{error}</p>}
-    {note && <p role="note">{note}</p>}
-    {busy && <p role="status">正在确认保存…</p>}
+    {error && <p role="alert" className="ec-callout is-err is-compact">{error}</p>}
+    {note && <p role="note" className="ec-callout is-warn is-compact">{note}</p>}
+    {busy && <p role="status" className="ec-callout is-info is-compact">正在确认保存…</p>}
     {pending.current && !busy && <div className="save-state-actions">
       <button className="btn btn-primary" onClick={() => start()}>继续确认保存</button>
       <button className="btn btn-ghost" onClick={() => {
@@ -54,9 +54,11 @@ export default function StoryCheck({story, onCreated, children}) {
     </div>}
     {checking ? <PracticePage key={sessionId} sessionId={sessionId} storyCheck onExit={review} onRestart={() => start(true)} /> : <>
       {children}
-      {story.checks_enabled !== false && !pending.current && <button className="btn btn-primary" disabled={busy} onClick={() => start()}>
-        {sessionId ? '返回检查' : '读后检查'}
-      </button>}
+      {story.checks_enabled !== false && !pending.current && <div className="story-check-bar">
+        <button className="btn btn-primary" disabled={busy} onClick={() => start()}>
+          {sessionId ? '返回检查' : '读后检查'}
+        </button>
+      </div>}
     </>}
   </>;
 }

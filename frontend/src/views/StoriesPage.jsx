@@ -104,7 +104,7 @@ export default function StoriesPage({
 
   if (loading || routeOpening) return <StoryLayout onNavigate={onNavigate}><div className="story-empty">加载中…</div></StoryLayout>;
 
-  if (loadError) return <StoryLayout onNavigate={onNavigate}><div role="alert">加载失败：{loadError}<button className="btn btn-ghost" onClick={loadStories}>重试加载</button></div></StoryLayout>;
+  if (loadError) return <StoryLayout onNavigate={onNavigate}><div role="alert" className="ec-callout is-err ec-callout-inline"><span>加载失败：{loadError}</span><button className="btn btn-ghost btn-small" onClick={loadStories}>重试加载</button></div></StoryLayout>;
 
   // 阅读视图
   if (activeStory) {
@@ -163,14 +163,16 @@ export default function StoriesPage({
           }}
         /> : starterAction}
       </div>
-      {starterError && <p role="alert">{starterError}</p>}
+      {starterError && <p role="alert" className="ec-callout is-err is-compact">{starterError}</p>}
       {generated && <StoryQuality story={generated} />}
-      {starterPreview && <div>
+      {starterPreview && <div className="story-starter-preview">
         <StoryQuality story={starterPreview} />
-        <button className="btn btn-ghost btn-small" onClick={() => {
-          setStarterError("");
-          adoptStory(starterPreview);
-        }}>打开入门故事</button>
+        <div className="story-starter-preview-footer">
+          <button className="btn btn-ghost btn-small" onClick={() => {
+            setStarterError("");
+            adoptStory(starterPreview);
+          }}>打开入门故事</button>
+        </div>
       </div>}
       <div className="story-list">
         {stories.length === 0 && <div className="story-empty">
@@ -179,7 +181,7 @@ export default function StoriesPage({
         {stories.map((s) => (
           <div key={s.id} className="story-item">
             <div className="story-item-main" onClick={() => openStory(s.id)}>
-              {["normal", "short"].includes(s.mode) && <div>{s.mode === "short" ? "简化版" : "原版"} · {s.check_session_id ? "已有检查记录" : "未检查"}</div>}
+              {["normal", "short"].includes(s.mode) && <div className="story-item-status" data-checked={s.check_session_id ? "true" : "false"}>{s.mode === "short" ? "简化版" : "原版"} · {s.check_session_id ? "已有检查记录" : "未检查"}</div>}
               <div className="story-item-title">{s.title}</div>
               {s.title_cn && <div className="story-item-title-cn">{s.title_cn}</div>}
               <div className="story-item-meta">{s.words.length} 个词 · {s.content.slice(0, 40)}…</div>

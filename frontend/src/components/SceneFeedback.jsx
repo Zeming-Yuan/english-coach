@@ -68,13 +68,13 @@ function ItemFeedback({session, item}) {
     return () => {live = false; observer.disconnect(); document.removeEventListener('visibilitychange', confirm);};
   }, [data, contactRetry]);
 
-  return <div className="quiz-feedback" data-testid="scene-feedback">
-    <p role="status">首答角色反馈 · {data ? (data.origin === 'model' ? '模型回应' : '核对模板') : '正在生成，可继续下一轮'}</p>
-    {data && <p ref={element}>{data.text}</p>}
-    {(data?.correction || (!data && item.correction)) && <p>{data?.correction || item.correction}</p>}
-    {note && <p role="note">{note}</p>}
-    {contactNote && <p role="note">{contactNote}</p>}
-    {error && <p role="alert">{error}<button className="btn btn-ghost btn-small" onClick={() => setRetry(n => n + 1)}>重试反馈</button></p>}
-    {contactError && <p role="alert">{contactError}<button className="btn btn-ghost btn-small" onClick={() => setContactRetry(n => n + 1)}>继续确认接触</button></p>}
+  return <div className="quiz-feedback scene-role-feedback" data-testid="scene-feedback">
+    <p role="status" className="srf-status">首答角色反馈 · {data ? (data.origin === 'model' ? '模型回应' : '核对模板') : '正在生成，可继续下一轮'}</p>
+    {data && <p ref={element} className="srf-reply">{data.text}</p>}
+    {(data?.correction || (!data && item.correction)) && <p className="srf-correction">{data?.correction || item.correction}</p>}
+    {note && <p role="note" className="ec-callout is-warn is-compact">{note}</p>}
+    {contactNote && <p role="note" className="ec-callout is-warn is-compact">{contactNote}</p>}
+    {error && <p role="alert" className="ec-callout is-err ec-callout-inline"><span>{error}</span><button className="btn btn-ghost btn-small" onClick={() => setRetry(n => n + 1)}>重试反馈</button></p>}
+    {contactError && <p role="alert" className="ec-callout is-err ec-callout-inline"><span>{contactError}</span><button className="btn btn-ghost btn-small" onClick={() => setContactRetry(n => n + 1)}>继续确认接触</button></p>}
   </div>;
 }

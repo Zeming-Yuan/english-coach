@@ -315,7 +315,7 @@ export default function StatsPage({ onDelayed, onAdvice, onOpenBackup }) {
         <h3>学习证据</h3>
         <dl className="stats-kv-list">
           {EVIDENCE_DEFAULTS.map(([key, fallback]) => (
-            <div key={key}>
+            <div key={key} data-evidence-key={key}>
               <dt>{stats.evidence_labels?.[key] || fallback}</dt>{" "}
               <dd>{stats.evidence_counts?.[key] || 0} 张</dd>
             </div>
@@ -341,7 +341,7 @@ export default function StatsPage({ onDelayed, onAdvice, onOpenBackup }) {
           ].map(([key, label]) => {
             const value = stats.metrics?.[key];
             return (
-              <div key={key} data-testid={`${key === "self_report" ? "self-report" : key}-metric`}>
+              <div key={key} data-testid={`${key === "self_report" ? "self-report" : key}-metric`} data-empty={value?.percent === null || value?.percent === undefined ? "true" : "false"}>
                 <dt>{label}</dt>{" "}
                 <dd>
                   {value?.percent === null || value?.percent === undefined ? "暂无数据" : `${value.percent}%`}
@@ -404,7 +404,7 @@ export default function StatsPage({ onDelayed, onAdvice, onOpenBackup }) {
         </div>
       </section>
       {stats.history_incomplete && (
-        <p role="note" className="add-hint">
+        <p role="note" className="add-hint ec-callout is-warn is-compact">
           部分旧历史不可还原，图表只展示可确认的记录；旧数据最后活动另见词卡详情。
         </p>
       )}
@@ -476,7 +476,7 @@ export default function StatsPage({ onDelayed, onAdvice, onOpenBackup }) {
         )}
       </div>
       {exportSummary && (
-        <p role="status" data-testid="export-summary" style={{ fontSize: 12, color: "var(--muted)" }}>
+        <p role="status" data-testid="export-summary" className="ec-meta-strip">
           成绩单已按导出时统计生成：{exportSummary}
         </p>
       )}
