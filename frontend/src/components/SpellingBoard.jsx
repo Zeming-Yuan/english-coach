@@ -46,6 +46,19 @@ export default function SpellingBoard({
   const [value, setValue] = useState("");
   const [composing, setComposing] = useState(false);
   const submittedRef = useRef(false);
+  const prevIndependentRef = useRef(independent);
+  const allowAutoSubmitRef = useRef(false);
+
+  // 从独立回忆切到辅助模式时，截断超长草稿且禁止因既有长度立即自动提交。
+  useEffect(() => {
+    if (prevIndependentRef.current && !independent) {
+      allowAutoSubmitRef.current = false;
+      if (maxLength > 0) {
+        setValue((prev) => (prev.length > maxLength ? prev.slice(0, maxLength) : prev));
+      }
+    }
+    prevIndependentRef.current = independent;
+  }, [independent, maxLength]);
 
   const submit = useCallback(() => {
     if (disabled || submittedRef.current) return;
@@ -61,7 +74,14 @@ export default function SpellingBoard({
 
   // assisted 模式输满自动提交（300ms 缓冲，等最后一个字母稳下来）
   useEffect(() => {
-    if (!independent && !composing && maxLength > 0 && value.length === maxLength && !disabled) {
+    if (
+      !independent &&
+      !composing &&
+      maxLength > 0 &&
+      value.length === maxLength &&
+      !disabled &&
+      allowAutoSubmitRef.current
+    ) {
       const t = setTimeout(submit, 300);
       return () => clearTimeout(t);
     }
@@ -69,6 +89,7 @@ export default function SpellingBoard({
 
   const handleChange = (e) => {
     if (disabled) return;
+    allowAutoSubmitRef.current = true;
     setValue(independent ? e.target.value : e.target.value.slice(0, maxLength));
   };
 

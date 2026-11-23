@@ -549,15 +549,59 @@ body.dark .product-app .btn-ghost.lesson-viewed-done:hover {
    ========================================================= */
 .product-app .word-tabs,
 .product-app .diff-group,
-.product-app .spelling-difficulty {
+.product-app .spelling-difficulty,
+.product-app .qwerty-spelling .spelling-difficulty {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  align-self: center;
+  width: fit-content;
+  max-width: 100%;
+  flex-wrap: nowrap;
   gap: 3px;
   padding: 4px;
   border-radius: var(--r-sm);
   background: var(--stone-fill);
   border: 1px solid var(--hairline);
   box-shadow: var(--elev-0);
+}
+
+.product-app .qwerty-spelling .spelling-difficulty {
+  margin: 0 auto 20px;
+}
+
+.product-app .qwerty-spelling .spelling-difficulty .diff-btn {
+  white-space: nowrap;
+}
+
+/* DailySession / Mixed embeds hint text inside .spelling-difficulty; keep buttons grouped and text airy */
+.product-app .spelling-difficulty:has(> span) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  flex-wrap: wrap;
+  width: auto;
+  gap: 8px 10px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.product-app .spelling-difficulty:has(> span) .diff-btn {
+  background-color: var(--card);
+  background-image: var(--ghost-grad);
+  border: 1px solid var(--hairline-strong);
+  color: var(--ink);
+  box-shadow: var(--elev-1);
+}
+
+.product-app .spelling-difficulty:has(> span) .diff-btn.diff-active {
+  background-color: var(--mint-soft);
+  background-image: none;
+  border-color: rgba(162, 98, 67, 0.32);
+  color: var(--mint-ink);
 }
 
 .product-app :is(.mode-btn, .word-tab, .diff-btn) {
@@ -1001,12 +1045,387 @@ body.dark .product-app :is(.quiz-option, .listening-option).wrong {
   background-image: none;
 }
 
+.product-app .qwerty-spelling {
+  height: auto;
+  min-height: calc(100dvh - 151px);
+}
+
+.product-app .qwerty-spelling .spelling-body {
+  min-height: 0;
+  padding: clamp(24px, 6vh, 64px) 0 20px;
+  overflow: visible;
+}
+
+.product-app .qwerty-spelling .spelling-body:has(.spelling-feedback) {
+  padding: clamp(12px, 2.8vh, 28px) 0 16px;
+  gap: 10px;
+  transition: padding-top 240ms var(--ease-snap);
+}
+
+.product-app .qwerty-spelling .spelling-body:has(.spelling-feedback) .qwerty-typing {
+  margin: 0 auto;
+}
+
+.product-app .qwerty-spelling .spelling-body:has(.spelling-feedback) .qwerty-typing-line,
+.product-app .qwerty-spelling .spelling-body:has(.spelling-feedback) .qwerty-typing .spelling-input,
+.product-app .qwerty-spelling .spelling-body:has(.spelling-feedback) .qwerty-typing--assisted .spelling-word-display {
+  min-height: 68px;
+}
+
+.product-app .qwerty-spelling .spelling-body:has(.spelling-feedback) .qwerty-typing .spelling-input,
+.product-app .qwerty-spelling .spelling-body:has(.spelling-feedback) .qwerty-typing--assisted .spelling-word-display {
+  padding: 10px 12px;
+}
+
+.product-app .qwerty-spelling .spelling-body:has(.spelling-feedback) .qwerty-typing .spelling-input,
+.product-app .qwerty-spelling .spelling-body:has(.spelling-feedback) .qwerty-letter.spelling-box {
+  font-size: clamp(26px, 4vw, 40px);
+}
+
 .product-app .quiz-feedback,
 .product-app .spelling-feedback,
 .product-app .listening-feedback {
   border-radius: var(--r-md);
   padding: 14px 18px;
   animation: fcPopReveal 260ms var(--spring-snappy) backwards;
+}
+
+.product-app .qwerty-spelling .spelling-feedback,
+.product-app .spelling-feedback {
+  flex: none;
+  width: min(100%, 560px);
+  margin: 12px auto 0;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.55;
+  color: var(--ink);
+  text-align: left;
+  overflow: hidden;
+}
+
+.product-app .spelling-feedback.ok {
+  padding: 13px 18px;
+  background-color: var(--success-soft);
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.45) 0%, transparent 100%);
+  border: 1px solid rgba(75, 113, 88, 0.26);
+  color: var(--success);
+  box-shadow: var(--elev-1), inset 0 1px 0 var(--specular);
+}
+
+.product-app .spelling-feedback.skipped {
+  padding: 13px 18px;
+  background-color: var(--card);
+  background-image: var(--card-grad);
+  border: 1px solid var(--hairline-strong);
+  color: var(--ink);
+  box-shadow: var(--elev-1), inset 0 1px 0 var(--specular);
+}
+
+.product-app .spelling-feedback.err:not([role="alert"]) {
+  padding: 0;
+  background-color: var(--card);
+  background-image: var(--card-grad);
+  border: 1px solid rgba(161, 76, 61, 0.22);
+  color: var(--ink);
+  box-shadow: var(--elev-2), inset 0 1px 0 var(--specular);
+}
+
+.product-app [role="alert"].spelling-feedback.err {
+  padding: 14px 18px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  background: var(--coral-soft);
+  color: var(--coral);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.product-app .sf-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.product-app .sf-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.product-app .sf-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 16px;
+  background: rgba(161, 76, 61, 0.055);
+  border-bottom: 1px solid rgba(161, 76, 61, 0.12);
+}
+
+.product-app .sf-head-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--coral);
+  letter-spacing: 0.01em;
+}
+
+.product-app .sf-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--coral);
+  flex: none;
+}
+
+.product-app .sf-saved-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.4;
+  padding: 2px 10px;
+  border-radius: var(--r-pill);
+  color: var(--muted);
+  background: var(--card);
+  border: 1px solid var(--hairline);
+}
+
+.product-app .spelling-feedback.ok .sf-saved-badge {
+  color: var(--success);
+  background: rgba(75, 113, 88, 0.12);
+  border-color: rgba(75, 113, 88, 0.2);
+}
+
+.product-app .spelling-feedback .spelling-correction {
+  padding: 14px 16px;
+}
+
+.product-app .quiz-feedback.err:has(.spelling-correction) {
+  width: min(100%, 560px);
+  margin-inline: auto;
+  padding: 14px 16px;
+  text-align: left;
+  font-weight: 400;
+  background-color: var(--card);
+  background-image: var(--card-grad);
+  border: 1px solid rgba(161, 76, 61, 0.22);
+  color: var(--ink);
+  box-shadow: var(--elev-2), inset 0 1px 0 var(--specular);
+}
+
+.product-app .spelling-body > .spelling-correction {
+  flex: none;
+  width: min(100%, 520px);
+  margin: 4px auto 0;
+  padding: 14px 16px;
+  border-radius: var(--r-md);
+  background-color: var(--card);
+  background-image: var(--card-grad);
+  border: 1px solid rgba(161, 76, 61, 0.22);
+  color: var(--ink);
+  box-shadow: var(--elev-2), inset 0 1px 0 var(--specular);
+  text-align: left;
+}
+
+.product-app .sc-compare {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.product-app .sc-compare.sc-compare--single {
+  grid-template-columns: 1fr;
+}
+
+.product-app .sc-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.product-app .sc-row-typed {
+  background: rgba(161, 76, 61, 0.045);
+  border: 1px solid rgba(161, 76, 61, 0.14);
+}
+
+.product-app .sc-row-expected {
+  background: rgba(75, 113, 88, 0.055);
+  border: 1px solid rgba(75, 113, 88, 0.2);
+}
+
+.product-app .sc-word {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: clamp(20px, 2.5vw, 24px);
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.03em;
+  color: var(--ink);
+}
+
+.product-app .sc-hl-typed {
+  background: rgba(161, 76, 61, 0.14);
+  color: var(--coral);
+  border-radius: 5px;
+  padding: 0 3px;
+  margin: 0 1px;
+  box-shadow: inset 0 -1.5px 0 rgba(161, 76, 61, 0.48);
+}
+
+.product-app .sc-missing-slot {
+  display: inline-block;
+  width: 7px;
+  height: 18px;
+  vertical-align: -2px;
+  margin: 0 2px;
+  border-bottom: 2px dashed rgba(161, 76, 61, 0.55);
+}
+
+.product-app .sc-hl-expected {
+  background: rgba(75, 113, 88, 0.15);
+  color: var(--success);
+  border-radius: 5px;
+  padding: 0 3px;
+  margin: 0 1px;
+  box-shadow: inset 0 -1.5px 0 rgba(75, 113, 88, 0.45);
+}
+
+.product-app .sc-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--hairline);
+}
+
+.product-app .sc-diff {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink);
+  line-height: 1.5;
+}
+
+.product-app .sc-diff-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--mint);
+  flex: none;
+}
+
+.product-app .sc-audio-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.product-app .sc-audio-btn {
+  min-height: 34px;
+  padding: 5px 14px;
+  border-radius: var(--r-pill);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--mint-ink);
+  border-color: rgba(162, 98, 67, 0.28);
+  gap: 6px;
+}
+
+.product-app .sc-audio-btn:hover:not(:disabled) {
+  background-color: var(--mint-soft);
+  background-image: none;
+  border-color: rgba(162, 98, 67, 0.45);
+  color: var(--mint-ink);
+}
+
+.product-app .sc-audio-status {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+body.dark .product-app .spelling-feedback.ok {
+  background-image: none;
+  border-color: rgba(161, 185, 155, 0.28);
+}
+
+body.dark .product-app .spelling-feedback.err:not([role="alert"]),
+body.dark .product-app .quiz-feedback.err:has(.spelling-correction),
+body.dark .product-app .spelling-body > .spelling-correction {
+  border-color: rgba(226, 154, 136, 0.28);
+}
+
+body.dark .product-app .sf-head {
+  background: rgba(226, 154, 136, 0.08);
+  border-bottom-color: rgba(226, 154, 136, 0.14);
+}
+
+body.dark .product-app .sf-saved-badge {
+  background: rgba(255, 248, 236, 0.06);
+  border-color: var(--hairline);
+}
+
+body.dark .product-app .spelling-feedback.ok .sf-saved-badge {
+  background: rgba(161, 185, 155, 0.14);
+  border-color: rgba(161, 185, 155, 0.26);
+}
+
+body.dark .product-app .sc-row-typed {
+  background: rgba(226, 154, 136, 0.08);
+  border-color: rgba(226, 154, 136, 0.2);
+}
+
+body.dark .product-app .sc-row-expected {
+  background: rgba(161, 185, 155, 0.09);
+  border-color: rgba(161, 185, 155, 0.24);
+}
+
+body.dark .product-app .sc-hl-typed {
+  background: rgba(226, 154, 136, 0.22);
+  color: #f0b3a4;
+  box-shadow: inset 0 -1.5px 0 rgba(240, 179, 164, 0.6);
+}
+
+body.dark .product-app .sc-missing-slot {
+  border-bottom-color: rgba(240, 179, 164, 0.65);
+}
+
+body.dark .product-app .sc-hl-expected {
+  background: rgba(161, 185, 155, 0.22);
+  color: #bdd3b7;
+  box-shadow: inset 0 -1.5px 0 rgba(189, 211, 183, 0.55);
+}
+
+body.dark .product-app .sc-audio-btn {
+  color: var(--mint);
+  border-color: rgba(208, 155, 121, 0.34);
+}
+
+body.dark .product-app .sc-audio-btn:hover:not(:disabled) {
+  background-color: var(--mint-soft);
+  color: #f4d6be;
+  border-color: rgba(208, 155, 121, 0.5);
 }
 
 .product-app .quiz-feedback.ok {
@@ -1504,6 +1923,11 @@ body.dark .product-app .retention-window {
    Responsive Refinements
    ========================================================= */
 @media (max-width: 1023px) {
+  .product-app .qwerty-spelling {
+    height: auto;
+    min-height: calc(100dvh - 112px);
+  }
+
   .product-app .alpha-nav {
     top: 76px;
     max-height: calc(100dvh - 172px);
@@ -1512,6 +1936,25 @@ body.dark .product-app .retention-window {
   .product-app .word-tabs,
   .product-app .diff-group,
   .product-app .spelling-difficulty {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 600px) {
+  .product-app .qwerty-spelling {
+    height: auto;
+    min-height: calc(100dvh - 119px);
+  }
+}
+
+@media (max-width: 540px) {
+  .product-app .sc-compare {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 360px) {
+  .product-app .qwerty-spelling .spelling-difficulty {
     flex-wrap: wrap;
   }
 }
