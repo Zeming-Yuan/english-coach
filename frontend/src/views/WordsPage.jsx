@@ -156,12 +156,12 @@ export default function WordsPage({ onBack, detailId = null, onDetailChange, onR
     });
 
   if (loading) return <div className="story-empty">加载中…</div>;
-  if (loadError && !detail) return <div role="alert">加载失败：{loadError}<button className="btn btn-ghost" onClick={() => {setLoading(true); loadCards();}}>重试加载</button></div>;
+  if (loadError && !detail) return <div role="alert" className="ec-callout is-err ec-callout-inline"><span>加载失败：{loadError}</span><button className="btn btn-ghost btn-small" onClick={() => {setLoading(true); loadCards();}}>重试加载</button></div>;
 
   // 详情页
   if (detail) {
     return <>
-      {loadError && <div role="alert">词表刷新失败：{loadError}<button className="btn btn-ghost" onClick={loadCards}>重试刷新</button></div>}
+      {loadError && <div role="alert" className="ec-callout is-err ec-callout-inline"><span>词表刷新失败：{loadError}</span><button className="btn btn-ghost btn-small" onClick={loadCards}>重试刷新</button></div>}
       <WordDetail
         key={detail}
         cardId={detail}
@@ -329,8 +329,13 @@ function LearningEventRow({ event }) {
   const when = event.occurred_at
     ? new Date(event.occurred_at).toLocaleString()
     : event.learning_day;
+  const outcome = event.skipped
+    ? "skip"
+    : event.kind === "self_rating"
+      ? event.self_rating === 1 ? "err" : event.self_rating === 2 ? "warn" : "ok"
+      : event.correct === true ? "ok" : event.correct === false ? "err" : "neutral";
   return (
-    <div className="tl-item tl-latest" data-testid="learning-event">
+    <div className="tl-item tl-latest" data-testid="learning-event" data-outcome={outcome}>
       <div className={`tl-dot tl-rating-${event.self_rating || 3}`} />
       <div className="tl-content">
         <span className="tl-label">
@@ -728,7 +733,7 @@ function WordDetail({ cardId, onBack, backLabel, openExpansionCard, onStartExpan
   };
 
   if (loading) return <div className="story-empty">加载中…</div>;
-  if (!c) return <div role="alert">加载失败：{loadError}<button className="btn btn-ghost" onClick={loadDetail}>重试加载</button><button className="btn btn-ghost" onClick={onBack}>返回单词本</button></div>;
+  if (!c) return <div role="alert" className="ec-callout is-err ec-callout-inline"><span>加载失败：{loadError}</span><div className="save-state-actions"><button className="btn btn-ghost btn-small" onClick={loadDetail}>重试加载</button><button className="btn btn-ghost btn-small" onClick={onBack}>返回单词本</button></div></div>;
 
   const contexts = Array.isArray(c.contexts) ? c.contexts : [];
 
@@ -961,14 +966,14 @@ function WordDetail({ cardId, onBack, backLabel, openExpansionCard, onStartExpan
         <LearningEvidence evidence={c.learning_evidence} />
 
         {/* 应用内接触：只来自实际展示/播放，不作为作答或完成量 */}
-        <div className="word-detail-status" data-testid="last-contact">
-          <div className="status-item">
+        <div className="word-detail-status wd-inspector-group wd-contact-group" data-testid="last-contact">
+          <div className="status-item status-item-stacked">
             <span className="status-label">最近应用内接触</span>
-            <span className="status-value">{contactText}</span>
+            <span className="status-value wd-tabular">{contactText}</span>
           </div>
-          <div className="status-item">
+          <div className="status-item status-item-kv">
             <span className="status-label">接触依据</span>
-            <span className="status-value">{c.contact_integrity?.label || "未知"}</span>
+            <span className="status-value wd-subtle-pill">{c.contact_integrity?.label || "未知"}</span>
           </div>
         </div>
         {contactState.phase === "saving" && (
@@ -996,30 +1001,30 @@ function WordDetail({ cardId, onBack, backLabel, openExpansionCard, onStartExpan
         )}
 
       {/* 状态卡 */}
-      <div className="word-detail-status">
-        <div className="status-item"><span className="status-label">复习次数</span><span className="status-value">{c.review_count}</span></div>
-        <div className="status-item"><span className="status-label">状态</span><span className="status-value">{c.graduated ? "句子练习已解锁" : c.review_count > 0 ? "学习中" : "新词"}</span></div>
-        <div className="status-item"><span className="status-label">下次复习</span><span className="status-value">{c.next_due ? new Date(c.next_due).toLocaleDateString() : "-"}</span></div>
+      <div className="word-detail-status wd-kpi-grid">
+        <div className="status-item wd-kpi-tile"><span className="status-label">复习次数</span><span className="status-value">{c.review_count}</span></div>
+        <div className="status-item wd-kpi-tile"><span className="status-label">状态</span><span className="status-value" data-state={c.graduated ? "graduated" : c.review_count > 0 ? "learning" : "new"}>{c.graduated ? "句子练习已解锁" : c.review_count > 0 ? "学习中" : "新词"}</span></div>
+        <div className="status-item wd-kpi-tile"><span className="status-label">下次复习</span><span className="status-value">{c.next_due ? new Date(c.next_due).toLocaleDateString() : "-"}</span></div>
       </div>
 
       {/* 内容修订：词形/释义等实质变化才增加版本 */}
-      <div className="word-detail-status" data-testid="revision-panel">
-        <div className="status-item">
+      <div className="word-detail-status wd-inspector-group wd-revision-group" data-testid="revision-panel">
+        <div className="status-item status-item-kv">
           <span className="status-label">内容修订</span>
-          <span className="status-value">第 {c.content_revision?.version ?? 1} 版</span>
+          <span className="status-value wd-subtle-pill">第 {c.content_revision?.version ?? 1} 版</span>
         </div>
-        <div className="status-item">
+        <div className="status-item status-item-kv">
           <span className="status-label">修订身份</span>
-          <span className="status-value">{c.content_revision?.identity?.slice(0, 8) || "-"}</span>
+          <code className="status-value wd-code-pill">{c.content_revision?.identity?.slice(0, 8) || "-"}</code>
         </div>
       </div>
 
       {/* 学习记录：只展示真实追加事件；旧基线不伪装成作答 */}
       {(c.history_incomplete || c.learning_events?.length > 0 || c.memory_state) && (
-      <div style={{ marginTop: 16 }}>
+      <div className="wd-history-section">
         <h3 className="lesson-section">学习记录</h3>
         {c.history_incomplete && (
-          <div className="story-empty" style={{ textAlign: "left", fontSize: 13 }}>
+          <div className="ec-callout is-warn history-incomplete-notice">
             部分历史记录不完整：升级前或未分类的旧评分无法逐次还原；下方展示已记录的新事件与最后可知活动。
             {c.memory_state?.last_review && (
               <div>
@@ -1037,7 +1042,7 @@ function WordDetail({ cardId, onBack, backLabel, openExpansionCard, onStartExpan
             ))}
           </div>
         ) : c.memory_state ? (
-          <div className="story-empty">
+          <div className="ec-callout is-info is-compact">
             升级前累计复习 {c.memory_state.review_count} 次
             {c.memory_state.last_review
               ? ` · 最后可知活动 ${new Date(c.memory_state.last_review).toLocaleDateString()}`

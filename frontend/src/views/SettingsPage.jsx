@@ -119,8 +119,8 @@ export default function SettingsPage({ darkMode, setDarkMode, onOpenBackup }) {
         </div>
         <h2 className="settings-section-title">AI 服务</h2>
         {(aiLoadError || aiSaveUnconfirmed) && (
-          <p role="alert">
-            {aiSaveUnconfirmed ? "AI 配置保存状态未知，请重新读取配置。" : `AI 配置加载失败：${aiLoadError}`}{" "}
+          <p role="alert" className="ec-callout is-err ec-callout-inline">
+            <span>{aiSaveUnconfirmed ? "AI 配置保存状态未知，请重新读取配置。" : `AI 配置加载失败：${aiLoadError}`}</span>
             <button className="btn btn-ghost btn-small" onClick={retryAiConfig}>重试加载配置</button>
           </p>
         )}
@@ -140,7 +140,7 @@ export default function SettingsPage({ darkMode, setDarkMode, onOpenBackup }) {
             {!aiSaveUnconfirmed && <span style={{ fontSize: 12, color: "var(--muted)" }}>{!aiConfig ? "配置尚未读取" : aiConfig.has_key ? "密钥已配置" : "密钥未配置"}</span>}
           </div>
           {aiTest && (
-            <p role="status" style={{ fontSize: 12, margin: 0, color: aiTest.ok ? "var(--success)" : "var(--coral)" }}>
+            <p role="status" className={`ec-callout is-compact ${aiTest.ok ? "is-ok" : "is-err"}`}>
               {aiTest.ok ? "✅ 连接成功" : `❌ ${aiTest.error}`}
             </p>
           )}

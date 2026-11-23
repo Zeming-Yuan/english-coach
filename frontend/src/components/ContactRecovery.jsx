@@ -26,17 +26,19 @@ export default function ContactRecovery() {
     finally {setBusy(''); setLookups(pendingVisibleContactLookups());}
   };
   if (!lookups.length && !note) return null;
-  return <aside aria-label="接触恢复" className="save-state">
+  return <aside aria-label="接触恢复" className="save-state ec-banner is-warn">
     {lookups.length > 0 && <p>有应用内接触的依据尚未确认。</p>}
-    {lookups.map(lookup => <div key={lookup.scope}>
-      {lookup.expansion ?
-        <button className="btn btn-ghost btn-small" disabled={Boolean(busy)} onClick={() => retry(lookup.scope)}>继续确认扩展词接触</button> :
-        lookup.source === 'scene' && typeof lookup.text === 'string' ?
-        <button className="btn btn-ghost btn-small" disabled={Boolean(busy)} onClick={() => retry(lookup.scope)}>继续确认反馈接触</button> :
-        <p>旧接触记录缺少反馈内容，接触依据仍不完整，请回到原反馈继续确认。</p>}
-    </div>)}
-    {busy && <p role="status">正在确认接触…</p>}
-    {error && <p role="alert">{error}</p>}
-    {note && <p role="status">{note}</p>}
+    <div className="ec-banner-list">
+      {lookups.map(lookup => <div key={lookup.scope}>
+        {lookup.expansion ?
+          <button className="btn btn-ghost btn-small" disabled={Boolean(busy)} onClick={() => retry(lookup.scope)}>继续确认扩展词接触</button> :
+          lookup.source === 'scene' && typeof lookup.text === 'string' ?
+          <button className="btn btn-ghost btn-small" disabled={Boolean(busy)} onClick={() => retry(lookup.scope)}>继续确认反馈接触</button> :
+          <p className="ec-banner-subnote">旧接触记录缺少反馈内容，接触依据仍不完整，请回到原反馈继续确认。</p>}
+      </div>)}
+    </div>
+    {busy && <p role="status" className="ec-callout is-info is-compact">正在确认接触…</p>}
+    {error && <p role="alert" className="ec-callout is-err is-compact">{error}</p>}
+    {note && <p role="status" className="ec-callout is-info is-compact">{note}</p>}
   </aside>;
 }

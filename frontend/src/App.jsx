@@ -139,7 +139,7 @@ function PendingRecovery({ view, onConfirmed }) {
   return (
     <div className="pending-recovery">
       {entries.map((entry) => (
-        <div key={entry.scope} className="pending-recovery-item">
+        <div key={entry.scope} className="pending-recovery-item ec-banner is-warn">
           <p role="status">有一条学习记录尚未确认保存；刷新后可能需要重新核对。</p>
           <div className="save-state-actions">
             <button
@@ -155,7 +155,7 @@ function PendingRecovery({ view, onConfirmed }) {
           </div>
         </div>
       ))}
-      {error && <p role="alert" className="err">{error}</p>}
+      {error && <p role="alert" className="err ec-callout is-err is-compact">{error}</p>}
     </div>
   );
 }
@@ -812,7 +812,7 @@ function QueueView({ onAdvice, onDelayed, setView, setStudyQueue, dailySession, 
           </section>
         </div>
         <div className="home-evidence-grid"><LearningAdvice onStart={onAdvice} />
-          <div className="home-evidence-summary"><h3>学习依据</h3>{data.evidence_counts && <dl>{["verified", "weak", "stale", "history_incomplete", "insufficient"].map(key => <div key={key}><dt>{data.evidence_labels?.[key] || ({verified: "独立回忆已有证据", weak: "仍需巩固", stale: "历史证据，待复测", history_incomplete: "历史依据不完整", insufficient: "独立证据不足"})[key]}</dt><dd>{data.evidence_counts[key] || 0} 张</dd></div>)}</dl>}
+          <div className="home-evidence-summary"><h3>学习依据</h3>{data.evidence_counts && <dl>{["verified", "weak", "stale", "history_incomplete", "insufficient"].map(key => <div key={key} data-evidence-key={key}><dt>{data.evidence_labels?.[key] || ({verified: "独立回忆已有证据", weak: "仍需巩固", stale: "历史证据，待复测", history_incomplete: "历史依据不完整", insufficient: "独立证据不足"})[key]}</dt><dd>{data.evidence_counts[key] || 0} 张</dd></div>)}</dl>}
             {!materialsLoading.lessons && !materialErrors.lessons && lessonData && <p className="home-course-status">课程：已生成 {lessonData.counts?.generated ?? 0}/20 课 · 已打开 {lessonData.counts?.opened ?? 0} 课 · 已浏览 {lessonData.counts?.browsed ?? 0} 课{lessonData.counts?.old_content ? ` · 旧内容 ${lessonData.counts.old_content} 课` : ""}{lessonData.counts?.unrecorded ? ` · 状态未记录 ${lessonData.counts.unrecorded} 课` : ""}</p>}
             {stats?.delayed_recall_enabled !== false && <div className="save-state-actions" aria-label="延迟回测"><button className="btn btn-ghost btn-small" onClick={() => onDelayed("day")}>隔日回测</button><button className="btn btn-ghost btn-small" onClick={() => onDelayed("week")}>一周回测</button></div>}
           </div>

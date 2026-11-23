@@ -22,27 +22,27 @@ export default function LearningEvidence({ evidence }) {
   const { recall, retention, application, revision } = evidence;
   const recallLabel = recall.label || evidence.progress_label || "独立证据不足";
   return (
-    <div className="word-detail-status" data-testid="learning-evidence" role="status">
-      <div className="status-item">
+    <div className="word-detail-status wd-inspector-group wd-evidence-group" data-testid="learning-evidence" role="status">
+      <div className="status-item status-item-verdict">
         <span className="status-label">独立回忆</span>
-        <span className="status-value">{recallLabel}</span>
+        <span className="status-value wd-status-pill" data-status={recall.status || "insufficient"}>{recallLabel}</span>
       </div>
-      <div className="status-item">
+      <div className="status-item status-item-kv">
         <span className="status-label">独立样本</span>
-        <span className="status-value">
+        <span className="status-value wd-tabular">
           {recall.count} 次 · 最近 {dateText(recall.last_verified_at)}
         </span>
       </div>
-      <div className="status-item">
+      <div className="status-item status-item-stacked">
         <span className="status-label">延迟保持 / 实际应用</span>
         <span className="status-value">
           {retention.label || "独立证据不足"} / {application.label || "独立证据不足"}
         </span>
       </div>
-      {(application.contexts || []).map(context => <div className="status-item" key={`${context.context}:${context.content_hash}`}>
+      {(application.contexts || []).map(context => <div className="status-item status-item-context" key={`${context.context}:${context.content_hash}`}>
         <span className="status-value">{context.title} · {context.rule_version}：{context.label}</span>
       </div>)}
-      <div style={{ gridColumn: "1 / -1", fontSize: 12, color: "var(--muted)" }}>
+      <div className="wd-evidence-reason">
         {REASON_TEXT[recall.status] || ""}
         {revision ? ` 当前修订：第 ${revision.version} 版。` : ""}
       </div>

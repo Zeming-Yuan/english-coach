@@ -385,7 +385,7 @@ export default function MixedPage({ onExit }) {
   if (phase === "error")
     return (
       <div className="story-empty">
-        <div role="alert">题目加载失败，请重试。</div>
+        <div role="alert" className="ec-callout is-err is-compact">题目加载失败，请重试。</div>
         <div className="save-state-actions" style={{ justifyContent: "center" }}>
           <button className="btn btn-primary" onClick={load}>
             重新加载
@@ -545,7 +545,7 @@ export default function MixedPage({ onExit }) {
           </>
         )}
         {saving && <div>保存中…</div>}
-        {storageWarning && <div role="alert">{storageWarning}</div>}
+        {storageWarning && <div role="alert" className="ec-callout is-warn is-compact">{storageWarning}</div>}
         {error && (
           <div role="alert" className="quiz-feedback err">
             <div>{error.message}</div>

@@ -57,7 +57,7 @@ export default function DemoLesson({lesson, onExit}) {
           </div>
         ))}
       </div>
-      {audioFailed && <p role="status">暂时无法朗读，仍可继续示例任务。</p>}
+      {audioFailed && <p role="status" className="ec-callout is-warn is-compact">暂时无法朗读，仍可继续示例任务。</p>}
       <h3 className="lesson-section">示例任务</h3>
       <p>{lesson.task.prompt}</p>
       <div className="lesson-actions">
@@ -68,7 +68,7 @@ export default function DemoLesson({lesson, onExit}) {
           </button>
         ))}
       </div>
-      <p role="status">{answer === null ? "" : answer === lesson.task.expected
+      <p role="status" className={answer === null ? "sr-only" : `ec-callout is-compact ${answer === lesson.task.expected ? "is-ok" : "is-warn"}`}>{answer === null ? "" : answer === lesson.task.expected
         ? "示例任务已完成"
         : "见面可以用一句问候，再试一次。"}</p>
     </section>

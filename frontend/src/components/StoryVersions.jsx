@@ -45,17 +45,19 @@ export default function StoryVersions({story, enabled, onSelect, onSaved, childr
   const versions = story.versions || [];
   const original = versions.find(v => v.mode === "normal");
   return <>
-    {story.version_id && story.mode !== "starter" && <div className="story-version-controls" style={{padding: "12px 0"}}>
-      <p data-testid="story-check-status">{story.mode === "short" ? "简化版" : "原版"} · {story.check_session_id ? "已有检查记录" : "未检查"}</p>
+    {story.version_id && story.mode !== "starter" && <div className="story-version-controls">
+      <p data-testid="story-check-status" className="story-version-pill" data-checked={story.check_session_id ? "true" : "false"}>{story.mode === "short" ? "简化版" : "原版"} · {story.check_session_id ? "已有检查记录" : "未检查"}</p>
       {original && <button className="btn btn-ghost btn-small" onClick={() => choose(original.story_id)}>查看原版</button>}
       {versions.filter(v => v.mode === "short").map((v, index) => <button className="btn btn-ghost btn-small" key={v.version_id} onClick={() => choose(v.story_id)}>查看简化版{index ? ` ${index + 1}` : ""}</button>)}
       {enabled && story.mode === "normal" && !pending && !versions.some(v => v.mode === "short") && <button className="btn btn-primary btn-small" onClick={simplify}>更简单</button>}
-      {busy && <p role="status">简化并确认保存中…</p>}
-      {pending && !busy && <div role="alert"><p>{error || "有一条待确认的简化，请继续确认。"}</p>
-        {enabled && <button className="btn btn-primary btn-small" onClick={simplify}>继续确认保存</button>}
-        <button className="btn btn-ghost btn-small" onClick={() => {remember(null); setError("");}}>放弃待确认简化</button>
+      {busy && <p role="status" className="ec-callout is-info is-compact">简化并确认保存中…</p>}
+      {pending && !busy && <div role="alert" className="ec-callout is-err story-version-alert"><p>{error || "有一条待确认的简化，请继续确认。"}</p>
+        <div className="save-state-actions">
+          {enabled && <button className="btn btn-primary btn-small" onClick={simplify}>继续确认保存</button>}
+          <button className="btn btn-ghost btn-small" onClick={() => {remember(null); setError("");}}>放弃待确认简化</button>
+        </div>
       </div>}
-      {note && <p role="note">{note}</p>}
+      {note && <p role="note" className="ec-callout is-warn is-compact">{note}</p>}
     </div>}
     {children}
   </>;

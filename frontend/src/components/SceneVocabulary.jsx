@@ -73,18 +73,23 @@ function VocabularyWord({entry, onStale}) {
     setSpeech(mode === 'none' ? '语音暂不可用，可以继续学习。' : '已播放词汇');
   };
 
-  return <article className="lesson-progress">
-    <h3 lang="en">{entry.word}</h3>
-    <p>{entry.card_id ? '已在词库' : '未入词库'}</p>
+  return <article className="lesson-progress scene-vocab-card">
+    <div className="scene-vocab-head">
+      <h3 lang="en">{entry.word}</h3>
+      <span className="scene-vocab-badge">{entry.card_id ? '已在词库' : '未入词库'}</span>
+    </div>
     {revealed ? <>
-      <p ref={meaning}>{entry.meaning}</p>
-      {entry.example && <p lang="en">{entry.example}</p>}
-    </> : <button className="btn btn-primary" onClick={() => setRevealed(true)}>查看释义</button>}
-    <button className="btn btn-ghost btn-small" onClick={playWord}>朗读词汇</button>
-    {speech && <p role="status">{speech}</p>}
-    {failedContacts.length > 0 && <div role="alert">
-      <p>接触依据尚未确认。</p>
-      <button className="btn btn-ghost" onClick={() => failedContacts.forEach(confirmContact)}>继续确认接触</button>
+      <p ref={meaning} className="scene-vocab-meaning">{entry.meaning}</p>
+      {entry.example && <p lang="en" className="scene-vocab-example">{entry.example}</p>}
+    </> : null}
+    <div className="save-state-actions">
+      {!revealed && <button className="btn btn-primary" onClick={() => setRevealed(true)}>查看释义</button>}
+      <button className="btn btn-ghost btn-small" onClick={playWord}>朗读词汇</button>
+    </div>
+    {speech && <p role="status" className="ec-callout is-info is-compact">{speech}</p>}
+    {failedContacts.length > 0 && <div role="alert" className="ec-callout is-err ec-callout-inline">
+      <span>接触依据尚未确认。</span>
+      <button className="btn btn-ghost btn-small" onClick={() => failedContacts.forEach(confirmContact)}>继续确认接触</button>
     </div>}
   </article>;
 }
@@ -125,10 +130,10 @@ export default function SceneVocabulary({sceneId, title, onExit}) {
   return <section className="view scene-page scene-catalog" data-testid="scene-vocabulary">
     <button ref={backButton} className="btn btn-ghost btn-small scene-back" onClick={onExit}>返回{title}</button>
     <h2 className="page-title scene-title">{title} · 词汇准备</h2>
-    {error ? <div role="alert">
-      <p>{error}</p>
-      <button className="btn btn-ghost" onClick={reload}>重新读取用词</button>
-    </div> : words === null ? <p role="status">正在读取场景用词…</p>
+    {error ? <div role="alert" className="ec-callout is-err ec-callout-inline">
+      <span>{error}</span>
+      <button className="btn btn-ghost btn-small" onClick={reload}>重新读取用词</button>
+    </div> : words === null ? <p role="status" className="ec-callout is-info is-compact">正在读取场景用词…</p>
       : !entry ? <p>这个场景暂时没有准备词汇。</p>
         : <>
           <p className="scene-meta" role="status">第 {index + 1}/{words.length} 词</p>

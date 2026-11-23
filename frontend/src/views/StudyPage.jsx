@@ -205,7 +205,7 @@ export default function StudyPage({ queue = [], session, recoveryVersion, onProg
     );
   }
 
-  if (!card) return <section className="view"><p role="status">没有待学习的卡片</p><button className="btn btn-ghost" onClick={onExit}>返回队列</button></section>;
+  if (!card) return <section className="view"><p role="status" className="ec-callout is-info is-compact">没有待学习的卡片</p><div className="save-state-actions"><button className="btn btn-ghost" onClick={onExit}>返回队列</button></div></section>;
 
   // 对话体句子：按 A:/B: 分行渲染为气泡
   const isDialog = isSentence && /^A:/m.test(card.example || "");

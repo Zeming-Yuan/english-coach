@@ -19,7 +19,7 @@ function RevealedAnswer({card, onRecorded}) {
     if (ref.current) observer.observe(ref.current);
     return () => observer.disconnect();
   }, [card.id]);
-  return <p ref={ref}>{card.word}{error && <span role="alert">{error}<button className="btn btn-ghost btn-small" onClick={confirm}>继续确认接触</button></span>}</p>;
+  return <p ref={ref} className="advice-revealed-word">{card.word}{error && <span role="alert" className="ec-callout is-err ec-callout-inline"><span>{error}</span><button className="btn btn-ghost btn-small" onClick={confirm}>继续确认接触</button></span>}</p>;
 }
 
 function Suggestion({advice, onStart, onRefresh}) {
@@ -36,11 +36,11 @@ function Suggestion({advice, onStart, onRefresh}) {
     } catch (cause) { setError(cause.message); }
     finally { setRevealing(false); }
   };
-  return <article className="lesson-progress">
-    <p>{advice.reason} · 依据 {advice.sample_count} 个样本</p>
-    <p>{advice.window === "week" ? "一周回测" : advice.window === "day" ? "隔日回测" : "无提示输入"} · {advice.card_ids.length} 个词：{advice.prompts_cn.join("、")}</p>
-    {!!advice.lesson_labels?.length && <p>相关课程：{advice.lesson_labels.join("、")}</p>}
-    {error && <p role="alert">{error}</p>}
+  return <article className="lesson-progress advice-card">
+    <p className="advice-reason">{advice.reason} · 依据 {advice.sample_count} 个样本</p>
+    <p className="advice-meta">{advice.window === "week" ? "一周回测" : advice.window === "day" ? "隔日回测" : "无提示输入"} · {advice.card_ids.length} 个词：{advice.prompts_cn.join("、")}</p>
+    {!!advice.lesson_labels?.length && <p className="advice-lessons">相关课程：{advice.lesson_labels.join("、")}</p>}
+    {error && <p role="alert" className="ec-callout is-err is-compact">{error}</p>}
     {cards.map(card => <RevealedAnswer key={card.id} card={card} onRecorded={onRefresh} />)}
     <div className="save-state-actions">
       <button className="btn btn-primary btn-small" onClick={() => onStart(advice)} disabled={cards.length > 0 || revealing}>开始建议练习</button>
@@ -93,11 +93,11 @@ export default function LearningAdvice({onStart}) {
   if (data?.enabled === false) return null;
   return <section className="stats-section" data-testid="learning-advice">
     <h3>建议练习</h3>
-    {error && <p role="alert">建议读取失败：{error}<button className="btn btn-ghost btn-small" onClick={() => setRefresh(v => v + 1)}>重新读取建议</button></p>}
-    {!data && !error && <p role="status">正在读取学习依据…</p>}
-    {data?.message && <p role="status">{data.message}</p>}
-    {recoveryError && <p role="alert">{recoveryError}<button className="btn btn-ghost btn-small" onClick={() => setRefresh(v => v + 1)}>重新查找轮次</button></p>}
-    {saved && <div className="save-state-actions">
+    {error && <p role="alert" className="ec-callout is-err ec-callout-inline"><span>建议读取失败：{error}</span><button className="btn btn-ghost btn-small" onClick={() => setRefresh(v => v + 1)}>重新读取建议</button></p>}
+    {!data && !error && <p role="status" className="ec-callout is-info is-compact">正在读取学习依据…</p>}
+    {data?.message && <p role="status" className="ec-callout is-info is-compact">{data.message}</p>}
+    {recoveryError && <p role="alert" className="ec-callout is-err ec-callout-inline"><span>{recoveryError}</span><button className="btn btn-ghost btn-small" onClick={() => setRefresh(v => v + 1)}>重新查找轮次</button></p>}
+    {saved && <div className="save-state-actions advice-saved-bar">
       <button className="btn btn-ghost btn-small" onClick={() => onStart(saved)}>继续建议练习</button>
       <button className="btn btn-ghost btn-small" onClick={discard}>放弃原请求入口</button>
     </div>}
