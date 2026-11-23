@@ -30,6 +30,7 @@ const difficultyAssistance = (difficulty) =>
 export default function SpellingPage({ onExit, onAddWords, singleCard, singleCardId = null }) {
   // 默认独立回忆：只有用户主动选择提示才降级为辅助练习。
   const [difficulty, setDifficulty] = useState(() => storageGet("spellingDiff", 3));
+  const [displayDifficulty, setDisplayDifficulty] = useState(() => storageGet("spellingDiff", 3));
   const [assistance, setAssistance] = useState(() =>
     difficultyAssistance(storageGet("spellingDiff", 3)),
   );
@@ -68,31 +69,39 @@ export default function SpellingPage({ onExit, onAddWords, singleCard, singleCar
   } = s;
 
   const itemId = q ? `${q.card_id}:spell` : null;
+  const difficultyRef = useRef(difficulty);
+  difficultyRef.current = difficulty;
 
-  // 新题读取已保存的提示；难度档是显式提示请求，也并入本题。
+  // 新题读取已保存的提示；难度档是显式提示请求，也并入本题（仅在新题进入 ready 时同步）。
   useEffect(() => {
-    if (!q) return;
-    setAssistance(
-      Array.from(
-        new Set([
-          ...storedAssistance("spelling", itemId),
-          ...difficultyAssistance(difficulty),
-        ]),
-      ).sort(),
-    );
+    if (phase !== "ready" || !q || feedback) return;
+    const currentDiff = difficultyRef.current;
+    const initialKinds = difficultyAssistance(currentDiff);
+    let merged = storedAssistance("spelling", itemId);
+    for (const kind of initialKinds) {
+      merged = markAssistance("spelling", itemId, kind);
+    }
+    setDisplayDifficulty(currentDiff);
+    setAssistance(merged);
     setResumeNotice("");
-  }, [idx, q?.card_id, difficulty]);
+  }, [phase, idx, q?.card_id]);
 
   const chooseDifficulty = (d) => {
+    if (awaitingConfirmation) return;
     setDifficulty(d);
     storageSet("spellingDiff", d);
-    if (!itemId) return;
+    if (!itemId || feedback) return;
+    setDisplayDifficulty(d);
     // 已请求的辅助保持到本题结束，切回独立也不会撤销。
-    let next = assistance;
-    for (const kind of difficultyAssistance(d)) {
-      next = markAssistance("spelling", itemId, kind);
+    const kinds = difficultyAssistance(d);
+    if (kinds.length > 0) {
+      let next = assistance;
+      for (const kind of kinds) {
+        next = markAssistance("spelling", itemId, kind);
+      }
+      setAssistance(next);
     }
-    setAssistance(next);
+    requestAnimationFrame(() => inputRef.current?.focus());
   };
 
   // 反馈显示正确答案后才算一次答案接触；答对只显示用户自己的输入，不算展示答案。
@@ -133,7 +142,8 @@ export default function SpellingPage({ onExit, onAddWords, singleCard, singleCar
   }
   if (!q) return null;
 
-  const independent = assistance.length === 0;
+  const hasRecordedAssistance = assistance.length > 0;
+  const displayIndependent = displayDifficulty === 3;
   const awaitingConfirmation = saving || Boolean(saveError || pendingResume);
   const savedCount = idx + (feedback ? 1 : 0);
   const feedbackState = feedback
@@ -161,9 +171,11 @@ export default function SpellingPage({ onExit, onAddWords, singleCard, singleCar
         {[3, 2, 1].map((d) => (
           <button
             key={d}
+            type="button"
             className={`diff-btn ${difficulty === d ? "diff-active" : ""}`}
             onClick={() => chooseDifficulty(d)}
             aria-pressed={difficulty === d}
+            disabled={awaitingConfirmation}
           >
             {d === 1 ? "提示首字母" : d === 2 ? "提示长度" : "独立回忆"}
           </button>
@@ -173,23 +185,29 @@ export default function SpellingPage({ onExit, onAddWords, singleCard, singleCar
       <div className="spelling-body">
         <span className="qwerty-prompt-label">根据释义，写出英文</span>
         <div className="spelling-meaning">{q.meaning}</div>
-        {!independent && q.phonetic && <div className="spelling-phonetic">{q.phonetic}</div>}
+        {!displayIndependent && q.phonetic && <div className="spelling-phonetic">{q.phonetic}</div>}
         <SpellingBoard
           key={q.card_id}
-          mode={independent ? "independent" : "assisted"}
-          target={independent ? null : q.word}
+          mode={displayIndependent ? "independent" : "assisted"}
+          target={displayIndependent ? null : q.word}
           onSubmit={submit}
-          showFirstHint={assistance.includes("first_letter")}
+          showFirstHint={displayDifficulty === 1}
           disabled={!!feedback || awaitingConfirmation}
           inputRef={inputRef}
           formId="spelling-answer-form"
           feedbackState={feedbackState}
         />
-        <div className="spelling-hint">
-          {assistance.length > 0
-            ? "本题已使用提示，仍按辅助记录"
-            : item.answerRevealed ? "已看过正确拼写，本次按辅助练习记录" : diffLabels[difficulty]}
-        </div>
+        {(!feedback || hasRecordedAssistance || item.answerRevealed || difficulty !== 3) && (
+          <div className="spelling-hint">
+            {hasRecordedAssistance
+              ? "本题已使用提示，仍按辅助记录"
+              : item.answerRevealed
+                ? "已看过正确拼写，本次按辅助练习记录"
+                : feedback
+                  ? `下一题将切换为「${difficulty === 1 ? "提示首字母" : "提示长度"}」`
+                  : diffLabels[difficulty]}
+          </div>
+        )}
         {pendingResume && !feedback && (
           <div className="spelling-hint">
             上次提交尚未确认保存
@@ -207,12 +225,37 @@ export default function SpellingPage({ onExit, onAddWords, singleCard, singleCar
         )}
         {resumeNotice && <div className="spelling-hint" role="status">{resumeNotice}</div>}
         {feedback && (
-          <div className={`spelling-feedback ${feedback.correct ? "ok" : "err"}`}>
-            <span role="status">已保存</span>
-            {" "}
-            {feedback.skipped ? " · 已跳过，未作答" : feedback.correct ? " · 拼写正确" : (
-              <SpellingCorrection typed={feedback.userInput} expected={feedback.expected}
-                cardId={q.card_id} revision={q.content_revision} source="spelling" />
+          <div className={`spelling-feedback ${feedback.skipped ? "skipped" : feedback.correct ? "ok" : "err"}`}>
+            {feedback.skipped ? (
+              <div className="sf-banner">
+                <span className="sf-title">已跳过，未作答</span>
+                <span role="status" className="sf-saved-badge">已保存</span>
+              </div>
+            ) : feedback.correct ? (
+              <div className="sf-banner">
+                <span className="sf-title">
+                  <UiIcon name="done" size={18} weight="fill" />
+                  拼写正确
+                </span>
+                <span role="status" className="sf-saved-badge">已保存</span>
+              </div>
+            ) : (
+              <>
+                <div className="sf-head">
+                  <span className="sf-head-label">
+                    <span className="sf-status-dot" aria-hidden="true" />
+                    拼写有误
+                  </span>
+                  <span role="status" className="sf-saved-badge">已保存</span>
+                </div>
+                <SpellingCorrection
+                  typed={feedback.userInput}
+                  expected={feedback.expected}
+                  cardId={q.card_id}
+                  revision={q.content_revision}
+                  source="spelling"
+                />
+              </>
             )}
           </div>
         )}
